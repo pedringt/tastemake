@@ -154,8 +154,8 @@ function hypothesisMatches(itemHypotheses, hypothesisId) {
   return itemHypotheses.some((id) => aliases.includes(id));
 }
 
-function hypothesisSignal(hypothesisId) {
-  return Object.values(state.feedbackByRecommendation).reduce((sum, feedback) => {
+function hypothesisSignal(hypothesisId, feedbacks = Object.values(state.feedbackByRecommendation)) {
+  return feedbacks.reduce((sum, feedback) => {
     return hypothesisMatches(feedback.item.hypotheses, hypothesisId) ? sum + feedbackDelta(feedback) : sum;
   }, 0);
 }
@@ -175,7 +175,7 @@ function roundOneFeedback() {
 
 function followUpRecommendations() {
   const scored = followUpPool.map((item) => {
-    const score = item.hypotheses.reduce((sum, id) => sum + hypothesisSignal(id), 0);
+    const score = item.hypotheses.reduce((sum, id) => sum + hypothesisSignal(id, roundOneFeedback()), 0);
     return { ...item, score };
   }).sort((a, b) => b.score - a.score);
   const top = scored.slice(0, 4).map((item, index) => ({
@@ -638,6 +638,7 @@ app.addEventListener("click", (event) => {
   if (action === "next-round") {
     state.recommendationRound = 2;
     state.selectedRecommendation = null;
+    state.lastFeedback = null;
     resetFeedback();
     setScreen("recommendations");
   }
