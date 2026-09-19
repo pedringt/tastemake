@@ -55,6 +55,7 @@ const hypotheses = [
 const recommendations = [
   {
     id: "eeaao",
+    about: "A multiverse action-comedy about a laundromat owner pulled into increasingly strange alternate realities.",
     rank: 1,
     title: "Everything Everywhere All at Once",
     medium: "Movie",
@@ -66,6 +67,7 @@ const recommendations = [
   },
   {
     id: "barry",
+    about: "A dark comedy about a hitman who tries to leave crime behind after joining an acting class in Los Angeles.",
     rank: 2,
     title: "Barry",
     medium: "TV",
@@ -77,6 +79,7 @@ const recommendations = [
   },
   {
     id: "wwdits",
+    about: "A mockumentary comedy about a group of selfish, centuries-old vampires sharing a house.",
     rank: 3,
     title: "What We Do in the Shadows",
     medium: "TV",
@@ -88,6 +91,7 @@ const recommendations = [
   },
   {
     id: "disco",
+    about: "A dialogue-heavy detective RPG where you investigate a murder while rebuilding a deeply unstable protagonist.",
     rank: 4,
     title: "Disco Elysium",
     medium: "Game",
@@ -99,6 +103,7 @@ const recommendations = [
   },
   {
     id: "inscryption",
+    about: "A horror card game that gradually turns into a puzzle-box mystery and keeps changing its own rules.",
     rank: null,
     title: "Inscryption",
     medium: "Game",
@@ -112,12 +117,19 @@ const recommendations = [
 
 const followUpPool = [
   { id: "fargo", title: "Fargo", medium: "TV", hypotheses: ["H03", "H04"], reason: "Dark comedy and moral messiness give Tastemake two established signals to test together." },
+    about: "A crime anthology series mixing violence, moral messiness, eccentric characters, and very dark humor.",
   { id: "handmaiden", title: "The Handmaiden", medium: "Movie", hypotheses: ["H03", "H01/H07"], reason: "Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum." },
+    about: "A stylized period thriller built around deception, shifting loyalties, and multiple reveals.",
   { id: "golden-idol", title: "The Case of the Golden Idol", medium: "Game", hypotheses: ["H01/H07"], reason: "Highly structured deduction makes this a focused test of the discovery-needs-structure hypothesis." },
+    about: "A deduction game where you inspect frozen crime scenes and reconstruct exactly what happened.",
   { id: "vita-nostra", title: "Vita Nostra", medium: "Book", hypotheses: ["H05", "H01/H07"], reason: "Adult fantastical material and demanding strangeness test two parts of the model at once." },
+    about: "A strange adult fantasy about a student forced into a mysterious school that changes how she understands reality.",
   { id: "lighthouse", title: "The Lighthouse", medium: "Movie", hypotheses: ["H04", "H09"], reason: "Black comedy, surrealism, and tonal collision make this useful when those signals are holding up." },
+    about: "A surreal black-and-white psychological drama about two lighthouse keepers unraveling in isolation.",
   { id: "yellowjackets", title: "Yellowjackets", medium: "TV", hypotheses: ["H03", "H09"], reason: "Messy characters, horror, and tonal shifts make this a broader cross-signal test." },
+    about: "A survival mystery following a girls soccer team after a crash and the adults they later become.",
   { id: "dnd", title: "Dungeons & Dragons: Honor Among Thieves", medium: "Movie", hypotheses: ["H05", "H04"], reason: "Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional." }
+    about: "A fast-moving fantasy adventure about a mismatched group of thieves trying to fix a very bad mistake.",
 ];
 
 const state = {
@@ -126,6 +138,7 @@ const state = {
   selectedRecommendation: null,
   reaction: null,
   recommendationQuality: null,
+  interest: null,
   reason: "",
   lastFeedback: null,
   feedbackByRecommendation: {},
