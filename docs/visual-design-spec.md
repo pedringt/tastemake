@@ -6,6 +6,18 @@
 
 Tastemake should feel curious, expressive, and fun without becoming visually noisy. It should not look like a generic flat SaaS dashboard or retro-computer cosplay.
 
+## Presentation rule
+
+**Keep the workflow. Rebuild the presentation.**
+
+The old prototype is a functional wireframe only. Do not preserve its two-column card grids, dashboard-like panels, or repeated card anatomy just because they already exist.
+
+Each section should have its own visual behavior while sharing the same palette, typography, and interaction language:
+
+- Favorites: collectible, collage-like, personal
+- Taste Profile: expressive signal map / editorial spread
+- Recommendations: media-forward, asymmetric editorial mosaic
+
 ## Design principles
 
 - Recommendations are the visual and product center of gravity.
@@ -103,14 +115,12 @@ Surprise items get a stronger cyan treatment, playful burst/sticker details, and
 
 ## Fidelity workflow
 
-Implement and review in this order:
+Current implementation direction:
 
-1. Global shell/navigation
-2. Recommendations hero/progress
-3. One fully polished recommendation card
-4. Rated state
-5. Surprise card
-6. Side-by-side visual review
-7. Only then spread the system to Favorites and Taste Profile
+1. Keep the approved header/navigation language.
+2. Treat Favorites, Taste Profile, and Recommendations as separate editorial compositions rather than one reusable dashboard grid.
+3. Use varied scale, borders, overlap, and layout rhythm to prevent flat repetition.
+4. Preserve the simple recommendation-feedback interaction even when presentation changes.
+5. Review the live prototype for visual fidelity before adding more product features.
 
 Treat this document as the source of truth when implementation and the original mockup differ.
