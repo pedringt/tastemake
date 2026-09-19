@@ -1,66 +1,81 @@
 # Tastemake Prototype v1 Spec
 
 ## Goal
-Validate the core product loop with a reviewer-friendly interactive prototype:
+Validate whether Tastemake can make useful cross-media recommendations and improve them from low-friction feedback.
 
-**Favorites -> Taste Model -> Recommendations -> Feedback -> What Tastemake Learned**
+The primary loop is:
+
+**Favorites -> Recommendations -> React -> Better recommendations**
+
+The Taste Profile is inspectable, but it is secondary to recommendation quality.
 
 ## Product principles
 - Ask for the smallest useful amount of information.
-- Keep explicit user evidence separate from inferred taste hypotheses.
-- Explain why a recommendation fits without pretending the system knows more than it does.
-- Separate taste-model fit from predicted enjoyment intensity.
-- Treat recommendation feedback as both personalization data and product-evaluation data.
-- Make model revisions inspectable.
+- Make one tap enough to give feedback.
+- Keep richer context optional.
+- Keep explicit user signals separate from inferred taste patterns.
+- Keep interest in an unfamiliar item separate from evidence that the user actually enjoys it.
+- Explain why a recommendation fits when the user wants that context.
+- Do not force users to study model updates before getting better recommendations.
+- Keep recommendation order stable while the user reacts to a set.
 
-## State 1: Seed favorites
+## Section 1: Favorites
 Purpose: create enough initial signal without asking for an exhaustive history.
 
 Requirements:
 - Show a compact cross-media starter set.
 - Allow multi-select.
 - Preselect a plausible starter set for demo purposes.
-- Require at least four selections before continuing.
-- Explain that the prototype uses a small sample, not a complete history.
+- Require at least four selections before recommendations are available.
+- Let the user go directly from Favorites to Recommendations.
+- Keep Taste Profile available as an optional inspection path.
 
-## State 2: Taste Model
-Purpose: make the inferred model visible and correctable in principle.
-
-Requirements:
-- Show five concise taste hypotheses.
-- Show strength as Strong or Conditional rather than fake precision.
-- Show supporting evidence examples.
-- Label hypotheses as inferred.
-- Show a separate explicit-evidence summary.
-
-## State 3: Recommendations
-Purpose: demonstrate selection and rationale.
+## Section 2: Taste Profile
+Purpose: let curious users inspect the patterns Tastemake is using without making this a required workflow step.
 
 Requirements:
-- Show four ranked best-fit recommendations plus one Surprise Me item.
-- Show Taste-model fit separately from predicted reaction.
-- Use conservative predicted-reaction copy such as "Likely to like".
-- Explain the hypotheses behind each recommendation.
-- Allow the user to start feedback from any card.
+- Show concise inferred taste patterns.
+- Keep explicit favorites separate from inferred patterns.
+- Avoid fake precision.
+- Show stronger / less certain / still learning states when feedback provides useful taste evidence.
+- Do not treat "Haven't tried" or simple interest as taste evidence.
 
-## State 4: Feedback
-Purpose: collect two distinct signals.
-
-Requirements:
-- Reaction: Loved / Liked / Meh / Disliked / Haven't tried.
-- Recommendation quality: Good recommendation / Maybe / Not a good recommendation.
-- Optional reason.
-- Keep item reaction and recommendation-quality labels separate.
-
-## State 5: What Tastemake Learned
-Purpose: make personalization changes inspectable.
+## Section 3: Recommendations
+Purpose: deliver the core product value and collect lightweight feedback.
 
 Requirements:
-- Repeat the user's explicit feedback without reinterpretation.
-- Show which hypothesis was affected.
-- Show a deterministic before/after interpretation for the prototype.
-- Explain what changes in future recommendations.
-- Offer return to recommendations and rate-another actions.
+- Show four ranked recommendations plus one Surprise Me item.
+- Explain what each item is in plain language.
+- Keep "Why this recommendation?" available but secondary.
+- Let the user react directly on each card.
+- Use three primary feedback actions:
+  - More like this
+  - Less like this
+  - Haven't tried
+- Save the first tap immediately.
+- Show an obvious rated state on the card.
+- Keep the recommendation order stable while rating.
+- Never navigate away or scroll to the top just because the user rated an item.
+
+## Optional feedback detail
+Purpose: capture stronger signal without requiring a survey.
+
+Requirements:
+- After the primary reaction, offer optional one-tap context chips.
+- Examples for More like this: Loved it before, Want to try, Surprising fit, Exactly my taste.
+- Examples for Less like this: Tried it and disliked it, Not interested, Wrong vibe, Too obvious.
+- For Haven't tried, optionally capture interest: Interested, Maybe, Not interested.
+- Treat optional context according to what it actually means. Interest is not the same as enjoyment.
+
+## Recommendation refresh
+Purpose: show that feedback improves the next set without forcing a separate learning screen.
+
+Requirements:
+- Show progress such as "3 of 5 rated."
+- When the set is complete, offer a direct recommendation refresh.
+- Re-rank the next set from the feedback signals.
+- Do not require a "What Changed" / "Learned" screen.
+- Keep the Taste Profile available for users who want to inspect model changes.
 
 ## Prototype constraints
 - No auth.
@@ -69,11 +84,13 @@ Requirements:
 - No production persistence.
 - No catalog search.
 - Static mock data derived from Experiments 001-003.
+- Deterministic mock scoring for follow-up recommendations.
 - Responsive enough for mobile and desktop.
 
 ## Success criteria
-A first-time reviewer can finish the loop and answer:
-1. What does Tastemake think I like?
-2. Why did it recommend this?
-3. How do I tell it whether the recommendation worked?
-4. What changed because of my feedback?
+A first-time reviewer can answer:
+1. Do these recommendations feel plausibly tailored to me?
+2. Can I react to them quickly without losing my place?
+3. Is it obvious which recommendations I already rated?
+4. Does the next set feel meaningfully better informed by my feedback?
+5. If I want to know why Tastemake made a recommendation, can I inspect that without being forced to?
