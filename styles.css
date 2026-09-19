@@ -306,6 +306,14 @@ textarea:focus, button:focus-visible { outline: 3px solid rgba(85,114,124,.25); 
   align-items: center;
 }
 .feedback-actions .primary-button { width: 100%; }
+.feedback-actions .primary-button:not(:disabled) {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  background: #201d1a;
+  border-color: #201d1a;
+  color: #fffdf8;
+}
 .model-next { margin-top: 24px; }
 .action-group { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .helper { color: var(--muted); font-size: 13px; }
