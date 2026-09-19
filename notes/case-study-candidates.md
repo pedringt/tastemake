@@ -78,3 +78,23 @@ The adventure test is also useful product evidence because the team resisted add
 
 ### Case-study principle
 A strong eval is not just a benchmark. Use one experiment's failure to design the next experiment so it can distinguish between competing explanations.
+
+
+## Experiment 003: recommendation selection, not just prediction
+
+Experiments 001-002 tested classification: given a title, could the model predict the user's reaction?
+
+Experiment 003 tests a more product-realistic problem: **ranking and selection**. The model receives a mixed candidate pool and must decide what is worth recommending.
+
+The design separates:
+- top-5 best-fit recommendations;
+- a distinct **Surprise Me** recommendation optimized for deeper fit and learning value;
+- committed alternates chosen before exposure status is revealed.
+
+This is case-study-worthy because recommendation systems can have decent item-level prediction while still choosing boring, obvious, poorly ranked, or low-value recommendations.
+
+The experiment also collects two separate user labels:
+- actual reaction to the item;
+- whether it was a good recommendation.
+
+That distinction is central to Tastemake's product loop.
