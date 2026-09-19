@@ -7,34 +7,38 @@
     <title>Tastemake Prototype</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles/base.css" />
+    <link rel="stylesheet" href="/styles/favorites.css" />
+    <link rel="stylesheet" href="/styles/profile.css" />
+    <link rel="stylesheet" href="/styles/recommendations.css" />
+    <link rel="stylesheet" href="/styles/responsive.css" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div class="brand-cluster">
-          <button class="brand" type="button" data-action="go-home" aria-label="Go to Tastemake start">
+          <a class="brand" href="/favorites" data-step-jump="favorites" aria-label="Go to Tastemake favorites">
             <span class="brand-word">Tastemake</span>
-            <span class="brand-zap" aria-hidden="true">✦</span>
-          </button>
+            <span class="brand-zap" aria-hidden="true">*</span>
+          </a>
           <span class="brand-tagline">recommendations that<br />get better as you react.</span>
         </div>
 
         <nav class="stepper" aria-label="Tastemake sections">
-          <button class="step is-active" type="button" data-step-jump="favorites"><span aria-hidden="true">♡</span>Favorites</button>
-          <button class="step" type="button" data-step-jump="model"><span aria-hidden="true">◯</span>Taste Profile</button>
-          <button class="step" type="button" data-step-jump="recommendations"><span aria-hidden="true">ϟ</span>Recommendations</button>
+          <a class="step" href="/favorites" data-step-jump="favorites"><span aria-hidden="true">01</span>Favorites</a>
+          <a class="step" href="/taste-profile" data-step-jump="model"><span aria-hidden="true">02</span>Taste Profile</a>
+          <a class="step" href="/recommendations" data-step-jump="recommendations"><span aria-hidden="true">03</span>Recommendations</a>
         </nav>
 
         <div class="topbar-aside">
-          <span class="prototype-label">Prototype · no live AI</span>
-          <span class="topbar-note">good taste lives here. ♡</span>
+          <span class="prototype-label">Prototype - no live AI</span>
+          <span class="topbar-note">good taste lives here.</span>
         </div>
       </header>
 
       <main id="app" tabindex="-1"></main>
     </div>
-    <script src="app.js"></script>
+    <script type="module" src="/src/app.js"></script>
   </body>
 </html>
