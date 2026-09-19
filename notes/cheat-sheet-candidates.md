@@ -53,3 +53,26 @@ Useful signals may include:
 - optional reason for a strong positive or negative reaction.
 
 This makes personalization and evaluation part of the same loop.
+
+
+## Targeted follow-up evals
+After a failure exposes an uncertain boundary, the next test should deliberately separate competing explanations.
+
+Tastemake example:
+- Experiment 001 missed *Outer Wilds* and exposed uncertainty around exploration/discovery.
+- Experiment 002 selected titles where discovery was either the main activity or supported by stronger narrative/goal structures.
+- The result clarified the boundary instead of simply measuring another random accuracy percentage.
+
+## Avoiding hypothesis proliferation
+Do not create a new preference rule every time one item surprises the model.
+
+Tastemake example:
+*Indiana Jones and the Last Crusade* was underpredicted, raising the possibility of a missing "straightforward adventure" preference. Experiment 002 tested that idea across multiple titles. The results did not justify a new hypothesis, so the model kept it as an open question.
+
+This prevents overfitting and keeps the taste model interpretable.
+
+## Feature vs. driver
+A feature can improve something without being the main reason the user likes it.
+
+Tastemake example:
+Exploration/discovery appears to be an **enhancer** when paired with goals, narrative, stakes, or strong systems. It is not yet supported as a reliable primary driver of enjoyment.
