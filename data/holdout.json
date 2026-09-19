@@ -1,0 +1,48 @@
+{
+  "experiment_id": "001-blind-taste-model",
+  "profile_id": "pilot-user-001",
+  "schema_version": "1.0",
+  "instructions": "These items are intentionally unlabeled. Do not infer or look up the user's true reactions. Predict them only after the taste hypotheses have been locked from training.json.",
+  "items": [
+    {
+      "id": "holdout_lotr",
+      "title": "The Lord of the Rings",
+      "medium": "books_and_films"
+    },
+    {
+      "id": "holdout_circe",
+      "title": "Circe",
+      "medium": "book"
+    },
+    {
+      "id": "holdout_last_crusade",
+      "title": "Indiana Jones and the Last Crusade",
+      "medium": "movie"
+    },
+    {
+      "id": "holdout_piranesi",
+      "title": "Piranesi",
+      "medium": "book"
+    },
+    {
+      "id": "holdout_alan_wake_2",
+      "title": "Alan Wake 2",
+      "medium": "game"
+    },
+    {
+      "id": "holdout_outer_wilds",
+      "title": "Outer Wilds",
+      "medium": "game"
+    },
+    {
+      "id": "holdout_schitts_creek",
+      "title": "Schitt's Creek",
+      "medium": "tv"
+    },
+    {
+      "id": "holdout_traitors",
+      "title": "The Traitors",
+      "medium": "reality_tv"
+    }
+  ]
+}
