@@ -28,6 +28,8 @@ Each section should have its own visual behavior while sharing the same palette,
 - Use real or media-like artwork when available; avoid relying on flat vector illustration as the main visual language.
 - One tap should remain enough to rate a recommendation.
 - Personality should never reduce readability.
+- Mixed card sizes should still resolve onto an intentional grid. Editorial does not mean misaligned.
+- Shared actions should use one consistent button system across every screen.
 
 ## Palette
 
@@ -46,7 +48,7 @@ Each section should have its own visual behavior while sharing the same palette,
 
 ## Typography
 
-Primary UI: rounded/geometric sans, currently Plus Jakarta Sans with system fallbacks.
+Primary UI: geometric sans, currently Space Grotesk with system fallbacks. It should stay clean and familiar while feeling more playful and editorial than the portfolio typography.
 
 Accent handwriting: Patrick Hand with casual system fallbacks. Use only for short annotations and decorative copy.
 
@@ -59,22 +61,22 @@ Hierarchy:
 
 ## Shape and depth
 
-- Large surfaces: 24-30px radius
-- Recommendation cards: 20-22px radius
+- Large surfaces: 16-24px radius
+- Recommendation cards: strong bordered editorial blocks
 - Pills: fully rounded
-- Controls: 12-14px radius
+- Primary actions: consistent 12px radius and height
 - Borders: 1-2px
 - Shadows: layered and restrained, never large fuzzy glows
 - Allow stickers and accent marks to overlap card edges
 
 ## Recommendation card anatomy
 
-1. Medium/rank pill
-2. Saved state or fit label
+1. Medium/rank label
+2. Saved state when rated
 3. Media-like art panel
 4. Title
 5. Short plain-English description
-6. Optional “Why this recommendation?” disclosure
+6. Optional "Why this recommendation?" disclosure
 7. Inline rating controls
 8. Optional context chips
 
@@ -109,7 +111,7 @@ Surprise items get a stronger cyan treatment, playful burst/sticker details, and
 - generic blobs
 - rainbow-everything pill systems
 - flat AI-style vector art as the dominant imagery
-- sparkles used as shorthand for “AI”
+- sparkles used as shorthand for "AI"
 - excessive handwritten copy
 - forcing every screen to look equally loud
 
@@ -119,8 +121,9 @@ Current implementation direction:
 
 1. Keep the approved header/navigation language.
 2. Treat Favorites, Taste Profile, and Recommendations as separate editorial compositions rather than one reusable dashboard grid.
-3. Use varied scale, borders, overlap, and layout rhythm to prevent flat repetition.
+3. Use varied scale, borders, overlap, and layout rhythm without sacrificing alignment.
 4. Preserve the simple recommendation-feedback interaction even when presentation changes.
-5. Review the live prototype for visual fidelity before adding more product features.
+5. Keep browser navigation and direct routes working like a normal web app.
+6. Review the live prototype for visual fidelity before adding more product features.
 
 Treat this document as the source of truth when implementation and the original mockup differ.
