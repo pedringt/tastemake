@@ -10,6 +10,14 @@ export function ratingLabel(value) {
   })[value] || value;
 }
 
+export function reactionLabel(feedback) {
+  if (!feedback) return "";
+  if (feedback.detail === "loved-before") return "Loved it before";
+  if (feedback.detail === "liked-before") return "Liked it before";
+  if (feedback.detail === "tried-disliked") return "Disliked it before";
+  return ratingLabel(feedback.rating);
+}
+
 function ratingButton(itemId, value, label, icon, saved) {
   const pressed = saved?.rating === value;
   return `
@@ -28,9 +36,9 @@ function detailOptionsFor(feedback) {
   if (feedback.rating === "more") {
     return [
       ["loved-before", "Loved it before"],
-      ["want-to-try", "Want to try"],
-      ["surprising-fit", "Surprising fit"],
-      ["exactly-my-taste", "Exactly my taste"]
+      ["liked-before", "Liked it before"],
+      ["exactly-my-taste", "Exactly my taste"],
+      ["surprising-fit", "Surprising fit"]
     ];
   }
 
@@ -112,7 +120,7 @@ function recommendationCard(item, index) {
 
         <div class="editorial-title-row">
           <h3>${item.title}</h3>
-          ${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${ratingLabel(saved.rating)}</span>` : ""}
+          ${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}
         </div>
 
         <p class="editorial-about">${item.about}</p>
@@ -151,11 +159,15 @@ function renderRoundRefresh(roundTwo) {
   return `
     <div class="refresh-banner is-finished">
       <div>
-        <span class="refresh-kicker">Prototype round complete</span>
-        <strong>Tastemake would keep learning from here.</strong>
-        <p>This prototype stops after two recommendation sets.</p>
+        <span class="refresh-kicker">Prototype checkpoint</span>
+        <strong>Next in the real product: Keep discovering.</strong>
+        <p>Another set would be shaped by everything you rated here. This prototype stops after two sets.</p>
+        <span class="prototype-next-step" aria-hidden="true">Keep discovering &rarr;</span>
       </div>
-      <button class="button button-secondary" type="button" data-action="view-model">View Taste Profile</button>
+      <div class="action-group">
+        <button class="button button-secondary" type="button" data-action="view-model">See what Tastemake learned</button>
+        <button class="button button-quiet" type="button" data-action="back-favorites">Change favorites</button>
+      </div>
     </div>`;
 }
 
@@ -183,7 +195,7 @@ export function renderRecommendations() {
             <span>rated</span>
           </div>
           <div class="progress-track" aria-hidden="true">${segments}</div>
-          <div class="progress-note">${currentRoundComplete(state) ? "new set unlocked" : "teach it by using it"}</div>
+          <div class="progress-note">${currentRoundComplete(state) ? (roundTwo ? "prototype checkpoint" : "new set unlocked") : "teach it by using it"}</div>
         </div>
       </div>
 

@@ -5,7 +5,7 @@ export function tasteDelta(feedback) {
 
   if (feedback.rating === "more") {
     if (feedback.detail === "loved-before") return 2;
-    if (feedback.detail === "want-to-try") return 0;
+    if (feedback.detail === "liked-before") return 1.25;
     if (feedback.detail === "surprising-fit") return 1.25;
     if (feedback.detail === "exactly-my-taste") return 1.75;
     return 0.75;
@@ -28,7 +28,7 @@ export function recommendationDelta(feedback) {
   let score = ({ more: 1, less: -1, "not-tried": 0 })[feedback.rating] || 0;
   const detailAdjustments = {
     "loved-before": 0.75,
-    "want-to-try": 0.5,
+    "liked-before": 0.45,
     "surprising-fit": 0.5,
     "exactly-my-taste": 0.75,
     "tried-disliked": -0.75,

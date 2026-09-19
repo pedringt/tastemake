@@ -1,5 +1,4 @@
 import { state } from "./state.js";
-import { favorites } from "./data/catalog.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { activeRecommendations, currentRoundComplete } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
@@ -27,7 +26,7 @@ function render() {
 }
 
 function updateStepper() {
-  const order = ["favorites", "model", "recommendations"];
+  const order = ["favorites", "recommendations", "model"];
   const activeIndex = order.indexOf(state.screen);
 
   document.querySelectorAll("[data-step-jump]").forEach((step) => {
@@ -97,7 +96,22 @@ function renderPreservingCardPosition(itemId) {
   window.scrollBy({ top: afterTop - beforeTop, left: 0, behavior: "auto" });
 }
 
+function preserveSummaryPosition(summary) {
+  const beforeTop = summary.getBoundingClientRect().top;
+
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      if (!summary.isConnected) return;
+      const afterTop = summary.getBoundingClientRect().top;
+      const delta = afterTop - beforeTop;
+      if (Math.abs(delta) > 1) window.scrollBy({ top: delta, left: 0, behavior: "auto" });
+    });
+  });
+}
+
 app.addEventListener("click", (event) => {
+  const whySummary = event.target.closest(".editorial-why > summary");
+  if (whySummary) preserveSummaryPosition(whySummary);
   const favorite = event.target.closest("[data-favorite]");
   if (favorite) {
     const id = favorite.dataset.favorite;
