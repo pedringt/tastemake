@@ -157,7 +157,8 @@ function escapeHtml(value = "") {
 }
 
 function feedbackDelta(feedback) {
-  const reaction = ({ loved: 2, liked: 1, meh: -0.5, disliked: -1.5, "not-tried": 0 })[feedback.reaction] || 0;
+  if (feedback.reaction === "not-tried") return 0;
+  const reaction = ({ loved: 2, liked: 1, meh: -0.5, disliked: -1.5 })[feedback.reaction] || 0;
   const quality = ({ good: 1, maybe: 0, bad: -1.5 })[feedback.quality] || 0;
   return reaction + quality;
 }
@@ -174,12 +175,14 @@ function hypothesisSignal(hypothesisId, feedbacks = Object.values(state.feedback
 }
 
 function modelUpdateFor(hypothesis) {
-  const related = Object.values(state.feedbackByRecommendation).filter((feedback) => hypothesisMatches(feedback.item.hypotheses, hypothesis.id));
+  const related = Object.values(state.feedbackByRecommendation).filter((feedback) => {
+    return feedback.reaction !== "not-tried" && hypothesisMatches(feedback.item.hypotheses, hypothesis.id);
+  });
   if (!related.length) return { label: hypothesis.strength, status: hypothesis.status, note: null };
   const signal = related.reduce((sum, feedback) => sum + feedbackDelta(feedback), 0);
-  if (signal >= 2) return { label: "Strengthened", status: "strengthened", note: `${related.length} new feedback signal${related.length === 1 ? "" : "s"} support this idea.` };
-  if (signal <= -1.5) return { label: "Needs revision", status: "revision", note: `${related.length} new feedback signal${related.length === 1 ? "" : "s"} push against this idea.` };
-  return { label: "More conditional", status: "conditional", note: `New feedback is mixed, so Tastemake should use this more cautiously.` };
+  if (signal >= 2) return { label: "Strengthened", status: "strengthened", note: `${related.length} experienced item${related.length === 1 ? "" : "s"} gave this idea more support.` };
+  if (signal <= -1.5) return { label: "Needs revision", status: "revision", note: `${related.length} experienced item${related.length === 1 ? "" : "s"} pushed against this idea.` };
+  return { label: "More conditional", status: "conditional", note: "Your reactions were mixed, so Tastemake should use this idea more cautiously." };
 }
 
 function roundOneFeedback() {
@@ -227,20 +230,23 @@ function startFeedback(id) {
   const saved = state.feedbackByRecommendation[id];
   state.reaction = saved?.reaction || null;
   state.recommendationQuality = saved?.quality || null;
+  state.interest = saved?.interest || null;
   state.reason = saved?.reason || "";
-  setScreen("feedback");
+  state.screen = "recommendations";
+  updateStepper();
+  render();
+  setTimeout(() => document.querySelector(".feedback-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
 }
 
 function updateStepper() {
-  const order = ["favorites", "model", "recommendations", "feedback", "learned"];
+  const order = ["favorites", "model", "recommendations", "changed"];
   const activeIndex = order.indexOf(state.screen);
   const hasEnoughFavorites = state.selectedFavorites.size >= 4;
   const unlocked = [
     true,
     hasEnoughFavorites,
     hasEnoughFavorites,
-    Boolean(state.selectedRecommendation),
-    Boolean(state.lastFeedback)
+    currentRoundComplete()
   ];
 
   document.querySelectorAll(".step").forEach((step, index) => {
@@ -361,36 +367,13 @@ function recommendationCard(item, { interactive = true } = {}) {
         ${saved ? `<span class="rated-pill">Rated · ${prettyReaction(saved.reaction)}</span>` : `<span class="fit-pill">${item.fit}</span>`}
       </div>
       <h3>${item.title}</h3>
-      <p class="subtitle">Signals: ${item.hypotheses.join(" + ")}</p>
-      <p class="reason">${item.reason}</p>
+      <p class="about"><strong>What it is:</strong> ${item.about}</p>
+      <p class="reason"><strong>Why Tastemake picked it:</strong> ${item.reason}</p>
       <div class="rec-footer">
         <div class="prediction">Predicted reaction: <strong>${item.prediction}</strong></div>
         ${interactive ? `<button class="primary-button" type="button" data-rate="${item.id}">${saved ? "Update rating" : "Rate this recommendation"}</button>` : ""}
       </div>
     </article>`;
-}
-
-function renderRecommendations() {
-  const items = activeRecommendations();
-  const rated = currentRoundRatedCount();
-  const complete = currentRoundComplete();
-  const roundTwo = state.recommendationRound === 2;
-  return `
-    <section class="screen">
-      <div class="screen-inner">
-        <p class="kicker">${roundTwo ? "Updated recommendations · Round 2" : "Recommendations · Round 1"}</p>
-        <h1>${roundTwo ? "The model changed. So did the list." : "Fit first. Favorite-level certainty later."}</h1>
-        <p class="lede">${roundTwo ? "This second set is re-ranked from the feedback you gave in round one. Supported signals move up; weaker signals are treated more cautiously." : "Experiment 003 showed that Tastemake was better at choosing good fits than predicting which fits would become favorites. So this view separates model fit from expected reaction."}</p>
-
-        <div class="round-progress"><strong>${rated} of ${items.length} rated</strong><span>${complete ? "Round complete" : "Rate the set to give Tastemake enough evidence to revise the model."}</span></div>
-        <div class="recommendation-grid">${items.map(recommendationCard).join("")}</div>
-
-        <div class="actions">
-          ${complete ? `<button class="primary-button" type="button" data-action="view-round-summary">See what Tastemake learned from this round</button>` : ""}
-          <button class="secondary-button" type="button" data-action="back-model">View Taste Model</button>
-        </div>
-      </div>
-    </section>`;
 }
 
 function reactionButton(value, label) {
@@ -401,93 +384,102 @@ function qualityButton(value, label) {
   return `<button class="option-button" type="button" data-quality="${value}" aria-pressed="${state.recommendationQuality === value}">${label}</button>`;
 }
 
-function renderFeedback() {
-  const item = activeRecommendations().find((rec) => rec.id === state.selectedRecommendation) || activeRecommendations()[0];
-  const complete = state.reaction && state.recommendationQuality;
+function interestButton(value, label) {
+  return `<button class="option-button" type="button" data-interest="${value}" aria-pressed="${state.interest === value}">${label}</button>`;
+}
+
+function feedbackIsComplete() {
+  return Boolean(state.reaction && (state.reaction === "not-tried" || state.recommendationQuality));
+}
+
+function renderFeedbackPanel(item) {
+  if (!item) return "";
+  const complete = feedbackIsComplete();
+  const untried = state.reaction === "not-tried";
   return `
-    <section class="screen feedback-screen">
-      <div class="screen-inner">
-        <p class="kicker">Feedback</p>
-        <h1>Two questions teach Tastemake different things.</h1>
-        <p class="lede">Your reaction tells it whether the taste prediction was right. Recommendation quality tells it whether this item was worth surfacing to you in the first place.</p>
-
-        <div class="feedback-layout">
-          <aside class="feedback-summary">
-            ${recommendationCard({ ...item, rank: item.rank || "", surprise: item.surprise }, { interactive: false })}
-          </aside>
-          <form class="feedback-form" data-feedback-form>
-            <div class="question">
-              <strong>How did you actually feel about it?</strong>
-              <div class="option-row">
-                ${reactionButton("loved", "Loved")}
-                ${reactionButton("liked", "Liked")}
-                ${reactionButton("meh", "Meh")}
-                ${reactionButton("disliked", "Disliked")}
-                ${reactionButton("not-tried", "Haven't tried")}
-              </div>
-            </div>
-
-            <div class="question">
-              <strong>Was this a good recommendation for you?</strong>
-              <div class="option-row">
-                ${qualityButton("good", "Good recommendation")}
-                ${qualityButton("maybe", "Maybe")}
-                ${qualityButton("bad", "Not a good recommendation")}
-              </div>
-            </div>
-
-            <div class="question">
-              <label for="feedback-reason"><strong>Anything Tastemake should know?</strong></label>
-              <p class="helper">Optional. This is strongest when it explains a surprise, such as "I liked the story but hated the gameplay."</p>
-              <textarea id="feedback-reason" name="reason" placeholder="Optional reason">${escapeHtml(state.reason)}</textarea>
-            </div>
-
-            <div class="actions feedback-actions">
-              <button class="primary-button" type="submit" ${complete ? "" : "disabled"}>Continue to what Tastemake learned</button>
-              <button class="secondary-button" type="button" data-action="cancel-feedback">Back</button>
-            </div>
-          </form>
+    <section class="feedback-panel" aria-label="Rate ${item.title}">
+      <div class="feedback-panel-head">
+        <div>
+          <p class="kicker">Rate this recommendation</p>
+          <h2>${item.title}</h2>
+          <p><strong>What it is:</strong> ${item.about}</p>
         </div>
+        <button class="secondary-button" type="button" data-action="close-feedback">Back to recommendations</button>
       </div>
+
+      <form class="feedback-form inline-feedback-form" data-feedback-form>
+        <div class="question">
+          <strong>How did you actually feel about it?</strong>
+          <div class="option-row">
+            ${reactionButton("loved", "Loved")}
+            ${reactionButton("liked", "Liked")}
+            ${reactionButton("meh", "Meh")}
+            ${reactionButton("disliked", "Disliked")}
+            ${reactionButton("not-tried", "Haven't tried")}
+          </div>
+        </div>
+
+        ${untried ? `
+          <div class="question">
+            <strong>Interested in trying it?</strong>
+            <p class="helper">Optional. This is only an interest signal, not evidence that you would actually like it.</p>
+            <div class="option-row">
+              ${interestButton("yes", "Yes")}
+              ${interestButton("maybe", "Maybe")}
+              ${interestButton("no", "No")}
+            </div>
+          </div>
+        ` : `
+          <div class="question">
+            <strong>Was this a good recommendation for you?</strong>
+            <div class="option-row">
+              ${qualityButton("good", "Good recommendation")}
+              ${qualityButton("maybe", "Maybe")}
+              ${qualityButton("bad", "Not a good recommendation")}
+            </div>
+          </div>
+        `}
+
+        <div class="question">
+          <label for="feedback-reason"><strong>Anything Tastemake should know?</strong></label>
+          <p class="helper">Optional. This is most useful when it explains something the rating alone would miss.</p>
+          <textarea id="feedback-reason" name="reason" placeholder="Optional reason">${escapeHtml(state.reason)}</textarea>
+        </div>
+
+        <div class="actions feedback-actions">
+          <button class="primary-button" type="submit" ${complete ? "" : "disabled"}>Save rating</button>
+          <button class="secondary-button" type="button" data-action="close-feedback">Cancel</button>
+        </div>
+      </form>
     </section>`;
 }
 
-function learningCopy(feedback) {
-  const positiveReaction = ["loved", "liked"].includes(feedback.reaction);
-  const weakReaction = ["meh", "disliked"].includes(feedback.reaction);
-  const goodRec = feedback.quality === "good";
-  const badRec = feedback.quality === "bad";
-  const leadHypothesis = feedback.item.hypotheses[0];
+function renderRecommendations() {
+  const items = activeRecommendations();
+  const rated = currentRoundRatedCount();
+  const complete = currentRoundComplete();
+  const roundTwo = state.recommendationRound === 2;
+  const selected = items.find((item) => item.id === state.selectedRecommendation);
 
-  if (positiveReaction && goodRec) {
-    return {
-      hypothesis: `${leadHypothesis} gets supporting evidence`,
-      inference: `The fit signal behind ${feedback.item.title} held up, but Tastemake should still avoid assuming a good fit will become a favorite.`,
-      change: "Keep this taste pattern active. Recommend adjacent items, but use conservative enjoyment language."
-    };
-  }
+  return `
+    <section class="screen">
+      <div class="screen-inner">
+        <p class="kicker">${roundTwo ? "Updated recommendations · Round 2" : "Recommendations · Round 1"}</p>
+        <h1>${roundTwo ? "The model changed. So did the list." : "Recommendations you can react to."}</h1>
+        <p class="lede">${roundTwo ? "This set is re-ranked from your first round of feedback. Items you had not tried stayed unconfirmed instead of being treated as taste evidence." : "Rate these one at a time. After each rating, you come right back here. Once the round is complete, Tastemake shows what actually changed in your model."}</p>
 
-  if (badRec) {
-    return {
-      hypothesis: `${leadHypothesis} needs less weight for recommendations`,
-      inference: `Even if some traits matched, surfacing ${feedback.item.title} did not feel useful. Recommendation quality should reduce this route's ranking weight.`,
-      change: "Show fewer items whose fit depends mainly on this signal until more evidence supports it."
-    };
-  }
+        <div class="round-progress"><strong>${rated} of ${items.length} rated</strong><span>${complete ? "Round complete" : "Rate the set to give Tastemake enough evidence to revise the model."}</span></div>
 
-  if (weakReaction) {
-    return {
-      hypothesis: `${leadHypothesis} gets contradictory evidence`,
-      inference: "The model found a plausible fit, but the actual reaction was weaker. That means the hypothesis may be conditional or missing an important counter-signal.",
-      change: "Lower confidence on similar recommendations and look for a second supporting signal before ranking them highly."
-    };
-  }
+        ${selected ? renderFeedbackPanel(selected) : ""}
 
-  return {
-    hypothesis: `${leadHypothesis} stays uncertain`,
-    inference: "This feedback does not strongly support or reject the current hypothesis, but it adds a useful boundary case.",
-    change: "Treat similar items as exploratory rather than safe recommendations until more feedback arrives."
-  };
+        <div class="recommendation-grid">${items.map(recommendationCard).join("")}</div>
+
+        <div class="actions">
+          ${complete ? `<button class="primary-button" type="button" data-action="view-round-summary">See what changed</button>` : ""}
+          <button class="secondary-button" type="button" data-action="back-model">View Taste Model</button>
+        </div>
+      </div>
+    </section>`;
 }
 
 function prettyReaction(value) {
@@ -498,94 +490,69 @@ function prettyQuality(value) {
   return ({ good: "Good recommendation", maybe: "Maybe", bad: "Not a good recommendation" })[value] || value;
 }
 
-function renderLearned() {
-  const feedback = state.lastFeedback;
-  if (!feedback) {
-    setScreen("recommendations");
-    return "";
-  }
+function prettyInterest(value) {
+  return ({ yes: "Interested", maybe: "Maybe interested", no: "Not interested" })[value] || value;
+}
 
-  if (currentRoundComplete()) {
-    const roundFeedback = activeRecommendations().map((item) => state.feedbackByRecommendation[item.id]).filter(Boolean);
-    const positive = roundFeedback.filter((item) => ["loved", "liked"].includes(item.reaction)).length;
-    const negative = roundFeedback.filter((item) => ["meh", "disliked"].includes(item.reaction)).length;
-    const untried = roundFeedback.filter((item) => item.reaction === "not-tried").length;
-    const good = roundFeedback.filter((item) => item.quality === "good").length;
-    const bad = roundFeedback.filter((item) => item.quality === "bad").length;
-    const changes = hypotheses.map((item) => ({ item, update: modelUpdateFor(item), signal: Math.abs(hypothesisSignal(item.id)) })).filter((entry) => entry.update.note).sort((a, b) => b.signal - a.signal);
-    const lead = changes[0];
+function renderChanged() {
+  if (!currentRoundComplete()) {
     return `
       <section class="screen">
         <div class="screen-inner">
-          <p class="kicker">Round ${state.recommendationRound} complete</p>
-          <h1>Now the model has something new to learn from.</h1>
-          <p class="lede">This combines the whole recommendation round instead of treating each rating as an isolated result.</p>
-
-          <div class="learning-grid">
-            <article class="learning-card">
-              <span class="label">Your reactions</span>
-              <strong>${positive} positive · ${negative} weak/negative</strong>
-              <p>${untried ? `${untried} not tried. ` : ""}${good} good recommendation${good === 1 ? "" : "s"}${bad ? ` · ${bad} poor recommendation${bad === 1 ? "" : "s"}` : ""}.</p>
-            </article>
-            <article class="learning-card highlight">
-              <span class="label">Biggest model movement</span>
-              <strong>${lead ? `${lead.item.id}: ${lead.update.label}` : "More evidence needed"}</strong>
-              <p>${lead?.update.note || "This round did not push one hypothesis strongly enough to dominate the others."}</p>
-            </article>
-            <article class="learning-card">
-              <span class="label">What changes next</span>
-              <strong>Re-rank, don't overclaim</strong>
-              <p>Supported signals get more weight in the next set. Weak or poor-recommendation routes move down instead of being erased.</p>
-            </article>
-          </div>
-
-          <div class="callout">
-            <strong>Your Taste Model is now visibly different from the one you started with.</strong>
-            <p>Open it to inspect which hypotheses strengthened or became more conditional, or generate the next deterministic recommendation round from those updates.</p>
-          </div>
-
-          <div class="actions">
-            <button class="primary-button" type="button" data-action="view-model">See updated Taste Model</button>
-            ${state.recommendationRound === 1 ? `<button class="secondary-button" type="button" data-action="next-round">Get new recommendations</button>` : `<button class="secondary-button" type="button" data-action="back-recommendations">Back to recommendations</button>`}
-          </div>
+          <p class="kicker">What Changed</p>
+          <h1>Finish the recommendation round first.</h1>
+          <p class="lede">Tastemake waits for the full set so it can show patterns across your feedback instead of overreacting to one item.</p>
+          <div class="actions"><button class="primary-button" type="button" data-action="back-recommendations">Back to recommendations</button></div>
         </div>
       </section>`;
   }
 
-  const learned = learningCopy(feedback);
+  const roundFeedback = activeRecommendations().map((item) => state.feedbackByRecommendation[item.id]).filter(Boolean);
+  const experienced = roundFeedback.filter((item) => item.reaction !== "not-tried");
+  const positive = experienced.filter((item) => ["loved", "liked"].includes(item.reaction)).length;
+  const negative = experienced.filter((item) => ["meh", "disliked"].includes(item.reaction)).length;
+  const untried = roundFeedback.length - experienced.length;
+  const good = experienced.filter((item) => item.quality === "good").length;
+  const bad = experienced.filter((item) => item.quality === "bad").length;
+  const changes = hypotheses
+    .map((item) => ({ item, update: modelUpdateFor(item), signal: Math.abs(hypothesisSignal(item.id)) }))
+    .filter((entry) => entry.update.note)
+    .sort((a, b) => b.signal - a.signal);
+  const lead = changes[0];
+
   return `
     <section class="screen">
       <div class="screen-inner">
-        <p class="kicker">What Tastemake learned</p>
-        <h1>Keep the evidence. Revise the theory.</h1>
-        <p class="lede">Your explicit feedback is stored as what you said. Tastemake's interpretation is separate, so the inference can change later without rewriting your evidence.</p>
+        <p class="kicker">What Changed · Round ${state.recommendationRound}</p>
+        <h1>Here is what your feedback actually changed.</h1>
+        <p class="lede">Tastemake combines the whole round before revising its model. Things you have not tried stay unconfirmed instead of becoming evidence about your taste.</p>
 
         <div class="learning-grid">
           <article class="learning-card">
-            <span class="label">What you said</span>
-            <strong>${prettyReaction(feedback.reaction)}</strong>
-            <p>${prettyQuality(feedback.quality)}${feedback.reason ? ` · “${escapeHtml(feedback.reason)}”` : ""}</p>
+            <span class="label">Your feedback</span>
+            <strong>${experienced.length} tried · ${untried} untried</strong>
+            <p>${positive} positive reaction${positive === 1 ? "" : "s"} · ${negative} weak/negative. ${good} good recommendation${good === 1 ? "" : "s"}${bad ? ` · ${bad} poor recommendation${bad === 1 ? "" : "s"}` : ""}.</p>
           </article>
           <article class="learning-card highlight">
-            <span class="label">Model update</span>
-            <strong>${learned.hypothesis}</strong>
-            <p>${learned.inference}</p>
+            <span class="label">What got clearer</span>
+            <strong>${lead ? lead.item.title : "No strong model change yet"}</strong>
+            <p>${lead?.update.note || "There was not enough experienced-item feedback in this round to justify changing a taste hypothesis."}</p>
           </article>
           <article class="learning-card">
-            <span class="label">Round progress</span>
-            <strong>${currentRoundRatedCount()} of ${activeRecommendations().length} rated</strong>
-            <p>Rate the remaining recommendations to see the cumulative model revision.</p>
+            <span class="label">What happens next</span>
+            <strong>Recommendations re-rank</strong>
+            <p>Supported patterns move up. Weak patterns move down. Untried items remain open questions rather than being counted as likes or dislikes.</p>
           </article>
         </div>
 
         <div class="callout">
-          <strong>${feedback.item.title} is now evidence, not just a result.</strong>
-          <p>The point of the loop is not to make every recommendation perfect. It is to make successes and failures improve the model in a way the user can inspect.</p>
+          <strong>The model changes only when your actual experience supports it.</strong>
+          <p>Interest in an unfamiliar recommendation can help with discovery, but Tastemake keeps that separate from evidence about what you enjoy.</p>
         </div>
 
         <div class="actions">
-          <button class="primary-button" type="button" data-action="rate-another">Rate another recommendation</button>
-          <button class="secondary-button" type="button" data-action="view-model">View Taste Model</button>
+          <button class="primary-button" type="button" data-action="view-model">See updated Taste Model</button>
+          ${state.recommendationRound === 1 ? `<button class="secondary-button" type="button" data-action="next-round">Get new recommendations</button>` : `<button class="secondary-button" type="button" data-action="back-recommendations">Back to recommendations</button>`}
         </div>
       </div>
     </section>`;
@@ -596,8 +563,7 @@ function render() {
     favorites: renderFavorites,
     model: renderModel,
     recommendations: renderRecommendations,
-    feedback: renderFeedback,
-    learned: renderLearned
+    changed: renderChanged
   };
   app.innerHTML = views[state.screen]();
 }
@@ -605,18 +571,20 @@ function render() {
 function resetFeedback() {
   state.reaction = null;
   state.recommendationQuality = null;
+  state.interest = null;
   state.reason = "";
 }
 
 function saveCurrentFeedbackIfComplete() {
-  if (!state.selectedRecommendation || !state.reaction || !state.recommendationQuality) return false;
+  if (!state.selectedRecommendation || !feedbackIsComplete()) return false;
   const item = activeRecommendations().find((rec) => rec.id === state.selectedRecommendation);
   if (!item) return false;
 
   const saved = {
     item,
     reaction: state.reaction,
-    quality: state.recommendationQuality,
+    quality: state.reaction === "not-tried" ? null : state.recommendationQuality,
+    interest: state.reaction === "not-tried" ? state.interest : null,
     reason: state.reason.trim()
   };
 
@@ -632,9 +600,20 @@ function syncFeedbackControls() {
   document.querySelectorAll("[data-quality]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.quality === state.recommendationQuality));
   });
+  document.querySelectorAll("[data-interest]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.interest === state.interest));
+  });
 
   const submit = document.querySelector('[data-feedback-form] button[type="submit"]');
-  if (submit) submit.disabled = !(state.reaction && state.recommendationQuality);
+  if (submit) submit.disabled = !feedbackIsComplete();
+}
+
+function closeFeedback({ save = true } = {}) {
+  if (save) saveCurrentFeedbackIfComplete();
+  state.selectedRecommendation = null;
+  resetFeedback();
+  updateStepper();
+  render();
 }
 
 app.addEventListener("click", (event) => {
@@ -657,14 +636,25 @@ app.addEventListener("click", (event) => {
   const reaction = event.target.closest("[data-reaction]");
   if (reaction) {
     state.reaction = reaction.dataset.reaction;
+    if (state.reaction === "not-tried") state.recommendationQuality = null;
+    else state.interest = null;
     saveCurrentFeedbackIfComplete();
-    syncFeedbackControls();
+    render();
+    setTimeout(() => document.querySelector(".feedback-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
     return;
   }
 
   const quality = event.target.closest("[data-quality]");
   if (quality) {
     state.recommendationQuality = quality.dataset.quality;
+    saveCurrentFeedbackIfComplete();
+    syncFeedbackControls();
+    return;
+  }
+
+  const interest = event.target.closest("[data-interest]");
+  if (interest) {
+    state.interest = interest.dataset.interest;
     saveCurrentFeedbackIfComplete();
     syncFeedbackControls();
     return;
@@ -677,12 +667,9 @@ app.addEventListener("click", (event) => {
   if (action === "build-model" && state.selectedFavorites.size >= 4) setScreen("model");
   if (action === "show-recs") setScreen("recommendations");
   if (action === "back-model" || action === "view-model") setScreen("model");
-  if (action === "cancel-feedback") {
-    saveCurrentFeedbackIfComplete();
-    setScreen("recommendations");
-  }
-  if (action === "rate-another" || action === "back-recommendations") setScreen("recommendations");
-  if (action === "view-round-summary" && state.lastFeedback) setScreen("learned");
+  if (action === "close-feedback") closeFeedback({ save: true });
+  if (action === "back-recommendations") setScreen("recommendations");
+  if (action === "view-round-summary" && currentRoundComplete()) setScreen("changed");
   if (action === "next-round") {
     state.recommendationRound = 2;
     state.selectedRecommendation = null;
@@ -702,7 +689,18 @@ app.addEventListener("submit", (event) => {
   if (!event.target.matches("[data-feedback-form]")) return;
   event.preventDefault();
   if (!saveCurrentFeedbackIfComplete()) return;
-  setScreen("learned");
+
+  const roundComplete = currentRoundComplete();
+  state.selectedRecommendation = null;
+  resetFeedback();
+
+  if (roundComplete) setScreen("changed");
+  else {
+    state.screen = "recommendations";
+    updateStepper();
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 });
 
 document.addEventListener("click", (event) => {
@@ -711,8 +709,7 @@ document.addEventListener("click", (event) => {
   if (jump === "favorites") setScreen("favorites");
   if (jump === "model" && state.selectedFavorites.size >= 4) setScreen("model");
   if (jump === "recommendations" && state.selectedFavorites.size >= 4) setScreen("recommendations");
-  if (jump === "feedback" && state.selectedRecommendation) setScreen("feedback");
-  if (jump === "learned" && state.lastFeedback) setScreen("learned");
+  if (jump === "changed" && currentRoundComplete()) setScreen("changed");
 });
 
 app.addEventListener("keydown", (event) => {
