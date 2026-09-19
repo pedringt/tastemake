@@ -80,7 +80,7 @@ function feedbackDetails(itemId, feedback) {
         `).join("")}
       </div>
       <div class="recommendation-quality-note">
-        <span class="feedback-detail-prompt">Recommendation note. Optional.</span>
+        <span class="feedback-detail-prompt">Discovery note. Optional.</span>
         <div class="quality-note-row">
           <button
             class="detail-chip quality-chip"
@@ -88,8 +88,8 @@ function feedbackDetails(itemId, feedback) {
             data-feedback-item="${itemId}"
             data-feedback-quality="too-obvious"
             aria-pressed="${feedback.quality === "too-obvious"}"
-          >Too obvious</button>
-          <span class="quality-note-help">The fit can be right even if the recommendation was not novel or useful.</span>
+          >Too predictable</button>
+          <span class="quality-note-help">This can still be a great taste match. It only tells Tastemake to make future picks less obvious.</span>
         </div>
       </div>
     </div>`;
