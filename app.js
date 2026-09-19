@@ -392,7 +392,7 @@ function renderFeedback() {
   const item = activeRecommendations().find((rec) => rec.id === state.selectedRecommendation) || activeRecommendations()[0];
   const complete = state.reaction && state.recommendationQuality;
   return `
-    <section class="screen">
+    <section class="screen feedback-screen">
       <div class="screen-inner">
         <p class="kicker">Feedback</p>
         <h1>Two questions teach Tastemake different things.</h1>
@@ -429,9 +429,9 @@ function renderFeedback() {
               <textarea id="feedback-reason" name="reason" placeholder="Optional reason">${escapeHtml(state.reason)}</textarea>
             </div>
 
-            <div class="actions">
+            <div class="actions feedback-actions">
+              <button class="primary-button" type="submit" ${complete ? "" : "disabled"}>Continue to what Tastemake learned</button>
               <button class="secondary-button" type="button" data-action="cancel-feedback">Back</button>
-              <button class="primary-button" type="submit" ${complete ? "" : "disabled"}>Show what Tastemake learned</button>
             </div>
           </form>
         </div>
