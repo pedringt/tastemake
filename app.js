@@ -110,6 +110,16 @@ const recommendations = [
   }
 ];
 
+const followUpPool = [
+  { id: "fargo", title: "Fargo", medium: "TV", hypotheses: ["H03", "H04"], reason: "Dark comedy and moral messiness give Tastemake two established signals to test together." },
+  { id: "handmaiden", title: "The Handmaiden", medium: "Movie", hypotheses: ["H03", "H01/H07"], reason: "Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum." },
+  { id: "golden-idol", title: "The Case of the Golden Idol", medium: "Game", hypotheses: ["H01/H07"], reason: "Highly structured deduction makes this a focused test of the discovery-needs-structure hypothesis." },
+  { id: "vita-nostra", title: "Vita Nostra", medium: "Book", hypotheses: ["H05", "H01/H07"], reason: "Adult fantastical material and demanding strangeness test two parts of the model at once." },
+  { id: "lighthouse", title: "The Lighthouse", medium: "Movie", hypotheses: ["H04", "H09"], reason: "Black comedy, surrealism, and tonal collision make this useful when those signals are holding up." },
+  { id: "yellowjackets", title: "Yellowjackets", medium: "TV", hypotheses: ["H03", "H09"], reason: "Messy characters, horror, and tonal shifts make this a broader cross-signal test." },
+  { id: "dnd", title: "Dungeons & Dragons: Honor Among Thieves", medium: "Movie", hypotheses: ["H05", "H04"], reason: "Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional." }
+];
+
 const state = {
   screen: "favorites",
   selectedFavorites: new Set(favorites.filter((item) => item.selected).map((item) => item.id)),
@@ -117,7 +127,9 @@ const state = {
   reaction: null,
   recommendationQuality: null,
   reason: "",
-  lastFeedback: null
+  lastFeedback: null,
+  feedbackByRecommendation: {},
+  recommendationRound: 1
 };
 
 const app = document.querySelector("#app");
@@ -129,6 +141,81 @@ function escapeHtml(value = "") {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function feedbackDelta(feedback) {
+  const reaction = ({ loved: 2, liked: 1, meh: -0.5, disliked: -1.5, "not-tried": 0 })[feedback.reaction] || 0;
+  const quality = ({ good: 1, maybe: 0, bad: -1.5 })[feedback.quality] || 0;
+  return reaction + quality;
+}
+
+function hypothesisMatches(itemHypotheses, hypothesisId) {
+  const aliases = hypothesisId === "H01/H07" ? ["H01", "H07", "H01/H07"] : [hypothesisId];
+  return itemHypotheses.some((id) => aliases.includes(id));
+}
+
+function hypothesisSignal(hypothesisId) {
+  return Object.values(state.feedbackByRecommendation).reduce((sum, feedback) => {
+    return hypothesisMatches(feedback.item.hypotheses, hypothesisId) ? sum + feedbackDelta(feedback) : sum;
+  }, 0);
+}
+
+function modelUpdateFor(hypothesis) {
+  const related = Object.values(state.feedbackByRecommendation).filter((feedback) => hypothesisMatches(feedback.item.hypotheses, hypothesis.id));
+  if (!related.length) return { label: hypothesis.strength, status: hypothesis.status, note: null };
+  const signal = related.reduce((sum, feedback) => sum + feedbackDelta(feedback), 0);
+  if (signal >= 2) return { label: "Strengthened", status: "strengthened", note: `${related.length} new feedback signal${related.length === 1 ? "" : "s"} support this idea.` };
+  if (signal <= -1.5) return { label: "Needs revision", status: "revision", note: `${related.length} new feedback signal${related.length === 1 ? "" : "s"} push against this idea.` };
+  return { label: "More conditional", status: "conditional", note: `New feedback is mixed, so Tastemake should use this more cautiously.` };
+}
+
+function roundOneFeedback() {
+  return recommendations.map((item) => state.feedbackByRecommendation[item.id]).filter(Boolean);
+}
+
+function followUpRecommendations() {
+  const scored = followUpPool.map((item) => {
+    const score = item.hypotheses.reduce((sum, id) => sum + hypothesisSignal(id), 0);
+    return { ...item, score };
+  }).sort((a, b) => b.score - a.score);
+  const top = scored.slice(0, 4).map((item, index) => ({
+    ...item,
+    rank: index + 1,
+    fit: item.score > 1 ? "Stronger after feedback" : item.score < 0 ? "Cautious fit" : "Promising fit",
+    prediction: item.score > 1 ? "Likely to like" : "Worth testing",
+    surprise: false
+  }));
+  const surpriseSource = scored.slice(4)[0] || scored[scored.length - 1];
+  const surprise = {
+    ...surpriseSource,
+    rank: null,
+    fit: "Exploratory fit",
+    prediction: "Worth testing",
+    surprise: true,
+    reason: `${surpriseSource.reason} This is the less-obvious option for the next round.`
+  };
+  return [...top, surprise];
+}
+
+function activeRecommendations() {
+  return state.recommendationRound === 1 ? recommendations : followUpRecommendations();
+}
+
+function currentRoundRatedCount() {
+  return activeRecommendations().filter((item) => state.feedbackByRecommendation[item.id]).length;
+}
+
+function currentRoundComplete() {
+  return currentRoundRatedCount() === activeRecommendations().length;
+}
+
+function startFeedback(id) {
+  state.selectedRecommendation = id;
+  const saved = state.feedbackByRecommendation[id];
+  state.reaction = saved?.reaction || null;
+  state.recommendationQuality = saved?.quality || null;
+  state.reason = saved?.reason || "";
+  setScreen("feedback");
 }
 
 function updateStepper() {
@@ -200,15 +287,17 @@ function renderFavorites() {
 }
 
 function hypothesisCard(item) {
+  const update = modelUpdateFor(item);
   return `
     <article class="hypothesis-card">
       <div class="card-top">
         <span class="media-tag">Inferred · ${item.id}</span>
-        <span class="status-pill ${item.status === "conditional" ? "conditional" : ""}">${item.strength}</span>
+        <span class="status-pill ${update.status === "conditional" ? "conditional" : ""} ${update.status === "revision" ? "revision" : ""}">${update.label}</span>
       </div>
       <h3>${item.title}</h3>
       <p>${item.claim}</p>
       <p class="hypothesis-evidence"><strong>Evidence:</strong> ${item.evidence}</p>
+      ${update.note ? `<p class="model-change"><strong>After feedback:</strong> ${update.note}</p>` : ""}
     </article>`;
 }
 
@@ -248,36 +337,43 @@ function renderModel() {
 
 function recommendationCard(item, { interactive = true } = {}) {
   const heading = item.surprise ? "Surprise Me" : `#${item.rank}`;
+  const saved = state.feedbackByRecommendation[item.id];
   const interaction = interactive
-    ? `data-rate="${item.id}" role="button" tabindex="0" aria-label="Rate recommendation: ${item.title}"`
+    ? `data-rate="${item.id}" role="button" tabindex="0" aria-label="${saved ? "Update rating for" : "Rate recommendation"}: ${item.title}"`
     : "";
   return `
-    <article class="recommendation-card ${item.surprise ? "surprise" : ""}" ${interaction}>
+    <article class="recommendation-card ${item.surprise ? "surprise" : ""} ${saved ? "is-rated" : ""}" ${interaction}>
       <div class="card-top">
         <span class="media-tag">${heading} · ${item.medium}</span>
-        <span class="fit-pill">${item.fit}</span>
+        ${saved ? `<span class="rated-pill">Rated · ${prettyReaction(saved.reaction)}</span>` : `<span class="fit-pill">${item.fit}</span>`}
       </div>
       <h3>${item.title}</h3>
       <p class="subtitle">Signals: ${item.hypotheses.join(" + ")}</p>
       <p class="reason">${item.reason}</p>
       <div class="rec-footer">
         <div class="prediction">Predicted reaction: <strong>${item.prediction}</strong></div>
-        ${interactive ? `<button class="primary-button" type="button" data-rate="${item.id}">Rate this recommendation</button>` : ""}
+        ${interactive ? `<button class="primary-button" type="button" data-rate="${item.id}">${saved ? "Update rating" : "Rate this recommendation"}</button>` : ""}
       </div>
     </article>`;
 }
 
 function renderRecommendations() {
+  const items = activeRecommendations();
+  const rated = currentRoundRatedCount();
+  const complete = currentRoundComplete();
+  const roundTwo = state.recommendationRound === 2;
   return `
     <section class="screen">
       <div class="screen-inner">
-        <p class="kicker">Recommendations</p>
-        <h1>Fit first. Favorite-level certainty later.</h1>
-        <p class="lede">Experiment 003 showed that Tastemake was better at choosing good fits than predicting which fits would become favorites. So this view separates model fit from expected reaction.</p>
+        <p class="kicker">${roundTwo ? "Updated recommendations · Round 2" : "Recommendations · Round 1"}</p>
+        <h1>${roundTwo ? "The model changed. So did the list." : "Fit first. Favorite-level certainty later."}</h1>
+        <p class="lede">${roundTwo ? "This second set is re-ranked from the feedback you gave in round one. Supported signals move up; weaker signals are treated more cautiously." : "Experiment 003 showed that Tastemake was better at choosing good fits than predicting which fits would become favorites. So this view separates model fit from expected reaction."}</p>
 
-        <div class="recommendation-grid">${recommendations.map(recommendationCard).join("")}</div>
+        <div class="round-progress"><strong>${rated} of ${items.length} rated</strong><span>${complete ? "Round complete" : "Rate the set to give Tastemake enough evidence to revise the model."}</span></div>
+        <div class="recommendation-grid">${items.map(recommendationCard).join("")}</div>
 
         <div class="actions">
+          ${complete ? `<button class="primary-button" type="button" data-action="view-round-summary">See what Tastemake learned from this round</button>` : ""}
           <button class="secondary-button" type="button" data-action="back-model">View Taste Model</button>
         </div>
       </div>
@@ -293,7 +389,7 @@ function qualityButton(value, label) {
 }
 
 function renderFeedback() {
-  const item = recommendations.find((rec) => rec.id === state.selectedRecommendation) || recommendations[0];
+  const item = activeRecommendations().find((rec) => rec.id === state.selectedRecommendation) || activeRecommendations()[0];
   const complete = state.reaction && state.recommendationQuality;
   return `
     <section class="screen">
@@ -395,6 +491,54 @@ function renderLearned() {
     setScreen("recommendations");
     return "";
   }
+
+  if (currentRoundComplete()) {
+    const roundFeedback = activeRecommendations().map((item) => state.feedbackByRecommendation[item.id]).filter(Boolean);
+    const positive = roundFeedback.filter((item) => ["loved", "liked"].includes(item.reaction)).length;
+    const negative = roundFeedback.filter((item) => ["meh", "disliked"].includes(item.reaction)).length;
+    const untried = roundFeedback.filter((item) => item.reaction === "not-tried").length;
+    const good = roundFeedback.filter((item) => item.quality === "good").length;
+    const bad = roundFeedback.filter((item) => item.quality === "bad").length;
+    const changes = hypotheses.map((item) => ({ item, update: modelUpdateFor(item), signal: Math.abs(hypothesisSignal(item.id)) })).filter((entry) => entry.update.note).sort((a, b) => b.signal - a.signal);
+    const lead = changes[0];
+    return `
+      <section class="screen">
+        <div class="screen-inner">
+          <p class="kicker">Round ${state.recommendationRound} complete</p>
+          <h1>Now the model has something new to learn from.</h1>
+          <p class="lede">This combines the whole recommendation round instead of treating each rating as an isolated result.</p>
+
+          <div class="learning-grid">
+            <article class="learning-card">
+              <span class="label">Your reactions</span>
+              <strong>${positive} positive · ${negative} weak/negative</strong>
+              <p>${untried ? `${untried} not tried. ` : ""}${good} good recommendation${good === 1 ? "" : "s"}${bad ? ` · ${bad} poor recommendation${bad === 1 ? "" : "s"}` : ""}.</p>
+            </article>
+            <article class="learning-card highlight">
+              <span class="label">Biggest model movement</span>
+              <strong>${lead ? `${lead.item.id}: ${lead.update.label}` : "More evidence needed"}</strong>
+              <p>${lead?.update.note || "This round did not push one hypothesis strongly enough to dominate the others."}</p>
+            </article>
+            <article class="learning-card">
+              <span class="label">What changes next</span>
+              <strong>Re-rank, don't overclaim</strong>
+              <p>Supported signals get more weight in the next set. Weak or poor-recommendation routes move down instead of being erased.</p>
+            </article>
+          </div>
+
+          <div class="callout">
+            <strong>Your Taste Model is now visibly different from the one you started with.</strong>
+            <p>Open it to inspect which hypotheses strengthened or became more conditional, or generate the next deterministic recommendation round from those updates.</p>
+          </div>
+
+          <div class="actions">
+            <button class="primary-button" type="button" data-action="view-model">See updated Taste Model</button>
+            ${state.recommendationRound === 1 ? `<button class="secondary-button" type="button" data-action="next-round">Get new recommendations</button>` : `<button class="secondary-button" type="button" data-action="back-recommendations">Back to recommendations</button>`}
+          </div>
+        </div>
+      </section>`;
+  }
+
   const learned = learningCopy(feedback);
   return `
     <section class="screen">
@@ -415,9 +559,9 @@ function renderLearned() {
             <p>${learned.inference}</p>
           </article>
           <article class="learning-card">
-            <span class="label">What changes next</span>
-            <strong>Recommendation behavior</strong>
-            <p>${learned.change}</p>
+            <span class="label">Round progress</span>
+            <strong>${currentRoundRatedCount()} of ${activeRecommendations().length} rated</strong>
+            <p>Rate the remaining recommendations to see the cumulative model revision.</p>
           </article>
         </div>
 
@@ -464,9 +608,7 @@ app.addEventListener("click", (event) => {
 
   const rate = event.target.closest("[data-rate]");
   if (rate) {
-    state.selectedRecommendation = rate.dataset.rate;
-    resetFeedback();
-    setScreen("feedback");
+    startFeedback(rate.dataset.rate);
     return;
   }
 
@@ -491,7 +633,14 @@ app.addEventListener("click", (event) => {
   if (action === "build-model" && state.selectedFavorites.size >= 4) setScreen("model");
   if (action === "show-recs") setScreen("recommendations");
   if (action === "back-model" || action === "view-model") setScreen("model");
-  if (action === "cancel-feedback" || action === "rate-another") setScreen("recommendations");
+  if (action === "cancel-feedback" || action === "rate-another" || action === "back-recommendations") setScreen("recommendations");
+  if (action === "view-round-summary" && state.lastFeedback) setScreen("learned");
+  if (action === "next-round") {
+    state.recommendationRound = 2;
+    state.selectedRecommendation = null;
+    resetFeedback();
+    setScreen("recommendations");
+  }
 });
 
 app.addEventListener("input", (event) => {
@@ -502,13 +651,14 @@ app.addEventListener("submit", (event) => {
   if (!event.target.matches("[data-feedback-form]")) return;
   event.preventDefault();
   if (!state.reaction || !state.recommendationQuality) return;
-  const item = recommendations.find((rec) => rec.id === state.selectedRecommendation);
+  const item = activeRecommendations().find((rec) => rec.id === state.selectedRecommendation);
   state.lastFeedback = {
     item,
     reaction: state.reaction,
     quality: state.recommendationQuality,
     reason: state.reason.trim()
   };
+  state.feedbackByRecommendation[item.id] = state.lastFeedback;
   setScreen("learned");
 });
 
@@ -526,9 +676,7 @@ app.addEventListener("keydown", (event) => {
   const card = event.target.closest(".recommendation-card[data-rate]");
   if (!card || !["Enter", " "].includes(event.key)) return;
   event.preventDefault();
-  state.selectedRecommendation = card.dataset.rate;
-  resetFeedback();
-  setScreen("feedback");
+  startFeedback(card.dataset.rate);
 });
 
 updateStepper();
