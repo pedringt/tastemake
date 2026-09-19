@@ -511,12 +511,29 @@ function feedbackDetails(itemId, feedback) {
     </div>`;
 }
 
+function mediaArt(item) {
+  const initials = item.title
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((part) => part[0])
+    .join("");
+
+  return `
+    <div class="media-art media-art-${item.id}" aria-hidden="true">
+      <span class="media-art-grid"></span>
+      <span class="media-art-title">${item.surprise ? "SURPRISE" : initials}</span>
+      <span class="media-art-type">${item.medium}</span>
+    </div>`;
+}
+
 function recommendationCard(item) {
   const heading = item.surprise ? "Surprise Me" : `#${item.rank}`;
   const saved = state.feedbackByRecommendation[item.id];
 
   return `
     <article class="recommendation-card ${item.surprise ? "surprise" : ""} ${saved ? "is-rated" : ""}" data-rec-id="${item.id}">
+      ${item.surprise ? `<span class="surprise-sticker" aria-hidden="true">TRY ME</span>` : ""}
       <div class="card-top">
         <span class="media-tag">${heading} · ${item.medium}</span>
         ${saved
@@ -524,13 +541,19 @@ function recommendationCard(item) {
           : `<span class="fit-pill">${item.fit}</span>`}
       </div>
 
-      <h3>${item.title}</h3>
-      <p class="about">${item.about}</p>
+      <div class="card-content-grid">
+        <div class="card-copy">
+          <h3>${item.title}</h3>
+          <p class="about">${item.about}</p>
 
-      <details class="why-details">
-        <summary>Why this recommendation?</summary>
-        <p>${item.reason}</p>
-      </details>
+          <details class="why-details">
+            <summary>Why this recommendation?</summary>
+            <p>${item.reason}</p>
+          </details>
+        </div>
+
+        ${mediaArt(item)}
+      </div>
 
       <div class="quick-feedback" aria-label="Rate ${item.title}">
         <span class="quick-feedback-label">Your take</span>
@@ -551,9 +574,9 @@ function renderRoundRefresh(roundTwo) {
     return `
       <div class="refresh-banner">
         <div>
-          <span class="refresh-kicker">You have rated the full set</span>
-          <strong>Your next recommendations can be better now.</strong>
-          <p>Tastemake can use these signals to re-rank a fresh set. You do not need to review the model first.</p>
+          <span class="refresh-kicker">Nice. That is enough signal.</span>
+          <strong>Want a fresh set?</strong>
+          <p>Your reactions can now reshape what Tastemake shows next.</p>
         </div>
         <button class="primary-button" type="button" data-action="refresh-recommendations">Refresh recommendations</button>
       </div>`;
@@ -564,7 +587,7 @@ function renderRoundRefresh(roundTwo) {
       <div>
         <span class="refresh-kicker">Prototype round complete</span>
         <strong>Tastemake would keep learning from here.</strong>
-        <p>This prototype stops after two recommendation sets. Your Taste Profile still reflects the useful feedback you gave.</p>
+        <p>This prototype stops after two recommendation sets.</p>
       </div>
       <button class="secondary-button" type="button" data-action="view-model">View Taste Profile</button>
     </div>`;
@@ -574,28 +597,39 @@ function renderRecommendations() {
   const items = activeRecommendations();
   const rated = currentRoundRatedCount();
   const roundTwo = state.recommendationRound === 2;
+  const segments = items.map((_, index) => `<span class="progress-segment ${index < rated ? "is-filled" : ""}"></span>`).join("");
 
   return `
-    <section class="screen">
-      <div class="screen-inner">
-        <p class="kicker">${roundTwo ? "Updated recommendations" : "Recommendations"}</p>
-        <h1>${roundTwo ? "A fresh set, tuned by your feedback." : "See something you want more or less of? Just tap."}</h1>
-        <p class="lede">${roundTwo
-          ? "This set was re-ranked from your first round. Keep reacting and Tastemake keeps getting a clearer signal."
-          : "One tap is enough. Add context only when you feel like it. Tastemake uses those signals to improve what it shows you next."}</p>
+    <section class="screen recommendations-screen">
+      <div class="screen-inner recommendations-inner">
+        <div class="recommendations-hero">
+          <div class="hero-copy">
+            <span class="hero-doodle hero-doodle-left" aria-hidden="true">⌁</span>
+            <p class="kicker">${roundTwo ? "Updated recommendations" : "Recommendations"}</p>
+            <h1>${roundTwo ? "A fresh set, tuned by your feedback." : "Your recommendations"}</h1>
+            <p class="lede">${roundTwo
+              ? "A little more you, now that Tastemake has a few reactions to work with."
+              : "Discover things that fit your taste. React as you go and Tastemake gets better at what it puts in front of you."}</p>
+            <span class="hero-doodle hero-doodle-right" aria-hidden="true">✦</span>
+          </div>
 
-        <div class="round-progress">
-          <strong>${rated} of ${items.length} rated</strong>
-          <span>${currentRoundComplete() ? "Ready for the next set." : "Your recommendation order stays put while you rate."}</span>
+          <div class="hero-progress">
+            <strong>${rated} of ${items.length} rated</strong>
+            <div class="progress-track" aria-hidden="true">${segments}</div>
+            <span class="progress-note">${currentRoundComplete() ? "ready for another set" : "a more you, coming right up."}</span>
+          </div>
         </div>
 
         ${renderRoundRefresh(roundTwo)}
 
         <div class="recommendation-grid">${items.map(recommendationCard).join("")}</div>
 
-        <div class="actions">
-          <button class="secondary-button" type="button" data-action="view-model">View Taste Profile</button>
-          <button class="text-button" type="button" data-action="back-favorites">Edit favorites</button>
+        <div class="recommendation-footer">
+          <span class="footer-note">same taste. brighter days. ✦</span>
+          <div class="actions">
+            <button class="secondary-button" type="button" data-action="view-model">View Taste Profile</button>
+            <button class="text-button" type="button" data-action="back-favorites">Edit favorites</button>
+          </div>
         </div>
       </div>
     </section>`;
