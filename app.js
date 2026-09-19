@@ -134,7 +134,17 @@ function escapeHtml(value = "") {
 function updateStepper() {
   const order = ["favorites", "model", "recommendations", "feedback", "learned"];
   const activeIndex = order.indexOf(state.screen);
+  const hasEnoughFavorites = state.selectedFavorites.size >= 4;
+  const unlocked = [
+    true,
+    hasEnoughFavorites,
+    hasEnoughFavorites,
+    Boolean(state.selectedRecommendation),
+    Boolean(state.lastFeedback)
+  ];
+
   document.querySelectorAll(".step").forEach((step, index) => {
+    step.disabled = !unlocked[index];
     step.classList.toggle("is-active", index === activeIndex);
     step.classList.toggle("is-complete", index < activeIndex);
   });
@@ -225,18 +235,24 @@ function renderModel() {
 
         <div class="hypothesis-grid">${hypotheses.map(hypothesisCard).join("")}</div>
 
-        <div class="actions">
-          <button class="secondary-button" type="button" data-action="back-favorites">Edit favorites</button>
-          <button class="primary-button" type="button" data-action="show-recs">Show recommendations</button>
+        <div class="sticky-action model-next">
+          <p><strong>Next:</strong> See what Tastemake recommends from this model.</p>
+          <div class="action-group">
+            <button class="primary-button" type="button" data-action="show-recs">Show recommendations</button>
+            <button class="secondary-button" type="button" data-action="back-favorites">Edit favorites</button>
+          </div>
         </div>
       </div>
     </section>`;
 }
 
-function recommendationCard(item) {
+function recommendationCard(item, { interactive = true } = {}) {
   const heading = item.surprise ? "Surprise Me" : `#${item.rank}`;
+  const interaction = interactive
+    ? `data-rate="${item.id}" role="button" tabindex="0" aria-label="Rate recommendation: ${item.title}"`
+    : "";
   return `
-    <article class="recommendation-card ${item.surprise ? "surprise" : ""}">
+    <article class="recommendation-card ${item.surprise ? "surprise" : ""}" ${interaction}>
       <div class="card-top">
         <span class="media-tag">${heading} · ${item.medium}</span>
         <span class="fit-pill">${item.fit}</span>
@@ -246,7 +262,7 @@ function recommendationCard(item) {
       <p class="reason">${item.reason}</p>
       <div class="rec-footer">
         <div class="prediction">Predicted reaction: <strong>${item.prediction}</strong></div>
-        <button class="primary-button" type="button" data-rate="${item.id}">Rate this recommendation</button>
+        ${interactive ? `<button class="primary-button" type="button" data-rate="${item.id}">Rate this recommendation</button>` : ""}
       </div>
     </article>`;
 }
@@ -288,7 +304,7 @@ function renderFeedback() {
 
         <div class="feedback-layout">
           <aside class="feedback-summary">
-            ${recommendationCard({ ...item, rank: item.rank || "", surprise: item.surprise }).replace(/<button class="primary-button"[\s\S]*?<\/button>/, "")}
+            ${recommendationCard({ ...item, rank: item.rank || "", surprise: item.surprise }, { interactive: false })}
           </aside>
           <form class="feedback-form" data-feedback-form>
             <div class="question">
@@ -441,6 +457,7 @@ app.addEventListener("click", (event) => {
     const id = favorite.dataset.favorite;
     if (state.selectedFavorites.has(id)) state.selectedFavorites.delete(id);
     else state.selectedFavorites.add(id);
+    updateStepper();
     render();
     return;
   }
@@ -501,6 +518,17 @@ document.addEventListener("click", (event) => {
   if (jump === "favorites") setScreen("favorites");
   if (jump === "model" && state.selectedFavorites.size >= 4) setScreen("model");
   if (jump === "recommendations" && state.selectedFavorites.size >= 4) setScreen("recommendations");
+  if (jump === "feedback" && state.selectedRecommendation) setScreen("feedback");
+  if (jump === "learned" && state.lastFeedback) setScreen("learned");
+});
+
+app.addEventListener("keydown", (event) => {
+  const card = event.target.closest(".recommendation-card[data-rate]");
+  if (!card || !["Enter", " "].includes(event.key)) return;
+  event.preventDefault();
+  state.selectedRecommendation = card.dataset.rate;
+  resetFeedback();
+  setScreen("feedback");
 });
 
 updateStepper();
