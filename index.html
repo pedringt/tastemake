@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Tastemake prototype: an inspectable taste model that learns from recommendation feedback." />
+    <meta name="description" content="Tastemake prototype: recommendations that get better as you react." />
     <title>Tastemake Prototype</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -20,11 +20,10 @@
         <div class="prototype-label">Local prototype · no live AI calls</div>
       </header>
 
-      <nav class="stepper" aria-label="Prototype progress">
+      <nav class="stepper" aria-label="Tastemake sections">
         <button class="step is-active" type="button" data-step-jump="favorites"><span>1</span>Favorites</button>
-        <button class="step" type="button" data-step-jump="model"><span>2</span>Taste Model</button>
+        <button class="step" type="button" data-step-jump="model"><span>2</span>Taste Profile</button>
         <button class="step" type="button" data-step-jump="recommendations"><span>3</span>Recommendations</button>
-        <button class="step" type="button" data-step-jump="changed" disabled><span>4</span>What Changed</button>
       </nav>
 
       <main id="app" tabindex="-1"></main>
