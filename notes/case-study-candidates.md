@@ -127,3 +127,23 @@ That second label provides stronger product feedback than reaction alone and val
 ### Prototype gate
 
 Experiment 003 is strong enough to stop broad manual holdout testing and move into a minimal prototype. A later live eval should focus on genuinely unseen recommendations and the Surprise Me mechanic.
+
+
+## Prototype v1: turn the eval loop into a product loop
+
+After three manual experiments, the project deliberately stopped adding more static tests and built the smallest interface that exposes the validated behavior.
+
+The v1 flow is:
+
+**Favorites → Taste Model → Recommendations → Feedback → What Tastemake Learned**
+
+Key product decisions:
+- start with a small set of strong favorites rather than exhaustive onboarding;
+- show taste hypotheses as inspectable inferences, separate from explicit user evidence;
+- separate **taste-model fit** from **predicted enjoyment intensity** because Experiment 003 showed selection was stronger than favorite-level calibration;
+- collect both reaction and recommendation-quality feedback;
+- make the model update visible after feedback;
+- keep Surprise Me as a bounded exploration path;
+- use deterministic mock data first so the interaction model can be evaluated before adding live LLM variability.
+
+This is a useful case-study transition from research to MVP: the prototype is built around the specific uncertainties exposed by the evals rather than around a generic recommendation-app feature list.
