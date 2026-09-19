@@ -546,7 +546,14 @@ function mediaArt(item, index) {
     <div class="editorial-art art-${item.id} art-layout-${(index % 4) + 1}" aria-hidden="true">
       <span class="art-kicker">${item.medium}</span>
       <span class="art-shape art-shape-a"></span>
-      <span class="art-shape art-shape-b"><function recommendationCard(item, index) {
+      <span class="art-shape art-shape-b"></span>
+      <span class="art-pattern"></span>
+      <span class="art-title">${item.surprise ? "SURPRISE ME" : shortTitle}</span>
+      <span class="art-corner">TM/${String(index + 1).padStart(2, "0")}</span>
+    </div>`;
+}
+
+function recommendationCard(item, index) {
   const saved = state.feedbackByRecommendation[item.id];
   const layoutClass = item.surprise ? "rec-surprise" : `rec-layout-${index + 1}`;
 
