@@ -23,3 +23,7 @@ Then open `http://localhost:4173`.
 ## Research
 
 The `experiments/` folder contains the blind taste-model, boundary, and recommendation-selection evals that informed this prototype. The `notes/` folder tracks reusable case-study and AI product lessons.
+## Deployment
+
+Vercel preview deployments are used for feature branches and pull requests. Production remains tied to `main` and is promoted separately after review.
+
