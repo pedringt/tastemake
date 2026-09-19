@@ -136,3 +136,20 @@ A later live eval should test:
 - whether the user chooses to try them;
 - actual reaction afterward;
 - whether Surprise Me expands the model successfully.
+
+
+## Prototype the learning loop before the live model
+
+When an AI product's core value depends on a feedback loop, it can be useful to prototype the interaction deterministically before wiring in a live model.
+
+Why:
+- isolates whether the UX makes sense;
+- makes state transitions predictable for QA;
+- prevents model variability from hiding product-design problems;
+- lets the team validate what evidence should be captured and what users should see after an update.
+
+Tastemake v1 uses mock recommendations and deterministic model-update copy to validate:
+
+**evidence → inference → recommendation → feedback → revised inference**
+
+The live model can be added after that loop is understandable and useful.
