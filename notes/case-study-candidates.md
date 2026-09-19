@@ -98,3 +98,32 @@ The experiment also collects two separate user labels:
 - whether it was a good recommendation.
 
 That distinction is central to Tastemake's product loop.
+
+
+## Experiment 003 result: selection worked better than calibration
+
+Experiment 003 moved from prediction to recommendation selection. A fresh model chose five ranked recommendations from 32 candidates, plus a Surprise Me and four precommitted alternates.
+
+Among the six committed items the user had already experienced:
+- 5/6 were positive reactions;
+- 5/6 were judged good recommendations;
+- 0 polarity misses;
+- but only 1/6 predictions were exact because the model repeatedly overpredicted intensity.
+
+The four experienced Top 5 picks were all positive and all judged good recommendations, but every one had been predicted **strong-positive**.
+
+This exposed a useful product distinction:
+
+> The model may be good at identifying **fit** before it is good at predicting **favorite-level intensity**.
+
+That should influence the UI. Tastemake should avoid overly certain "you'll love this" language and treat fit confidence separately from predicted enjoyment intensity.
+
+### Recommendation-quality label mattered
+
+*Severance* was a mild prediction miss (positive → mixed), but the user also said it was **not a good recommendation**.
+
+That second label provides stronger product feedback than reaction alone and validates the decision to collect both.
+
+### Prototype gate
+
+Experiment 003 is strong enough to stop broad manual holdout testing and move into a minimal prototype. A later live eval should focus on genuinely unseen recommendations and the Surprise Me mechanic.
