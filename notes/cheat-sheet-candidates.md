@@ -76,3 +76,35 @@ A feature can improve something without being the main reason the user likes it.
 
 Tastemake example:
 Exploration/discovery appears to be an **enhancer** when paired with goals, narrative, stakes, or strong systems. It is not yet supported as a reliable primary driver of enjoyment.
+
+
+## Classification vs. ranking
+A model can be good at predicting "you would like this" for an item it is shown and still be bad at deciding **which item to recommend** from many possibilities.
+
+Classification asks:
+> How will the user react to this item?
+
+Ranking asks:
+> Which of these candidates is most worth showing the user first?
+
+Recommendation products need both.
+
+## Recommendation quality vs. item reaction
+"Did I like it?" and "Was this a good recommendation?" are different labels.
+
+A user can dislike an item but still think it was a thoughtful recommendation. A user can also like something that was an obvious, low-value recommendation.
+
+Tracking both helps distinguish:
+- a bad taste prediction;
+- a reasonable recommendation that happened to miss;
+- weak ranking or novelty.
+
+## Precommitted alternates
+When an eval depends on hidden facts such as whether the user has already experienced an item, choose backup items **before** revealing those facts.
+
+This prevents post-hoc reranking and keeps the evaluation honest.
+
+## Surprise Me as an exploration strategy
+A recommendation system should not only exploit the safest known preferences.
+
+A controlled "Surprise Me" slot can explore a less obvious hypothesis with bounded risk. If it works, the model learns a new region of taste. If it fails, the reaction should still reduce uncertainty.
