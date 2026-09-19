@@ -54,3 +54,27 @@ A failed recommendation is useful evidence if the system can identify which tast
 Test whether the system can move from a broad failed abstraction to a more precise boundary:
 - discovery as a feature vs discovery as the main appeal;
 - straightforward adventure/charisma/spectacle as a potentially missing taste axis.
+
+
+## Experiment 002: targeted boundary test
+
+Experiment 002 intentionally tested a failure exposed by Experiment 001 instead of optimizing for a higher general hit rate.
+
+Results:
+- 6/8 exact predictions;
+- 2 one-step intensity near misses;
+- 0 polarity misses;
+- 8/8 correct positive/mixed direction.
+
+The strongest finding was the discovery boundary:
+- *The Witness* = mixed;
+- *The Forgotten City* = positive;
+- *Firewatch* = positive;
+- *999* = strong positive.
+
+This supported the revised idea that **discovery works better when it serves clear goals, narrative, stakes, character, or another strong system, rather than when discovery itself must generate most of the user's momentum**.
+
+The adventure test is also useful product evidence because the team resisted adding a new hypothesis prematurely. *The Mummy* and *National Treasure* matched the existing model, *Pirates* was slightly overpredicted, and *Fury Road* was already explained by existing hypotheses. The correct decision was to leave "straightforward adventure" unresolved instead of overfitting to *Last Crusade*.
+
+### Case-study principle
+A strong eval is not just a benchmark. Use one experiment's failure to design the next experiment so it can distinguish between competing explanations.
