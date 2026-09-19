@@ -595,6 +595,23 @@ function resetFeedback() {
   state.reason = "";
 }
 
+function saveCurrentFeedbackIfComplete() {
+  if (!state.selectedRecommendation || !state.reaction || !state.recommendationQuality) return false;
+  const item = activeRecommendations().find((rec) => rec.id === state.selectedRecommendation);
+  if (!item) return false;
+
+  const saved = {
+    item,
+    reaction: state.reaction,
+    quality: state.recommendationQuality,
+    reason: state.reason.trim()
+  };
+
+  state.feedbackByRecommendation[item.id] = saved;
+  state.lastFeedback = saved;
+  return true;
+}
+
 app.addEventListener("click", (event) => {
   const favorite = event.target.closest("[data-favorite]");
   if (favorite) {
@@ -615,6 +632,7 @@ app.addEventListener("click", (event) => {
   const reaction = event.target.closest("[data-reaction]");
   if (reaction) {
     state.reaction = reaction.dataset.reaction;
+    saveCurrentFeedbackIfComplete();
     render();
     return;
   }
@@ -622,6 +640,7 @@ app.addEventListener("click", (event) => {
   const quality = event.target.closest("[data-quality]");
   if (quality) {
     state.recommendationQuality = quality.dataset.quality;
+    saveCurrentFeedbackIfComplete();
     render();
     return;
   }
@@ -633,7 +652,11 @@ app.addEventListener("click", (event) => {
   if (action === "build-model" && state.selectedFavorites.size >= 4) setScreen("model");
   if (action === "show-recs") setScreen("recommendations");
   if (action === "back-model" || action === "view-model") setScreen("model");
-  if (action === "cancel-feedback" || action === "rate-another" || action === "back-recommendations") setScreen("recommendations");
+  if (action === "cancel-feedback") {
+    saveCurrentFeedbackIfComplete();
+    setScreen("recommendations");
+  }
+  if (action === "rate-another" || action === "back-recommendations") setScreen("recommendations");
   if (action === "view-round-summary" && state.lastFeedback) setScreen("learned");
   if (action === "next-round") {
     state.recommendationRound = 2;
@@ -645,21 +668,15 @@ app.addEventListener("click", (event) => {
 });
 
 app.addEventListener("input", (event) => {
-  if (event.target.matches("#feedback-reason")) state.reason = event.target.value;
+  if (!event.target.matches("#feedback-reason")) return;
+  state.reason = event.target.value;
+  saveCurrentFeedbackIfComplete();
 });
 
 app.addEventListener("submit", (event) => {
   if (!event.target.matches("[data-feedback-form]")) return;
   event.preventDefault();
-  if (!state.reaction || !state.recommendationQuality) return;
-  const item = activeRecommendations().find((rec) => rec.id === state.selectedRecommendation);
-  state.lastFeedback = {
-    item,
-    reaction: state.reaction,
-    quality: state.recommendationQuality,
-    reason: state.reason.trim()
-  };
-  state.feedbackByRecommendation[item.id] = state.lastFeedback;
+  if (!saveCurrentFeedbackIfComplete()) return;
   setScreen("learned");
 });
 
