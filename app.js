@@ -612,6 +612,18 @@ function saveCurrentFeedbackIfComplete() {
   return true;
 }
 
+function syncFeedbackControls() {
+  document.querySelectorAll("[data-reaction]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.reaction === state.reaction));
+  });
+  document.querySelectorAll("[data-quality]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.quality === state.recommendationQuality));
+  });
+
+  const submit = document.querySelector('[data-feedback-form] button[type="submit"]');
+  if (submit) submit.disabled = !(state.reaction && state.recommendationQuality);
+}
+
 app.addEventListener("click", (event) => {
   const favorite = event.target.closest("[data-favorite]");
   if (favorite) {
@@ -633,7 +645,7 @@ app.addEventListener("click", (event) => {
   if (reaction) {
     state.reaction = reaction.dataset.reaction;
     saveCurrentFeedbackIfComplete();
-    render();
+    syncFeedbackControls();
     return;
   }
 
@@ -641,7 +653,7 @@ app.addEventListener("click", (event) => {
   if (quality) {
     state.recommendationQuality = quality.dataset.quality;
     saveCurrentFeedbackIfComplete();
-    render();
+    syncFeedbackControls();
     return;
   }
 
