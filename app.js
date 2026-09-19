@@ -345,94 +345,117 @@ function setScreen(screen) {
   setTimeout(() => app.focus({ preventScroll: true }), 0);
 }
 
-function favoriteCard(item) {
+function favoriteCard(item, index) {
   const selected = state.selectedFavorites.has(item.id);
+  const sizeClass = ["tile-xl", "tile-md", "tile-lg", "tile-md", "tile-lg", "tile-sm", "tile-md", "tile-sm"][index] || "tile-md";
+
   return `
-    <button class="favorite-card" type="button" data-favorite="${item.id}" aria-pressed="${selected}">
-      <div class="card-top">
-        <span class="media-tag">${item.medium}</span>
-        <span class="select-dot" aria-hidden="true">✓</span>
+    <button class="favorite-tile ${sizeClass} favorite-tone-${index + 1}" type="button" data-favorite="${item.id}" aria-pressed="${selected}">
+      <span class="favorite-tape" aria-hidden="true"></span>
+      <div class="favorite-tile-top">
+        <span class="favorite-number">${String(index + 1).padStart(2, "0")}</span>
+        <span class="favorite-medium">${item.medium}</span>
+        <span class="favorite-check" aria-hidden="true">✓</span>
       </div>
-      <h3>${item.title}</h3>
-      <p>${item.note}</p>
+      <div class="favorite-tile-copy">
+        <h3>${item.title}</h3>
+        <p>${item.note}</p>
+      </div>
     </button>`;
 }
 
 function renderFavorites() {
   const count = state.selectedFavorites.size;
   return `
-    <section class="screen">
-      <div class="screen-inner">
-        <p class="kicker">Start with signal, not homework</p>
-        <h1>Give Tastemake a few things you really like.</h1>
-        <p class="lede">You should not have to rebuild your entire media history. A small set of strong favorites is enough to start making recommendations, then your reactions make them better.</p>
-
-        <div class="section-header">
-          <div>
-            <h2>Your starter set</h2>
-            <p>This demo is prefilled with six favorites from the pilot taste profile. Change the mix to see how onboarding would feel.</p>
-          </div>
+    <section class="favorites-screen">
+      <div class="favorites-hero">
+        <div>
+          <p class="kicker">Build your starter mix</p>
+          <h1>Pick the things that feel the most <span class="marker-word">you.</span></h1>
+          <p class="lede">No giant onboarding quiz. A handful of strong favorites is enough to start.</p>
         </div>
-
-        <div class="favorite-grid">
-          ${favorites.map(favoriteCard).join("")}
+        <div class="favorites-side-note" aria-hidden="true">
+          <span>your taste,</span>
+          <strong>not a genre box.</strong>
+          <span class="note-arrow">↙</span>
         </div>
+      </div>
 
-        <div class="sticky-action">
-          <p><strong>${count} selected.</strong> Four is enough to start. Your Taste Profile stays available if you want to inspect it.</p>
-          <div class="action-group">
-            <button class="primary-button" type="button" data-action="show-recs" ${count < 4 ? "disabled" : ""}>Get recommendations</button>
-            <button class="secondary-button" type="button" data-action="view-model" ${count < 4 ? "disabled" : ""}>Preview Taste Profile</button>
-          </div>
+      <div class="taste-board" aria-label="Starter favorites">
+        ${favorites.map(favoriteCard).join("")}
+      </div>
+
+      <div class="favorites-footer">
+        <div class="selection-counter">
+          <span class="selection-number">${count}</span>
+          <span>selected<br /><small>4 is enough to start</small></span>
+        </div>
+        <div class="action-group">
+          <button class="secondary-button" type="button" data-action="view-model" ${count < 4 ? "disabled" : ""}>Peek at my taste</button>
+          <button class="primary-button" type="button" data-action="show-recs" ${count < 4 ? "disabled" : ""}>Show me what I might like →</button>
         </div>
       </div>
     </section>`;
 }
 
-function hypothesisCard(item) {
+function hypothesisCard(item, index) {
   const update = modelUpdateFor(item);
+  const confidenceLabel = update.label === item.strength ? item.strength : update.label;
   return `
-    <article class="hypothesis-card">
-      <div class="card-top">
-        <span class="media-tag">Inferred pattern</span>
-        <span class="status-pill ${update.status === "conditional" ? "conditional" : ""} ${update.status === "revision" ? "revision" : ""}">${update.label}</span>
+    <article class="signal-row signal-row-${index + 1}">
+      <div class="signal-index">${String(index + 1).padStart(2, "0")}</div>
+      <div class="signal-main">
+        <div class="signal-title-row">
+          <h3>${item.title}</h3>
+          <span class="signal-status ${update.status}">${confidenceLabel}</span>
+        </div>
+        <p class="signal-claim">${item.claim}</p>
+        <div class="signal-evidence"><span>shows up in</span> ${item.evidence}</div>
+        ${update.note ? `<div class="signal-update"><strong>New signal:</strong> ${update.note}</div>` : ""}
       </div>
-      <h3>${item.title}</h3>
-      <p>${item.claim}</p>
-      <p class="hypothesis-evidence"><strong>Based on:</strong> ${item.evidence}</p>
-      ${update.note ? `<p class="model-change"><strong>From your feedback:</strong> ${update.note}</p>` : ""}
     </article>`;
 }
 
 function renderModel() {
   const selectedTitles = favorites.filter((item) => state.selectedFavorites.has(item.id)).map((item) => item.title);
   return `
-    <section class="screen">
-      <div class="screen-inner">
-        <p class="kicker">Your Taste Profile</p>
-        <h1>What Tastemake thinks tends to work for you.</h1>
-        <p class="lede">You do not need to manage this profile for Tastemake to work. It is here if you want to see the patterns behind your recommendations and how your feedback is affecting them.</p>
-
-        <div class="evidence-panel">
-          <strong>Favorites you gave Tastemake</strong>
-          <div class="evidence-list">${selectedTitles.map((title) => `<span class="evidence-chip">${title}</span>`).join("")}</div>
+    <section class="profile-screen">
+      <div class="profile-hero">
+        <div class="profile-title-block">
+          <p class="kicker">Taste Profile</p>
+          <h1>Less “you like fantasy.”<br /><span>More “this is what tends to click.”</span></h1>
+          <p class="lede">These are working patterns Tastemake uses in the background. They can get stronger, softer, or more specific as you react.</p>
         </div>
-
-        <div class="section-header">
-          <div>
-            <h2>Patterns Tastemake is using</h2>
-            <p>These are working ideas, not permanent labels. Tastemake can strengthen or soften them as you react to recommendations.</p>
-          </div>
+        <div class="profile-stamp" aria-hidden="true">
+          <strong>WORKING</strong>
+          <span>PROFILE</span>
         </div>
+      </div>
 
-        <div class="hypothesis-grid">${hypotheses.map(hypothesisCard).join("")}</div>
+      <div class="profile-evidence-strip">
+        <span class="profile-evidence-label">Built from</span>
+        <div class="profile-evidence-track">
+          ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${title}</span>`).join("")}
+        </div>
+      </div>
 
-        <div class="sticky-action model-next">
-          <p><strong>Ready?</strong> Recommendations are the part that matters most. This profile can stay in the background.</p>
-          <div class="action-group">
-            <button class="primary-button" type="button" data-action="show-recs">View recommendations</button>
-            <button class="secondary-button" type="button" data-action="back-favorites">Edit favorites</button>
-          </div>
+      <div class="profile-map">
+        <aside class="profile-map-aside">
+          <span class="profile-aside-number">${hypotheses.length}</span>
+          <p>patterns currently shaping your recommendations</p>
+          <div class="profile-aside-note">not permanent labels ↗</div>
+        </aside>
+
+        <div class="signal-stack">
+          ${hypotheses.map(hypothesisCard).join("")}
+        </div>
+      </div>
+
+      <div class="profile-footer">
+        <span class="footer-note">useful if you are curious. invisible if you are not.</span>
+        <div class="action-group">
+          <button class="text-button" type="button" data-action="back-favorites">Edit favorites</button>
+          <button class="primary-button" type="button" data-action="show-recs">Back to recommendations →</button>
         </div>
       </div>
     </section>`;
@@ -511,62 +534,56 @@ function feedbackDetails(itemId, feedback) {
     </div>`;
 }
 
-function mediaArt(item) {
-  const initials = item.title
+function mediaArt(item, index) {
+  const shortTitle = item.title
+    .replace(/\b(the|a|an|of|in|and|at|to)\b/gi, "")
+    .trim()
     .split(/\s+/)
-    .filter(Boolean)
     .slice(0, 3)
-    .map((part) => part[0])
-    .join("");
+    .join(" ");
 
   return `
-    <div class="media-art media-art-${item.id}" aria-hidden="true">
-      <span class="media-art-grid"></span>
-      <span class="media-art-title">${item.surprise ? "SURPRISE" : initials}</span>
-      <span class="media-art-type">${item.medium}</span>
-    </div>`;
-}
-
-function recommendationCard(item) {
-  const heading = item.surprise ? "Surprise Me" : `#${item.rank}`;
+    <div class="editorial-art art-${item.id} art-layout-${(index % 4) + 1}" aria-hidden="true">
+      <span class="art-kicker">${item.medium}</span>
+      <span class="art-shape art-shape-a"></span>
+      <span class="art-shape art-shape-b"><function recommendationCard(item, index) {
   const saved = state.feedbackByRecommendation[item.id];
+  const layoutClass = item.surprise ? "rec-surprise" : `rec-layout-${index + 1}`;
 
   return `
-    <article class="recommendation-card ${item.surprise ? "surprise" : ""} ${saved ? "is-rated" : ""}" data-rec-id="${item.id}">
-      ${item.surprise ? `<span class="surprise-sticker" aria-hidden="true">TRY ME</span>` : ""}
-      <div class="card-top">
-        <span class="media-tag">${heading} · ${item.medium}</span>
-        ${saved
-          ? `<span class="rated-pill rated-${saved.rating}">✓ ${ratingLabel(saved.rating)}</span>`
-          : `<span class="fit-pill">${item.fit}</span>`}
-      </div>
+    <article class="editorial-rec ${layoutClass} ${saved ? "is-rated" : ""}" data-rec-id="${item.id}">
+      ${item.surprise ? `<span class="surprise-burst" aria-hidden="true">GO<br />WEIRD</span>` : ""}
 
-      <div class="card-content-grid">
-        <div class="card-copy">
+      ${mediaArt(item, index)}
+
+      <div class="editorial-rec-body">
+        <div class="editorial-rec-meta">
+          <span>${item.surprise ? "Surprise Me" : `Pick ${String(index + 1).padStart(2, "0")}`}</span>
+          <span>${item.medium}</span>
+        </div>
+
+        <div class="editorial-title-row">
           <h3>${item.title}</h3>
-          <p class="about">${item.about}</p>
-
-          <details class="why-details">
-            <summary>Why this recommendation?</summary>
-            <p>${item.reason}</p>
-          </details>
+          ${saved ? `<span class="reaction-stamp reaction-${saved.rating}">✓ ${ratingLabel(saved.rating)}</span>` : ""}
         </div>
 
-        ${mediaArt(item)}
-      </div>
+        <p class="editorial-about">${item.about}</p>
 
-      <div class="quick-feedback" aria-label="Rate ${item.title}">
-        <span class="quick-feedback-label">Your take</span>
-        <div class="rating-controls">
-          ${ratingButton(item.id, "more", "More like this", "👍", saved)}
-          ${ratingButton(item.id, "less", "Less like this", "👎", saved)}
-          ${ratingButton(item.id, "not-tried", "Haven't tried", "○", saved)}
+        <details class="editorial-why">
+          <summary>Why this one?</summary>
+          <p>${item.reason}</p>
+        </details>
+
+        <div class="reaction-rail" aria-label="Rate ${item.title}">
+          ${ratingButton(item.id, "more", "More", "👍", saved)}
+          ${ratingButton(item.id, "less", "Less", "👎", saved)}
+          ${ratingButton(item.id, "not-tried", "Not tried", "○", saved)}
         </div>
+
         ${feedbackDetails(item.id, saved)}
       </div>
     </article>`;
 }
-
 function renderRoundRefresh(roundTwo) {
   if (!currentRoundComplete()) return "";
 
@@ -600,41 +617,41 @@ function renderRecommendations() {
   const segments = items.map((_, index) => `<span class="progress-segment ${index < rated ? "is-filled" : ""}"></span>`).join("");
 
   return `
-    <section class="screen recommendations-screen">
-      <div class="screen-inner recommendations-inner">
-        <div class="recommendations-hero">
-          <div class="hero-copy">
-            <span class="hero-doodle hero-doodle-left" aria-hidden="true">⌁</span>
-            <p class="kicker">${roundTwo ? "Updated recommendations" : "Recommendations"}</p>
-            <h1>${roundTwo ? "A fresh set, tuned by your feedback." : "Your recommendations"}</h1>
-            <p class="lede">${roundTwo
-              ? "A little more you, now that Tastemake has a few reactions to work with."
-              : "Discover things that fit your taste. React as you go and Tastemake gets better at what it puts in front of you."}</p>
-            <span class="hero-doodle hero-doodle-right" aria-hidden="true">✦</span>
-          </div>
-
-          <div class="hero-progress">
-            <strong>${rated} of ${items.length} rated</strong>
-            <div class="progress-track" aria-hidden="true">${segments}</div>
-            <span class="progress-note">${currentRoundComplete() ? "ready for another set" : "a more you, coming right up."}</span>
-          </div>
+    <section class="recommendations-screen">
+      <div class="recommendations-masthead">
+        <div class="rec-masthead-copy">
+          <p class="kicker">${roundTwo ? "Fresh picks" : "For you right now"}</p>
+          <h1>${roundTwo ? "Okay, that changed things." : "Things worth your time."}</h1>
+          <p class="lede">${roundTwo
+            ? "A new set shaped by what you just told Tastemake."
+            : "Movies, shows, books, games, and the occasional curveball. React in one tap and keep moving."}</p>
         </div>
 
-        ${renderRoundRefresh(roundTwo)}
-
-        <div class="recommendation-grid">${items.map(recommendationCard).join("")}</div>
-
-        <div class="recommendation-footer">
-          <span class="footer-note">same taste. brighter days. ✦</span>
-          <div class="actions">
-            <button class="secondary-button" type="button" data-action="view-model">View Taste Profile</button>
-            <button class="text-button" type="button" data-action="back-favorites">Edit favorites</button>
+        <div class="rec-progress-card">
+          <div class="rec-progress-top">
+            <strong>${rated}/${items.length}</strong>
+            <span>rated</span>
           </div>
+          <div class="progress-track" aria-hidden="true">${segments}</div>
+          <div class="progress-note">${currentRoundComplete() ? "new set unlocked ↘" : "teach it by using it"}</div>
+        </div>
+      </div>
+
+      ${renderRoundRefresh(roundTwo)}
+
+      <div class="editorial-grid">
+        ${items.map(recommendationCard).join("")}
+      </div>
+
+      <div class="recommendation-footer">
+        <span class="footer-note">discover. react. repeat.</span>
+        <div class="actions">
+          <button class="secondary-button" type="button" data-action="view-model">See my Taste Profile</button>
+          <button class="text-button" type="button" data-action="back-favorites">Change favorites</button>
         </div>
       </div>
     </section>`;
 }
-
 function render() {
   const views = {
     favorites: renderFavorites,
