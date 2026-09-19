@@ -116,20 +116,62 @@ const recommendations = [
 ];
 
 const followUpPool = [
-  { id: "fargo", title: "Fargo", medium: "TV", hypotheses: ["H03", "H04"], reason: "Dark comedy and moral messiness give Tastemake two established signals to test together." },
+  {
+    id: "fargo",
+    title: "Fargo",
+    medium: "TV",
     about: "A crime anthology series mixing violence, moral messiness, eccentric characters, and very dark humor.",
-  { id: "handmaiden", title: "The Handmaiden", medium: "Movie", hypotheses: ["H03", "H01/H07"], reason: "Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum." },
+    hypotheses: ["H03", "H04"],
+    reason: "Dark comedy and moral messiness give Tastemake two established signals to test together."
+  },
+  {
+    id: "handmaiden",
+    title: "The Handmaiden",
+    medium: "Movie",
     about: "A stylized period thriller built around deception, shifting loyalties, and multiple reveals.",
-  { id: "golden-idol", title: "The Case of the Golden Idol", medium: "Game", hypotheses: ["H01/H07"], reason: "Highly structured deduction makes this a focused test of the discovery-needs-structure hypothesis." },
+    hypotheses: ["H03", "H01/H07"],
+    reason: "Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum."
+  },
+  {
+    id: "golden-idol",
+    title: "The Case of the Golden Idol",
+    medium: "Game",
     about: "A deduction game where you inspect frozen crime scenes and reconstruct exactly what happened.",
-  { id: "vita-nostra", title: "Vita Nostra", medium: "Book", hypotheses: ["H05", "H01/H07"], reason: "Adult fantastical material and demanding strangeness test two parts of the model at once." },
+    hypotheses: ["H01/H07"],
+    reason: "Highly structured deduction makes this a focused test of the discovery-needs-structure hypothesis."
+  },
+  {
+    id: "vita-nostra",
+    title: "Vita Nostra",
+    medium: "Book",
     about: "A strange adult fantasy about a student forced into a mysterious school that changes how she understands reality.",
-  { id: "lighthouse", title: "The Lighthouse", medium: "Movie", hypotheses: ["H04", "H09"], reason: "Black comedy, surrealism, and tonal collision make this useful when those signals are holding up." },
+    hypotheses: ["H05", "H01/H07"],
+    reason: "Adult fantastical material and demanding strangeness test two parts of the model at once."
+  },
+  {
+    id: "lighthouse",
+    title: "The Lighthouse",
+    medium: "Movie",
     about: "A surreal black-and-white psychological drama about two lighthouse keepers unraveling in isolation.",
-  { id: "yellowjackets", title: "Yellowjackets", medium: "TV", hypotheses: ["H03", "H09"], reason: "Messy characters, horror, and tonal shifts make this a broader cross-signal test." },
+    hypotheses: ["H04", "H09"],
+    reason: "Black comedy, surrealism, and tonal collision make this useful when those signals are holding up."
+  },
+  {
+    id: "yellowjackets",
+    title: "Yellowjackets",
+    medium: "TV",
     about: "A survival mystery following a girls soccer team after a crash and the adults they later become.",
-  { id: "dnd", title: "Dungeons & Dragons: Honor Among Thieves", medium: "Movie", hypotheses: ["H05", "H04"], reason: "Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional." }
+    hypotheses: ["H03", "H09"],
+    reason: "Messy characters, horror, and tonal shifts make this a broader cross-signal test."
+  },
+  {
+    id: "dnd",
+    title: "Dungeons & Dragons: Honor Among Thieves",
+    medium: "Movie",
     about: "A fast-moving fantasy adventure about a mismatched group of thieves trying to fix a very bad mistake.",
+    hypotheses: ["H05", "H04"],
+    reason: "Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional."
+  }
 ];
 
 const state = {
