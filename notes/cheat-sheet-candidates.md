@@ -108,3 +108,31 @@ This prevents post-hoc reranking and keeps the evaluation honest.
 A recommendation system should not only exploit the safest known preferences.
 
 A controlled "Surprise Me" slot can explore a less obvious hypothesis with bounded risk. If it works, the model learns a new region of taste. If it fails, the reaction should still reduce uncertainty.
+
+
+## Fit confidence vs. predicted enjoyment
+A recommendation model may know that an item matches a user's taste patterns without knowing whether that item will become a favorite.
+
+Tastemake Experiment 003 selected several good recommendations but consistently predicted `strong_positive` when the actual reaction was only `positive`.
+
+Product lesson:
+- **fit confidence** = how well the item matches the model;
+- **predicted enjoyment** = how strongly the user is expected to like it.
+
+Do not collapse those into one score.
+
+## Set quality vs. rank quality
+A recommender can choose a good group of items without proving that #1 is better than #4.
+
+If several selected items all get the same actual reaction, the experiment validates the **selection set** but not the exact ranking order.
+
+## Retroactive vs. live recommendation eval
+A retroactive eval asks whether the recommender would have selected items the user has already experienced.
+
+That is useful for cheap early validation, but it does not prove the system can recommend something genuinely new.
+
+A later live eval should test:
+- unseen items;
+- whether the user chooses to try them;
+- actual reaction afterward;
+- whether Surprise Me expands the model successfully.
