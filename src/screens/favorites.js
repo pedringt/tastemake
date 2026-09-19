@@ -7,9 +7,10 @@ const widthClasses = ["tile-w4", "tile-w2", "tile-w3", "tile-w3", "tile-w3", "ti
 function favoriteCard(item, originalIndex, visibleIndex) {
   const selected = state.selectedFavorites.has(item.id);
   const widthClass = widthClasses[visibleIndex % widthClasses.length];
+  const titleSafeClass = item.id === "starwars" ? "favorite-title-safe" : "";
 
   return `
-    <button class="favorite-tile ${widthClass} favorite-tone-${originalIndex + 1}" type="button" data-favorite="${item.id}" aria-pressed="${selected}">
+    <button class="favorite-tile ${widthClass} favorite-tone-${originalIndex + 1} ${titleSafeClass}" type="button" data-favorite="${item.id}" aria-pressed="${selected}">
       <span class="favorite-tape" aria-hidden="true"></span>
       <div class="favorite-tile-top">
         <span class="favorite-number">${String(originalIndex + 1).padStart(2, "0")}</span>

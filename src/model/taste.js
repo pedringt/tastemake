@@ -24,6 +24,7 @@ export function tasteDelta(feedback) {
 
 export function recommendationDelta(feedback) {
   if (!feedback) return 0;
+  if (feedback.detail === "too-obvious") return 0;
 
   let score = ({ more: 1, less: -1, "not-tried": 0 })[feedback.rating] || 0;
   const detailAdjustments = {
@@ -34,13 +35,16 @@ export function recommendationDelta(feedback) {
     "tried-disliked": -0.75,
     "not-interested": -0.5,
     "wrong-vibe": -0.75,
-    "too-obvious": -0.5,
     interested: 0.35,
     "maybe-interested": 0.1,
     "not-interested-untried": -0.35
   };
 
   return score + (detailAdjustments[feedback.detail] || 0);
+}
+
+export function recommendationQualityDelta(feedback) {
+  return feedback?.quality === "too-obvious" ? -0.5 : 0;
 }
 
 export function hypothesisMatches(itemHypotheses, hypothesisId) {

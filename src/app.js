@@ -64,10 +64,12 @@ function saveQuickFeedback(itemId, rating) {
   const item = activeRecommendations(state).find((rec) => rec.id === itemId);
   if (!item) return false;
 
+  const existing = state.feedbackByRecommendation[itemId];
   state.feedbackByRecommendation[itemId] = {
     item,
     rating,
-    detail: null
+    detail: null,
+    quality: existing?.quality || null
   };
 
   return true;
@@ -78,6 +80,14 @@ function saveFeedbackDetail(itemId, detail) {
   if (!existing) return false;
 
   existing.detail = existing.detail === detail ? null : detail;
+  return true;
+}
+
+function saveFeedbackQuality(itemId, quality) {
+  const existing = state.feedbackByRecommendation[itemId];
+  if (!existing) return false;
+
+  existing.quality = existing.quality === quality ? null : quality;
   return true;
 }
 
@@ -96,22 +106,31 @@ function renderPreservingCardPosition(itemId) {
   window.scrollBy({ top: afterTop - beforeTop, left: 0, behavior: "auto" });
 }
 
-function preserveSummaryPosition(summary) {
-  const beforeTop = summary.getBoundingClientRect().top;
-
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => {
-      if (!summary.isConnected) return;
-      const afterTop = summary.getBoundingClientRect().top;
-      const delta = afterTop - beforeTop;
-      if (Math.abs(delta) > 1) window.scrollBy({ top: delta, left: 0, behavior: "auto" });
-    });
+function closeWhyPopovers(except = null) {
+  document.querySelectorAll(".editorial-why.is-pinned").forEach((popover) => {
+    if (popover === except) return;
+    popover.classList.remove("is-pinned");
+    popover.querySelector(".why-trigger")?.setAttribute("aria-expanded", "false");
   });
 }
 
+function toggleWhyPopover(trigger) {
+  const wrapper = trigger.closest(".editorial-why");
+  if (!wrapper) return;
+
+  const shouldPin = !wrapper.classList.contains("is-pinned");
+  closeWhyPopovers(wrapper);
+  wrapper.classList.toggle("is-pinned", shouldPin);
+  trigger.setAttribute("aria-expanded", String(shouldPin));
+}
+
 app.addEventListener("click", (event) => {
-  const whySummary = event.target.closest(".editorial-why > summary");
-  if (whySummary) preserveSummaryPosition(whySummary);
+  const whyTrigger = event.target.closest(".why-trigger");
+  if (whyTrigger) {
+    toggleWhyPopover(whyTrigger);
+    return;
+  }
+
   const favorite = event.target.closest("[data-favorite]");
   if (favorite) {
     const id = favorite.dataset.favorite;
@@ -145,6 +164,13 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  const quality = event.target.closest("[data-feedback-quality][data-feedback-item]");
+  if (quality) {
+    const itemId = quality.dataset.feedbackItem;
+    if (saveFeedbackQuality(itemId, quality.dataset.feedbackQuality)) renderPreservingCardPosition(itemId);
+    return;
+  }
+
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
 
@@ -160,6 +186,8 @@ app.addEventListener("click", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  if (!event.target.closest(".editorial-why")) closeWhyPopovers();
+
   const jump = event.target.closest("[data-step-jump]");
   if (!jump) return;
 
@@ -168,6 +196,14 @@ document.addEventListener("click", (event) => {
 
   event.preventDefault();
   navigate(jump.dataset.stepJump);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  const trigger = document.querySelector(".editorial-why.is-pinned .why-trigger");
+  if (!trigger) return;
+  closeWhyPopovers();
+  trigger.focus({ preventScroll: true });
 });
 
 window.addEventListener("popstate", () => {

@@ -203,4 +203,4 @@ h3 { font-size:25px; line-height:1.05; margin-bottom:8px; }
   padding:28px;
 }
 
-button:focus-visible,a:focus-visible,summary:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:3px; }
+button:focus-visible,a:focus-visible,.why-trigger:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:3px; }

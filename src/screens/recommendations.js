@@ -46,8 +46,7 @@ function detailOptionsFor(feedback) {
     return [
       ["tried-disliked", "Tried it and disliked it"],
       ["not-interested", "Not interested"],
-      ["wrong-vibe", "Wrong vibe"],
-      ["too-obvious", "Too obvious"]
+      ["wrong-vibe", "Wrong vibe"]
     ];
   }
 
@@ -80,6 +79,19 @@ function feedbackDetails(itemId, feedback) {
           >${label}</button>
         `).join("")}
       </div>
+      <div class="recommendation-quality-note">
+        <span class="feedback-detail-prompt">Recommendation note. Optional.</span>
+        <div class="quality-note-row">
+          <button
+            class="detail-chip quality-chip"
+            type="button"
+            data-feedback-item="${itemId}"
+            data-feedback-quality="too-obvious"
+            aria-pressed="${feedback.quality === "too-obvious"}"
+          >Too obvious</button>
+          <span class="quality-note-help">The fit can be right even if the recommendation was not novel or useful.</span>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -105,6 +117,7 @@ function mediaArt(item, index) {
 function recommendationCard(item, index) {
   const saved = state.feedbackByRecommendation[item.id];
   const layoutClass = item.surprise ? "rec-surprise" : `rec-layout-${(index % 4) + 1}`;
+  const whyId = `why-${item.id}`;
 
   return `
     <article class="editorial-rec ${layoutClass} ${saved ? "is-rated" : ""}" data-rec-id="${item.id}">
@@ -125,10 +138,17 @@ function recommendationCard(item, index) {
 
         <p class="editorial-about">${item.about}</p>
 
-        <details class="editorial-why">
-          <summary>Why this one?</summary>
-          <p>${item.reason}</p>
-        </details>
+        <div class="editorial-why">
+          <button
+            class="why-trigger"
+            type="button"
+            aria-expanded="false"
+            aria-controls="${whyId}"
+          >Why this one?</button>
+          <div class="why-popover" id="${whyId}" role="tooltip">
+            <p>${item.reason}</p>
+          </div>
+        </div>
 
         <div class="reaction-rail" aria-label="Rate ${item.title}">
           ${ratingButton(item.id, "more", "More", "+", saved)}
@@ -164,7 +184,7 @@ function renderRoundRefresh(roundTwo) {
         <p>Another set would be shaped by everything you rated here. This prototype stops after two sets.</p>
         <span class="prototype-next-step" aria-hidden="true">Keep discovering &rarr;</span>
       </div>
-      <div class="action-group">
+      <div class="action-group recommendation-footer-actions">
         <button class="button button-secondary" type="button" data-action="view-model">See what Tastemake learned</button>
         <button class="button button-quiet" type="button" data-action="back-favorites">Change favorites</button>
       </div>
@@ -215,7 +235,7 @@ export function renderRecommendations() {
 
       <div class="recommendation-footer">
         <span class="footer-note">discover. react. repeat.</span>
-        <div class="action-group">
+        <div class="action-group recommendation-footer-actions">
           <button class="button button-secondary" type="button" data-action="view-model">See my Taste Profile</button>
           <button class="button button-quiet" type="button" data-action="back-favorites">Change favorites</button>
         </div>
