@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Tastemake prototype: an inspectable taste model that learns from recommendation feedback." />
+    <title>Tastemake Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="brand" type="button" data-action="go-home" aria-label="Go to Tastemake start">
+          <span class="brand-mark" aria-hidden="true">T</span>
+          <span class="brand-copy">
+            <strong>Tastemake</strong>
+            <small>Prototype v1</small>
+          </span>
+        </button>
+        <div class="prototype-label">Local prototype · no live AI calls</div>
+      </header>
+
+      <nav class="stepper" aria-label="Prototype progress">
+        <button class="step is-active" type="button" data-step-jump="favorites"><span>1</span>Favorites</button>
+        <button class="step" type="button" data-step-jump="model"><span>2</span>Taste Model</button>
+        <button class="step" type="button" data-step-jump="recommendations"><span>3</span>Recommendations</button>
+        <button class="step" type="button" disabled><span>4</span>Feedback</button>
+        <button class="step" type="button" disabled><span>5</span>Learned</button>
+      </nav>
+
+      <main id="app" tabindex="-1"></main>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
