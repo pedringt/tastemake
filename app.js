@@ -177,12 +177,6 @@ const followUpPool = [
 const state = {
   screen: "favorites",
   selectedFavorites: new Set(favorites.filter((item) => item.selected).map((item) => item.id)),
-  selectedRecommendation: null,
-  reaction: null,
-  recommendationQuality: null,
-  interest: null,
-  reason: "",
-  lastFeedback: null,
   feedbackByRecommendation: {},
   recommendationRound: 1
 };
@@ -198,11 +192,47 @@ function escapeHtml(value = "") {
     .replaceAll("'", "&#039;");
 }
 
-function feedbackDelta(feedback) {
-  if (feedback.reaction === "not-tried") return 0;
-  const reaction = ({ loved: 2, liked: 1, meh: -0.5, disliked: -1.5 })[feedback.reaction] || 0;
-  const quality = ({ good: 1, maybe: 0, bad: -1.5 })[feedback.quality] || 0;
-  return reaction + quality;
+function tasteDelta(feedback) {
+  if (!feedback || feedback.rating === "not-tried") return 0;
+
+  if (feedback.rating === "more") {
+    if (feedback.detail === "loved-before") return 2;
+    if (feedback.detail === "want-to-try") return 0;
+    if (feedback.detail === "surprising-fit") return 1.25;
+    if (feedback.detail === "exactly-my-taste") return 1.75;
+    return 0.75;
+  }
+
+  if (feedback.rating === "less") {
+    if (feedback.detail === "tried-disliked") return -2;
+    if (feedback.detail === "not-interested") return 0;
+    if (feedback.detail === "wrong-vibe") return -1.5;
+    if (feedback.detail === "too-obvious") return 0;
+    return -0.75;
+  }
+
+  return 0;
+}
+
+function recommendationDelta(feedback) {
+  if (!feedback) return 0;
+
+  let score = ({ more: 1, less: -1, "not-tried": 0 })[feedback.rating] || 0;
+  const detailAdjustments = {
+    "loved-before": 0.75,
+    "want-to-try": 0.5,
+    "surprising-fit": 0.5,
+    "exactly-my-taste": 0.75,
+    "tried-disliked": -0.75,
+    "not-interested": -0.5,
+    "wrong-vibe": -0.75,
+    "too-obvious": -0.5,
+    interested: 0.35,
+    "maybe-interested": 0.1,
+    "not-interested-untried": -0.35
+  };
+
+  return score + (detailAdjustments[feedback.detail] || 0);
 }
 
 function hypothesisMatches(itemHypotheses, hypothesisId) {
@@ -212,19 +242,43 @@ function hypothesisMatches(itemHypotheses, hypothesisId) {
 
 function hypothesisSignal(hypothesisId, feedbacks = Object.values(state.feedbackByRecommendation)) {
   return feedbacks.reduce((sum, feedback) => {
-    return hypothesisMatches(feedback.item.hypotheses, hypothesisId) ? sum + feedbackDelta(feedback) : sum;
+    return hypothesisMatches(feedback.item.hypotheses, hypothesisId) ? sum + recommendationDelta(feedback) : sum;
+  }, 0);
+}
+
+function tasteSignal(hypothesisId, feedbacks = Object.values(state.feedbackByRecommendation)) {
+  return feedbacks.reduce((sum, feedback) => {
+    return hypothesisMatches(feedback.item.hypotheses, hypothesisId) ? sum + tasteDelta(feedback) : sum;
   }, 0);
 }
 
 function modelUpdateFor(hypothesis) {
   const related = Object.values(state.feedbackByRecommendation).filter((feedback) => {
-    return feedback.reaction !== "not-tried" && hypothesisMatches(feedback.item.hypotheses, hypothesis.id);
+    return hypothesisMatches(feedback.item.hypotheses, hypothesis.id) && tasteDelta(feedback) !== 0;
   });
+
   if (!related.length) return { label: hypothesis.strength, status: hypothesis.status, note: null };
-  const signal = related.reduce((sum, feedback) => sum + feedbackDelta(feedback), 0);
-  if (signal >= 2) return { label: "Strengthened", status: "strengthened", note: `${related.length} experienced item${related.length === 1 ? "" : "s"} gave this idea more support.` };
-  if (signal <= -1.5) return { label: "Needs revision", status: "revision", note: `${related.length} experienced item${related.length === 1 ? "" : "s"} pushed against this idea.` };
-  return { label: "More conditional", status: "conditional", note: "Your reactions were mixed, so Tastemake should use this idea more cautiously." };
+
+  const signal = related.reduce((sum, feedback) => sum + tasteDelta(feedback), 0);
+  if (signal >= 1.5) {
+    return {
+      label: "Stronger",
+      status: "strengthened",
+      note: "Your reactions gave this pattern more support."
+    };
+  }
+  if (signal <= -1.5) {
+    return {
+      label: "Less certain",
+      status: "revision",
+      note: "Your reactions suggest this pattern should carry less weight."
+    };
+  }
+  return {
+    label: "Still learning",
+    status: "conditional",
+    note: "Your feedback added signal, but not enough to make this pattern much stronger or weaker yet."
+  };
 }
 
 function roundOneFeedback() {
@@ -236,13 +290,15 @@ function followUpRecommendations() {
     const score = item.hypotheses.reduce((sum, id) => sum + hypothesisSignal(id, roundOneFeedback()), 0);
     return { ...item, score };
   }).sort((a, b) => b.score - a.score);
+
   const top = scored.slice(0, 4).map((item, index) => ({
     ...item,
     rank: index + 1,
     fit: item.score > 1 ? "Stronger after feedback" : item.score < 0 ? "Cautious fit" : "Promising fit",
-    prediction: item.score > 1 ? "Likely to like" : "Worth testing",
+    prediction: item.score > 1 ? "Likely to fit" : "Worth testing",
     surprise: false
   }));
+
   const surpriseSource = scored.slice(4)[0] || scored[scored.length - 1];
   const surprise = {
     ...surpriseSource,
@@ -252,6 +308,7 @@ function followUpRecommendations() {
     surprise: true,
     reason: `${surpriseSource.reason} This is the less-obvious option for the next round.`
   };
+
   return [...top, surprise];
 }
 
@@ -267,29 +324,11 @@ function currentRoundComplete() {
   return currentRoundRatedCount() === activeRecommendations().length;
 }
 
-function startFeedback(id) {
-  state.selectedRecommendation = id;
-  const saved = state.feedbackByRecommendation[id];
-  state.reaction = saved?.reaction || null;
-  state.recommendationQuality = saved?.quality || null;
-  state.interest = saved?.interest || null;
-  state.reason = saved?.reason || "";
-  state.screen = "recommendations";
-  updateStepper();
-  render();
-  setTimeout(() => document.querySelector(".feedback-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-}
-
 function updateStepper() {
-  const order = ["favorites", "model", "recommendations", "changed"];
+  const order = ["favorites", "model", "recommendations"];
   const activeIndex = order.indexOf(state.screen);
   const hasEnoughFavorites = state.selectedFavorites.size >= 4;
-  const unlocked = [
-    true,
-    hasEnoughFavorites,
-    hasEnoughFavorites,
-    currentRoundComplete()
-  ];
+  const unlocked = [true, hasEnoughFavorites, hasEnoughFavorites];
 
   document.querySelectorAll(".step").forEach((step, index) => {
     step.disabled = !unlocked[index];
@@ -326,7 +365,7 @@ function renderFavorites() {
       <div class="screen-inner">
         <p class="kicker">Start with signal, not homework</p>
         <h1>Give Tastemake a few things you really like.</h1>
-        <p class="lede">You should not have to rebuild your entire media history. A small set of strong favorites is enough to form a first theory, then recommendations and feedback make it better.</p>
+        <p class="lede">You should not have to rebuild your entire media history. A small set of strong favorites is enough to start making recommendations, then your reactions make them better.</p>
 
         <div class="section-header">
           <div>
@@ -340,8 +379,11 @@ function renderFavorites() {
         </div>
 
         <div class="sticky-action">
-          <p><strong>${count} selected.</strong> Four is enough for this prototype.</p>
-          <button class="primary-button" type="button" data-action="build-model" ${count < 4 ? "disabled" : ""}>Build my Taste Model</button>
+          <p><strong>${count} selected.</strong> Four is enough to start. Your Taste Profile stays available if you want to inspect it.</p>
+          <div class="action-group">
+            <button class="primary-button" type="button" data-action="show-recs" ${count < 4 ? "disabled" : ""}>Get recommendations</button>
+            <button class="secondary-button" type="button" data-action="view-model" ${count < 4 ? "disabled" : ""}>Preview Taste Profile</button>
+          </div>
         </div>
       </div>
     </section>`;
@@ -352,13 +394,13 @@ function hypothesisCard(item) {
   return `
     <article class="hypothesis-card">
       <div class="card-top">
-        <span class="media-tag">Inferred · ${item.id}</span>
+        <span class="media-tag">Inferred pattern</span>
         <span class="status-pill ${update.status === "conditional" ? "conditional" : ""} ${update.status === "revision" ? "revision" : ""}">${update.label}</span>
       </div>
       <h3>${item.title}</h3>
       <p>${item.claim}</p>
-      <p class="hypothesis-evidence"><strong>Evidence:</strong> ${item.evidence}</p>
-      ${update.note ? `<p class="model-change"><strong>After feedback:</strong> ${update.note}</p>` : ""}
+      <p class="hypothesis-evidence"><strong>Based on:</strong> ${item.evidence}</p>
+      ${update.note ? `<p class="model-change"><strong>From your feedback:</strong> ${update.note}</p>` : ""}
     </article>`;
 }
 
@@ -367,28 +409,28 @@ function renderModel() {
   return `
     <section class="screen">
       <div class="screen-inner">
-        <p class="kicker">Your Taste Model</p>
-        <h1>Not a list of genres. A set of testable ideas.</h1>
-        <p class="lede">Tastemake keeps your explicit reactions separate from what it infers. The hypotheses below can strengthen, weaken, or change as recommendations succeed and fail.</p>
+        <p class="kicker">Your Taste Profile</p>
+        <h1>What Tastemake thinks tends to work for you.</h1>
+        <p class="lede">You do not need to manage this profile for Tastemake to work. It is here if you want to see the patterns behind your recommendations and how your feedback is affecting them.</p>
 
         <div class="evidence-panel">
-          <strong>What you explicitly told Tastemake</strong>
+          <strong>Favorites you gave Tastemake</strong>
           <div class="evidence-list">${selectedTitles.map((title) => `<span class="evidence-chip">${title}</span>`).join("")}</div>
         </div>
 
         <div class="section-header">
           <div>
-            <h2>What Tastemake currently thinks</h2>
-            <p>Strength describes how much evidence supports a hypothesis. It is not a claim that the system knows you with mathematical certainty.</p>
+            <h2>Patterns Tastemake is using</h2>
+            <p>These are working ideas, not permanent labels. Tastemake can strengthen or soften them as you react to recommendations.</p>
           </div>
         </div>
 
         <div class="hypothesis-grid">${hypotheses.map(hypothesisCard).join("")}</div>
 
         <div class="sticky-action model-next">
-          <p><strong>Next:</strong> See what Tastemake recommends from this model.</p>
+          <p><strong>Ready?</strong> Recommendations are the part that matters most. This profile can stay in the background.</p>
           <div class="action-group">
-            <button class="primary-button" type="button" data-action="show-recs">Show recommendations</button>
+            <button class="primary-button" type="button" data-action="show-recs">View recommendations</button>
             <button class="secondary-button" type="button" data-action="back-favorites">Edit favorites</button>
           </div>
         </div>
@@ -396,205 +438,164 @@ function renderModel() {
     </section>`;
 }
 
-function recommendationCard(item, { interactive = true } = {}) {
+function ratingLabel(value) {
+  return ({
+    more: "More like this",
+    less: "Less like this",
+    "not-tried": "Haven't tried"
+  })[value] || value;
+}
+
+function ratingButton(itemId, value, label, icon, saved) {
+  const pressed = saved?.rating === value;
+  return `
+    <button
+      class="rating-button"
+      type="button"
+      data-feedback-item="${itemId}"
+      data-rating="${value}"
+      aria-pressed="${pressed}"
+    ><span aria-hidden="true">${icon}</span><span>${label}</span></button>`;
+}
+
+function detailOptionsFor(feedback) {
+  if (!feedback) return [];
+
+  if (feedback.rating === "more") {
+    return [
+      ["loved-before", "Loved it before"],
+      ["want-to-try", "Want to try"],
+      ["surprising-fit", "Surprising fit"],
+      ["exactly-my-taste", "Exactly my taste"]
+    ];
+  }
+
+  if (feedback.rating === "less") {
+    return [
+      ["tried-disliked", "Tried it and disliked it"],
+      ["not-interested", "Not interested"],
+      ["wrong-vibe", "Wrong vibe"],
+      ["too-obvious", "Too obvious"]
+    ];
+  }
+
+  return [
+    ["interested", "Interested"],
+    ["maybe-interested", "Maybe"],
+    ["not-interested-untried", "Not interested"]
+  ];
+}
+
+function feedbackDetails(itemId, feedback) {
+  if (!feedback) return "";
+
+  const options = detailOptionsFor(feedback);
+  const prompt = feedback.rating === "not-tried"
+    ? "Interested in trying it? Optional."
+    : "Want to add a little context? Optional.";
+
+  return `
+    <div class="feedback-details">
+      <span class="feedback-detail-prompt">${prompt}</span>
+      <div class="detail-chip-row">
+        ${options.map(([value, label]) => `
+          <button
+            class="detail-chip"
+            type="button"
+            data-feedback-item="${itemId}"
+            data-feedback-detail="${value}"
+            aria-pressed="${feedback.detail === value}"
+          >${label}</button>
+        `).join("")}
+      </div>
+    </div>`;
+}
+
+function recommendationCard(item) {
   const heading = item.surprise ? "Surprise Me" : `#${item.rank}`;
   const saved = state.feedbackByRecommendation[item.id];
-  const interaction = interactive
-    ? `data-rate="${item.id}" role="button" tabindex="0" aria-label="${saved ? "Update rating for" : "Rate recommendation"}: ${item.title}"`
-    : "";
+
   return `
-    <article class="recommendation-card ${item.surprise ? "surprise" : ""} ${saved ? "is-rated" : ""}" ${interaction}>
+    <article class="recommendation-card ${item.surprise ? "surprise" : ""} ${saved ? "is-rated" : ""}" data-rec-id="${item.id}">
       <div class="card-top">
         <span class="media-tag">${heading} · ${item.medium}</span>
-        ${saved ? `<span class="rated-pill">Rated · ${prettyReaction(saved.reaction)}</span>` : `<span class="fit-pill">${item.fit}</span>`}
+        ${saved
+          ? `<span class="rated-pill rated-${saved.rating}">✓ ${ratingLabel(saved.rating)}</span>`
+          : `<span class="fit-pill">${item.fit}</span>`}
       </div>
+
       <h3>${item.title}</h3>
-      <p class="about"><strong>What it is:</strong> ${item.about}</p>
-      <p class="reason"><strong>Why Tastemake picked it:</strong> ${item.reason}</p>
-      <div class="rec-footer">
-        <div class="prediction">Predicted reaction: <strong>${item.prediction}</strong></div>
-        ${interactive ? `<button class="primary-button" type="button" data-rate="${item.id}">${saved ? "Update rating" : "Rate this recommendation"}</button>` : ""}
+      <p class="about">${item.about}</p>
+
+      <details class="why-details">
+        <summary>Why this recommendation?</summary>
+        <p>${item.reason}</p>
+      </details>
+
+      <div class="quick-feedback" aria-label="Rate ${item.title}">
+        <span class="quick-feedback-label">Your take</span>
+        <div class="rating-controls">
+          ${ratingButton(item.id, "more", "More like this", "👍", saved)}
+          ${ratingButton(item.id, "less", "Less like this", "👎", saved)}
+          ${ratingButton(item.id, "not-tried", "Haven't tried", "○", saved)}
+        </div>
+        ${feedbackDetails(item.id, saved)}
       </div>
     </article>`;
 }
 
-function reactionButton(value, label) {
-  return `<button class="option-button" type="button" data-reaction="${value}" aria-pressed="${state.reaction === value}">${label}</button>`;
-}
+function renderRoundRefresh(roundTwo) {
+  if (!currentRoundComplete()) return "";
 
-function qualityButton(value, label) {
-  return `<button class="option-button" type="button" data-quality="${value}" aria-pressed="${state.recommendationQuality === value}">${label}</button>`;
-}
-
-function interestButton(value, label) {
-  return `<button class="option-button" type="button" data-interest="${value}" aria-pressed="${state.interest === value}">${label}</button>`;
-}
-
-function feedbackIsComplete() {
-  return Boolean(state.reaction && (state.reaction === "not-tried" || state.recommendationQuality));
-}
-
-function renderFeedbackPanel(item) {
-  if (!item) return "";
-  const complete = feedbackIsComplete();
-  const untried = state.reaction === "not-tried";
-  return `
-    <section class="feedback-panel" aria-label="Rate ${item.title}">
-      <div class="feedback-panel-head">
+  if (!roundTwo) {
+    return `
+      <div class="refresh-banner">
         <div>
-          <p class="kicker">Rate this recommendation</p>
-          <h2>${item.title}</h2>
-          <p><strong>What it is:</strong> ${item.about}</p>
+          <span class="refresh-kicker">You have rated the full set</span>
+          <strong>Your next recommendations can be better now.</strong>
+          <p>Tastemake can use these signals to re-rank a fresh set. You do not need to review the model first.</p>
         </div>
-        <button class="secondary-button" type="button" data-action="close-feedback">Back to recommendations</button>
+        <button class="primary-button" type="button" data-action="refresh-recommendations">Refresh recommendations</button>
+      </div>`;
+  }
+
+  return `
+    <div class="refresh-banner is-finished">
+      <div>
+        <span class="refresh-kicker">Prototype round complete</span>
+        <strong>Tastemake would keep learning from here.</strong>
+        <p>This prototype stops after two recommendation sets. Your Taste Profile still reflects the useful feedback you gave.</p>
       </div>
-
-      <form class="feedback-form inline-feedback-form" data-feedback-form>
-        <div class="question">
-          <strong>How did you actually feel about it?</strong>
-          <div class="option-row">
-            ${reactionButton("loved", "Loved")}
-            ${reactionButton("liked", "Liked")}
-            ${reactionButton("meh", "Meh")}
-            ${reactionButton("disliked", "Disliked")}
-            ${reactionButton("not-tried", "Haven't tried")}
-          </div>
-        </div>
-
-        ${untried ? `
-          <div class="question">
-            <strong>Interested in trying it?</strong>
-            <p class="helper">Optional. This is only an interest signal, not evidence that you would actually like it.</p>
-            <div class="option-row">
-              ${interestButton("yes", "Yes")}
-              ${interestButton("maybe", "Maybe")}
-              ${interestButton("no", "No")}
-            </div>
-          </div>
-        ` : `
-          <div class="question">
-            <strong>Was this a good recommendation for you?</strong>
-            <div class="option-row">
-              ${qualityButton("good", "Good recommendation")}
-              ${qualityButton("maybe", "Maybe")}
-              ${qualityButton("bad", "Not a good recommendation")}
-            </div>
-          </div>
-        `}
-
-        <div class="question">
-          <label for="feedback-reason"><strong>Anything Tastemake should know?</strong></label>
-          <p class="helper">Optional. This is most useful when it explains something the rating alone would miss.</p>
-          <textarea id="feedback-reason" name="reason" placeholder="Optional reason">${escapeHtml(state.reason)}</textarea>
-        </div>
-
-        <div class="actions feedback-actions">
-          <button class="primary-button" type="submit" ${complete ? "" : "disabled"}>Save rating</button>
-          <button class="secondary-button" type="button" data-action="close-feedback">Cancel</button>
-        </div>
-      </form>
-    </section>`;
+      <button class="secondary-button" type="button" data-action="view-model">View Taste Profile</button>
+    </div>`;
 }
 
 function renderRecommendations() {
   const items = activeRecommendations();
   const rated = currentRoundRatedCount();
-  const complete = currentRoundComplete();
   const roundTwo = state.recommendationRound === 2;
-  const selected = items.find((item) => item.id === state.selectedRecommendation);
 
   return `
     <section class="screen">
       <div class="screen-inner">
-        <p class="kicker">${roundTwo ? "Updated recommendations · Round 2" : "Recommendations · Round 1"}</p>
-        <h1>${roundTwo ? "The model changed. So did the list." : "Recommendations you can react to."}</h1>
-        <p class="lede">${roundTwo ? "This set is re-ranked from your first round of feedback. Items you had not tried stayed unconfirmed instead of being treated as taste evidence." : "Rate these one at a time. After each rating, you come right back here. Once the round is complete, Tastemake shows what actually changed in your model."}</p>
+        <p class="kicker">${roundTwo ? "Updated recommendations" : "Recommendations"}</p>
+        <h1>${roundTwo ? "A fresh set, tuned by your feedback." : "See something you want more or less of? Just tap."}</h1>
+        <p class="lede">${roundTwo
+          ? "This set was re-ranked from your first round. Keep reacting and Tastemake keeps getting a clearer signal."
+          : "One tap is enough. Add context only when you feel like it. Tastemake uses those signals to improve what it shows you next."}</p>
 
-        <div class="round-progress"><strong>${rated} of ${items.length} rated</strong><span>${complete ? "Round complete" : "Rate the set to give Tastemake enough evidence to revise the model."}</span></div>
+        <div class="round-progress">
+          <strong>${rated} of ${items.length} rated</strong>
+          <span>${currentRoundComplete() ? "Ready for the next set." : "Your recommendation order stays put while you rate."}</span>
+        </div>
 
-        ${selected ? renderFeedbackPanel(selected) : ""}
+        ${renderRoundRefresh(roundTwo)}
 
         <div class="recommendation-grid">${items.map(recommendationCard).join("")}</div>
 
         <div class="actions">
-          ${complete ? `<button class="primary-button" type="button" data-action="view-round-summary">See what changed</button>` : ""}
-          <button class="secondary-button" type="button" data-action="back-model">View Taste Model</button>
-        </div>
-      </div>
-    </section>`;
-}
-
-function prettyReaction(value) {
-  return ({ loved: "Loved", liked: "Liked", meh: "Meh", disliked: "Disliked", "not-tried": "Haven't tried" })[value] || value;
-}
-
-function prettyQuality(value) {
-  return ({ good: "Good recommendation", maybe: "Maybe", bad: "Not a good recommendation" })[value] || value;
-}
-
-function prettyInterest(value) {
-  return ({ yes: "Interested", maybe: "Maybe interested", no: "Not interested" })[value] || value;
-}
-
-function renderChanged() {
-  if (!currentRoundComplete()) {
-    return `
-      <section class="screen">
-        <div class="screen-inner">
-          <p class="kicker">What Changed</p>
-          <h1>Finish the recommendation round first.</h1>
-          <p class="lede">Tastemake waits for the full set so it can show patterns across your feedback instead of overreacting to one item.</p>
-          <div class="actions"><button class="primary-button" type="button" data-action="back-recommendations">Back to recommendations</button></div>
-        </div>
-      </section>`;
-  }
-
-  const roundFeedback = activeRecommendations().map((item) => state.feedbackByRecommendation[item.id]).filter(Boolean);
-  const experienced = roundFeedback.filter((item) => item.reaction !== "not-tried");
-  const positive = experienced.filter((item) => ["loved", "liked"].includes(item.reaction)).length;
-  const negative = experienced.filter((item) => ["meh", "disliked"].includes(item.reaction)).length;
-  const untried = roundFeedback.length - experienced.length;
-  const good = experienced.filter((item) => item.quality === "good").length;
-  const bad = experienced.filter((item) => item.quality === "bad").length;
-  const changes = hypotheses
-    .map((item) => ({ item, update: modelUpdateFor(item), signal: Math.abs(hypothesisSignal(item.id)) }))
-    .filter((entry) => entry.update.note)
-    .sort((a, b) => b.signal - a.signal);
-  const lead = changes[0];
-
-  return `
-    <section class="screen">
-      <div class="screen-inner">
-        <p class="kicker">What Changed · Round ${state.recommendationRound}</p>
-        <h1>Here is what your feedback actually changed.</h1>
-        <p class="lede">Tastemake combines the whole round before revising its model. Things you have not tried stay unconfirmed instead of becoming evidence about your taste.</p>
-
-        <div class="learning-grid">
-          <article class="learning-card">
-            <span class="label">Your feedback</span>
-            <strong>${experienced.length} tried · ${untried} untried</strong>
-            <p>${positive} positive reaction${positive === 1 ? "" : "s"} · ${negative} weak/negative. ${good} good recommendation${good === 1 ? "" : "s"}${bad ? ` · ${bad} poor recommendation${bad === 1 ? "" : "s"}` : ""}.</p>
-          </article>
-          <article class="learning-card highlight">
-            <span class="label">What got clearer</span>
-            <strong>${lead ? lead.item.title : "No strong model change yet"}</strong>
-            <p>${lead?.update.note || "There was not enough experienced-item feedback in this round to justify changing a taste hypothesis."}</p>
-          </article>
-          <article class="learning-card">
-            <span class="label">What happens next</span>
-            <strong>Recommendations re-rank</strong>
-            <p>Supported patterns move up. Weak patterns move down. Untried items remain open questions rather than being counted as likes or dislikes.</p>
-          </article>
-        </div>
-
-        <div class="callout">
-          <strong>The model changes only when your actual experience supports it.</strong>
-          <p>Interest in an unfamiliar recommendation can help with discovery, but Tastemake keeps that separate from evidence about what you enjoy.</p>
-        </div>
-
-        <div class="actions">
-          <button class="primary-button" type="button" data-action="view-model">See updated Taste Model</button>
-          ${state.recommendationRound === 1 ? `<button class="secondary-button" type="button" data-action="next-round">Get new recommendations</button>` : `<button class="secondary-button" type="button" data-action="back-recommendations">Back to recommendations</button>`}
+          <button class="secondary-button" type="button" data-action="view-model">View Taste Profile</button>
+          <button class="text-button" type="button" data-action="back-favorites">Edit favorites</button>
         </div>
       </div>
     </section>`;
@@ -604,58 +605,45 @@ function render() {
   const views = {
     favorites: renderFavorites,
     model: renderModel,
-    recommendations: renderRecommendations,
-    changed: renderChanged
+    recommendations: renderRecommendations
   };
   app.innerHTML = views[state.screen]();
 }
 
-function resetFeedback() {
-  state.reaction = null;
-  state.recommendationQuality = null;
-  state.interest = null;
-  state.reason = "";
-}
-
-function saveCurrentFeedbackIfComplete() {
-  if (!state.selectedRecommendation || !feedbackIsComplete()) return false;
-  const item = activeRecommendations().find((rec) => rec.id === state.selectedRecommendation);
+function saveQuickFeedback(itemId, rating) {
+  const item = activeRecommendations().find((rec) => rec.id === itemId);
   if (!item) return false;
 
-  const saved = {
+  state.feedbackByRecommendation[itemId] = {
     item,
-    reaction: state.reaction,
-    quality: state.reaction === "not-tried" ? null : state.recommendationQuality,
-    interest: state.reaction === "not-tried" ? state.interest : null,
-    reason: state.reason.trim()
+    rating,
+    detail: null
   };
 
-  state.feedbackByRecommendation[item.id] = saved;
-  state.lastFeedback = saved;
   return true;
 }
 
-function syncFeedbackControls() {
-  document.querySelectorAll("[data-reaction]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.reaction === state.reaction));
-  });
-  document.querySelectorAll("[data-quality]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.quality === state.recommendationQuality));
-  });
-  document.querySelectorAll("[data-interest]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.interest === state.interest));
-  });
+function saveFeedbackDetail(itemId, detail) {
+  const existing = state.feedbackByRecommendation[itemId];
+  if (!existing) return false;
 
-  const submit = document.querySelector('[data-feedback-form] button[type="submit"]');
-  if (submit) submit.disabled = !feedbackIsComplete();
+  existing.detail = existing.detail === detail ? null : detail;
+  return true;
 }
 
-function closeFeedback({ save = true } = {}) {
-  if (save) saveCurrentFeedbackIfComplete();
-  state.selectedRecommendation = null;
-  resetFeedback();
+function renderPreservingCardPosition(itemId) {
+  const before = document.querySelector(`[data-rec-id="${itemId}"]`);
+  const beforeTop = before?.getBoundingClientRect().top;
+
   updateStepper();
   render();
+
+  if (beforeTop === undefined) return;
+  const after = document.querySelector(`[data-rec-id="${itemId}"]`);
+  if (!after) return;
+
+  const afterTop = after.getBoundingClientRect().top;
+  window.scrollBy({ top: afterTop - beforeTop, left: 0, behavior: "auto" });
 }
 
 app.addEventListener("click", (event) => {
@@ -669,36 +657,21 @@ app.addEventListener("click", (event) => {
     return;
   }
 
-  const rate = event.target.closest("[data-rate]");
-  if (rate) {
-    startFeedback(rate.dataset.rate);
+  const rating = event.target.closest("[data-rating][data-feedback-item]");
+  if (rating) {
+    const itemId = rating.dataset.feedbackItem;
+    if (saveQuickFeedback(itemId, rating.dataset.rating)) {
+      renderPreservingCardPosition(itemId);
+    }
     return;
   }
 
-  const reaction = event.target.closest("[data-reaction]");
-  if (reaction) {
-    state.reaction = reaction.dataset.reaction;
-    if (state.reaction === "not-tried") state.recommendationQuality = null;
-    else state.interest = null;
-    saveCurrentFeedbackIfComplete();
-    render();
-    setTimeout(() => document.querySelector(".feedback-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-    return;
-  }
-
-  const quality = event.target.closest("[data-quality]");
-  if (quality) {
-    state.recommendationQuality = quality.dataset.quality;
-    saveCurrentFeedbackIfComplete();
-    syncFeedbackControls();
-    return;
-  }
-
-  const interest = event.target.closest("[data-interest]");
-  if (interest) {
-    state.interest = interest.dataset.interest;
-    saveCurrentFeedbackIfComplete();
-    syncFeedbackControls();
+  const detail = event.target.closest("[data-feedback-detail][data-feedback-item]");
+  if (detail) {
+    const itemId = detail.dataset.feedbackItem;
+    if (saveFeedbackDetail(itemId, detail.dataset.feedbackDetail)) {
+      renderPreservingCardPosition(itemId);
+    }
     return;
   }
 
@@ -706,59 +679,22 @@ app.addEventListener("click", (event) => {
   if (!action) return;
 
   if (action === "go-home" || action === "back-favorites") setScreen("favorites");
-  if (action === "build-model" && state.selectedFavorites.size >= 4) setScreen("model");
-  if (action === "show-recs") setScreen("recommendations");
-  if (action === "back-model" || action === "view-model") setScreen("model");
-  if (action === "close-feedback") closeFeedback({ save: true });
-  if (action === "back-recommendations") setScreen("recommendations");
-  if (action === "view-round-summary" && currentRoundComplete()) setScreen("changed");
-  if (action === "next-round") {
+  if (action === "view-model" && state.selectedFavorites.size >= 4) setScreen("model");
+  if (action === "show-recs" && state.selectedFavorites.size >= 4) setScreen("recommendations");
+
+  if (action === "refresh-recommendations" && currentRoundComplete() && state.recommendationRound === 1) {
     state.recommendationRound = 2;
-    state.selectedRecommendation = null;
-    state.lastFeedback = null;
-    resetFeedback();
     setScreen("recommendations");
-  }
-});
-
-app.addEventListener("input", (event) => {
-  if (!event.target.matches("#feedback-reason")) return;
-  state.reason = event.target.value;
-  saveCurrentFeedbackIfComplete();
-});
-
-app.addEventListener("submit", (event) => {
-  if (!event.target.matches("[data-feedback-form]")) return;
-  event.preventDefault();
-  if (!saveCurrentFeedbackIfComplete()) return;
-
-  const roundComplete = currentRoundComplete();
-  state.selectedRecommendation = null;
-  resetFeedback();
-
-  if (roundComplete) setScreen("changed");
-  else {
-    state.screen = "recommendations";
-    updateStepper();
-    render();
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 });
 
 document.addEventListener("click", (event) => {
   const jump = event.target.closest("[data-step-jump]")?.dataset.stepJump;
   if (!jump) return;
+
   if (jump === "favorites") setScreen("favorites");
   if (jump === "model" && state.selectedFavorites.size >= 4) setScreen("model");
   if (jump === "recommendations" && state.selectedFavorites.size >= 4) setScreen("recommendations");
-  if (jump === "changed" && currentRoundComplete()) setScreen("changed");
-});
-
-app.addEventListener("keydown", (event) => {
-  const card = event.target.closest(".recommendation-card[data-rate]");
-  if (!card || !["Enter", " "].includes(event.key)) return;
-  event.preventDefault();
-  startFeedback(card.dataset.rate);
 });
 
 updateStepper();
