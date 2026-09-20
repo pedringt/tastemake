@@ -221,82 +221,63 @@ button:focus-visible,a:focus-visible,.why-trigger:focus-visible { outline:3px so
   box-shadow:inset 0 0 0 5px rgba(255,255,255,.12),0 14px 34px rgba(17,26,75,.12);
 }
 .favorites-screen > :not(.sticker-field),.profile-screen > :not(.sticker-field),.recommendations-screen > :not(.sticker-field) { position:relative; z-index:2; }
+/* Collage frame: every board reserves side gutters and top/bottom bands for decoration.
+   Content never enters the frame and stickers never leave it, so nothing can cover text.
+   Sizes and positions are relative to the gutter/band, so they hold at any width. */
+.favorites-screen,.profile-screen,.recommendations-screen {
+  --gutter:clamp(40px,5.6vw,96px);
+  --band:clamp(54px,6.6vw,96px);
+  padding:var(--band) var(--gutter);
+}
 .sticker-field { position:absolute; inset:0; z-index:1; pointer-events:none; overflow:visible; }
 .sticker {
   position:absolute;
-  display:grid;
-  place-items:center;
-  border:2px solid var(--navy);
-  box-shadow:3px 4px 0 rgba(17,26,75,.17);
-  font-weight:800;
-  line-height:1;
-  color:var(--navy);
+  display:block;
+  aspect-ratio:var(--ar);
+  transform:translate(-50%,-50%) rotate(var(--r,0deg));
+  filter:drop-shadow(1px 2px 0 rgba(17,26,75,.16)) drop-shadow(0 3px 3px rgba(66,39,19,.24));
 }
-.sticker-star { width:62px; height:62px; left:-22px; top:132px; background:var(--yellow); clip-path:polygon(50% 0,61% 34%,98% 35%,68% 56%,79% 93%,50% 72%,21% 93%,32% 56%,2% 35%,39% 34%); border:0; font-size:0; transform:rotate(-13deg); }
-.sticker-zap { width:54px; height:54px; right:-18px; top:250px; border-radius:16px 45% 18px 42%; background:var(--cyan); font-size:28px; transform:rotate(13deg); }
-.sticker-dot { width:34px; height:34px; left:34px; bottom:154px; border-radius:50%; background:var(--pink); box-shadow:3px 4px 0 rgba(17,26,75,.17),inset 0 0 0 7px #fff; }
-.sticker-label { right:24px; bottom:92px; min-width:108px; min-height:36px; padding:7px 12px; background:#fff; font-size:10px; letter-spacing:.10em; transform:rotate(-6deg); }
-.sticker-squiggle { left:7%; top:48%; border:0; box-shadow:none; background:transparent; color:var(--violet); font-family:var(--hand); font-size:42px; transform:rotate(86deg); }
-.sticker-flower { right:5%; top:47%; width:52px; height:52px; border-radius:50%; background:var(--pink-soft); color:var(--pink); font-size:34px; transform:rotate(11deg); }
-.sticker-diamond { left:2%; top:70%; width:40px; height:40px; border:0; background:var(--lime); font-size:26px; transform:rotate(16deg); }
-.sticker-mini { right:2%; top:72%; width:44px; height:28px; border-radius:999px; background:var(--violet-soft); color:#584bb5; font-size:10px; letter-spacing:.08em; transform:rotate(8deg); }
-.sticker-heart { left:-12px; top:38%; width:34px; height:30px; border-radius:10px; background:#fff; color:var(--pink); font-size:19px; transform:rotate(-9deg); }
-.sticker-bolt { right:-11px; top:58%; width:30px; height:38px; border-radius:9px; background:var(--yellow); color:#584bb5; font-size:20px; transform:rotate(10deg); }
-.sticker-ticket { left:-8px; top:82%; width:66px; height:28px; border:1px dashed var(--navy); background:#fff8cf; color:#4053af; font-family:var(--hand); font-size:12px; transform:rotate(5deg); }
-.sticker-pin { width:14px; height:14px; border-radius:50%; border:2px solid #fff; background:var(--pink); box-shadow:0 2px 3px rgba(17,26,75,.25); }
-.sticker-spark { width:26px; height:26px; border:0; box-shadow:none; background:transparent; color:var(--yellow); font-size:24px; }
-.sticker-scrap { width:64px; height:22px; border:1px solid rgba(17,26,75,.28); background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 9px,rgba(255,227,110,.82) 9px 18px); }
-.sticker-ring { width:30px; height:30px; border:5px solid var(--cyan); border-radius:50%; background:transparent; box-shadow:none; }
-/* Keep the collage dense, but treat decorations as board-level framing rather than UI. */
-.sticker-field-favorites .sticker-label { top:18px; right:-10px; bottom:auto; }
-.sticker-field-favorites .sticker-star { left:auto; right:22%; top:42px; }
-.sticker-field-favorites .sticker-zap { right:-18px; top:324px; }
-.sticker-field-favorites .sticker-dot { left:auto; right:15%; top:304px; bottom:auto; }
-.sticker-field-favorites .sticker-squiggle { left:auto; right:18%; top:252px; transform:rotate(-8deg); }
-.sticker-field-favorites .sticker-flower { right:30%; top:292px; }
-.sticker-field-favorites .sticker-diamond { left:auto; right:4%; top:338px; }
-.sticker-field-favorites .sticker-mini { right:24%; top:344px; }
-.sticker-field-favorites .sticker-heart { left:auto; right:36%; top:250px; }
-.sticker-field-favorites .sticker-bolt { right:2%; top:286px; }
-.sticker-field-favorites .sticker-ticket { left:auto; right:10%; top:226px; }
-.pin-fav-a { left:auto; right:39%; top:26px; }
-.pin-fav-b { right:31%; top:88px; background:var(--cyan); }
-.spark-fav { right:13%; top:118px; transform:rotate(15deg); }
-.scrap-fav { right:4%; top:170px; transform:rotate(-4deg); }
-.ring-fav { left:auto; right:27%; top:178px; transform:rotate(8deg); }
+.sticker svg { display:block; width:100%; height:100%; overflow:visible; }
+.sticker-zone-l,.sticker-zone-r { width:calc(var(--gutter) * var(--f)); top:var(--p); }
+.sticker-zone-l { left:calc(var(--gutter) / 2 + var(--n,0px)); }
+.sticker-zone-r { left:calc(100% - var(--gutter) / 2 + var(--n,0px)); }
+.sticker-zone-t,.sticker-zone-b { height:calc(var(--band) * var(--f)); left:var(--p); }
+.sticker-zone-t { top:calc(var(--band) / 2 + var(--n,0px)); }
+.sticker-zone-b { top:calc(100% - var(--band) / 2 + var(--n,0px)); }
 
-.sticker-field-profile .sticker-star { top:132px; left:-28px; }
-.sticker-field-profile .sticker-zap { top:330px; right:-24px; }
-.sticker-field-profile .sticker-dot { left:-16px; top:520px; bottom:auto; }
-.sticker-field-profile .sticker-label { top:24px; right:16px; bottom:auto; background:var(--cyan-soft); }
-.sticker-field-profile .sticker-squiggle { left:auto; right:-16px; top:610px; transform:rotate(5deg); }
-.sticker-field-profile .sticker-flower { right:-22px; top:760px; }
-.sticker-field-profile .sticker-diamond { left:-16px; top:880px; }
-.sticker-field-profile .sticker-mini { right:-14px; top:1030px; }
-.sticker-field-profile .sticker-heart { left:-18px; top:1180px; }
-.sticker-field-profile .sticker-bolt { right:-14px; top:1320px; }
-.sticker-field-profile .sticker-ticket { left:-22px; top:1460px; }
-.pin-profile-a { left:31%; top:14px; background:var(--violet); }
-.spark-profile { right:28%; top:14px; color:var(--lime); transform:rotate(-8deg); }
-.scrap-profile { right:10%; top:132px; transform:rotate(5deg); background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 9px,rgba(255,227,246,.9) 9px 18px); }
-.ring-profile { left:24%; top:16px; border-color:var(--yellow); }
+/* One shared look: white die-cut border on vinyl, thin ink edge on paper, same soft shadow. */
+.sticker .o { fill:#fff; stroke:#fff; stroke-width:5; stroke-linejoin:round; }
+.sticker .pp { stroke:rgba(17,26,75,.3); stroke-width:.8; }
+.sticker .hand { font-family:var(--hand); }
+.sticker .display { font-family:var(--display); font-weight:700; letter-spacing:.06em; }
 
-.sticker-field-recommendations .sticker-star { top:144px; left:-26px; }
-.sticker-field-recommendations .sticker-zap { right:-22px; top:318px; }
-.sticker-field-recommendations .sticker-dot { left:-16px; top:570px; bottom:auto; }
-.sticker-field-recommendations .sticker-label { top:24px; right:16px; bottom:auto; background:var(--yellow); }
-.sticker-field-recommendations .sticker-squiggle { left:auto; right:-14px; top:760px; transform:rotate(-6deg); }
-.sticker-field-recommendations .sticker-flower { right:-22px; top:980px; }
-.sticker-field-recommendations .sticker-diamond { left:-18px; top:1160px; }
-.sticker-field-recommendations .sticker-mini { right:-14px; top:1360px; }
-.sticker-field-recommendations .sticker-heart { left:-18px; top:1540px; }
-.sticker-field-recommendations .sticker-bolt { right:-14px; top:1720px; }
-.sticker-field-recommendations .sticker-ticket { left:-24px; top:1880px; }
-.pin-rec-a { left:32%; top:14px; background:var(--coral); }
-.pin-rec-b { right:31%; top:18px; background:var(--lime); }
-.spark-rec { right:18%; top:14px; color:var(--pink); transform:rotate(10deg); }
-.scrap-rec { right:7%; top:116px; transform:rotate(-5deg); background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 9px,rgba(220,251,253,.95) 9px 18px); }
-.ring-rec { left:22%; top:16px; border-color:var(--violet); }
+/* Neon: glowing tube lettering on a black paper scrap. Static, so no motion to opt out of. */
+.st-neon {
+  --c:var(--pink);
+  box-sizing:border-box;
+  border:3px solid #fff;
+  border-radius:10px 13px 9px 12px;
+  background:radial-gradient(circle at 28% 18%,#33206f,#0c0a28 74%);
+}
+.st-neon svg { position:absolute; left:8.3%; top:8.3%; width:83.4%; height:83.4%; }
+.st-neon-more svg,.st-neon-repeat svg,.st-neon-taste svg { left:2.9%; top:7.4%; width:94.2%; height:85.2%; }
+.st-neon::before {
+  content:"";
+  position:absolute;
+  left:50%;
+  top:-4px;
+  width:34%;
+  height:9px;
+  background:rgba(255,227,110,.92);
+  border:1px solid rgba(17,26,75,.25);
+  transform:translateX(-50%) rotate(-4deg);
+}
+.sticker .neon { filter:drop-shadow(0 0 1.5px var(--c)) drop-shadow(0 0 5px var(--c)); }
+.tube-glow * { fill:none; stroke:var(--c); stroke-width:3.4; stroke-linecap:round; stroke-linejoin:round; }
+.tube-core * { fill:none; stroke:#fff; stroke-width:1.2; stroke-linecap:round; stroke-linejoin:round; }
+.tube-glow text { stroke-width:2.2; }
+.tube-core text { fill:#fff; stroke:none; }
+.neon-word { font-family:var(--display); font-weight:700; letter-spacing:.02em; }
 
 /* Cards read like pinned/taped objects sitting on the board. */
 .favorite-tile,.editorial-rec,.profile-map-aside,.signal-row,.rec-progress-card,.profile-evidence-strip,.filter-band,.favorites-footer,.recommendation-footer,.profile-footer {

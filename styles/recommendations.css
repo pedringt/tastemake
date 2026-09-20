@@ -1,27 +1,12 @@
-.recommendations-screen { padding:18px 8px 32px; }
 .recommendations-masthead {
   position:relative;
   display:grid;
   grid-template-columns:minmax(0,1fr) 250px;
   gap:46px;
   align-items:end;
-  margin:12px 20px 28px;
+  margin:12px 0 28px;
 }
 .recommendations-masthead > * { position:relative; z-index:1; }
-.recommendations-masthead::before {
-  content:"";
-  position:absolute;
-  right:268px;
-  top:-9px;
-  width:48px;
-  height:48px;
-  border-radius:52% 48% 61% 39% / 37% 58% 42% 63%;
-  background:var(--lime);
-  border:2px solid rgba(17,26,75,.55);
-  transform:rotate(17deg);
-  opacity:.72;
-  pointer-events:none;
-}
 .rec-masthead-copy h1 { max-width:900px; }
 .rec-progress-card {
   position:relative;
@@ -243,7 +228,7 @@
 .surprise-burst {
   position:absolute;
   z-index:6;
-  right:-12px;
+  right:6px;
   top:-14px;
   width:84px;
   height:84px;

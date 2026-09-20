@@ -1,39 +1,12 @@
-.favorites-screen { padding:24px 8px 32px; }
 .favorites-hero {
   position:relative;
   display:grid;
   grid-template-columns:minmax(0,1fr) 220px;
   gap:44px;
   align-items:end;
-  margin:10px 22px 28px;
+  margin:10px 0 28px;
 }
 .favorites-hero > * { position:relative; z-index:1; }
-.favorites-hero::before {
-  content:"";
-  position:absolute;
-  right:245px;
-  top:-8px;
-  width:46px;
-  height:46px;
-  background:var(--pink);
-  opacity:.78;
-  clip-path:polygon(50% 0%,61% 30%,88% 12%,75% 40%,100% 50%,72% 60%,88% 88%,61% 72%,50% 100%,39% 72%,12% 88%,28% 60%,0% 50%,25% 40%,12% 12%,39% 30%);
-  transform:rotate(12deg);
-  pointer-events:none;
-}
-.favorites-hero::after {
-  content:"";
-  position:absolute;
-  right:22px;
-  bottom:-5px;
-  width:72px;
-  height:18px;
-  border:1px solid rgba(17,26,75,.3);
-  background:repeating-linear-gradient(135deg,rgba(32,217,232,.7) 0 8px,rgba(255,255,255,.75) 8px 16px);
-  transform:rotate(-5deg);
-  opacity:.75;
-  pointer-events:none;
-}
 .favorites-hero h1 { max-width:900px; }
 .marker-word {
   position:relative;
