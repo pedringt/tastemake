@@ -61,21 +61,31 @@ Requirements:
 Purpose: capture stronger signal without requiring a survey.
 
 Requirements:
-- After the primary reaction, offer optional one-tap context chips.
-- Examples for More like this: Loved it before, Want to try, Surprising fit, Exactly my taste.
-- Examples for Less like this: Tried it and disliked it, Not interested, Wrong vibe, Too obvious.
-- For Haven't tried, optionally capture interest: Interested, Maybe, Not interested.
-- Treat optional context according to what it actually means. Interest is not the same as enjoyment.
+- After the primary reaction, offer optional one-tap context chips that say what each row is for.
+- More like this: Loved it before, Liked it before ("Already tried it? Tell us how it went.").
+- Less like this: Tried it and disliked it, Not interested.
+- Haven't tried: Bookmark it (a save marker, see Bookmarks below). There is no Interested / Maybe.
+- Discovery note (optional, about the pick and not about taste): Too predictable; Surprised me, which is offered only after Loved / Liked it before. Recorded, but it does not change taste or ranking.
+- **Taste evidence rule:** only Loved it before, Liked it before and Tried it and disliked it count as taste evidence. Every other reaction, including a plain More or Less and a bookmark, steers what comes next but never changes the Taste Profile's "Stronger / Less certain" labels. You cannot know a pick fits until you have tried it.
+
+## Bookmarks
+- One Bookmark replaces the earlier Up Next and Interested ideas. It is offered only on picks marked Haven't tried.
+- Own page and nav tab, hidden until something is saved, with a count.
+- Loved it / Liked it / Didn't like it turns a bookmark into a real reaction (which then counts as taste evidence and records that it was bookmarked first); Remove bookmark leaves the pick untried.
+- A bookmark has no taste weight and only a small steering nudge.
 
 ## Recommendation refresh
 Purpose: show that feedback improves the next set without forcing a separate learning screen.
 
 Requirements:
 - Show progress such as "3 of 5 rated."
-- When the set is complete, offer a direct recommendation refresh.
-- Re-rank the next set from the feedback signals.
+- Offer Keep discovering after any reaction, not only when every card is rated.
+- Re-rank the next set from the feedback signals; never repeat a pick; when the small hand-written pool runs out, say so honestly.
 - Do not require a "What Changed" / "Learned" screen.
-- Keep the Taste Profile available for users who want to inspect model changes.
+- Keep the Taste Profile available for users who want to inspect model changes. It shows taste from things the user has tried, and shows reactions to untried picks separately as a "lean", clearly labeled as not taste.
+
+## Keeping the user's place
+- After any action the screen is rebuilt; keyboard focus returns to the control that was used (or to the next sensible target if it is gone), and changes are announced politely to screen readers (a status region outside the rebuilt screen).
 
 ## Prototype constraints
 - No auth.
@@ -84,7 +94,7 @@ Requirements:
 - No production persistence.
 - No catalog search.
 - Static mock data derived from Experiments 001-003.
-- Deterministic mock scoring for follow-up recommendations.
+- Deterministic mock scoring for follow-up recommendations, from a small hand-written pool (the demo ends when it runs out).
 - Responsive enough for mobile and desktop.
 
 ## Success criteria

@@ -1,4 +1,5 @@
-// Browser-side flow check for Bookmark + Keep discovering + the taste-evidence rule. No dependencies.
+// Browser-side flow check for Bookmark + Keep discovering + the taste-evidence rule + keeping the
+// user's place (focus, announcements) + the Taste Profile lean. No dependencies.
 //
 //   await (await import("/scripts/qa/bookmark-flow.js")).run()
 //
@@ -7,6 +8,8 @@
 //   - reactions to untried picks (plain More / Less / Wrong vibe) steer recommendations but are NOT taste evidence
 //   - Keep discovering works without rating every card, never repeats a pick, and ends honestly
 //   - trying a bookmarked item turns it into a real reaction (and only then counts as taste evidence)
+//   - the Taste Profile shows reactions to untried picks as a separate "lean", never as taste
+//   - keyboard focus stays on the control you used, and changes are announced to screen readers
 // Run it on a fresh page load; it changes app state. Returns { passed, failed, results }.
 
 export async function run() {
@@ -15,12 +18,16 @@ export async function run() {
   const layout = await import("/scripts/qa/layout-check.js");
   const results = [];
   const check = (name, ok, detail = "") => results.push({ name, ok: Boolean(ok), detail: String(detail) });
-  const tick = () => new Promise((resolve) => setTimeout(resolve, 60));
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 100));
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const cardIds = () => $$(".editorial-rec").map((card) => card.dataset.recId);
   const bookmarksStep = () => $('[data-step-jump="bookmarks"]');
-  const act = async (selector) => { const el = $(selector); if (!el) throw new Error(`missing ${selector}`); el.click(); await tick(); };
+  // focus() first, like a keyboard user would have, so we can check focus survives the re-render
+  const act = async (selector) => { const el = $(selector); if (!el) throw new Error(`missing ${selector}`); el.focus(); el.click(); await tick(); };
+  const live = () => $("#live")?.textContent || "";
+  const layoutClean = (r) => !r.stickerTextHits.length && !r.stickerBoxHits.length && !r.stickerOutside.length &&
+    !r.titleCollisions.length && !r.textUnderControls.length && !r.hScroll;
   const rate = (id, rating) => act(`[data-feedback-item="${id}"][data-rating="${rating}"]`);
   const detail = (id, value) => act(`[data-feedback-item="${id}"][data-feedback-detail="${value}"]`);
 
@@ -33,6 +40,8 @@ export async function run() {
   const chips = $$(`[data-feedback-item="${ids[0]}"][data-feedback-detail]`).map((chip) => chip.textContent.trim());
   check("Not tried offers only 'Bookmark it' (no Interested / Maybe)", chips.length === 1 && chips[0] === "Bookmark it", chips.join(","));
   await rate(ids[1], "more");
+  check("focus stays on the More button after reacting", document.activeElement === $(`[data-feedback-item="${ids[1]}"][data-rating="more"]`), document.activeElement?.className);
+  check("a live announcement region exists", Boolean($("#live")) && $("#live").getAttribute("aria-live") === "polite");
   const moreChips = $$(`[data-feedback-item="${ids[1]}"][data-feedback-detail]`).map((chip) => chip.textContent.trim());
   check("More offers only experience answers (Loved / Liked it before)", moreChips.join("|") === "Loved it before|Liked it before", moreChips.join("|"));
   const qualityChips = () => $$(`[data-feedback-item="${ids[1]}"][data-feedback-quality]`).map((chip) => chip.textContent.trim());
@@ -40,6 +49,8 @@ export async function run() {
 
   await rate(ids[0], "not-tried");
   await detail(ids[0], "bookmarked");
+  check("focus stays on the chip after choosing it", document.activeElement === $(`[data-feedback-item="${ids[0]}"][data-feedback-detail="bookmarked"]`));
+  check("bookmarking is announced with the running count", /Bookmarked\. 1 thing bookmarked\./.test(live()), live());
   check("Bookmarks tab appears with a count of 1", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "1");
   const first = state.feedbackByRecommendation[ids[0]];
   check("a bookmark carries NO taste evidence", taste.tasteDelta(first) === 0, taste.tasteDelta(first));
@@ -72,12 +83,20 @@ export async function run() {
   check("finished set mentions 2 bookmarks", /2 things bookmarked/.test($(".bookmark-note")?.textContent || ""));
 
   await act('[data-action="keep-discovering"]');
+  check("Keep discovering announces the new set", /New set: 5 picks\./.test(live()), live());
   ids = cardIds();
   check("second set has 5 picks incl. one Surprise", ids.length === 5 && $$(".surprise-burst").length === 1, ids.length);
   check("second set does not repeat the opening set", !ids.some((id) => state.recommendationSets[0].some((item) => item.id === id)));
   check("Keep discovering hidden until something is reacted to", !$('[data-action="keep-discovering"]'));
 
   await rate(ids[0], "more");
+  // Taste Profile: a plain More on a pick not yet tried shows as a separate lean, not as taste.
+  await act('[data-step-jump="model"]');
+  const leans = $$(".signal-lean");
+  check("Taste Profile shows a lean from a reaction to an untried pick", leans.length >= 1 && /lean toward/.test(leans[0].textContent), leans.map((el) => el.textContent.trim().replace(/\s+/g, " ")).join(" || ").slice(0, 200));
+  const profileShot = layout.checkCurrentScreen();
+  check("Taste Profile with lean lines: layout clean", layoutClean(profileShot), JSON.stringify(profileShot).slice(0, 300));
+  await act('[data-step-jump="recommendations"]');
   check("Keep discovering available after ONE reaction (not all 5)", Boolean($('[data-action="keep-discovering"]')));
   await act('[data-action="keep-discovering"]');
   ids = cardIds();
@@ -103,6 +122,8 @@ export async function run() {
 
   const lovedId = $$(".bookmark-card")[0].dataset.bookmarkId;
   await act(`[data-bookmark-item="${lovedId}"][data-bookmark-action="tried-loved"]`);
+  check("after acting on a bookmark, focus moves to the next card (not lost)", document.activeElement?.classList.contains("bookmark-action"), document.activeElement?.tagName + "." + document.activeElement?.className);
+  check("...and the change is announced", /marked Loved it before\. 1 thing left in Bookmarks\./.test(live()), live());
   const loved = state.feedbackByRecommendation[lovedId];
   check("'Loved it' becomes a real reaction", loved.rating === "more" && loved.detail === "loved-before", `${loved.rating}/${loved.detail}`);
   check("...that now counts as taste evidence", taste.tasteDelta(loved) === 2, taste.tasteDelta(loved));
@@ -112,6 +133,8 @@ export async function run() {
   const lastId = $$(".bookmark-card")[0].dataset.bookmarkId;
   await act(`[data-bookmark-item="${lastId}"][data-bookmark-action="remove"]`);
   check("removing the last bookmark shows the empty state", Boolean($(".bookmark-empty")));
+  check("with nothing left, focus lands on the page, not nowhere", document.activeElement?.id === "app", document.activeElement?.tagName + "#" + document.activeElement?.id);
+  check("...and is announced", /bookmark removed\. 0 things left in Bookmarks\./.test(live()), live());
   check("removed bookmark stays untried, no evidence", state.feedbackByRecommendation[lastId].rating === "not-tried" && taste.tasteDelta(state.feedbackByRecommendation[lastId]) === 0);
   await act('[data-action="show-recs"]');
   check("Bookmarks tab hides again when nothing is saved", bookmarksStep().hidden);
