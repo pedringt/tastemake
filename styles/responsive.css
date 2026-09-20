@@ -1,3 +1,14 @@
+@media (max-width:1280px) {
+  .topbar {
+    grid-template-columns:1fr auto;
+    grid-template-areas:"brand aside" "nav nav";
+    gap:14px 20px;
+  }
+  .brand-cluster { grid-area:brand; }
+  .stepper { grid-area:nav; justify-content:flex-start; }
+  .topbar-aside { grid-area:aside; }
+}
+
 @media (max-width:1120px) {
   .topbar {
     grid-template-columns:1fr auto;
@@ -25,7 +36,8 @@
 @media (max-width:860px) {
   .app-shell { width:min(100% - 20px,1440px); padding-top:10px; }
   .brand-tagline,.topbar-note { display:none; }
-  .stepper { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); width:100%; }
+  .stepper { display:flex; flex-wrap:wrap; gap:4px; width:100%; }
+  .stepper .step { flex:1 1 auto; }
   .step { font-size:12px; padding-inline:8px; justify-content:center; }
 
   .favorites-hero,.profile-hero,.recommendations-masthead { grid-template-columns:1fr; gap:18px; margin-inline:0; }
@@ -79,7 +91,7 @@
   .favorites-screen { padding:24px 0 32px; }
   .profile-screen { padding:22px 0 30px; }
   .recommendations-screen { padding:18px 0 32px; }
-  .bookmarks-screen { padding:18px 0 32px; }
+  .bookmarks-screen,.library-screen { padding:18px 0 32px; }
   .favorites-hero,.profile-hero,.recommendations-masthead { margin-inline:4px; }
 
   .filter-band { margin-inline:0; align-items:flex-start; }
@@ -123,10 +135,11 @@
 
 @media (max-width:860px) {
   .sticker.t-hide { display:none; }
-  .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen { border-radius:16px; }
+  .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen { border-radius:16px; }
 }
 @media (max-width:620px) {
   .sticker-field { display:none; }
-  .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen { background-size:22px 22px,26px 26px,100% 100%; }
+  .note-arrow { display:none; }
+  .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen { background-size:22px 22px,26px 26px,100% 100%; }
   .editorial-rec::before { display:none; }
 }

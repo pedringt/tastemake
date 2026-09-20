@@ -6,6 +6,9 @@ export const state = {
   feedbackByRecommendation: {},
   // Each "Keep discovering" appends a set; the first is the hand-picked opening set.
   recommendationSets: [recommendations],
+  // Loved picks the user starred as Favorites. Only meaningful while the pick is still "Loved it before".
+  libraryFavorites: new Set(),
   favoriteFilter: "all",
-  recommendationFilter: "all"
+  recommendationFilter: "all",
+  libraryFilter: "all"
 };

@@ -5,7 +5,7 @@
 //
 //   await (await import("/scripts/qa/layout-check.js")).runAll()
 //
-// It visits Favorites, Recommendations and Taste Profile (checkCurrentScreen() also works on
+// It visits Favorites, Recommendations, Taste Profile and Library (checkCurrentScreen() also works on
 // Bookmarks once something is bookmarked; see bookmark-flow.js) and reports, per page:
 //   stickerTextHits  stickers whose box touches any text
 //   stickerBoxHits   stickers whose box touches any visible element (cards, buttons, text)
@@ -22,6 +22,9 @@ const overlapArea = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(
 const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
 function isVisible(el) {
+  // Content inside a collapsed <details> (other than its summary) is not on screen.
+  const closed = el.closest("details:not([open])");
+  if (closed && closed !== el && !el.closest("summary")) return false;
   const r = el.getBoundingClientRect();
   const cs = getComputedStyle(el);
   return r.width > 0 && r.height > 0 && cs.display !== "none" && cs.visibility !== "hidden";
@@ -45,7 +48,7 @@ const describe = (el) => `${el.tagName.toLowerCase()}.${[...el.classList].join("
 const stickerName = (el) => [...el.classList].find((c) => c.startsWith("st-") && c !== "st-neon") || "sticker";
 
 export function checkCurrentScreen() {
-  const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen");
+  const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen");
   const field = screen.querySelector(".sticker-field");
   const board = screen.getBoundingClientRect();
   const stickers = [...screen.querySelectorAll(".sticker")].filter(isVisible);
@@ -123,10 +126,10 @@ export function checkCurrentScreen() {
 }
 
 export async function runAll() {
-  const names = ["favorites", "recommendations", "profile"];
+  const pages = { favorites: "favorites", recommendations: "recommendations", profile: "model", library: "library" };
   const results = {};
-  for (const [index, name] of names.entries()) {
-    document.querySelectorAll(".step")[index].click();
+  for (const [name, jump] of Object.entries(pages)) {
+    document.querySelector(`.step[data-step-jump="${jump}"]`).click();
     await new Promise((resolve) => setTimeout(resolve, 500));
     results[name] = checkCurrentScreen();
   }

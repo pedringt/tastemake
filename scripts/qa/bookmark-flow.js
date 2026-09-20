@@ -1,5 +1,5 @@
 // Browser-side flow check for Bookmark + Keep discovering + the taste-evidence rule + keeping the
-// user's place (focus, announcements) + the Taste Profile lean. No dependencies.
+// user's place (focus, announcements) + the Taste Profile lean + the Library. No dependencies.
 //
 //   await (await import("/scripts/qa/bookmark-flow.js")).run()
 //
@@ -75,6 +75,31 @@ export async function run() {
   await detail(ids[1], "loved-before");
   check("un-choosing 'Loved it before' also clears a stale 'Surprised me'", state.feedbackByRecommendation[ids[1]].quality === null && qualityChips().join("|") === "Too predictable");
   await detail(ids[1], "loved-before");
+
+  // ---- Library: things tried and liked, derived from reactions ----
+  check("Library tab is in the nav", Boolean($('[data-step-jump="library"]')) && !$('[data-step-jump="library"]').hidden);
+  await act('[data-step-jump="library"]');
+  const sections = $$(".library-section");
+  check("Library shows the 6 starter favorites", sections[0].querySelectorAll(".library-card").length === 6, sections[0].querySelectorAll(".library-card").length);
+  const lovedCard = () => $(`[data-library-id="${ids[1]}"]`);
+  check("a pick marked Loved it before is in the Library", Boolean(lovedCard()) && sections[1].contains(lovedCard()), lovedCard()?.textContent.slice(0, 60));
+  check("a bookmark or plain More is NOT in the Library", !$(`[data-library-id="${ids[0]}"]`));
+  check("'Tried it and disliked' is kept out, but listed to correct", Boolean($(".library-disliked")) && /Things you didn't like \(1\)/.test($(".library-disliked summary").textContent));
+  await act(`[data-library-item="${ids[1]}"][data-library-action="favorite"]`);
+  check("'Add to Favorites' moves a loved pick into Favorites", $$(".library-section")[0].contains(lovedCard()) && $$(".library-section")[0].querySelectorAll(".library-card").length === 7);
+  check("...and announces it", /added to Favorites/.test(live()), live());
+  check("focus is not lost after acting", document.activeElement?.classList.contains("library-action"), document.activeElement?.tagName + "." + document.activeElement?.className);
+  await act(`[data-library-item="${ids[1]}"][data-library-action="liked"]`);
+  check("correcting Loved to Liked drops the star and keeps it in the Library", $$(".library-section")[1].contains(lovedCard()) && !$(`[data-library-item="${ids[1]}"][data-library-action="favorite"]`));
+  check("...and 'Liked it' counts as taste evidence (+1.25)", taste.tasteDelta(state.feedbackByRecommendation[ids[1]]) === 1.25);
+  const libShot = layout.checkCurrentScreen();
+  check("Library page: layout clean", layoutClean(libShot), JSON.stringify(libShot).slice(0, 300));
+  await act(`[data-library-item="${ids[2]}"][data-library-action="liked"]`);
+  check("correcting a dislike to Liked brings it into the Library", Boolean($(`[data-library-id="${ids[2]}"]`)) && !$(".library-disliked"));
+  await act(`[data-library-item="${ids[2]}"][data-library-action="disliked"]`);
+  check("'Didn't like it' takes it back out (-2 taste evidence)", !$(`[data-library-id="${ids[2]}"]`) && taste.tasteDelta(state.feedbackByRecommendation[ids[2]]) === -2);
+  await act(`[data-library-item="${ids[1]}"][data-library-action="loved"]`);
+  await act('[data-step-jump="recommendations"]');
 
   await rate(ids[3], "not-tried");
   await rate(ids[4], "not-tried");

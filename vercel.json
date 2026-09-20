@@ -3,6 +3,7 @@
     { "source": "/favorites", "destination": "/index.html" },
     { "source": "/taste-profile", "destination": "/index.html" },
     { "source": "/recommendations", "destination": "/index.html" },
+    { "source": "/library", "destination": "/index.html" },
     { "source": "/bookmarks", "destination": "/index.html" }
   ]
 }

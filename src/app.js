@@ -5,6 +5,7 @@ import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
 import { reactionLabel, renderRecommendations } from "./screens/recommendations.js";
 import { renderBookmarks } from "./screens/bookmarks.js";
+import { renderLibrary } from "./screens/library.js";
 
 const app = document.querySelector("#app");
 
@@ -12,6 +13,7 @@ const views = {
   favorites: renderFavorites,
   model: renderProfile,
   recommendations: renderRecommendations,
+  library: renderLibrary,
   bookmarks: renderBookmarks
 };
 
@@ -29,7 +31,7 @@ function render() {
 }
 
 function updateStepper() {
-  const order = ["favorites", "recommendations", "model", "bookmarks"];
+  const order = ["favorites", "recommendations", "model", "library", "bookmarks"];
   const activeIndex = order.indexOf(state.screen);
 
   document.querySelectorAll("[data-step-jump]").forEach((step) => {
@@ -76,6 +78,7 @@ function focusSelectorFor(el) {
   if (d.feedbackItem && d.feedbackDetail) return `[data-feedback-item="${d.feedbackItem}"][data-feedback-detail="${d.feedbackDetail}"]`;
   if (d.feedbackItem && d.feedbackQuality) return `[data-feedback-item="${d.feedbackItem}"][data-feedback-quality="${d.feedbackQuality}"]`;
   if (d.bookmarkItem && d.bookmarkAction) return `[data-bookmark-item="${d.bookmarkItem}"][data-bookmark-action="${d.bookmarkAction}"]`;
+  if (d.libraryItem && d.libraryAction) return `[data-library-item="${d.libraryItem}"][data-library-action="${d.libraryAction}"]`;
   if (d.favorite) return `[data-favorite="${d.favorite}"]`;
   if (d.domainFilter && d.filterScope) return `[data-domain-filter="${d.domainFilter}"][data-filter-scope="${d.filterScope}"]`;
   return null;
@@ -166,6 +169,37 @@ function saveBookmarkAction(itemId, action) {
   return true;
 }
 
+// Library corrections change the underlying reaction, so the Library, Taste Profile and Bookmarks
+// can never disagree. Starring a Favorite is only possible while the pick is still "Loved it before".
+const libraryOutcomes = {
+  loved: ["more", "loved-before"],
+  liked: ["more", "liked-before"],
+  disliked: ["less", "tried-disliked"]
+};
+
+function saveLibraryAction(itemId, action) {
+  const existing = state.feedbackByRecommendation[itemId];
+  if (!existing) return false;
+
+  if (action === "favorite") {
+    if (existing.detail !== "loved-before") return false;
+    state.libraryFavorites.add(itemId);
+    return true;
+  }
+  if (action === "unfavorite") {
+    state.libraryFavorites.delete(itemId);
+    return true;
+  }
+
+  const outcome = libraryOutcomes[action];
+  if (!outcome) return false;
+  [existing.rating, existing.detail] = outcome;
+  if (existing.detail !== "loved-before") state.libraryFavorites.delete(itemId);
+  // "Surprised me" only makes sense after Loved / Liked it before.
+  if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
+  return true;
+}
+
 function renderPreservingCardPosition(itemId, focusSelector = null) {
   const before = document.querySelector(`[data-rec-id="${itemId}"]`);
   const beforeTop = before?.getBoundingClientRect().top;
@@ -225,8 +259,30 @@ app.addEventListener("click", (event) => {
     const scope = filter.dataset.filterScope;
     if (scope === "favorites") state.favoriteFilter = filter.dataset.domainFilter;
     if (scope === "recommendations") state.recommendationFilter = filter.dataset.domainFilter;
+    if (scope === "library") state.libraryFilter = filter.dataset.domainFilter;
     render();
     restoreFocus(focusSelector);
+    return;
+  }
+
+  const libraryAction = event.target.closest("[data-library-action][data-library-item]");
+  if (libraryAction) {
+    const itemId = libraryAction.dataset.libraryItem;
+    const outcome = libraryAction.dataset.libraryAction;
+    const title = state.feedbackByRecommendation[itemId]?.item.title;
+    if (saveLibraryAction(itemId, outcome)) {
+      render();
+      updateStepper();
+      // A card can leave the list (e.g. Didn't like it); land on the next action, or on the page if none is left.
+      restoreFocus(focusSelector, app.querySelector(".library-action") || app);
+      announce(({
+        favorite: `${title} added to Favorites.`,
+        unfavorite: `${title} removed from Favorites. It stays in your Library.`,
+        loved: `${title}: marked Loved it before.`,
+        liked: `${title}: marked Liked it before.`,
+        disliked: `${title}: marked Tried it and disliked it. It has left your Library.`
+      })[outcome]);
+    }
     return;
   }
 

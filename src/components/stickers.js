@@ -238,6 +238,10 @@ const LAYOUT = {
   ]
 };
 
+// The Library board reuses the Bookmarks arrangement, mirrored left/right and tilted the other way.
+LAYOUT.library = LAYOUT.bookmarks.map(([kind, zone, position, size, rotation, nudge, hide]) =>
+  [kind, zone === "l" ? "r" : zone === "r" ? "l" : zone, position, size, -rotation, nudge, hide]);
+
 function place([kindName, zone, position, size, rotation = 0, nudge = 0, hideOnTablet = 0]) {
   const kind = KINDS[kindName];
   const style = [`--p:${position}%`, `--f:${size}`, `--r:${rotation}deg`, `--ar:${n(kind.w / kind.h)}`];
