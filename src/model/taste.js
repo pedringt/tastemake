@@ -59,7 +59,7 @@ export function hypothesisMatches(itemHypotheses = [], hypothesisId) {
 // A confirmed blind spot (#20) says which patterns actually failed for a disliked pick. Patterns the user
 // says DID hold up are not counted against; "none of these" clears all of them. Without a blind spot,
 // behaviour is exactly as before.
-function exonerated(state, feedback, patternId) {
+export function exonerated(state, feedback, patternId) {
   const spot = state.blindSpots?.[feedback.item.id];
   if (!spot || feedback.rating !== "less" || feedback.detail !== "tried-disliked") return false;
   return !spot.hypotheses.some((id) => hypothesisMatches([patternId], id) || hypothesisMatches([id], patternId));

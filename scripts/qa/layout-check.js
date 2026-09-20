@@ -13,6 +13,7 @@
 //   titleCollisions  Favorites tiles whose title runs into the tile's top row
 //   textUnderControls  text that sits behind a button/link it does not belong to (overlapping layout)
 //   topbarOverlaps   header parts (brand, nav tabs, search/label) overlapping each other or running off the page
+//   mapOverlaps      Taste Map cards overlapping each other or leaving the map
 //   hScroll          the page scrolls sideways
 // A clean run has every list empty and hScroll false.
 //
@@ -139,6 +140,18 @@ export function checkCurrentScreen() {
     });
   }
 
+  // Taste Map: the pattern cards must not overlap one another or spill out of the map.
+  const mapOverlaps = [];
+  const mapBox = screen.querySelector(".taste-map")?.getBoundingClientRect();
+  const mapNodes = [...screen.querySelectorAll(".taste-map-node")].filter(isVisible);
+  mapNodes.forEach((node, i) => {
+    const r = node.getBoundingClientRect();
+    if (mapBox && (r.left < mapBox.left - 1 || r.right > mapBox.right + 1 || r.top < mapBox.top - 1 || r.bottom > mapBox.bottom + 1)) mapOverlaps.push(`${node.textContent.trim().slice(0, 24)} leaves the map`);
+    mapNodes.slice(i + 1).forEach((other) => {
+      if (hit(r, other.getBoundingClientRect())) mapOverlaps.push(`${node.textContent.trim().slice(0, 20)} overlaps ${other.textContent.trim().slice(0, 20)}`);
+    });
+  });
+
   return {
     width: innerWidth,
     stickers: stickers.length,
@@ -148,6 +161,7 @@ export function checkCurrentScreen() {
     titleCollisions,
     textUnderControls,
     topbarOverlaps,
+    mapOverlaps,
     hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth
   };
 }

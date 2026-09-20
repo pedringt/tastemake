@@ -14,6 +14,11 @@ export const state = {
   blindSpots: {},
   blindSpotDrafts: {},
   blindSpotDismissed: new Set(),
+  // Taste Profile view (#21): the list, or the map with an optional selected pattern / evidence pick.
+  profileView: "list",
+  mapPattern: null,
+  mapItem: null,
+  mapFilter: "all",
   favoriteFilter: "all",
   recommendationFilter: "all",
   libraryFilter: "all"

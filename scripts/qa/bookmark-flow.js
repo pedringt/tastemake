@@ -1,5 +1,5 @@
 // Browser-side flow check for Bookmark + Keep discovering + the taste-evidence rule + keeping the
-// user's place (focus, announcements) + the Taste Profile lean + the Library + Search + Blind Spots. No dependencies.
+// user's place (focus, announcements) + the Taste Profile lean + the Library + Search + Blind Spots + the Taste Map. No dependencies.
 //
 //   await (await import("/scripts/qa/bookmark-flow.js")).run()
 //
@@ -17,6 +17,7 @@ export async function run() {
   const taste = await import("/src/model/taste.js");
   const catalog = await import("/src/data/catalog.js");
   const blind = await import("/src/model/blindspots.js");
+  const mapModel = await import("/src/model/tastemap.js");
   const layout = await import("/scripts/qa/layout-check.js");
   const results = [];
   const check = (name, ok, detail = "") => results.push({ name, ok: Boolean(ok), detail: String(detail) });
@@ -29,7 +30,7 @@ export async function run() {
   const act = async (selector) => { const el = $(selector); if (!el) throw new Error(`missing ${selector}`); el.focus(); el.click(); await tick(); };
   const live = () => $("#live")?.textContent || "";
   const layoutClean = (r) => !r.stickerTextHits.length && !r.stickerBoxHits.length && !r.stickerOutside.length &&
-    !r.titleCollisions.length && !r.textUnderControls.length && !r.topbarOverlaps.length && !r.hScroll;
+    !r.titleCollisions.length && !r.textUnderControls.length && !r.topbarOverlaps.length && !r.mapOverlaps.length && !r.hScroll;
   const rate = (id, rating) => act(`[data-feedback-item="${id}"][data-rating="${rating}"]`);
   const detail = (id, value) => act(`[data-feedback-item="${id}"][data-feedback-detail="${value}"]`);
 
@@ -108,6 +109,31 @@ export async function run() {
   check("cancelling an edit keeps the saved blind spot", Boolean(state.blindSpots[ids[2]]) && Boolean($(".blind-panel.is-saved")));
   await act(blindBtn("remove"));
   check("Remove takes it off the record and restores the original accounting", !state.blindSpots[ids[2]] && penalized().every(Boolean) && !$(".blind-section"));
+
+  // ---- Taste Map (#21): the profile as a picture, backed by a written equivalent ----
+  const viewBtn = (v) => `[data-profile-view="${v}"]`;
+  check("the Taste Profile has a List / Map toggle, List selected", $(viewBtn("list"))?.getAttribute("aria-pressed") === "true" && $(viewBtn("map"))?.getAttribute("aria-pressed") === "false");
+  await act(viewBtn("map"));
+  check("Map view shows one card per pattern", $$(".taste-map-node").length === catalog.hypotheses.length, $$(".taste-map-node").length);
+  check("...focus stays on the toggle and the change is announced", document.activeElement === $(viewBtn("map")) && /as a map/.test(live()), live());
+  check("...with the written connections, tensions and thin areas under it", $$(".map-panel").length === 3 && $$("#map-connections ~ ul li").length === mapModel.patternLinks().length);
+  const mapShot = layout.checkCurrentScreen();
+  check("Taste Map: layout clean (cards don't overlap or leave the map)", layoutClean(mapShot), JSON.stringify(mapShot).slice(0, 300));
+  check("every card states how sure Tastemake is, in words", $$(".taste-map-node").every((n) => n.querySelector(".map-node-conf")?.textContent.trim().length > 0));
+  const pat0 = catalog.hypotheses[0];
+  await act(`.taste-map-node[data-map-pattern="${pat0.id}"]`);
+  check("choosing a card opens its detail and moves focus there", document.activeElement?.hasAttribute("data-map-focus") && document.activeElement.textContent === pat0.title, document.activeElement?.textContent.slice(0, 40));
+  const mapEv = mapModel.patternEvidence(state, pat0);
+  const mapEvCount = mapEv.supports.length + mapEv.against.length + mapEv.heldUp.length + mapEv.steers.length;
+  check("the evidence listed is exactly what the model holds", $$(".map-evidence").length === mapEvCount && mapEvCount > 0, `${$$(".map-evidence").length} vs ${mapEvCount}`);
+  check("every evidence row says it was told by you", $$(".map-evidence").every((row) => /Told by you/.test(row.textContent)));
+  await act(".map-evidence");
+  const pickPatterns = mapModel.patternsOfItem(state.feedbackByRecommendation[$(".map-evidence[aria-pressed='true']").dataset.mapItem].item);
+  check("choosing a pick highlights every pattern it leans on", $$(".taste-map-node.is-linked").length === pickPatterns.length && pickPatterns.length > 0, `${$$(".taste-map-node.is-linked").length} vs ${pickPatterns.length}`);
+  await act(`.taste-map-node[data-map-pattern="${pat0.id}"]`);
+  check("choosing the same card again clears it", Boolean($(".map-detail.is-empty")));
+  await act(viewBtn("list"));
+  check("switching back restores the list", !$(".taste-map") && Boolean($(".profile-map")) && $(viewBtn("list")).getAttribute("aria-pressed") === "true");
   await act('[data-step-jump="recommendations"]');
   await detail(ids[1], "loved-before");
   check("'Loved it before' IS taste evidence (+2)", taste.tasteDelta(state.feedbackByRecommendation[ids[1]]) === 2);

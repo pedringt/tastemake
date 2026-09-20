@@ -3,6 +3,7 @@ import { state } from "../state.js";
 import { modelUpdateFor, untriedReactionLean } from "../model/taste.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
+import { renderTasteMap } from "./tastemap.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
 
 function hypothesisCard(item, index) {
@@ -75,6 +76,10 @@ export function renderProfile() {
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
           <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they show up below as a lean, not as taste.</p>
+          <div class="profile-view-toggle" role="group" aria-label="How to see your Taste Profile">
+            <button type="button" class="button button-secondary profile-view-button" data-profile-view="list" aria-pressed="${state.profileView !== "map"}">List</button>
+            <button type="button" class="button button-secondary profile-view-button" data-profile-view="map" aria-pressed="${state.profileView === "map"}">Map</button>
+          </div>
         </div>
         <div class="profile-stamp" aria-hidden="true">
           <strong>WORKING</strong>
@@ -82,6 +87,7 @@ export function renderProfile() {
         </div>
       </div>
 
+      ${state.profileView === "map" ? renderTasteMap() : `
       <div class="profile-evidence-strip">
         <span class="profile-evidence-label">Built from</span>
         <div class="profile-evidence-track">
@@ -100,6 +106,7 @@ export function renderProfile() {
           ${hypotheses.map(hypothesisCard).join("")}
         </div>
       </div>
+      `}
 
       ${blindSpotSection()}
 

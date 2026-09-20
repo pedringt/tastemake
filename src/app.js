@@ -82,6 +82,9 @@ function focusSelectorFor(el) {
   if (d.bookmarkItem && d.bookmarkAction) return `[data-bookmark-item="${d.bookmarkItem}"][data-bookmark-action="${d.bookmarkAction}"]`;
   if (d.libraryItem && d.libraryAction) return `[data-library-item="${d.libraryItem}"][data-library-action="${d.libraryAction}"]`;
   if (d.blindItem && d.blindAction) return `[data-blind-item="${d.blindItem}"][data-blind-action="${d.blindAction}"]${d.blindValue ? `[data-blind-value="${d.blindValue}"]` : ""}`;
+  if (d.profileView) return `[data-profile-view="${d.profileView}"]`;
+  if (d.mapPattern) return `[data-map-pattern="${d.mapPattern}"]`;
+  if (d.mapItem) return `[data-map-item="${d.mapItem}"]`;
   if (d.favorite) return `[data-favorite="${d.favorite}"]`;
   if (d.domainFilter && d.filterScope) return `[data-domain-filter="${d.domainFilter}"][data-filter-scope="${d.filterScope}"]`;
   return null;
@@ -301,8 +304,43 @@ app.addEventListener("click", (event) => {
     if (scope === "favorites") state.favoriteFilter = filter.dataset.domainFilter;
     if (scope === "recommendations") state.recommendationFilter = filter.dataset.domainFilter;
     if (scope === "library") state.libraryFilter = filter.dataset.domainFilter;
+    if (scope === "map") state.mapFilter = filter.dataset.domainFilter;
     render();
     restoreFocus(focusSelector);
+    return;
+  }
+
+  const viewButton = event.target.closest("[data-profile-view]");
+  if (viewButton) {
+    state.profileView = viewButton.dataset.profileView;
+    render();
+    restoreFocus(focusSelector);
+    announce(state.profileView === "map" ? "Showing your Taste Profile as a map." : "Showing your Taste Profile as a list.");
+    return;
+  }
+
+  const mapPattern = event.target.closest("[data-map-pattern]");
+  if (mapPattern) {
+    const id = mapPattern.dataset.mapPattern;
+    // Tapping the selected pattern again clears it; picking a pattern from an evidence chip keeps that pick.
+    state.mapPattern = state.mapPattern === id && mapPattern.classList.contains("taste-map-node") ? null : id;
+    render();
+    const heading = app.querySelector("[data-map-focus]");
+    if (heading) heading.focus({ preventScroll: false });
+    else restoreFocus(focusSelector);
+    const shown = state.mapPattern ? document.querySelector(`[data-map-pattern="${state.mapPattern}"] b`)?.textContent : null;
+    announce(shown ? `${shown} selected. Its evidence is below the map.` : "Pattern cleared.");
+    return;
+  }
+
+  const mapItem = event.target.closest("[data-map-item]");
+  if (mapItem) {
+    const id = mapItem.dataset.mapItem;
+    state.mapItem = state.mapItem === id ? null : id;
+    render();
+    restoreFocus(focusSelector);
+    const shownItem = state.feedbackByRecommendation[state.mapItem]?.item.title;
+    announce(shownItem ? `${shownItem}: the patterns it leans on are highlighted on the map.` : "Pick cleared.");
     return;
   }
 

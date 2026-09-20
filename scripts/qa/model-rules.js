@@ -11,6 +11,7 @@ export async function run() {
   const LIB = await import("/src/model/library.js");
   const S = await import("/src/model/search.js");
   const B = await import("/src/model/blindspots.js");
+  const M = await import("/src/model/tastemap.js");
   const { favorites, recommendations, followUpPool, hypotheses } = catalog;
   const NEW = T;
   const TASTE = T;
@@ -255,6 +256,65 @@ export async function run() {
       eq("'Fine, just not for me' never counts as a recurring reason", B.recurringThemes(st).reasons.length, 0);
     }
     eq("saving a blind spot for a non-candidate does nothing", B.saveBlindSpot(mk(), item.id, { broken: [patterns[0].id] }), null);
+  });
+
+
+  suite("taste map rules", (eq) => {
+    const mk = () => ({
+      selectedFavorites: new Set(favorites.filter((f) => f.selected).map((f) => f.id)),
+      feedbackByRecommendation: {}, recommendationSets: [recommendations], libraryFavorites: new Set(), customItems: {},
+      blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set()
+    });
+    const react = (st, item, rating, detail) => { st.feedbackByRecommendation[item.id] = { item, rating, detail }; };
+    const pattern = (id) => hypotheses.find((h) => h.id === id);
+    const [eeaao, barry, shadows] = recommendations;   // all lean on comedy-with-teeth (H04)
+
+    // structure: links are coarse and always explained by real picks
+    const links = M.patternLinks();
+    const key = (l) => [l.a, l.b].sort().join("|");
+    eq("links are unique pairs", new Set(links.map(key)).size, links.length);
+    eq("every link is explained by at least one shared pick", links.every((l) => l.items.length > 0), true);
+    eq("link strength only comes in three steps", links.every((l) => ["weak", "some", "strong"].includes(l.level)), true);
+    eq("comedy + moral messiness share many picks: a strong link", links.find((l) => key(l) === "H03|H04")?.level, "strong");
+    const layout = M.nodeLayout(5);
+    eq("five cards sit inside the map with room to spare", layout.length === 5 && layout.every((n) => n.x > 8 && n.x < 92 && n.y > 8 && n.y < 92), true);
+    eq("cards do not share a spot", new Set(layout.map((n) => `${n.x},${n.y}`)).size, 5);
+
+    // confidence looks
+    let st = mk();
+    eq("a strong pattern looks solid", M.confidenceOf(st, pattern("H04")).look, "firm");
+    eq("a conditional pattern looks dashed", M.confidenceOf(st, pattern("H01/H07")).look, "tentative");
+
+    // evidence classification (H04)
+    react(st, eeaao, "more", "loved-before");
+    react(st, barry, "less", "tried-disliked");
+    react(st, shadows, "not-tried", "bookmarked");
+    let ev = M.patternEvidence(st, pattern("H04"));
+    eq("Loved counts as support", ev.supports.length, 1);
+    eq("Tried and disliked counts against", ev.against.length, 1);
+    eq("a bookmark only steers (not taste)", ev.steers.length, 1);
+    eq("nothing is held up yet", ev.heldUp.length, 0);
+    eq("one supported + one counted against nets out: 'still learning' (dashed), not shaky", M.confidenceOf(st, pattern("H04")).look, "tentative");
+    const onlyDislike = mk();
+    react(onlyDislike, barry, "less", "tried-disliked");
+    eq("a dislike with nothing supporting it makes the pattern look shaky (dotted)", M.confidenceOf(onlyDislike, pattern("H04")).look, "shaky");
+    eq("supported and counted against = a mixed-evidence tension", M.tensions(st).some((t) => t.patternId === "H04" && t.kind === "mixed"), true);
+
+    // a blind spot says which pattern actually failed: the others held up
+    B.saveBlindSpot(st, barry.id, { broken: ["H03"], reasons: ["tone"] });
+    ev = M.patternEvidence(st, pattern("H04"));
+    eq("after a blind spot naming H03, H04 is 'held up', not against", ev.heldUp.length === 1 && ev.against.length === 0, true);
+    eq("...so the mixed-evidence tension goes away", M.tensions(st).some((t) => t.patternId === "H04" && t.kind === "mixed"), false);
+    eq("...and a blind-spot tension names the pattern that failed", M.tensions(st).some((t) => t.patternId === "H03" && t.kind === "blind-spot"), true);
+    eq("a conditional pattern is always listed as a tension", M.tensions(mk()).some((t) => t.patternId === "H01/H07" && t.kind === "conditional"), true);
+
+    // thin areas
+    const empty = M.thinAreas(mk());
+    eq("with no reactions every pattern is 'no reactions yet'", empty.quietPatterns.length, 5);
+    eq("starter favorites count as things you told it: watch 3, read 2, play 2", `${empty.coverage.watch},${empty.coverage.read},${empty.coverage.play}`, "3,2,2");
+    eq("read and play are thin at 2", empty.thinDomains.map((d) => d.domain).sort().join(), "play,read");
+    eq("reacting to a pick removes its patterns from the quiet list", M.thinAreas(st).quietPatterns.length < 5, true);
+    eq("evidenceCount adds up", M.evidenceCount(M.patternEvidence(st, pattern("H04"))), 3);
   });
 
   return { passed: total - failures.length, failed: failures.length, total, failures: failures.length ? failures : undefined };
