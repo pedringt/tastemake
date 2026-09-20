@@ -87,6 +87,12 @@ Requirements:
 - Items Tastemake doesn't know can be added by title and type. They are stored only once acted on and never duplicate an existing item.
 - The catalog is small and hand-picked for now; a real catalog is a future integration.
 
+## Taste Blind Spot
+- Trigger: the user tried and disliked a pick Tastemake was confident about (prediction "Likely to like/fit"). Untried dislikes and low-confidence picks are not prediction failures.
+- Two short questions: which of the patterns it leaned on didn't hold up (or none), and what got in the way. The user confirms, changes or discards a plain-language summary before anything is saved.
+- Effect: patterns the user says held up are no longer counted against them; the mismatch stays on record instead of rewriting history; one miss never creates a new rule. Themes are marked "Recurring" only when two blind spots share them.
+- Shown on the card, in the Library's disliked list, and on the Taste Profile under "Things Tastemake keeps getting wrong about you".
+
 ## Recommendation refresh
 Purpose: show that feedback improves the next set without forcing a separate learning screen.
 
