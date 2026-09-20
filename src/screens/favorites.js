@@ -32,6 +32,9 @@ export function renderFavorites() {
 
   return `
     <section class="favorites-screen">
+      <div class="sticker-field sticker-field-favorites" aria-hidden="true">
+        <span class="sticker sticker-star">★</span><span class="sticker sticker-zap">✦</span><span class="sticker sticker-dot"></span><span class="sticker sticker-label">MY PICKS</span><span class="sticker sticker-squiggle">~~~</span><span class="sticker sticker-flower">✿</span><span class="sticker sticker-diamond">◆</span><span class="sticker sticker-mini">TM</span>
+      </div>
       <div class="favorites-hero">
         <div>
           <p class="kicker">Build your starter mix</p>
