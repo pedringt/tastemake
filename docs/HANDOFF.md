@@ -95,7 +95,8 @@ Decisions (also on #12, #14, #24): a single **Bookmark** replaces both Up Next a
   - Each Library card has Loved it / Liked it / Didn't like it, which change the underlying reaction (so Taste Profile and Bookmarks follow).
   - Starring does NOT change the taste model. #12 says Favorites should carry stronger weight than a plain Loved; not decided or built.
 - Header: with five tabs the compact two-row header now starts at 1280px (was 1120px), and the nav wraps to two rows on phones. The decorative "↙" doodle on Favorites is hidden on phones (it poked over the "All" filter).
-- Not done: **saving between visits** (asked Paige; everything, including the Library, still resets on reload), Favorites carrying extra taste weight, other domains beyond Watch/Read/Play, search/imports/provider links, and decoration on phones (stickers hidden below 620px; Paige is fine holding that).
+- **Decided (Paige, Sep 20): no saving between visits until there is a real backend.** The prototype deliberately stays in-memory (everything, including the Library, resets on reload); keep building features prototype-style.
+- Not done: Favorites carrying extra taste weight, other domains beyond Watch/Read/Play, search/imports/provider links, and decoration on phones (stickers hidden below 620px; Paige is fine holding that).
 
 ## What to do next
 
