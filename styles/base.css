@@ -248,25 +248,25 @@ button:focus-visible,a:focus-visible,.why-trigger:focus-visible { outline:3px so
 .sticker-scrap { width:64px; height:22px; border:1px solid rgba(17,26,75,.28); background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 9px,rgba(255,227,110,.82) 9px 18px); }
 .sticker-ring { width:30px; height:30px; border:5px solid var(--cyan); border-radius:50%; background:transparent; box-shadow:none; }
 .sticker-field-favorites .sticker-label { top:18px; right:-10px; bottom:auto; }
-.pin-fav-a { left:2%; top:40px; }
-.pin-fav-b { right:18%; top:122px; background:var(--cyan); }
-.spark-fav { right:27%; top:42px; transform:rotate(15deg); }
-.scrap-fav { right:2.5%; top:156px; transform:rotate(-4deg); }
-.ring-fav { right:29%; top:218px; transform:rotate(8deg); }
+.pin-fav-a { left:36%; top:14px; }
+.pin-fav-b { right:33%; top:22px; background:var(--cyan); }
+.spark-fav { right:22%; top:12px; transform:rotate(15deg); }
+.scrap-fav { right:8%; top:118px; transform:rotate(-4deg); }
+.ring-fav { left:22%; top:18px; transform:rotate(8deg); }
 .sticker-field-profile .sticker-star { top:96px; left:-16px; }
 .sticker-field-profile .sticker-zap { top:34%; right:-15px; }
 .sticker-field-profile .sticker-label { bottom:130px; right:18px; background:var(--cyan-soft); }
-.pin-profile-a { left:2%; top:34px; background:var(--violet); }
-.spark-profile { right:3%; top:54px; color:var(--lime); transform:rotate(-8deg); }
-.scrap-profile { right:1.5%; top:210px; transform:rotate(5deg); background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 9px,rgba(255,227,246,.9) 9px 18px); }
-.ring-profile { left:1.5%; top:286px; border-color:var(--yellow); }
+.pin-profile-a { left:38%; top:15px; background:var(--violet); }
+.spark-profile { right:28%; top:12px; color:var(--lime); transform:rotate(-8deg); }
+.scrap-profile { right:8%; top:16px; transform:rotate(5deg); background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 9px,rgba(255,227,246,.9) 9px 18px); }
+.ring-profile { left:20%; top:18px; border-color:var(--yellow); }
 .sticker-field-recommendations .sticker-star { top:168px; }
 .sticker-field-recommendations .sticker-label { bottom:72px; background:var(--yellow); }
-.pin-rec-a { left:2%; top:36px; background:var(--coral); }
-.pin-rec-b { right:2%; top:178px; background:var(--lime); }
-.spark-rec { right:25%; top:42px; color:var(--pink); transform:rotate(10deg); }
-.scrap-rec { right:2%; top:262px; transform:rotate(-5deg); background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 9px,rgba(220,251,253,.95) 9px 18px); }
-.ring-rec { left:1.5%; top:326px; border-color:var(--violet); }
+.pin-rec-a { left:34%; top:16px; background:var(--coral); }
+.pin-rec-b { right:30%; top:18px; background:var(--lime); }
+.spark-rec { right:18%; top:14px; color:var(--pink); transform:rotate(10deg); }
+.scrap-rec { right:6%; top:18px; transform:rotate(-5deg); background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 9px,rgba(220,251,253,.95) 9px 18px); }
+.ring-rec { left:18%; top:18px; border-color:var(--violet); }
 
 /* Cards read like pinned/taped objects sitting on the board. */
 .favorite-tile,.editorial-rec,.profile-map-aside,.signal-row,.rec-progress-card,.profile-evidence-strip,.filter-band,.favorites-footer,.recommendation-footer,.profile-footer {

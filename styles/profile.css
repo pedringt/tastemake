@@ -44,16 +44,14 @@
 .profile-headline-lead {
   position:relative;
   z-index:2;
-  display:block;
+  display:inline;
   color:#584bb5;
 }
 .profile-headline-highlight {
   position:relative;
   z-index:1;
-  display:block;
-  width:max-content;
-  max-width:100%;
-  margin-top:-.12em;
+  display:inline;
+  top:-.08em;
   color:#fff;
   background:var(--navy);
   box-decoration-break:clone;

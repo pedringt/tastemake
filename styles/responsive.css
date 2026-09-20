@@ -95,8 +95,8 @@
   .selection-counter { align-self:flex-start; }
 
   .profile-title-block h1 { font-size:clamp(38px,11.5vw,52px); line-height:1.1; }
-  .profile-headline-lead,.profile-headline-highlight { display:block; }
-  .profile-headline-highlight { width:auto; margin-top:-.08em; }
+  .profile-headline-lead,.profile-headline-highlight { display:inline; }
+  .profile-headline-highlight { top:-.05em; }
   .profile-evidence-strip { grid-template-columns:1fr; }
   .profile-map-aside { display:block; }
   .profile-aside-note { margin-top:12px; }
