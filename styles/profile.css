@@ -45,13 +45,14 @@
   position:relative;
   z-index:2;
   display:inline;
-  color:#584bb5;
+  top:.05em;
+  color:var(--pink);
 }
 .profile-headline-highlight {
   position:relative;
   z-index:1;
   display:inline;
-  top:-.08em;
+  top:-.05em;
   color:#fff;
   background:var(--navy);
   box-decoration-break:clone;
