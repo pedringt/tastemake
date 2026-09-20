@@ -1,7 +1,8 @@
 export const routes = {
   favorites: "/favorites",
   model: "/taste-profile",
-  recommendations: "/recommendations"
+  recommendations: "/recommendations",
+  bookmarks: "/bookmarks"
 };
 
 export function screenFromPath(pathname = window.location.pathname) {

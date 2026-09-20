@@ -1,16 +1,18 @@
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
-import { activeRecommendations, currentRoundComplete } from "./model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, isBookmarked, nextRecommendations } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
+import { renderBookmarks } from "./screens/bookmarks.js";
 
 const app = document.querySelector("#app");
 
 const views = {
   favorites: renderFavorites,
   model: renderProfile,
-  recommendations: renderRecommendations
+  recommendations: renderRecommendations,
+  bookmarks: renderBookmarks
 };
 
 function hasEnoughFavorites() {
@@ -18,6 +20,7 @@ function hasEnoughFavorites() {
 }
 
 function canAccess(screen) {
+  if (screen === "bookmarks") return bookmarkedFeedback(state).length > 0;
   return screen === "favorites" || hasEnoughFavorites();
 }
 
@@ -26,13 +29,20 @@ function render() {
 }
 
 function updateStepper() {
-  const order = ["favorites", "recommendations", "model"];
+  const order = ["favorites", "recommendations", "model", "bookmarks"];
   const activeIndex = order.indexOf(state.screen);
 
   document.querySelectorAll("[data-step-jump]").forEach((step) => {
     const screen = step.dataset.stepJump;
     const index = order.indexOf(screen);
     const unlocked = canAccess(screen);
+
+    // Bookmarks only shows up once there is something saved (or while the user is on that page).
+    if (screen === "bookmarks") {
+      const count = bookmarkedFeedback(state).length;
+      step.hidden = count === 0 && state.screen !== "bookmarks";
+      step.querySelector("[data-bookmark-count]").textContent = count ? String(count) : "";
+    }
 
     step.classList.toggle("is-active", screen === state.screen);
     step.classList.toggle("is-complete", index >= 0 && index < activeIndex);
@@ -88,6 +98,31 @@ function saveFeedbackQuality(itemId, quality) {
   if (!existing) return false;
 
   existing.quality = existing.quality === quality ? null : quality;
+  return true;
+}
+
+const triedOutcomes = {
+  "tried-loved": ["more", "loved-before"],
+  "tried-liked": ["more", "liked-before"],
+  "tried-disliked": ["less", "tried-disliked"]
+};
+
+// Trying a bookmarked item turns it into a real reaction (and only then can it teach the model).
+// wasBookmarked keeps a record that it was saved first, so the pre-try bookmark can later be
+// compared with how it actually went.
+function saveBookmarkAction(itemId, action) {
+  const existing = state.feedbackByRecommendation[itemId];
+  if (!isBookmarked(existing)) return false;
+
+  if (action === "remove") {
+    existing.detail = null;
+    return true;
+  }
+
+  const outcome = triedOutcomes[action];
+  if (!outcome) return false;
+  const [rating, detail] = outcome;
+  state.feedbackByRecommendation[itemId] = { item: existing.item, rating, detail, quality: existing.quality, wasBookmarked: true };
   return true;
 }
 
@@ -150,6 +185,15 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  const bookmarkAction = event.target.closest("[data-bookmark-action][data-bookmark-item]");
+  if (bookmarkAction) {
+    if (saveBookmarkAction(bookmarkAction.dataset.bookmarkItem, bookmarkAction.dataset.bookmarkAction)) {
+      render();
+      updateStepper();
+    }
+    return;
+  }
+
   const rating = event.target.closest("[data-rating][data-feedback-item]");
   if (rating) {
     const itemId = rating.dataset.feedbackItem;
@@ -178,8 +222,10 @@ app.addEventListener("click", (event) => {
   if (action === "view-model") navigate("model");
   if (action === "show-recs") navigate("recommendations");
 
-  if (action === "refresh-recommendations" && currentRoundComplete(state) && state.recommendationRound === 1) {
-    state.recommendationRound = 2;
+  if (action === "view-bookmarks") navigate("bookmarks");
+
+  if (action === "keep-discovering" && canKeepDiscovering(state)) {
+    state.recommendationSets.push(nextRecommendations(state));
     state.recommendationFilter = "all";
     navigate("recommendations", { replace: true });
   }

@@ -227,6 +227,14 @@ const LAYOUT = {
     ["washi-check", "b", 9, .32, -3], ["cloud", "b", 20, .6, 4, 0, 1], ["neon-repeat", "b", 36, .8, -3], ["polaroid", "b", 50, .85, -4],
     ["washi-zig", "b", 63, .32, 3], ["sticky", "b", 74, .8, 5, 0, 1], ["washi-pink", "b", 92, .32, 4],
     ["paperclip", "l", 45, .34, 8], ["doodle-arrow", "t", 33, .8, -10], ["coffee", "b", 43, .9, 0]
+  ],
+  bookmarks: [
+    ["neon-film", "l", 8, .8, -5], ["washi-v-pink", "l", 19, .3, 3], ["sticky", "l", 31, .74, -7], ["tag", "l", 44, .6, 6],
+    ["star", "l", 56, .62, 10], ["polaroid", "l", 68, .66, -6], ["sparkle-lime", "l", 79, .5, 0], ["washi-v-check", "l", 91, .3, -3],
+    ["neon-music", "r", 8, .8, 5], ["pressed-flower", "r", 20, .66, 8], ["ticket", "r", 34, 1.5, -90], ["cherry", "r", 47, .62, -8],
+    ["stamp", "r", 59, .66, 6], ["rainbow", "r", 70, .8, -4, 0, 1], ["washi-v-dots", "r", 82, .3, 4], ["postmark", "r", 92, 1.25, 90],
+    ["washi-check", "t", 10, .34, -3], ["neon-taste", "t", 32, .8, 2], ["heart", "t", 52, .7, -10], ["neon-more", "t", 72, .8, -2], ["washi-pink", "t", 92, .34, 4],
+    ["index", "b", 10, .72, 3], ["neon-repeat", "b", 34, .8, -2], ["flower", "b", 52, .66, 8], ["washi-zig", "b", 68, .32, -3], ["sparkle-pink", "b", 82, .6, 0], ["washi-dots", "b", 94, .32, 3]
   ]
 };
 

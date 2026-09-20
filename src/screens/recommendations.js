@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
-import { activeRecommendations, currentRoundComplete, currentRoundRatedCount } from "../model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, outOfPicks } from "../model/taste.js";
 import { renderStickerField } from "../components/stickers.js";
 
 export function ratingLabel(value) {
@@ -16,6 +16,7 @@ export function reactionLabel(feedback) {
   if (feedback.detail === "loved-before") return "Loved it before";
   if (feedback.detail === "liked-before") return "Liked it before";
   if (feedback.detail === "tried-disliked") return "Disliked it before";
+  if (feedback.rating === "not-tried" && feedback.detail === "bookmarked") return "Bookmarked";
   return ratingLabel(feedback.rating);
 }
 
@@ -51,11 +52,7 @@ function detailOptionsFor(feedback) {
     ];
   }
 
-  return [
-    ["interested", "Interested"],
-    ["maybe-interested", "Maybe"],
-    ["not-interested-untried", "Not interested"]
-  ];
+  return [["bookmarked", "Bookmark it"]];
 }
 
 function feedbackDetails(itemId, feedback) {
@@ -63,7 +60,7 @@ function feedbackDetails(itemId, feedback) {
 
   const options = detailOptionsFor(feedback);
   const prompt = feedback.rating === "not-tried"
-    ? "Interested in trying it? Optional."
+    ? "Want to save it for later? Optional. Bookmarks don't change your taste profile."
     : "Want to add a little context? Optional.";
 
   return `
@@ -162,18 +159,30 @@ function recommendationCard(item, index) {
     </article>`;
 }
 
-function renderRoundRefresh(roundTwo) {
-  if (!currentRoundComplete(state)) return "";
+function bookmarkNote(count) {
+  return count ? `<p class="bookmark-note">${count} ${count === 1 ? "thing" : "things"} bookmarked.</p>` : "";
+}
 
-  if (!roundTwo) {
+function renderNextSteps() {
+  if (!currentRoundComplete(state)) return "";
+  const bookmarks = bookmarkedFeedback(state).length;
+  const viewBookmarks = bookmarks
+    ? `<button class="button button-secondary" type="button" data-action="view-bookmarks">View Bookmarks</button>`
+    : "";
+
+  if (!outOfPicks(state)) {
     return `
       <div class="refresh-banner">
         <div>
           <span class="refresh-kicker">Nice. That is enough signal.</span>
           <strong>Want a fresh set?</strong>
           <p>Your reactions can now reshape what Tastemake shows next.</p>
+          ${bookmarkNote(bookmarks)}
         </div>
-        <button class="button button-primary" type="button" data-action="refresh-recommendations">Refresh recommendations</button>
+        <div class="action-group recommendation-footer-actions">
+          <button class="button button-primary" type="button" data-action="keep-discovering">Keep discovering &rarr;</button>
+          ${viewBookmarks}
+        </div>
       </div>`;
   }
 
@@ -181,11 +190,12 @@ function renderRoundRefresh(roundTwo) {
     <div class="refresh-banner is-finished">
       <div>
         <span class="refresh-kicker">Prototype checkpoint</span>
-        <strong>Next in the real product: Keep discovering.</strong>
-        <p>Another set would be shaped by everything you rated here. This prototype stops after two sets.</p>
-        <span class="prototype-next-step" aria-hidden="true">Keep discovering &rarr;</span>
+        <strong>That is every pick this demo has.</strong>
+        <p>A real Tastemake would keep going, shaped by everything you reacted to. This prototype only has a small set of hand-written picks, and you have seen them all.</p>
+        ${bookmarkNote(bookmarks)}
       </div>
       <div class="action-group recommendation-footer-actions">
+        ${viewBookmarks}
         <button class="button button-secondary" type="button" data-action="view-model">See what Tastemake learned</button>
         <button class="button button-quiet" type="button" data-action="back-favorites">Change favorites</button>
       </div>
@@ -195,7 +205,7 @@ function renderRoundRefresh(roundTwo) {
 export function renderRecommendations() {
   const items = activeRecommendations(state);
   const rated = currentRoundRatedCount(state);
-  const roundTwo = state.recommendationRound === 2;
+  const roundTwo = state.recommendationSets.length > 1;
   const segments = items.map((_, index) => `<span class="progress-segment ${index < rated ? "is-filled" : ""}"></span>`).join("");
   const visible = items.filter((item) => itemMatchesDomain(item, state.recommendationFilter));
 
@@ -217,7 +227,7 @@ export function renderRecommendations() {
             <span>rated</span>
           </div>
           <div class="progress-track" aria-hidden="true">${segments}</div>
-          <div class="progress-note">${currentRoundComplete(state) ? (roundTwo ? "prototype checkpoint" : "new set unlocked") : "teach it by using it"}</div>
+          <div class="progress-note">${currentRoundComplete(state) ? (outOfPicks(state) ? "prototype checkpoint" : "new set unlocked") : "teach it by using it"}</div>
         </div>
       </div>
 
@@ -227,7 +237,7 @@ export function renderRecommendations() {
         <span class="filter-context">This changes what you browse, not what Tastemake thinks you like.</span>
       </div>
 
-      ${renderRoundRefresh(roundTwo)}
+      ${renderNextSteps()}
 
       <div class="editorial-grid">
         ${visible.length
@@ -238,6 +248,9 @@ export function renderRecommendations() {
       <div class="recommendation-footer">
         <span class="footer-note">discover. react. repeat.</span>
         <div class="action-group recommendation-footer-actions">
+          ${canKeepDiscovering(state) && !currentRoundComplete(state)
+            ? `<button class="button button-primary" type="button" data-action="keep-discovering">Keep discovering &rarr;</button>`
+            : ""}
           <button class="button button-secondary" type="button" data-action="view-model">See my Taste Profile</button>
           <button class="button button-quiet" type="button" data-action="back-favorites">Change favorites</button>
         </div>

@@ -1,4 +1,4 @@
-import { recommendations, followUpPool } from "../data/catalog.js";
+import { followUpPool } from "../data/catalog.js";
 
 export function tasteDelta(feedback) {
   if (!feedback || feedback.rating === "not-tried") return 0;
@@ -35,9 +35,9 @@ export function recommendationDelta(feedback) {
     "tried-disliked": -0.75,
     "not-interested": -0.5,
     "wrong-vibe": -0.75,
-    interested: 0.35,
-    "maybe-interested": 0.1,
-    "not-interested-untried": -0.35
+    // A bookmark is a save marker on an untried item: it may lightly steer what is recommended next,
+    // but it is never taste evidence (tasteDelta ignores every not-tried reaction).
+    bookmarked: 0.35
   };
 
   return score + (detailAdjustments[feedback.detail] || 0);
@@ -79,25 +79,38 @@ export function modelUpdateFor(state, hypothesis) {
   };
 }
 
-function roundOneFeedback(state) {
-  return recommendations.map((item) => state.feedbackByRecommendation[item.id]).filter(Boolean);
+function shownRecommendations(state) {
+  return state.recommendationSets.flat();
 }
 
-export function followUpRecommendations(state) {
-  const scored = followUpPool.map((item) => {
-    const score = item.hypotheses.reduce((sum, id) => sum + hypothesisSignal(state, id, roundOneFeedback(state)), 0);
+// Feedback in the order the items were shown. Order matters: scores are floating-point sums,
+// and this keeps round two identical to the original two-round behavior.
+function feedbackInShownOrder(state) {
+  return shownRecommendations(state).map((item) => state.feedbackByRecommendation[item.id]).filter(Boolean);
+}
+
+// The next set comes from the follow-up pool minus anything already shown, ranked by everything
+// reacted to so far. With five or more left it is four picks plus one exploratory pick; with fewer,
+// the remainder is shown as ordinary picks. An empty list means this demo has run out of picks.
+export function nextRecommendations(state) {
+  const shownIds = new Set(shownRecommendations(state).map((item) => item.id));
+  const feedbacks = feedbackInShownOrder(state);
+  const scored = followUpPool.filter((item) => !shownIds.has(item.id)).map((item) => {
+    const score = item.hypotheses.reduce((sum, id) => sum + hypothesisSignal(state, id, feedbacks), 0);
     return { ...item, score };
   }).sort((a, b) => b.score - a.score);
 
-  const top = scored.slice(0, 4).map((item, index) => ({
+  const asPick = (item, index) => ({
     ...item,
     rank: index + 1,
     fit: item.score > 1 ? "Stronger after feedback" : item.score < 0 ? "Cautious fit" : "Promising fit",
     prediction: item.score > 1 ? "Likely to fit" : "Worth testing",
     surprise: false
-  }));
+  });
 
-  const surpriseSource = scored.slice(4)[0] || scored[scored.length - 1];
+  if (scored.length < 5) return scored.map(asPick);
+
+  const surpriseSource = scored[4];
   const surprise = {
     ...surpriseSource,
     rank: null,
@@ -107,11 +120,11 @@ export function followUpRecommendations(state) {
     reason: `${surpriseSource.reason} This is the less-obvious option for the next round.`
   };
 
-  return [...top, surprise];
+  return [...scored.slice(0, 4).map(asPick), surprise];
 }
 
 export function activeRecommendations(state) {
-  return state.recommendationRound === 1 ? recommendations : followUpRecommendations(state);
+  return state.recommendationSets[state.recommendationSets.length - 1];
 }
 
 export function currentRoundRatedCount(state) {
@@ -120,4 +133,22 @@ export function currentRoundRatedCount(state) {
 
 export function currentRoundComplete(state) {
   return currentRoundRatedCount(state) === activeRecommendations(state).length;
+}
+
+// Keep discovering needs some signal from the current set (not every card) and something left to show.
+export function canKeepDiscovering(state) {
+  return currentRoundRatedCount(state) > 0 && nextRecommendations(state).length > 0;
+}
+
+export function outOfPicks(state) {
+  return nextRecommendations(state).length === 0;
+}
+
+// Bookmarks are untried items the user saved. They are intent, not taste evidence.
+export function isBookmarked(feedback) {
+  return feedback?.rating === "not-tried" && feedback.detail === "bookmarked";
+}
+
+export function bookmarkedFeedback(state) {
+  return Object.values(state.feedbackByRecommendation).filter(isBookmarked);
 }
