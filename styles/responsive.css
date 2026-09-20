@@ -122,7 +122,7 @@
 
 
 @media (max-width:860px) {
-  .sticker-star,.sticker-zap,.sticker-squiggle,.sticker-diamond { opacity:.45; transform:scale(.78) rotate(-8deg); }
+  .sticker-star,.sticker-zap,.sticker-squiggle,.sticker-diamond,.sticker-heart,.sticker-bolt,.sticker-ticket { opacity:.45; transform:scale(.78) rotate(-8deg); }
   .favorites-screen,.profile-screen,.recommendations-screen { border-radius:16px; }
 }
 @media (max-width:620px) {

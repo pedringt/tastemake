@@ -33,7 +33,7 @@ export function renderFavorites() {
   return `
     <section class="favorites-screen">
       <div class="sticker-field sticker-field-favorites" aria-hidden="true">
-        <span class="sticker sticker-star">★</span><span class="sticker sticker-zap">✦</span><span class="sticker sticker-dot"></span><span class="sticker sticker-label">MY PICKS</span><span class="sticker sticker-squiggle">~~~</span><span class="sticker sticker-flower">✿</span><span class="sticker sticker-diamond">◆</span><span class="sticker sticker-mini">TM</span>
+        <span class="sticker sticker-star">★</span><span class="sticker sticker-zap">✦</span><span class="sticker sticker-dot"></span><span class="sticker sticker-label">MY PICKS</span><span class="sticker sticker-squiggle">~~~</span><span class="sticker sticker-flower">✿</span><span class="sticker sticker-diamond">◆</span><span class="sticker sticker-mini">TM</span><span class="sticker sticker-heart">♥</span><span class="sticker sticker-bolt">↯</span><span class="sticker sticker-ticket">NO. 07</span>
       </div>
       <div class="favorites-hero">
         <div>
