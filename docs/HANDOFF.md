@@ -61,7 +61,7 @@ Paige's reaction to the deployed result: "liking that better."
 
 Preview: https://tastemake-git-prototype-v1-core-loop-cairn10.vercel.app
 
-Vercel deployed `9c5a478` successfully (the earlier rate limit cleared). Confirm the preview is built from the current branch head before judging visuals.
+Vercel deployed `9c5a478` successfully. The Sept 20 batch (Bookmarks, Library, Search, Blind Spots, Taste Map; head `d94cfe3` on GitHub) was pushed to the branch, but Vercel refused the build: "Deployment rate limited — retry in 24 hours" (Hobby plan, limit shared with the State project). Until a build for the current head is READY, the preview still shows the older collage-only version. Confirm the preview is built from the current branch head before judging visuals. Do not push again just to retry; the next push should carry real changes.
 
 ## QA scripts
 
