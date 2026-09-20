@@ -65,10 +65,11 @@ Vercel deployed `9c5a478` successfully (the earlier rate limit cleared). Confirm
 
 ## QA scripts
 
-Two browser-side scripts (no dependencies; usage in each file header) live in `scripts/qa/`:
+Three browser-side scripts (no dependencies; usage in each file header) live in `scripts/qa/`:
 
-- `layout-check.js` — per page (Favorites, Recommendations, Taste Profile, Library) at the current width, ignoring anything inside a collapsed `<details>`: stickers touching text/cards, Favorites titles colliding with their tile's top row, text hidden behind buttons, sideways scroll. Run at 1440, 1024 and 768 after any layout or sticker change.
-- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, the Library, and focus/announcement behavior (63 checks).
+- `layout-check.js` — per page (Favorites, Recommendations, Taste Profile, Library) at the current width, ignoring anything inside a collapsed `<details>`: header parts overlapping or running off the page, stickers touching text/cards, Favorites titles colliding with their tile's top row, text hidden behind buttons, sideways scroll. Run at 1440, 1024 and 768 after any layout or sticker change.
+- `model-rules.js` — the evidence, Library and Search rules checked directly against `src/model/*` (90 checks). Note: ranking parity against the *original* two-round code was verified once in a scratch Node harness (30,000 random reaction sets) and is not committed.
+- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, the Library, Search, and focus/announcement behavior (90 checks).
 
 Headless Chrome will not go below a 500px layout width; to test real phone widths load the page in a narrower iframe.
 
@@ -96,6 +97,15 @@ Decisions (also on #12, #14, #24): a single **Bookmark** replaces both Up Next a
   - Starring does NOT change the taste model. #12 says Favorites should carry stronger weight than a plain Loved; not decided or built.
 - Header: with five tabs the compact two-row header now starts at 1280px (was 1120px), and the nav wraps to two rows on phones. The decorative "↙" doodle on Favorites is hidden on phones (it poked over the "All" filter).
 - **Decided (Paige, Sep 20): no saving between visits until there is a real backend.** The prototype deliberately stays in-memory (everything, including the Library, resets on reload); keep building features prototype-style.
+- **Search / add something (#13), built:** a magnifier button in the header (and `/` from anywhere) opens a modal dialog outside `#app` (`src/components/search.js`, model in `src/model/search.js`).
+  - **Searching is not evidence.** Typing, browsing and opening a result change nothing (tested); only an explicit action does. The dialog says so.
+  - Finds by title, prefix, acronym (LOTR, EEAAO), and typos (swapped or missing letters); filter by Watch/Read/Play. Enter opens the top result.
+  - **Action sheet:** *I've tried it* (Loved it / Liked it / Didn't like it) and *I haven't tried it* (Bookmark it / Not interested); Add to Favorites appears after Loved; Remove from Tastemake undoes it. These write the same reactions as the Recommendations screen, so Library, Bookmarks, the Taste Profile and the next set all follow. A starter favorite shows "already a starter favorite" with no actions.
+  - **Add something Tastemake doesn't know:** title + Movie/TV/Book/Game. Stored only once you act on it; typing an existing title opens the existing item instead of making a duplicate. Added items have no pattern tags, so they fill the Library and Bookmarks but cannot move the Taste Profile.
+  - Anything the user has reacted to (even via search) is never recommended again, and reactions to items outside the shown sets still steer the next set. Ranking with no search use is unchanged (parity test still 30,000/30,000).
+  - **Catalog = the ~20 hand-written picks + anything the user adds.** `data/training.json` (77 titles WITH Paige's personal ratings from Experiment 001) was deliberately NOT used as a catalog; ask before exposing those titles.
+  - Not built: Mixed/neutral, Listen and other domains, creator search, imports/canonical identity, images.
+- Header: three columns only from 1440px (five tabs + search would overflow between ~1280 and 1439 once Bookmarks is visible); below that it is two rows. The search button is icon-only on purpose.
 - Not done: Favorites carrying extra taste weight, other domains beyond Watch/Read/Play, search/imports/provider links, and decoration on phones (stickers hidden below 620px; Paige is fine holding that).
 
 ## What to do next

@@ -80,6 +80,13 @@ Requirements:
 - Each pick can be corrected in place (Loved / Liked / Didn't like it); a pick marked Tried it and disliked leaves the Library but stays listed, correctable, under "Things you didn't like".
 - Untried saves are Bookmarks, never Library.
 
+## Search and add something
+- A header button (and the `/` key) opens a search dialog from any screen. **Searching is not evidence**: typing, browsing and opening a result never change taste or collections; only an explicit action does.
+- Results show title, type and where the item already stands (Loved it, Bookmarked, starter favorite...). Tolerates prefixes, acronyms and typos.
+- Action sheet, kept short: I've tried it (Loved / Liked / Didn't like it) and I haven't tried it (Bookmark it / Not interested); Add to Favorites after Loved; Remove undoes it. Same evidence rules as everywhere else.
+- Items Tastemake doesn't know can be added by title and type. They are stored only once acted on and never duplicate an existing item.
+- The catalog is small and hand-picked for now; a real catalog is a future integration.
+
 ## Recommendation refresh
 Purpose: show that feedback improves the next set without forcing a separate learning screen.
 
