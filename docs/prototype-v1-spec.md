@@ -74,6 +74,12 @@ Requirements:
 - Loved it / Liked it / Didn't like it turns a bookmark into a real reaction (which then counts as taste evidence and records that it was bookmarked first); Remove bookmark leaves the pick untried.
 - A bookmark has no taste weight and only a small steering nudge.
 
+## Library
+- Things the user has actually tried and liked, plus their starter favorites. It is derived from the reactions already given, so it never disagrees with the Taste Profile.
+- Favorites = starter favorites + Loved picks the user stars ("Add to Favorites" is offered only on Loved). Library = other Loved / Liked picks.
+- Each pick can be corrected in place (Loved / Liked / Didn't like it); a pick marked Tried it and disliked leaves the Library but stays listed, correctable, under "Things you didn't like".
+- Untried saves are Bookmarks, never Library.
+
 ## Recommendation refresh
 Purpose: show that feedback improves the next set without forcing a separate learning screen.
 

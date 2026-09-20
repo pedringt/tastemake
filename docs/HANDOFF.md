@@ -67,8 +67,8 @@ Vercel deployed `9c5a478` successfully (the earlier rate limit cleared). Confirm
 
 Two browser-side scripts (no dependencies; usage in each file header) live in `scripts/qa/`:
 
-- `layout-check.js` — per page at the current width: stickers touching text/cards, Favorites titles colliding with their tile's top row, text hidden behind buttons, sideways scroll. Run at 1440, 1024 and 768 after any layout or sticker change.
-- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, and focus/announcement behavior (50 checks).
+- `layout-check.js` — per page (Favorites, Recommendations, Taste Profile, Library) at the current width, ignoring anything inside a collapsed `<details>`: stickers touching text/cards, Favorites titles colliding with their tile's top row, text hidden behind buttons, sideways scroll. Run at 1440, 1024 and 768 after any layout or sticker change.
+- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, the Library, and focus/announcement behavior (63 checks).
 
 Headless Chrome will not go below a 500px layout width; to test real phone widths load the page in a narrower iframe.
 
@@ -88,7 +88,14 @@ Decisions (also on #12, #14, #24): a single **Bookmark** replaces both Up Next a
 - **Chips (decided in #24):** More offers only Loved it before / Liked it before; Less offers only Tried it and disliked it / Not interested. "Exactly my taste" and "Wrong vibe" were removed; "Surprising fit" became **"Surprised me"**, an optional note next to "Too predictable" that only appears after Loved/Liked it before (a stale one is cleared if that choice changes). It is recorded but does not change taste or ranking.
 - **Taste Profile lean:** reactions to untried picks (plain More/Less, Not interested, bookmarks) show on the matching pattern card as a separate dashed line, "Your reactions lean toward/away from this (from N picks you haven't tried)". It needs a clear net signal (about one plain More or Less); it is never shown as Stronger / Less certain. Once a pick is tried (Loved / Liked / Tried it and disliked) it moves out of the lean and into taste.
 - **Keeping the user's place:** after any action focus returns to the control used (or the next bookmark card / the page if it is gone), and changes are announced through a polite status region (`#live`, outside the re-rendered `#app`). Previously focus dropped to the page body after every tap.
-- Not done: saving between visits, Library / Favorites promotion, search, provider links, and decoration on phones (stickers are hidden below 620px; Paige is fine holding that for now).
+- **Library (#12), built:** own page and nav tab (04; Bookmarks is 05, hidden until something is saved), route `/library`. It is **derived, never stored separately** (`src/model/library.js`), so it cannot disagree with the Taste Profile and every correction is free:
+  - **Favorites** section = your starter favorites + any *Loved it before* pick you chose to star ("Add to Favorites" is only offered on Loved; correcting Loved to Liked drops the star).
+  - **Library** section = every pick you said you tried and Loved or Liked it before (from Recommendations or from a Bookmark you then tried).
+  - **Things you didn't like** (collapsed) keeps "Tried it and disliked" picks out of the Library but listed, with "Actually, I liked/loved it" corrections. They stay as background taste evidence.
+  - Each Library card has Loved it / Liked it / Didn't like it, which change the underlying reaction (so Taste Profile and Bookmarks follow).
+  - Starring does NOT change the taste model. #12 says Favorites should carry stronger weight than a plain Loved; not decided or built.
+- Header: with five tabs the compact two-row header now starts at 1280px (was 1120px), and the nav wraps to two rows on phones. The decorative "↙" doodle on Favorites is hidden on phones (it poked over the "All" filter).
+- Not done: **saving between visits** (asked Paige; everything, including the Library, still resets on reload), Favorites carrying extra taste weight, other domains beyond Watch/Read/Play, search/imports/provider links, and decoration on phones (stickers hidden below 620px; Paige is fine holding that).
 
 ## What to do next
 
