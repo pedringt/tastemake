@@ -33,7 +33,10 @@ export async function run() {
   const chips = $$(`[data-feedback-item="${ids[0]}"][data-feedback-detail]`).map((chip) => chip.textContent.trim());
   check("Not tried offers only 'Bookmark it' (no Interested / Maybe)", chips.length === 1 && chips[0] === "Bookmark it", chips.join(","));
   await rate(ids[1], "more");
-  check("bookmark is not offered on a More reaction", !$$(`[data-feedback-item="${ids[1]}"][data-feedback-detail]`).some((chip) => /bookmark/i.test(chip.textContent)));
+  const moreChips = $$(`[data-feedback-item="${ids[1]}"][data-feedback-detail]`).map((chip) => chip.textContent.trim());
+  check("More offers only experience answers (Loved / Liked it before)", moreChips.join("|") === "Loved it before|Liked it before", moreChips.join("|"));
+  const qualityChips = () => $$(`[data-feedback-item="${ids[1]}"][data-feedback-quality]`).map((chip) => chip.textContent.trim());
+  check("'Surprised me' is NOT offered on an untried pick", qualityChips().join("|") === "Too predictable", qualityChips().join("|"));
 
   await rate(ids[0], "not-tried");
   await detail(ids[0], "bookmarked");
@@ -46,12 +49,21 @@ export async function run() {
   check("plain More on an untried pick is NOT taste evidence", taste.tasteDelta(state.feedbackByRecommendation[ids[1]]) === 0, taste.tasteDelta(state.feedbackByRecommendation[ids[1]]));
   check("...but still steers what comes next", taste.recommendationDelta(state.feedbackByRecommendation[ids[1]]) === 1);
   check("plain Less on an untried pick is NOT taste evidence", taste.tasteDelta(state.feedbackByRecommendation[ids[2]]) === 0, taste.tasteDelta(state.feedbackByRecommendation[ids[2]]));
-  await detail(ids[2], "wrong-vibe");
-  check("'Wrong vibe' is NOT taste evidence", taste.tasteDelta(state.feedbackByRecommendation[ids[2]]) === 0);
+  const lessChips = $$(`[data-feedback-item="${ids[2]}"][data-feedback-detail]`).map((chip) => chip.textContent.trim());
+  check("Less offers only 'Tried it and disliked it' / 'Not interested'", lessChips.join("|") === "Tried it and disliked it|Not interested", lessChips.join("|"));
+  await detail(ids[2], "not-interested");
+  check("'Not interested' is NOT taste evidence", taste.tasteDelta(state.feedbackByRecommendation[ids[2]]) === 0);
   await detail(ids[2], "tried-disliked");
   check("'Tried it and disliked' IS taste evidence (-2)", taste.tasteDelta(state.feedbackByRecommendation[ids[2]]) === -2);
   await detail(ids[1], "loved-before");
   check("'Loved it before' IS taste evidence (+2)", taste.tasteDelta(state.feedbackByRecommendation[ids[1]]) === 2);
+  check("'Surprised me' appears once it is tried and loved", qualityChips().join("|") === "Too predictable|Surprised me", qualityChips().join("|"));
+  await act(`[data-feedback-item="${ids[1]}"][data-feedback-quality="surprised-me"]`);
+  const surprised = state.feedbackByRecommendation[ids[1]];
+  check("'Surprised me' is recorded but adds no taste weight of its own", surprised.quality === "surprised-me" && taste.tasteDelta(surprised) === 2);
+  await detail(ids[1], "loved-before");
+  check("un-choosing 'Loved it before' also clears a stale 'Surprised me'", state.feedbackByRecommendation[ids[1]].quality === null && qualityChips().join("|") === "Too predictable");
+  await detail(ids[1], "loved-before");
 
   await rate(ids[3], "not-tried");
   await rate(ids[4], "not-tried");

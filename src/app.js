@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, isBookmarked, nextRecommendations } from "./model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, isBookmarked, isPositiveExperience, nextRecommendations } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
@@ -79,7 +79,8 @@ function saveQuickFeedback(itemId, rating) {
     item,
     rating,
     detail: null,
-    quality: existing?.quality || null
+    // "Surprised me" only makes sense after Loved/Liked it before, which a fresh rating clears.
+    quality: existing?.quality === "surprised-me" ? null : existing?.quality || null
   };
 
   return true;
@@ -90,6 +91,7 @@ function saveFeedbackDetail(itemId, detail) {
   if (!existing) return false;
 
   existing.detail = existing.detail === detail ? null : detail;
+  if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
   return true;
 }
 

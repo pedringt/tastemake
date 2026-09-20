@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, outOfPicks } from "../model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, isPositiveExperience, outOfPicks } from "../model/taste.js";
 import { renderStickerField } from "../components/stickers.js";
 
 export function ratingLabel(value) {
@@ -38,17 +38,14 @@ function detailOptionsFor(feedback) {
   if (feedback.rating === "more") {
     return [
       ["loved-before", "Loved it before"],
-      ["liked-before", "Liked it before"],
-      ["exactly-my-taste", "Exactly my taste"],
-      ["surprising-fit", "Surprising fit"]
+      ["liked-before", "Liked it before"]
     ];
   }
 
   if (feedback.rating === "less") {
     return [
       ["tried-disliked", "Tried it and disliked it"],
-      ["not-interested", "Not interested"],
-      ["wrong-vibe", "Wrong vibe"]
+      ["not-interested", "Not interested"]
     ];
   }
 
@@ -61,7 +58,9 @@ function feedbackDetails(itemId, feedback) {
   const options = detailOptionsFor(feedback);
   const prompt = feedback.rating === "not-tried"
     ? "Want to save it for later? Optional. Bookmarks don't change your taste profile."
-    : "Want to add a little context? Optional.";
+    : feedback.rating === "more"
+      ? "Already tried it? Tell us how it went. Optional."
+      : "Tried it, or just not for you? Optional.";
 
   return `
     <div class="feedback-details">
@@ -87,6 +86,14 @@ function feedbackDetails(itemId, feedback) {
             data-feedback-quality="too-obvious"
             aria-pressed="${feedback.quality === "too-obvious"}"
           >Too predictable</button>
+          ${isPositiveExperience(feedback) ? `
+          <button
+            class="detail-chip quality-chip"
+            type="button"
+            data-feedback-item="${itemId}"
+            data-feedback-quality="surprised-me"
+            aria-pressed="${feedback.quality === "surprised-me"}"
+          >Surprised me</button>` : ""}
           <span class="quality-note-help">This can still be a great taste match. It only tells Tastemake to make future picks less obvious.</span>
         </div>
       </div>

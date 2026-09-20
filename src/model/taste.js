@@ -1,18 +1,15 @@
 import { followUpPool } from "../data/catalog.js";
 
 // Taste evidence comes only from things the user has actually experienced (decided in #12/#24):
-// a reaction to a pick they have not tried steers what comes next (see recommendationDelta) but
-// never changes the taste profile. Everything not listed here is 0.
+// Loved it before, Liked it before, and Tried it and disliked. A reaction to a pick they have not
+// tried steers what comes next (see recommendationDelta) but never changes the taste profile.
+// Everything not listed here is 0.
 export function tasteDelta(feedback) {
   if (!feedback) return 0;
 
   if (feedback.rating === "more") {
     if (feedback.detail === "loved-before") return 2;
     if (feedback.detail === "liked-before") return 1.25;
-    // Open question in #24: these two chips read as reactions to the pitch, not an experience.
-    // They keep their old weight until that is decided.
-    if (feedback.detail === "surprising-fit") return 1.25;
-    if (feedback.detail === "exactly-my-taste") return 1.75;
     return 0;
   }
 
@@ -32,11 +29,8 @@ export function recommendationDelta(feedback) {
   const detailAdjustments = {
     "loved-before": 0.75,
     "liked-before": 0.45,
-    "surprising-fit": 0.5,
-    "exactly-my-taste": 0.75,
     "tried-disliked": -0.75,
     "not-interested": -0.5,
-    "wrong-vibe": -0.75,
     // A bookmark is a save marker on an untried item: it may lightly steer what is recommended next,
     // but it is never taste evidence (tasteDelta ignores every not-tried reaction).
     bookmarked: 0.35
@@ -45,8 +39,15 @@ export function recommendationDelta(feedback) {
   return score + (detailAdjustments[feedback.detail] || 0);
 }
 
+// Notes about the recommendation itself, not about taste. "Surprised me" is recorded (it is only
+// offered after the user says they tried and liked something) but does not change ranking yet.
 export function recommendationQualityDelta(feedback) {
   return feedback?.quality === "too-obvious" ? -0.5 : 0;
+}
+
+// The user said they tried it and liked it: the only time "Surprised me" makes sense.
+export function isPositiveExperience(feedback) {
+  return feedback?.rating === "more" && (feedback.detail === "loved-before" || feedback.detail === "liked-before");
 }
 
 export function hypothesisMatches(itemHypotheses, hypothesisId) {
