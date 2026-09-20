@@ -108,7 +108,7 @@ The Favorites, Recommendations and Taste Profile boards read as a junk-journal b
 - Long pieces can stand up (rotated 90 degrees) to run along a gutter. Pieces marked hide-on-tablet drop out at 860px and below; the whole field is hidden at 620px and below.
 - One shared look: white die-cut border on vinyl, thin ink edge on paper, one soft shadow, the existing palette.
 - Neon is a black paper scrap with a glowing tube icon or word, static (no animation). It is inspired by bright neon signage generally; do not copy brand marks or specific artwork.
-- To add or change decoration, edit the lists in `stickers.js`. Verify at 1440, 1024 and 768 that no sticker touches text, controls or cards.
+- To add or change decoration, edit the lists in `stickers.js`. Verify with `scripts/qa/layout-check.js` (usage is in the file header) at 1440, 1024 and 768: no sticker may touch text, controls or cards, no Favorites title may collide with its tile's top row, and no page may scroll sideways.
 
 ## Surprise Me
 

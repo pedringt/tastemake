@@ -63,10 +63,14 @@ Preview: https://tastemake-git-prototype-v1-core-loop-cairn10.vercel.app
 
 Vercel deployed `9c5a478` successfully (the earlier rate limit cleared). Confirm the preview is built from the current branch head before judging visuals.
 
-## Known issues (not part of the sticker work)
+## Layout check
 
-- Original Star Wars trilogy card wraps to four lines at ~1440px and its number "07" collides with the title (follow-up to the earlier check-circle fix in #4).
-- Recommendations scrolls sideways by ~26px at ~900px because the hidden "Why this one?" popover extends past the viewport. (The pre-frame branch scrolled sideways at 900px on all three pages; only this one remains.)
+`scripts/qa/layout-check.js` (browser-side, no dependencies; usage in the file header) checks each page at a given width: stickers touching text/cards, Favorites titles colliding with their tile's top row, and sideways scroll. Run it at 1440, 1024 and 768 after any layout or sticker change. It replaced the earlier ad-hoc checks.
+
+## Recently fixed
+
+- #22: Favorites tile text is now in normal flow at the bottom of the tile, so a long title/description grows the tile instead of running up into the number row (this also affected Circe and Alan Wake 2 at narrower widths, not only the Star Wars card). The earlier `padding-right` workaround for the check circle was removed as unnecessary.
+- #23: the "Why this one?" popover is capped to its card's width, so it can no longer make Recommendations scroll sideways at ~900px.
 
 ## What to do next
 
