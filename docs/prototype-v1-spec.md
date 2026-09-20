@@ -93,6 +93,12 @@ Requirements:
 - Effect: patterns the user says held up are no longer counted against them; the mismatch stays on record instead of rewriting history; one miss never creates a new rule. Themes are marked "Recurring" only when two blind spots share them.
 - Shown on the card, in the Library's disliked list, and on the Taste Profile under "Things Tastemake keeps getting wrong about you".
 
+## Taste Map
+- A Map view of the Taste Profile (toggle beside List). One card per pattern; confidence and link strength are coarse steps (solid / dashed / dotted, weak / some / strong), never numbers, so it doesn't pretend to be a precise personality graph.
+- Tap a pattern for what it came from and what the user has told Tastemake about it (grouped by what it does to the pattern, every row marked as told by the user); tap a pick to see which patterns it leans on.
+- Tensions, thin spots and "little to go on" areas are shown, but only when the data supports them.
+- Every connection also appears as text under the picture; small screens show stacked cards instead of lines.
+
 ## Recommendation refresh
 Purpose: show that feedback improves the next set without forcing a separate learning screen.
 
