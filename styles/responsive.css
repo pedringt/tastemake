@@ -124,6 +124,9 @@
 
 @media (max-width:860px) {
   .sticker-star,.sticker-zap,.sticker-squiggle,.sticker-diamond,.sticker-heart,.sticker-bolt,.sticker-ticket,.sticker-pin,.sticker-spark,.sticker-scrap,.sticker-ring { opacity:.45; transform:scale(.78) rotate(-8deg); }
+  .sticker-field-favorites .sticker-ticket,.sticker-field-favorites .sticker-flower,.sticker-field-favorites .sticker-squiggle,
+  .sticker-field-profile .sticker-ticket,.sticker-field-profile .sticker-flower,.sticker-field-profile .sticker-squiggle,
+  .sticker-field-recommendations .sticker-ticket,.sticker-field-recommendations .sticker-flower,.sticker-field-recommendations .sticker-squiggle { display:none; }
   .favorites-screen,.profile-screen,.recommendations-screen { border-radius:16px; }
 }
 @media (max-width:620px) {
