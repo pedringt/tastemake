@@ -201,7 +201,7 @@ export function renderRecommendations() {
   return `
     <section class="recommendations-screen">
       <div class="sticker-field sticker-field-recommendations" aria-hidden="true">
-        <span class="sticker sticker-star">★</span><span class="sticker sticker-zap">✦</span><span class="sticker sticker-dot"></span><span class="sticker sticker-label">KEEP DIGGING</span><span class="sticker sticker-squiggle">~~~</span><span class="sticker sticker-flower">✿</span><span class="sticker sticker-diamond">◆</span><span class="sticker sticker-mini">TM</span><span class="sticker sticker-heart">♥</span><span class="sticker sticker-bolt">↯</span><span class="sticker sticker-ticket">NO. 07</span>
+        <span class="sticker sticker-star">★</span><span class="sticker sticker-zap">✦</span><span class="sticker sticker-dot"></span><span class="sticker sticker-label">KEEP DIGGING</span><span class="sticker sticker-squiggle">~~~</span><span class="sticker sticker-flower">✿</span><span class="sticker sticker-diamond">◆</span><span class="sticker sticker-mini">TM</span><span class="sticker sticker-heart">♥</span><span class="sticker sticker-bolt">↯</span><span class="sticker sticker-ticket">NO. 07</span><span class="sticker sticker-pin pin-rec-a"></span><span class="sticker sticker-pin pin-rec-b"></span><span class="sticker sticker-spark spark-rec">✦</span><span class="sticker sticker-scrap scrap-rec"></span><span class="sticker sticker-ring ring-rec"></span>
       </div>
       <div class="recommendations-masthead">
         <div class="rec-masthead-copy">

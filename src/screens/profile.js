@@ -26,12 +26,12 @@ export function renderProfile() {
   return `
     <section class="profile-screen">
       <div class="sticker-field sticker-field-profile" aria-hidden="true">
-        <span class="sticker sticker-star">★</span><span class="sticker sticker-zap">✦</span><span class="sticker sticker-dot"></span><span class="sticker sticker-label">TASTE MAP</span><span class="sticker sticker-squiggle">~~~</span><span class="sticker sticker-flower">✿</span><span class="sticker sticker-diamond">◆</span><span class="sticker sticker-mini">TM</span><span class="sticker sticker-heart">♥</span><span class="sticker sticker-bolt">↯</span><span class="sticker sticker-ticket">NO. 07</span>
+        <span class="sticker sticker-star">★</span><span class="sticker sticker-zap">✦</span><span class="sticker sticker-dot"></span><span class="sticker sticker-label">TASTE MAP</span><span class="sticker sticker-squiggle">~~~</span><span class="sticker sticker-flower">✿</span><span class="sticker sticker-diamond">◆</span><span class="sticker sticker-mini">TM</span><span class="sticker sticker-heart">♥</span><span class="sticker sticker-bolt">↯</span><span class="sticker sticker-ticket">NO. 07</span><span class="sticker sticker-pin pin-profile-a"></span><span class="sticker sticker-spark spark-profile">✦</span><span class="sticker sticker-scrap scrap-profile"></span><span class="sticker sticker-ring ring-profile"></span>
       </div>
       <div class="profile-hero">
         <div class="profile-title-block">
           <p class="kicker">Taste Profile</p>
-          <h1>Less "you like fantasy." <span>More "this is what tends to click."</span></h1>
+          <h1><span class="profile-headline-lead">Less "you like fantasy."</span><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
         </div>
         <div class="profile-stamp" aria-hidden="true">

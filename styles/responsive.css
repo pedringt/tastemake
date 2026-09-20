@@ -95,7 +95,8 @@
   .selection-counter { align-self:flex-start; }
 
   .profile-title-block h1 { font-size:clamp(38px,11.5vw,52px); line-height:1.1; }
-  .profile-title-block h1 span { display:inline; }
+  .profile-headline-lead,.profile-headline-highlight { display:block; }
+  .profile-headline-highlight { width:auto; margin-top:-.08em; }
   .profile-evidence-strip { grid-template-columns:1fr; }
   .profile-map-aside { display:block; }
   .profile-aside-note { margin-top:12px; }
@@ -122,7 +123,7 @@
 
 
 @media (max-width:860px) {
-  .sticker-star,.sticker-zap,.sticker-squiggle,.sticker-diamond,.sticker-heart,.sticker-bolt,.sticker-ticket { opacity:.45; transform:scale(.78) rotate(-8deg); }
+  .sticker-star,.sticker-zap,.sticker-squiggle,.sticker-diamond,.sticker-heart,.sticker-bolt,.sticker-ticket,.sticker-pin,.sticker-spark,.sticker-scrap,.sticker-ring { opacity:.45; transform:scale(.78) rotate(-8deg); }
   .favorites-screen,.profile-screen,.recommendations-screen { border-radius:16px; }
 }
 @media (max-width:620px) {

@@ -52,6 +52,7 @@
   z-index:-1;
 }
 .favorites-side-note {
+  position:relative;
   justify-self:end;
   align-self:center;
   display:grid;
@@ -62,7 +63,7 @@
   transform:rotate(2deg);
 }
 .favorites-side-note strong { font-family:var(--display); font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--navy); }
-.note-arrow { font-size:34px; color:var(--pink); }
+.note-arrow { position:absolute; left:-12px; bottom:-72px; font-size:54px; color:var(--pink); transform:rotate(-8deg); }
 
 .taste-board {
   display:grid;
