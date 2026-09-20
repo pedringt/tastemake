@@ -1,5 +1,5 @@
 // Browser-side flow check for Bookmark + Keep discovering + the taste-evidence rule + keeping the
-// user's place (focus, announcements) + the Taste Profile lean + the Library + Search. No dependencies.
+// user's place (focus, announcements) + the Taste Profile lean + the Library + Search + Blind Spots. No dependencies.
 //
 //   await (await import("/scripts/qa/bookmark-flow.js")).run()
 //
@@ -16,6 +16,7 @@ export async function run() {
   const { state } = await import("/src/state.js");
   const taste = await import("/src/model/taste.js");
   const catalog = await import("/src/data/catalog.js");
+  const blind = await import("/src/model/blindspots.js");
   const layout = await import("/scripts/qa/layout-check.js");
   const results = [];
   const check = (name, ok, detail = "") => results.push({ name, ok: Boolean(ok), detail: String(detail) });
@@ -67,6 +68,47 @@ export async function run() {
   check("'Not interested' is NOT taste evidence", taste.tasteDelta(state.feedbackByRecommendation[ids[2]]) === 0);
   await detail(ids[2], "tried-disliked");
   check("'Tried it and disliked' IS taste evidence (-2)", taste.tasteDelta(state.feedbackByRecommendation[ids[2]]) === -2);
+
+  // ---- Taste Blind Spot (#20): a confident pick that was tried and disliked ----
+  const spotItem = state.feedbackByRecommendation[ids[2]].item;
+  const spotPatterns = blind.patternsFor(spotItem);
+  const spotCard = () => $(`[data-rec-id="${ids[2]}"]`);
+  const blindBtn = (action, value) => `[data-blind-item="${ids[2]}"][data-blind-action="${action}"]${value ? `[data-blind-value="${value}"]` : ""}`;
+  const penalized = () => spotPatterns.map((p) => taste.modelUpdateFor(state, p).note !== null);
+  check("the disliked pick leans on 2+ visible patterns", spotPatterns.length >= 2, spotPatterns.length);
+  check("a confident pick that was tried and disliked offers to learn from it", Boolean(spotCard().querySelector(".blind-panel.is-offer")));
+  check("...and the offer is announced", /tell it what it got wrong/.test(live()), live());
+  check("before answering, every pattern it leaned on is counted against", penalized().every(Boolean));
+  await act(blindBtn("dismiss"));
+  check("'Not now' leaves a quiet way back, not a nag", Boolean(spotCard().querySelector(".blind-panel.is-quiet")) && !spotCard().querySelector(".blind-panel.is-offer"));
+  await act(blindBtn("start"));
+  check("starting opens question 1 and puts focus on it", document.activeElement?.dataset.blindFocus === ids[2] && /Which of the reasons/.test(document.activeElement.textContent), document.activeElement?.textContent.slice(0, 50));
+  check("Next is disabled until something is chosen", $(blindBtn("next")).disabled);
+  await act(blindBtn("toggle-pattern", spotPatterns[0].id));
+  check("choosing a pattern keeps focus on that chip", document.activeElement?.dataset.blindValue === spotPatterns[0].id);
+  await act(blindBtn("next"));
+  check("question 2 asks what got in the way (focus on it)", /What got in the way/.test(document.activeElement?.textContent || ""));
+  check("...and the step is announced", /Question 2 of 2/.test(live()), live());
+  await act(blindBtn("toggle-reason", "tone"));
+  await act(blindBtn("next"));
+  check("the summary asks for confirmation; nothing is saved yet", /Does this sound right/.test(document.activeElement?.textContent || "") && !state.blindSpots[ids[2]]);
+  await act(blindBtn("save"));
+  check("'Yes, keep it' saves the blind spot with the answers", JSON.stringify(state.blindSpots[ids[2]]?.hypotheses) === JSON.stringify([spotPatterns[0].id]) && state.blindSpots[ids[2]].reasons.join() === "tone", JSON.stringify(state.blindSpots[ids[2]]));
+  check("...the pattern that failed is still counted against", taste.modelUpdateFor(state, spotPatterns[0]).note !== null);
+  check("...and the patterns that held up are NOT counted against", spotPatterns.slice(1).every((p) => taste.modelUpdateFor(state, p).note === null));
+  check("...announced", /now a blind spot/.test(live()), live());
+  await act('[data-step-jump="model"]');
+  check("the Taste Profile lists it under 'Things Tastemake keeps getting wrong about you'", /keeps getting wrong/.test($(".blind-section h2")?.textContent || "") && /Noted once/.test($(".blind-card .blind-status")?.textContent || ""));
+  check("...and the pattern that failed notes it", Boolean($(".signal-blind")) && /didn't hold up here/.test($(".signal-blind").textContent));
+  const blindShot = layout.checkCurrentScreen();
+  check("Taste Profile with a blind spot: layout clean", layoutClean(blindShot), JSON.stringify(blindShot).slice(0, 300));
+  await act(blindBtn("edit"));
+  check("editing reopens the questions with the earlier answers filled in", $(blindBtn("toggle-pattern", spotPatterns[0].id))?.getAttribute("aria-pressed") === "true");
+  await act(blindBtn("discard"));
+  check("cancelling an edit keeps the saved blind spot", Boolean(state.blindSpots[ids[2]]) && Boolean($(".blind-panel.is-saved")));
+  await act(blindBtn("remove"));
+  check("Remove takes it off the record and restores the original accounting", !state.blindSpots[ids[2]] && penalized().every(Boolean) && !$(".blind-section"));
+  await act('[data-step-jump="recommendations"]');
   await detail(ids[1], "loved-before");
   check("'Loved it before' IS taste evidence (+2)", taste.tasteDelta(state.feedbackByRecommendation[ids[1]]) === 2);
   check("'Surprised me' appears once it is tried and loved", qualityChips().join("|") === "Too predictable|Surprised me", qualityChips().join("|"));

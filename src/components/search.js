@@ -36,10 +36,10 @@ export function initSearch({ onChange, announce, goTo }) {
             </li>`).join("")}
         </ul>`
       : query
-        ? `<p class="search-hint" role="status">Nothing matches "${esc(query)}". Try a different spelling, or add it yourself below.</p>`
+        ? `<p class="search-hint" role="status">Nothing matches \u201c${esc(query)}\u201d. Try a different spelling, or add it yourself below.</p>`
         : `<p class="search-hint">Type a title to find it. Tastemake only knows a small hand-picked catalog for now, so you can also add anything it doesn't know.</p>`;
     // Only echo the query when nothing matched; next to a real result it would read like a typo to add.
-    const addLabel = query.length >= 2 && !hits.length ? `Can't find it? Add "${esc(query)}" yourself` : hits.length ? "Not it? Add something Tastemake doesn't know" : "Add something Tastemake doesn't know";
+    const addLabel = query.length >= 2 && !hits.length ? `Can't find it? Add \u201c${esc(query)}\u201d yourself` : hits.length ? "Not it? Add something Tastemake doesn't know" : "Add something Tastemake doesn't know";
     return `${list}<p class="search-add-row"><button type="button" class="button button-quiet" data-search-add>${addLabel}</button></p>`;
   }
 

@@ -56,9 +56,19 @@ export function hypothesisMatches(itemHypotheses = [], hypothesisId) {
   return itemHypotheses.some((id) => aliases.includes(id));
 }
 
+// A confirmed blind spot (#20) says which patterns actually failed for a disliked pick. Patterns the user
+// says DID hold up are not counted against; "none of these" clears all of them. Without a blind spot,
+// behaviour is exactly as before.
+function exonerated(state, feedback, patternId) {
+  const spot = state.blindSpots?.[feedback.item.id];
+  if (!spot || feedback.rating !== "less" || feedback.detail !== "tried-disliked") return false;
+  return !spot.hypotheses.some((id) => hypothesisMatches([patternId], id) || hypothesisMatches([id], patternId));
+}
+
 function hypothesisSignal(state, hypothesisId, feedbacks = Object.values(state.feedbackByRecommendation)) {
   return feedbacks.reduce((sum, feedback) => {
-    return hypothesisMatches(feedback.item.hypotheses, hypothesisId) ? sum + recommendationDelta(feedback) : sum;
+    if (!hypothesisMatches(feedback.item.hypotheses, hypothesisId) || exonerated(state, feedback, hypothesisId)) return sum;
+    return sum + recommendationDelta(feedback);
   }, 0);
 }
 
@@ -81,7 +91,7 @@ export function untriedReactionLean(state, hypothesis) {
 
 export function modelUpdateFor(state, hypothesis) {
   const related = Object.values(state.feedbackByRecommendation).filter((feedback) => {
-    return hypothesisMatches(feedback.item.hypotheses, hypothesis.id) && tasteDelta(feedback) !== 0;
+    return hypothesisMatches(feedback.item.hypotheses, hypothesis.id) && tasteDelta(feedback) !== 0 && !exonerated(state, feedback, hypothesis.id);
   });
 
   if (!related.length) return { label: hypothesis.strength, status: hypothesis.status, note: null };

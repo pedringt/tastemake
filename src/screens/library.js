@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { dislikedItems, libraryItems } from "../model/library.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
 import { renderStickerField } from "../components/stickers.js";
+import { renderBlindSpotPanel } from "../components/blindspot.js";
 
 // Library: things the user has actually tried and liked, plus their starter favorites.
 // Everything here is derived (see model/library.js); the buttons just correct the underlying reaction.
@@ -68,11 +69,14 @@ function dislikedBlock(items) {
       <ul>
         ${items.map(({ id, item }) => `
           <li>
-            <span>${item.title} <em>${item.medium}</em></span>
-            <span class="library-restore" role="group" aria-label="Correct ${item.title}">
-              <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="liked">Actually, I liked it</button>
-              <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>
-            </span>
+            <div class="library-disliked-row">
+              <span>${item.title} <em>${item.medium}</em></span>
+              <span class="library-restore" role="group" aria-label="Correct ${item.title}">
+                <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="liked">Actually, I liked it</button>
+                <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>
+              </span>
+            </div>
+            ${renderBlindSpotPanel(id)}
           </li>`).join("")}
       </ul>
     </details>`;

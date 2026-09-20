@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, isPositiveExperience, outOfPicks } from "../model/taste.js";
 import { renderStickerField } from "../components/stickers.js";
+import { renderBlindSpotPanel } from "../components/blindspot.js";
 
 export function ratingLabel(value) {
   return ({
@@ -162,6 +163,7 @@ function recommendationCard(item, index) {
         </div>
 
         ${feedbackDetails(item.id, saved)}
+        ${renderBlindSpotPanel(item.id)}
       </div>
     </article>`;
 }

@@ -76,7 +76,8 @@
 .library-disliked summary { cursor:pointer; color:var(--navy); font-weight:700; }
 .library-disliked p { margin:10px 0 0; font-size:13px; line-height:1.45; }
 .library-disliked ul { list-style:none; margin:12px 0 0; padding:0; display:grid; gap:10px; }
-.library-disliked li { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.library-disliked li { display:block; }
+.library-disliked-row { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
 .library-disliked em { color:var(--muted); font-style:normal; font-size:12px; margin-left:6px; }
 .library-restore { display:flex; gap:8px; flex-wrap:wrap; }
 

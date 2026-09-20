@@ -158,6 +158,16 @@
 }
 .signal-lean em { font-style:normal; font-weight:500; color:#5b6390; }
 .signal-lean.is-away { border-color:#b5524b; }
+.signal-blind {
+  margin-top:8px;
+  padding:6px 12px;
+  border-left:4px solid var(--coral);
+  border-radius:0 10px 10px 0;
+  background:rgba(255,255,255,.72);
+  color:#3f4774;
+  font-size:12px;
+  font-weight:700;
+}
 .signal-update {
   margin-top:12px;
   padding:9px 11px;

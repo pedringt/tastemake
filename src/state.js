@@ -10,6 +10,10 @@ export const state = {
   libraryFavorites: new Set(),
   // Items the user typed in themselves (search > "Add something"), keyed by id. Registered on first action.
   customItems: {},
+  // Taste Blind Spot (#20): confirmed spots by item id, wizard drafts in progress, and "not now" dismissals.
+  blindSpots: {},
+  blindSpotDrafts: {},
+  blindSpotDismissed: new Set(),
   favoriteFilter: "all",
   recommendationFilter: "all",
   libraryFilter: "all"

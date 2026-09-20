@@ -10,6 +10,7 @@ export async function run() {
   const T = await import("/src/model/taste.js");
   const LIB = await import("/src/model/library.js");
   const S = await import("/src/model/search.js");
+  const B = await import("/src/model/blindspots.js");
   const { favorites, recommendations, followUpPool, hypotheses } = catalog;
   const NEW = T;
   const TASTE = T;
@@ -197,6 +198,63 @@ export async function run() {
     // with NO search reactions the set is unchanged
     const clean = T.nextRecommendations(mk());
     eq("clean state still offers all of the pool it can", clean.length, 5);
+  });
+
+
+  suite("blind spot rules", (eq) => {
+    const mk = () => ({
+      selectedFavorites: new Set(favorites.filter((f) => f.selected).map((f) => f.id)),
+      feedbackByRecommendation: {}, recommendationSets: [recommendations], libraryFavorites: new Set(), customItems: {},
+      blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set()
+    });
+    const disliked = (item) => ({ item, rating: "less", detail: "tried-disliked" });
+    const item = recommendations.find((r) => B.patternsFor(r).length >= 2);
+    const patterns = B.patternsFor(item);
+    const penalized = (st) => patterns.map((p) => T.modelUpdateFor(st, p).note !== null);
+
+    eq("test pick leans on 2+ visible patterns", patterns.length >= 2, true);
+    eq("tried + disliked + confident = a blind spot candidate", B.isBlindSpotCandidate(disliked(item)), true);
+    eq("an untried 'Not interested' is not (no prediction failed)", B.isBlindSpotCandidate({ item, rating: "less", detail: "not-interested" }), false);
+    eq("a liked pick is not", B.isBlindSpotCandidate({ item, rating: "more", detail: "liked-before" }), false);
+    const surprise = recommendations.find((r) => r.prediction === "Worth testing");
+    eq("a 'Worth testing' pick was never confident, so it is not", B.isBlindSpotCandidate(disliked(surprise)), false);
+
+    let st = mk();
+    st.feedbackByRecommendation[item.id] = disliked(item);
+    eq("before answering, every pattern it leaned on is counted against", penalized(st).every(Boolean), true);
+
+    B.saveBlindSpot(st, item.id, { broken: [patterns[0].id], reasons: ["tone"] });
+    eq("the pattern the user says failed is still counted against", T.modelUpdateFor(st, patterns[0]).note !== null, true);
+    eq("patterns the user says held up are no longer counted against", patterns.slice(1).every((p) => T.modelUpdateFor(st, p).note === null), true);
+    eq("the blind spot is on record", B.activeBlindSpots(st).length, 1);
+    eq("...and names the failed pattern", B.blindSpotsFor(st, patterns[0].id).length, 1);
+    eq("...but not the ones that held up", B.blindSpotsFor(st, patterns[1].id).length, 0);
+    eq("one blind spot is 'noted once', not recurring", B.isRecurring(st, B.activeBlindSpots(st)[0]), false);
+
+    B.saveBlindSpot(st, item.id, { none: true, reasons: ["other"] });
+    eq("'none of these' stops counting every pattern against them", penalized(st).every((p) => p === false), true);
+
+    B.saveBlindSpot(st, item.id, { broken: [patterns[0].id], reasons: ["tone"] });
+    st.feedbackByRecommendation[item.id] = { item, rating: "more", detail: "liked-before" };
+    eq("if the reaction is corrected (Liked), the blind spot no longer applies", B.blindSpotFor(st, item.id), null);
+    st.feedbackByRecommendation[item.id] = disliked(item);
+    eq("...and comes back if it is disliked again", Boolean(B.blindSpotFor(st, item.id)), true);
+    B.removeBlindSpot(st, item.id);
+    eq("removing it restores the original accounting", penalized(st).every(Boolean), true);
+
+    // a second miss that shares a pattern or a specific reason is 'recurring'; vague reasons never count
+    st = mk();
+    const other = recommendations.find((r) => r.id !== item.id && B.patternsFor(r).some((p) => patterns.some((q) => q.id === p.id)));
+    st.feedbackByRecommendation[item.id] = disliked(item);
+    B.saveBlindSpot(st, item.id, { broken: [patterns[0].id], reasons: ["not-for-me"] });
+    if (other) {
+      st.feedbackByRecommendation[other.id] = disliked(other);
+      const shared = B.patternsFor(other).find((p) => patterns.some((q) => q.id === p.id));
+      B.saveBlindSpot(st, other.id, { broken: [shared.id], reasons: ["not-for-me"] });
+      eq("two blind spots that share a pattern are recurring", B.recurringThemes(st).patterns.length >= 1, true);
+      eq("'Fine, just not for me' never counts as a recurring reason", B.recurringThemes(st).reasons.length, 0);
+    }
+    eq("saving a blind spot for a non-candidate does nothing", B.saveBlindSpot(mk(), item.id, { broken: [patterns[0].id] }), null);
   });
 
   return { passed: total - failures.length, failed: failures.length, total, failures: failures.length ? failures : undefined };
