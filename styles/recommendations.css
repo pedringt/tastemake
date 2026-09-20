@@ -137,7 +137,7 @@
   position:absolute;
   left:0;
   bottom:calc(100% + 8px);
-  width:min(330px,calc(100vw - 48px));
+  width:min(330px,100%,calc(100vw - 48px));
   padding:12px 13px;
   border:2px solid var(--navy);
   border-radius:10px;
