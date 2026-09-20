@@ -1,11 +1,19 @@
 import { favorites, hypotheses } from "../data/catalog.js";
 import { state } from "../state.js";
-import { modelUpdateFor } from "../model/taste.js";
+import { modelUpdateFor, untriedReactionLean } from "../model/taste.js";
 import { renderStickerField } from "../components/stickers.js";
 
 function hypothesisCard(item, index) {
   const update = modelUpdateFor(state, item);
   const confidenceLabel = update.label === item.strength ? item.strength : update.label;
+  const lean = untriedReactionLean(state, item);
+  const leanLine = lean.direction
+    ? `<div class="signal-lean is-${lean.direction}" title="Not counted as taste until you have tried them.">
+          <span aria-hidden="true">${lean.direction === "toward" ? "&nearr;" : "&searr;"}</span>
+          Your reactions lean ${lean.direction === "toward" ? "toward" : "away from"} this
+          <em>(from ${lean.count} ${lean.count === 1 ? "pick" : "picks"} you haven't tried)</em>
+        </div>`
+    : "";
   return `
     <article class="signal-row signal-row-${index + 1}">
       <div class="signal-index">${String(index + 1).padStart(2, "0")}</div>
@@ -17,6 +25,7 @@ function hypothesisCard(item, index) {
         <p class="signal-claim">${item.claim}</p>
         <div class="signal-evidence"><span>shows up in</span> ${item.evidence}</div>
         ${update.note ? `<div class="signal-update"><strong>New signal:</strong> ${update.note}</div>` : ""}
+        ${leanLine}
       </div>
     </article>`;
 }
@@ -32,7 +41,7 @@ export function renderProfile() {
           <p class="kicker">Taste Profile</p>
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
-          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next.</p>
+          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they show up below as a lean, not as taste.</p>
         </div>
         <div class="profile-stamp" aria-hidden="true">
           <strong>WORKING</strong>

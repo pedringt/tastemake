@@ -61,6 +61,23 @@ function hypothesisSignal(state, hypothesisId, feedbacks = Object.values(state.f
   }, 0);
 }
 
+// The user said they actually tried it (the only reactions that count as taste evidence).
+function isExperienced(feedback) {
+  return feedback?.detail === "loved-before" || feedback?.detail === "liked-before" || feedback?.detail === "tried-disliked";
+}
+
+// Reactions to picks the user has NOT tried (plain More/Less, Not interested, bookmarks). They steer
+// what comes next but are not taste evidence, so the Taste Profile shows them as a separate "lean"
+// and never as Stronger / Less certain. A lean needs a clear signal (about one plain More or Less).
+export function untriedReactionLean(state, hypothesis) {
+  const related = Object.values(state.feedbackByRecommendation).filter((feedback) => {
+    return !isExperienced(feedback) && hypothesisMatches(feedback.item.hypotheses, hypothesis.id) && recommendationDelta(feedback) !== 0;
+  });
+  const signal = related.reduce((sum, feedback) => sum + recommendationDelta(feedback), 0);
+  const direction = signal >= 1 ? "toward" : signal <= -1 ? "away" : null;
+  return { direction, count: related.length, signal };
+}
+
 export function modelUpdateFor(state, hypothesis) {
   const related = Object.values(state.feedbackByRecommendation).filter((feedback) => {
     return hypothesisMatches(feedback.item.hypotheses, hypothesis.id) && tasteDelta(feedback) !== 0;

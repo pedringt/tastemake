@@ -140,6 +140,24 @@
   letter-spacing:.06em;
   text-transform:uppercase;
 }
+.signal-lean {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+  width:fit-content;
+  max-width:100%;
+  margin-top:10px;
+  padding:5px 11px;
+  border:1px dashed var(--navy);
+  border-radius:999px;
+  background:rgba(255,255,255,.72);
+  color:#3f4774;
+  font-size:12px;
+  font-weight:700;
+}
+.signal-lean em { font-style:normal; font-weight:500; color:#5b6390; }
+.signal-lean.is-away { border-color:#b5524b; }
 .signal-update {
   margin-top:12px;
   padding:9px 11px;
