@@ -1,6 +1,6 @@
 # Tastemake handoff
 
-Last updated: September 19, 2026
+Last updated: September 20, 2026
 
 ## Start here
 
@@ -8,7 +8,7 @@ Last updated: September 19, 2026
 - Working branch: `prototype-v1-core-loop`
 - Canonical handoff issue: #16
 - Draft PR: #5
-- Current working branch includes the visual cleanup at `df7895f2514c80a3c82301bbac1f5355bf926a04`; later commits may only update handoff documentation
+- Current visual state: the collage-frame sticker rebuild at `9c5a4783d21712cfe754b0d9bd1190ff958310ba` (supersedes the `df7895f` cleanup); later commits may only update handoff documentation
 - `main` is intentionally unchanged at `1a12d709bbebfd748a926a3397ee6c1995eb2e09`
 - Do not merge or push anything to `main` unless Paige explicitly says to.
 
@@ -34,81 +34,46 @@ The current design direction is a personalized corkboard / Trapper-Keeper collag
 - readable content always wins over decoration
 - decoration should frame the interface, not sit on top of the interface
 
+Sticker system (since `9c5a478`):
+
+- Each board reserves a **frame**: side gutters and top/bottom bands (`--gutter`, `--band` in `styles/base.css`). Stickers live only in the frame; content never enters it.
+- Stickers are data, not CSS offsets: `src/components/stickers.js` (~38 SVG kinds; placement lists per page as `[kind, zone, position %, size, rotation]`).
+- Look: junk-journal bulletin board (washi tape, tickets, stamps, polaroids, tags, index cards, sticky notes, fabric scraps, doodles, die-cut stickers) plus a few static neon signs/icons on black paper scraps. Neon is inspired by bright neon signage generally, not a copy of any brand or artwork.
+- Hard rule verified at 1440 / 1024 / 768: no sticker touches text, controls, helper copy, reaction UI or status pills. There is no automated test for this yet; the check was an ad-hoc browser script (each sticker's box vs. every text/control/card box). Worth turning into a committed check if the sticker lists change often.
+- Details are in `docs/visual-design-spec.md` ("Collage frame").
+
 Important user preference: **do not solve overlap by making the design minimal.** Keep the collage energy and move decorations into genuine empty corkboard zones instead.
 
-## Latest feedback pass
+## Latest visual pass (done)
 
-Paige completed a visual QA pass and called out these problems:
+Paige's feedback this round: stickers must never cover text, but keep a good amount of them; more variety; looks appealing as a whole; parts should feel like a bright neon collage (90s-inspired, not a direct reference); overall a junk-journal bulletin-board scrapbook.
 
-- `NO. 07` ticket / pin-ring cluster crowding the “The Fall” card
-- `TM` sticker sitting over content
-- flower stickers covering text
-- purple squiggle sitting awkwardly on a card
-- a large empty Favorites corkboard area was underused even though it was the intended place for more decoration
-- lime square sitting on recommendation feedback UI
-- Taste Profile top headline color clashing with the navy highlighted line below
-- decorations covering Taste Profile hypothesis text/status areas
+Implemented in `9c5a478` — "Rebuild collage decoration as a reserved frame with a junk-journal sticker set":
 
-The intended fix was:
+- placement moved from fixed pixel offsets to the gutter/band frame described above
+- hero `::before/::after` decorations removed; page-owned decoration (note arrow, profile stamp, surprise burst) pulled inside the content column
+- 38–43 stickers per page on desktop, 30–35 at 768px (was 15–16)
+- verified: 0 stickers touch any text, control or card at 1440, 1200, 1024, 900 and 768; sticker field is hidden at 620px and below, some pieces hide at 860px and below
 
-- keep roughly the same decoration count
-- move decorations away from cards, body text, controls, status pills, helper copy, and reaction UI
-- use open corkboard zones and perimeter space much more aggressively
-- preserve the layered Taste Profile headline treatment
-- change the first Taste Profile headline line from purple to the existing pink accent
-- keep the navy highlight tight to the second-line text
-- allow individual decorations to move/hide at narrower widths rather than overlap content
-
-## Latest implementation
-
-The cleanup pass was pushed to `prototype-v1-core-loop`.
-
-Latest head:
-
-`df7895f2514c80a3c82301bbac1f5355bf926a04` — **Clean up collage decoration placement**
-
-Relevant code changes are primarily in:
-
-- `styles/base.css`
-- `styles/profile.css`
-- `styles/responsive.css`
-
-Notable implementation details:
-
-- sticker layer moved behind main content as an additional overlap safeguard
-- Favorites decoration positions were shifted toward open board space
-- Profile and Recommendations decorations were shifted toward margins/perimeter zones
-- the Taste Profile lead line now uses the existing pink accent
-- some larger decorative elements are hidden at tablet widths where placement becomes unsafe
+Paige's reaction to the deployed result: "liking that better."
 
 ## Preview status
 
-The usual preview is:
+Preview: https://tastemake-git-prototype-v1-core-loop-cairn10.vercel.app
 
-https://tastemake-git-prototype-v1-core-loop-cairn10.vercel.app
+Vercel deployed `9c5a478` successfully (the earlier rate limit cleared). Confirm the preview is built from the current branch head before judging visuals.
 
-However, **the latest commit is not currently deployed there**.
+## Known issues (not part of the sticker work)
 
-GitHub/Vercel status for `df7895f` is:
-
-> Deployment rate limited — retry in 24 hours.
-
-That means the preview URL is stale and will look like the older design even though the branch code has changed.
-
-Do **not** make another visual correction pass based on the stale preview. Wait until Vercel successfully deploys the current branch head, then visually inspect the actual latest version.
+- Original Star Wars trilogy card wraps to four lines at ~1440px and its number "07" collides with the title (follow-up to the earlier check-circle fix in #4).
+- Recommendations scrolls sideways by ~26px at ~900px because the hidden "Why this one?" popover extends past the viewport. (The pre-frame branch scrolled sideways at 900px on all three pages; only this one remains.)
 
 ## What to do next
 
-Once the Vercel deployment limit clears:
-
-1. Confirm the preview is built from the latest `prototype-v1-core-loop` head.
-2. Visually inspect Favorites, Recommendations, and Taste Profile.
-3. Specifically verify that decorative objects no longer cover readable or interactive content.
-4. Check that the large open Favorites corkboard region now carries more of the collage decoration.
-5. Check the Taste Profile headline color/highlight treatment.
-6. Check desktop and tablet widths.
-7. Collect feedback before making another code pass.
-8. Do not touch `main` without explicit authorization.
+1. Only if Paige has more visual notes: collect the whole round first, then scope, then implement.
+2. Product focus returns to #15 (live unseen recommendation experiment), then #12 (Library + Up Next) or #14 (continuous recommendation loop).
+3. #17 (taste-driven site skins) can build on the sticker data lists.
+4. Do not touch `main` without explicit authorization.
 
 ## Workflow rule
 
