@@ -3,7 +3,7 @@ import { screenFromPath, writeRoute } from "./router.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, isBookmarked, isPositiveExperience, nextRecommendations } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
-import { renderRecommendations } from "./screens/recommendations.js";
+import { reactionLabel, renderRecommendations } from "./screens/recommendations.js";
 import { renderBookmarks } from "./screens/bookmarks.js";
 
 const app = document.querySelector("#app");
@@ -56,6 +56,44 @@ function updateStepper() {
 
 function focusApp() {
   window.setTimeout(() => app.focus({ preventScroll: true }), 0);
+}
+
+const live = document.querySelector("#live");
+
+// Polite announcement for screen readers (the region lives outside #app, so re-rendering never wipes it).
+function announce(message) {
+  if (!live) return;
+  live.textContent = "";
+  window.setTimeout(() => { live.textContent = message; }, 40);
+}
+
+// Every action re-renders the screen, which would drop keyboard focus to the page. Remember which
+// control had focus and put it back on the new copy (or on the page if that control is gone).
+function focusSelectorFor(el) {
+  const d = el?.dataset;
+  if (!d) return null;
+  if (d.feedbackItem && d.rating) return `[data-feedback-item="${d.feedbackItem}"][data-rating="${d.rating}"]`;
+  if (d.feedbackItem && d.feedbackDetail) return `[data-feedback-item="${d.feedbackItem}"][data-feedback-detail="${d.feedbackDetail}"]`;
+  if (d.feedbackItem && d.feedbackQuality) return `[data-feedback-item="${d.feedbackItem}"][data-feedback-quality="${d.feedbackQuality}"]`;
+  if (d.bookmarkItem && d.bookmarkAction) return `[data-bookmark-item="${d.bookmarkItem}"][data-bookmark-action="${d.bookmarkAction}"]`;
+  if (d.favorite) return `[data-favorite="${d.favorite}"]`;
+  if (d.domainFilter && d.filterScope) return `[data-domain-filter="${d.domainFilter}"][data-filter-scope="${d.filterScope}"]`;
+  return null;
+}
+
+function restoreFocus(selector, fallback = app) {
+  const target = (selector && app.querySelector(selector)) || fallback;
+  target.focus({ preventScroll: true });
+}
+
+const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+
+function announceReaction(itemId) {
+  const feedback = state.feedbackByRecommendation[itemId];
+  if (!feedback) return;
+  const saved = bookmarkedFeedback(state).length;
+  const bookmarkPart = isBookmarked(feedback) ? ` ${plural(saved, "thing", "things")} bookmarked.` : "";
+  announce(`${feedback.item.title}: ${reactionLabel(feedback)}.${bookmarkPart}`);
 }
 
 function navigate(screen, { replace = false, scroll = true } = {}) {
@@ -128,12 +166,13 @@ function saveBookmarkAction(itemId, action) {
   return true;
 }
 
-function renderPreservingCardPosition(itemId) {
+function renderPreservingCardPosition(itemId, focusSelector = null) {
   const before = document.querySelector(`[data-rec-id="${itemId}"]`);
   const beforeTop = before?.getBoundingClientRect().top;
 
   render();
   updateStepper();
+  restoreFocus(focusSelector);
 
   if (beforeTop === undefined) return;
   const after = document.querySelector(`[data-rec-id="${itemId}"]`);
@@ -162,6 +201,8 @@ function toggleWhyPopover(trigger) {
 }
 
 app.addEventListener("click", (event) => {
+  const focusSelector = focusSelectorFor(event.target.closest("button"));
+
   const whyTrigger = event.target.closest(".why-trigger");
   if (whyTrigger) {
     toggleWhyPopover(whyTrigger);
@@ -175,6 +216,7 @@ app.addEventListener("click", (event) => {
     else state.selectedFavorites.add(id);
     render();
     updateStepper();
+    restoreFocus(focusSelector);
     return;
   }
 
@@ -184,14 +226,23 @@ app.addEventListener("click", (event) => {
     if (scope === "favorites") state.favoriteFilter = filter.dataset.domainFilter;
     if (scope === "recommendations") state.recommendationFilter = filter.dataset.domainFilter;
     render();
+    restoreFocus(focusSelector);
     return;
   }
 
   const bookmarkAction = event.target.closest("[data-bookmark-action][data-bookmark-item]");
   if (bookmarkAction) {
-    if (saveBookmarkAction(bookmarkAction.dataset.bookmarkItem, bookmarkAction.dataset.bookmarkAction)) {
+    const itemId = bookmarkAction.dataset.bookmarkItem;
+    const outcome = bookmarkAction.dataset.bookmarkAction;
+    const title = state.feedbackByRecommendation[itemId]?.item.title;
+    if (saveBookmarkAction(itemId, outcome)) {
       render();
       updateStepper();
+      // The card usually leaves the list; land on the next card's first action, or on the page if none is left.
+      restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
+      const left = bookmarkedFeedback(state).length;
+      const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "bookmark removed" })[outcome];
+      announce(`${title}: ${what}. ${plural(left, "thing", "things")} left in Bookmarks.`);
     }
     return;
   }
@@ -199,21 +250,27 @@ app.addEventListener("click", (event) => {
   const rating = event.target.closest("[data-rating][data-feedback-item]");
   if (rating) {
     const itemId = rating.dataset.feedbackItem;
-    if (saveQuickFeedback(itemId, rating.dataset.rating)) renderPreservingCardPosition(itemId);
+    if (saveQuickFeedback(itemId, rating.dataset.rating)) {
+      renderPreservingCardPosition(itemId, focusSelector);
+      announceReaction(itemId);
+    }
     return;
   }
 
   const detail = event.target.closest("[data-feedback-detail][data-feedback-item]");
   if (detail) {
     const itemId = detail.dataset.feedbackItem;
-    if (saveFeedbackDetail(itemId, detail.dataset.feedbackDetail)) renderPreservingCardPosition(itemId);
+    if (saveFeedbackDetail(itemId, detail.dataset.feedbackDetail)) {
+      renderPreservingCardPosition(itemId, focusSelector);
+      announceReaction(itemId);
+    }
     return;
   }
 
   const quality = event.target.closest("[data-feedback-quality][data-feedback-item]");
   if (quality) {
     const itemId = quality.dataset.feedbackItem;
-    if (saveFeedbackQuality(itemId, quality.dataset.feedbackQuality)) renderPreservingCardPosition(itemId);
+    if (saveFeedbackQuality(itemId, quality.dataset.feedbackQuality)) renderPreservingCardPosition(itemId, focusSelector);
     return;
   }
 
@@ -230,6 +287,7 @@ app.addEventListener("click", (event) => {
     state.recommendationSets.push(nextRecommendations(state));
     state.recommendationFilter = "all";
     navigate("recommendations", { replace: true });
+    announce(`New set: ${plural(activeRecommendations(state).length, "pick", "picks")}.`);
   }
 });
 
