@@ -136,7 +136,7 @@ export function renderTasteMap() {
       <ul class="map-key" aria-label="How to read the map">
         <li><span class="key-swatch look-firm"></span> Solid: fairly sure</li>
         <li><span class="key-swatch look-tentative"></span> Dashed: conditional, still learning</li>
-        <li><span class="key-swatch look-shaky"></span> Dotted: less certain after your reactions</li>
+        <li><span class="key-swatch look-shaky"></span> Dotted: less certain, after more than one pick didn't land</li>
         <li class="map-key-lines"><span class="key-line"></span> Thicker line: more picks lean on both</li>
       </ul>
 

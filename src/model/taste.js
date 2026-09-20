@@ -101,7 +101,12 @@ export function modelUpdateFor(state, hypothesis) {
     return { label: "Stronger", status: "strengthened", note: "Your reactions gave this pattern more support." };
   }
   if (signal <= -1.5) {
-    return { label: "Less certain", status: "revision", note: "Your reactions suggest this pattern should carry less weight." };
+    // One miss is not enough to weaken a pattern (decided Sep 20): it takes at least two picks that did not land.
+    const misses = related.filter((feedback) => tasteDelta(feedback) < 0).length;
+    if (misses >= 2) {
+      return { label: "Less certain", status: "revision", note: "More than one pick you tried didn't land, so this pattern should carry less weight." };
+    }
+    return { label: "Still learning", status: "conditional", note: "A pick you tried didn't land. It takes more than one to weaken this pattern." };
   }
   return {
     label: "Still learning",

@@ -67,6 +67,7 @@ Requirements:
 - Haven't tried: Bookmark it (a save marker, see Bookmarks below). There is no Interested / Maybe.
 - Discovery note (optional, about the pick and not about taste): Too predictable; Surprised me, which is offered only after Loved / Liked it before. Recorded, but it does not change taste or ranking.
 - **Taste evidence rule:** only Loved it before, Liked it before and Tried it and disliked it count as taste evidence. Every other reaction, including a plain More or Less and a bookmark, steers what comes next but never changes the Taste Profile's "Stronger / Less certain" labels. You cannot know a pick fits until you have tried it.
+- **Weakening needs more than one miss:** a pattern is marked "Less certain" only after at least two experienced dislikes on it. One dislike shows "Still learning" and says it takes more than one.
 
 ## Bookmarks
 - One Bookmark replaces the earlier Up Next and Interested ideas. It is offered only on picks marked Haven't tried.

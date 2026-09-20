@@ -297,7 +297,16 @@ export async function run() {
     eq("one supported + one counted against nets out: 'still learning' (dashed), not shaky", M.confidenceOf(st, pattern("H04")).look, "tentative");
     const onlyDislike = mk();
     react(onlyDislike, barry, "less", "tried-disliked");
-    eq("a dislike with nothing supporting it makes the pattern look shaky (dotted)", M.confidenceOf(onlyDislike, pattern("H04")).look, "shaky");
+    eq("ONE dislike is not enough to weaken a pattern: still learning (dashed)", M.confidenceOf(onlyDislike, pattern("H04")).look, "tentative");
+    eq("...and says so", /more than one/.test(T.modelUpdateFor(onlyDislike, pattern("H04")).note), true);
+    react(onlyDislike, shadows, "less", "tried-disliked");
+    eq("TWO dislikes on the same pattern do weaken it (dotted)", M.confidenceOf(onlyDislike, pattern("H04")).look, "shaky");
+    eq("...as 'Less certain'", T.modelUpdateFor(onlyDislike, pattern("H04")).label, "Less certain");
+    const twoWithBlindSpot = mk();
+    react(twoWithBlindSpot, barry, "less", "tried-disliked");
+    react(twoWithBlindSpot, shadows, "less", "tried-disliked");
+    B.saveBlindSpot(twoWithBlindSpot, shadows.id, { broken: ["H03"] });
+    eq("if a blind spot says the pattern held up for one of them, only one counts against: not weakened", M.confidenceOf(twoWithBlindSpot, pattern("H04")).look, "tentative");
     eq("supported and counted against = a mixed-evidence tension", M.tensions(st).some((t) => t.patternId === "H04" && t.kind === "mixed"), true);
 
     // a blind spot says which pattern actually failed: the others held up
