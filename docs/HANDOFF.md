@@ -8,7 +8,7 @@ Last updated: September 19, 2026
 - Working branch: `prototype-v1-core-loop`
 - Canonical handoff issue: #16
 - Draft PR: #5
-- Current working branch head: `df7895f2514c80a3c82301bbac1f5355bf926a04`
+- Current working branch includes the visual cleanup at `df7895f2514c80a3c82301bbac1f5355bf926a04`; later commits may only update handoff documentation
 - `main` is intentionally unchanged at `1a12d709bbebfd748a926a3397ee6c1995eb2e09`
 - Do not merge or push anything to `main` unless Paige explicitly says to.
 
