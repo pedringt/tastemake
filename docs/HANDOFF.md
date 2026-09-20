@@ -63,19 +63,36 @@ Preview: https://tastemake-git-prototype-v1-core-loop-cairn10.vercel.app
 
 Vercel deployed `9c5a478` successfully (the earlier rate limit cleared). Confirm the preview is built from the current branch head before judging visuals.
 
-## Layout check
+## QA scripts
 
-`scripts/qa/layout-check.js` (browser-side, no dependencies; usage in the file header) checks each page at a given width: stickers touching text/cards, Favorites titles colliding with their tile's top row, and sideways scroll. Run it at 1440, 1024 and 768 after any layout or sticker change. It replaced the earlier ad-hoc checks.
+Two browser-side scripts (no dependencies; usage in each file header) live in `scripts/qa/`:
+
+- `layout-check.js` — per page at the current width: stickers touching text/cards, Favorites titles colliding with their tile's top row, text hidden behind buttons, sideways scroll. Run at 1440, 1024 and 768 after any layout or sticker change.
+- `bookmark-flow.js` — drives the real UI through Bookmark, Keep discovering and the taste-evidence rule (34 checks).
+
+Headless Chrome will not go below a 500px layout width; to test real phone widths load the page in a narrower iframe.
 
 ## Recently fixed
 
 - #22: Favorites tile text is now in normal flow at the bottom of the tile, so a long title/description grows the tile instead of running up into the number row (this also affected Circe and Alan Wake 2 at narrower widths, not only the Star Wars card). The earlier `padding-right` workaround for the check circle was removed as unnecessary.
 - #23: the "Why this one?" popover is capped to its card's width, so it can no longer make Recommendations scroll sideways at ~900px.
 
+## Bookmark, Keep discovering and the taste-evidence rule (built on this branch)
+
+Decisions (also on #12, #14, #24): a single **Bookmark** replaces both Up Next and Interested; **an untried item never counts as taste evidence**; Favorites stays for things actually experienced.
+
+- Under **Not tried**, a single "Bookmark it" chip replaces Interested / Maybe / Not interested. A bookmark has zero taste weight and a small steering nudge (+0.35, the old Interested value) on which picks come next.
+- **Bookmarks** is its own page and nav tab (`/bookmarks`), hidden until something is saved, with a count. From there: Loved it / Liked it / Didn't like it turn it into a real reaction (which then counts as taste evidence and records `wasBookmarked`), or Remove bookmark.
+- **Keep discovering** replaces the two-round limit: available after any reaction (not every card), never repeats a pick, and ends honestly when the small hand-written pool runs out (opening 5, then 5, then the 2 left, then the end-of-demo message). Round 2 is identical to the previous behavior, and next-set ranking is unaffected by the evidence rule below (both checked against the original code on 30,000 random reaction sets).
+- **Taste evidence** (`tasteDelta`) now counts only experienced reactions: More → Loved/Liked it before, and Less → Tried it and disliked. Plain More, plain Less, Wrong vibe and Not interested are 0 as taste; they still steer what comes next (`recommendationDelta`, unchanged). The Taste Profile says so in one line. Until a user says they've tried something, reacting to the opening set leaves the profile's notes unchanged.
+- Not done: saving between visits, Library / Favorites promotion, search, provider links, and a labeled "what you've been reacting to" section on the Taste Profile (offered in #24; Paige said "sure", deferred until confirmed).
+
+**Open decision (#24):** the two **More** chips "Exactly my taste" and "Surprising fit" read as reactions to the pitch, not an experience, and Paige finds them confusing. They keep their old taste weight (1.75 / 1.25) until decided. Idea under discussion: move them (and "Wrong vibe") out of the More/Less rows into a separate "about this pick" note alongside "Too predictable", as recommendation-quality signals that steer but are never taste evidence.
+
 ## What to do next
 
 1. Only if Paige has more visual notes: collect the whole round first, then scope, then implement.
-2. Product focus returns to #15 (live unseen recommendation experiment), then #12 (Library + Up Next) or #14 (continuous recommendation loop).
+2. Product focus returns to #15 (live unseen recommendation experiment). Its pre-try "Up Next" baseline maps to Bookmark now; do not rewrite the recorded predictions. Settle the two chips in #24 first if convenient.
 3. #17 (taste-driven site skins) can build on the sticker data lists.
 4. Do not touch `main` without explicit authorization.
 

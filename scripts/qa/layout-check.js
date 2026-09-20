@@ -5,17 +5,20 @@
 //
 //   await (await import("/scripts/qa/layout-check.js")).runAll()
 //
-// It visits Favorites, Recommendations and Taste Profile and reports, per page:
+// It visits Favorites, Recommendations and Taste Profile (checkCurrentScreen() also works on
+// Bookmarks once something is bookmarked; see bookmark-flow.js) and reports, per page:
 //   stickerTextHits  stickers whose box touches any text
 //   stickerBoxHits   stickers whose box touches any visible element (cards, buttons, text)
 //   stickerOutside   stickers that drifted more than 14px off the board
 //   titleCollisions  Favorites tiles whose title runs into the tile's top row
+//   textUnderControls  text that sits behind a button/link it does not belong to (overlapping layout)
 //   hScroll          the page scrolls sideways
 // A clean run has every list empty and hScroll false.
 //
 // "Visible" boxes are clipped by any ancestor that hides overflow, so art clipped inside a card
 // is not counted as if it were sticking out.
 
+const overlapArea = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
 const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
 function isVisible(el) {
@@ -42,7 +45,7 @@ const describe = (el) => `${el.tagName.toLowerCase()}.${[...el.classList].join("
 const stickerName = (el) => [...el.classList].find((c) => c.startsWith("st-") && c !== "st-neon") || "sticker";
 
 export function checkCurrentScreen() {
-  const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen");
+  const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen");
   const field = screen.querySelector(".sticker-field");
   const board = screen.getBoundingClientRect();
   const stickers = [...screen.querySelectorAll(".sticker")].filter(isVisible);
@@ -92,6 +95,21 @@ export function checkCurrentScreen() {
     if (collides || t.top < tr.top) titleCollisions.push(`${title.textContent.trim().slice(0, 30)} (${Math.round(tr.width)}px tile)`);
   });
 
+  // Text hidden behind a control it is not part of (e.g. a paragraph running under a button).
+  const controls = [...screen.querySelectorAll("button, a, input, select")].filter((el) => !field.contains(el) && isVisible(el));
+  const textUnderControls = [];
+  const textWalker = document.createTreeWalker(screen, NodeFilter.SHOW_TEXT);
+  for (let node = textWalker.nextNode(); node; node = textWalker.nextNode()) {
+    if (!node.textContent.trim() || field.contains(node) || !isVisible(node.parentElement)) continue;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    for (const r of range.getClientRects()) {
+      if (r.width < 2 || r.height < 2) continue;
+      const clash = controls.find((c) => !c.contains(node) && overlapArea(r, c.getBoundingClientRect()) > 12);
+      if (clash) { textUnderControls.push(`"${node.textContent.trim().slice(0, 28)}" under ${describe(clash)}`); break; }
+    }
+  }
+
   return {
     width: innerWidth,
     stickers: stickers.length,
@@ -99,6 +117,7 @@ export function checkCurrentScreen() {
     stickerBoxHits,
     stickerOutside,
     titleCollisions,
+    textUnderControls,
     hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth
   };
 }
