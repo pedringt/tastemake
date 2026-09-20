@@ -32,6 +32,7 @@
   -webkit-box-decoration-break:clone;
   padding:0 .12em .05em;
 }
+.profile-evidence-note { margin-top:10px; font-size:clamp(14px,1.5vw,16px); }
 .profile-stamp {
   width:140px;
   height:140px;

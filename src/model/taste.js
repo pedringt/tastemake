@@ -1,22 +1,24 @@
 import { followUpPool } from "../data/catalog.js";
 
+// Taste evidence comes only from things the user has actually experienced (decided in #12/#24):
+// a reaction to a pick they have not tried steers what comes next (see recommendationDelta) but
+// never changes the taste profile. Everything not listed here is 0.
 export function tasteDelta(feedback) {
-  if (!feedback || feedback.rating === "not-tried") return 0;
+  if (!feedback) return 0;
 
   if (feedback.rating === "more") {
     if (feedback.detail === "loved-before") return 2;
     if (feedback.detail === "liked-before") return 1.25;
+    // Open question in #24: these two chips read as reactions to the pitch, not an experience.
+    // They keep their old weight until that is decided.
     if (feedback.detail === "surprising-fit") return 1.25;
     if (feedback.detail === "exactly-my-taste") return 1.75;
-    return 0.75;
+    return 0;
   }
 
   if (feedback.rating === "less") {
     if (feedback.detail === "tried-disliked") return -2;
-    if (feedback.detail === "not-interested") return 0;
-    if (feedback.detail === "wrong-vibe") return -1.5;
-    if (feedback.detail === "too-obvious") return 0;
-    return -0.75;
+    return 0;
   }
 
   return 0;
