@@ -15,8 +15,8 @@ function bookmarkCard(feedback) {
       <span class="bookmark-tape" aria-hidden="true"></span>
       <span class="bookmark-medium">${item.medium}</span>
       <h3>${item.title}</h3>
-      <p class="bookmark-about">${item.about}</p>
-      <p class="bookmark-why"><strong>Why it was suggested:</strong> ${item.reason}</p>
+      <p class="bookmark-about">${item.about ?? item.note ?? ""}</p>
+      ${item.reason ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${item.reason}</p>` : ""}
       <div class="bookmark-actions" role="group" aria-label="Tried ${item.title}?">
         <span class="bookmark-actions-label">Tried it?</span>
         ${action("tried-loved", "Loved it")}

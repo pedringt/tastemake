@@ -6,6 +6,7 @@ import { renderProfile } from "./screens/profile.js";
 import { reactionLabel, renderRecommendations } from "./screens/recommendations.js";
 import { renderBookmarks } from "./screens/bookmarks.js";
 import { renderLibrary } from "./screens/library.js";
+import { initSearch } from "./components/search.js";
 
 const app = document.querySelector("#app");
 
@@ -375,6 +376,17 @@ window.addEventListener("popstate", () => {
   render();
   updateStepper();
   focusApp();
+});
+
+initSearch({
+  // an explicit action in the search dialog changed state: refresh whatever screen is behind it
+  onChange(message) {
+    render();
+    updateStepper();
+    announce(message);
+  },
+  announce,
+  goTo(screen) { navigate(screen); }
 });
 
 const initialScreen = screenFromPath();

@@ -1,4 +1,4 @@
-@media (max-width:1280px) {
+@media (max-width:1439px) {
   .topbar {
     grid-template-columns:1fr auto;
     grid-template-areas:"brand aside" "nav nav";
@@ -81,8 +81,8 @@
 
 @media (max-width:620px) {
   .app-shell { width:min(100% - 14px,1440px); }
-  .topbar { grid-template-columns:1fr; grid-template-areas:"brand" "nav"; }
-  .topbar-aside { display:none; }
+  .topbar { grid-template-columns:1fr auto; grid-template-areas:"brand aside" "nav nav"; }
+  .topbar-aside .prototype-label,.topbar-aside .topbar-note { display:none; }
   .brand-word { font-size:32px; }
   .step > span[aria-hidden="true"] { display:none; }
   .step { font-size:11px; }

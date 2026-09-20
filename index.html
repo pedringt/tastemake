@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/styles/recommendations.css" />
     <link rel="stylesheet" href="/styles/bookmarks.css" />
     <link rel="stylesheet" href="/styles/library.css" />
+    <link rel="stylesheet" href="/styles/search.css" />
     <link rel="stylesheet" href="/styles/responsive.css" />
   </head>
   <body>
@@ -36,6 +37,10 @@
         </nav>
 
         <div class="topbar-aside">
+          <button class="search-open" id="open-search" type="button" aria-haspopup="dialog" aria-keyshortcuts="/" title="Search or add something (press /)">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="10.500" cy="10.500" r="6.500" fill="none" stroke="currentColor" stroke-width="2.400"/><path d="M15.500 15.500 21 21" stroke="currentColor" stroke-width="2.400" stroke-linecap="round"/></svg>
+            <span class="visually-hidden">Search or add something</span>
+          </button>
           <span class="prototype-label">Prototype - no live AI</span>
           <span class="topbar-note">good taste lives here.</span>
         </div>
@@ -43,6 +48,26 @@
 
       <main id="app" tabindex="-1"></main>
       <div id="live" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+      <dialog id="search-dialog" class="search-dialog" aria-labelledby="search-title">
+        <div class="search-shell">
+          <header class="search-head">
+            <h2 id="search-title">Search or add something</h2>
+            <button type="button" class="search-close" data-search-close aria-label="Close search">&times;</button>
+          </header>
+          <p class="search-principle">Looking something up never teaches Tastemake anything. Only the buttons you choose do.</p>
+          <div class="search-controls">
+            <label class="visually-hidden" for="search-input">Search by title</label>
+            <input id="search-input" type="search" autocomplete="off" spellcheck="false" placeholder="Try &ldquo;fargo&rdquo;, &ldquo;LOTR&rdquo;, or a typo" />
+            <div class="domain-filter" role="group" aria-label="Filter results by type">
+              <button type="button" class="domain-filter-button is-active" data-search-filter="all" aria-pressed="true">All</button>
+              <button type="button" class="domain-filter-button" data-search-filter="watch" aria-pressed="false">Watch</button>
+              <button type="button" class="domain-filter-button" data-search-filter="read" aria-pressed="false">Read</button>
+              <button type="button" class="domain-filter-button" data-search-filter="play" aria-pressed="false">Play</button>
+            </div>
+          </div>
+          <div id="search-view" class="search-view"></div>
+        </div>
+      </dialog>
     </div>
     <script type="module" src="/src/app.js"></script>
   </body>

@@ -114,7 +114,7 @@ button { color: inherit; }
   background:var(--pink);
 }
 .step.is-active span { color:var(--pink); }
-.topbar-aside { display:flex; justify-content:flex-end; align-items:center; gap:14px; }
+.topbar-aside { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:4px 14px; }
 .prototype-label {
   padding:7px 10px;
   border:1px solid var(--line);

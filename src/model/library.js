@@ -13,12 +13,14 @@ export function libraryItems(state) {
 
   const reacted = Object.values(state.feedbackByRecommendation)
     .filter(isPositiveExperience)
+    // a starter favorite is already listed above; do not show the same pick twice
+    .filter((feedback) => !state.selectedFavorites.has(feedback.item.id))
     .map((feedback) => ({
       id: feedback.item.id,
       item: feedback.item,
       source: feedback.detail === "loved-before" ? "loved" : "liked",
       isFavorite: feedback.detail === "loved-before" && state.libraryFavorites.has(feedback.item.id),
-      blurb: feedback.item.about,
+      blurb: feedback.item.about ?? feedback.item.note ?? "",
       wasBookmarked: Boolean(feedback.wasBookmarked)
     }));
 

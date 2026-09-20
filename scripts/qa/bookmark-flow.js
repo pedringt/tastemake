@@ -1,5 +1,5 @@
 // Browser-side flow check for Bookmark + Keep discovering + the taste-evidence rule + keeping the
-// user's place (focus, announcements) + the Taste Profile lean + the Library. No dependencies.
+// user's place (focus, announcements) + the Taste Profile lean + the Library + Search. No dependencies.
 //
 //   await (await import("/scripts/qa/bookmark-flow.js")).run()
 //
@@ -15,6 +15,7 @@
 export async function run() {
   const { state } = await import("/src/state.js");
   const taste = await import("/src/model/taste.js");
+  const catalog = await import("/src/data/catalog.js");
   const layout = await import("/scripts/qa/layout-check.js");
   const results = [];
   const check = (name, ok, detail = "") => results.push({ name, ok: Boolean(ok), detail: String(detail) });
@@ -27,7 +28,7 @@ export async function run() {
   const act = async (selector) => { const el = $(selector); if (!el) throw new Error(`missing ${selector}`); el.focus(); el.click(); await tick(); };
   const live = () => $("#live")?.textContent || "";
   const layoutClean = (r) => !r.stickerTextHits.length && !r.stickerBoxHits.length && !r.stickerOutside.length &&
-    !r.titleCollisions.length && !r.textUnderControls.length && !r.hScroll;
+    !r.titleCollisions.length && !r.textUnderControls.length && !r.topbarOverlaps.length && !r.hScroll;
   const rate = (id, rating) => act(`[data-feedback-item="${id}"][data-rating="${rating}"]`);
   const detail = (id, value) => act(`[data-feedback-item="${id}"][data-feedback-detail="${value}"]`);
 
@@ -99,6 +100,74 @@ export async function run() {
   await act(`[data-library-item="${ids[2]}"][data-library-action="disliked"]`);
   check("'Didn't like it' takes it back out (-2 taste evidence)", !$(`[data-library-id="${ids[2]}"]`) && taste.tasteDelta(state.feedbackByRecommendation[ids[2]]) === -2);
   await act(`[data-library-item="${ids[1]}"][data-library-action="loved"]`);
+
+  // ---- Search / add something (#13): searching is not evidence, only explicit actions are ----
+  const dlg = $("#search-dialog");
+  const typeInto = async (selector, value) => { const el = $(selector); el.value = value; el.dispatchEvent(new Event("input", { bubbles: true })); await tick(); };
+  const snapshot = () => JSON.stringify([Object.keys(state.feedbackByRecommendation).sort(), [...state.libraryFavorites], Object.keys(state.customItems)]);
+  const before = snapshot();
+  check("a Search button is in the header", Boolean($("#open-search")));
+  await act("#open-search");
+  check("Search opens as a modal dialog with focus in the box", dlg.open && document.activeElement?.id === "search-input", document.activeElement?.id);
+  await typeInto("#search-input", "fagro");
+  check("a typo still finds the item (fagro -> Fargo)", $("#search-view .search-result b")?.textContent === "Fargo", $("#search-view")?.textContent.slice(0, 80));
+  await typeInto("#search-input", "lotr");
+  check("an acronym finds it (lotr -> The Lord of the Rings)", $("#search-view .search-result b")?.textContent === "The Lord of the Rings");
+  await typeInto("#search-input", "fagro");
+  await act("#search-view .search-result");
+  check("opening a result lands on its title", document.activeElement?.id === "search-sheet-title", document.activeElement?.id);
+  check("SEARCHING IS NOT EVIDENCE: typing and opening a result changed nothing", snapshot() === before);
+  check("the dialog fits the screen (no sideways scroll, inside the viewport)", (() => { const r = dlg.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })());
+  const fargoId = "fargo";
+  await act('[data-search-action="bookmark"]');
+  check("Bookmark from search saves it as a bookmark (0 taste evidence)", taste.isBookmarked(state.feedbackByRecommendation[fargoId]) && taste.tasteDelta(state.feedbackByRecommendation[fargoId]) === 0, JSON.stringify(state.feedbackByRecommendation[fargoId]?.detail));
+  check("...and announces it", /Fargo: bookmarked\./.test(live()), live());
+  check("focus stays on the button that was used", document.activeElement === $('[data-search-action="bookmark"]'));
+  await act('[data-search-action="loved"]');
+  check("Loved from search counts as taste evidence (+2)", taste.tasteDelta(state.feedbackByRecommendation[fargoId]) === 2);
+  check("...and lands in the Library behind the dialog", Boolean($(`[data-library-id="${fargoId}"]`)));
+  await act('[data-search-action="favorite"]');
+  check("a loved pick can be starred as a Favorite", $$(".library-section")[0].contains($(`[data-library-id="${fargoId}"]`)));
+  await act('[data-search-action="remove"]');
+  check("Remove from Tastemake forgets it completely", !state.feedbackByRecommendation[fargoId] && !$(`[data-library-id="${fargoId}"]`));
+  check("...and focus is not lost", dlg.contains(document.activeElement), document.activeElement?.tagName);
+
+  // something Tastemake does not know: added on the spot, only stored once acted on
+  await act("[data-search-back]");
+  await typeInto("#search-input", "the matrix");
+  check("an unknown title finds nothing and offers to add it", !$("#search-view .search-result") && Boolean($("[data-search-add]")));
+  await act("[data-search-add]");
+  await typeInto("#search-add-name", "The Matrix");
+  await act('input[name="search-medium"][value="movie"]');
+  $("[data-search-addform]").requestSubmit(); await tick();
+  check("adding shows the action sheet without saving anything yet", document.activeElement?.id === "search-sheet-title" && Object.keys(state.customItems).length === 0, JSON.stringify(Object.keys(state.customItems)));
+  const profileOf = () => JSON.stringify(catalog.hypotheses.map((h) => [taste.modelUpdateFor(state, h), taste.untriedReactionLean(state, h)]));
+  const profileBefore = profileOf();
+  await act('[data-search-action]');   // Loved it: the first action button
+  check("an added item is stored once acted on, and joins the Library", Object.keys(state.customItems).join() === "custom-the-matrix-movie" && Boolean($('[data-library-id="custom-the-matrix-movie"]')));
+  check("...with no pattern tags, so it cannot move any Taste Profile card", profileOf() === profileBefore);
+  await act("[data-search-back]");
+  await typeInto("#search-input", "the matrix");
+  await act("[data-search-add]");
+  await typeInto("#search-add-name", "the matrix");
+  $("[data-search-addform]").requestSubmit(); await tick();
+  check("adding the same title again opens the existing one (no duplicate)", Object.keys(state.customItems).length === 1 && /The Matrix/.test($("#search-sheet-title")?.textContent || ""));
+  check("...and announces that it was already there", /already in Tastemake/.test(live()), live());
+  await act('[data-search-action="remove"]');
+  check("removing an added item deletes it entirely", Object.keys(state.customItems).length === 0 && !$('[data-library-id="custom-the-matrix-movie"]'));
+  check("...and returns to the search box, not a dead end", document.activeElement?.id === "search-input" && !$("#search-sheet-title"), document.activeElement?.id);
+  await typeInto("#search-input", "circe");
+  await act("#search-view .search-result");
+  check("a starter favorite shows no action buttons here", !$("[data-search-action]") && /starter favorites/.test($(".search-note")?.textContent || ""));
+  check("...and nothing was changed by any of that", snapshot() === before, snapshot());
+  dlg.close(); await tick();
+  check("closing returns focus to the Search button", document.activeElement === $("#open-search"), document.activeElement?.id);
+  document.activeElement.blur();
+  document.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true }));
+  await tick();
+  check("pressing / opens Search from anywhere", dlg.open);
+  dlg.close(); await tick();
+
   await act('[data-step-jump="recommendations"]');
 
   await rate(ids[3], "not-tried");

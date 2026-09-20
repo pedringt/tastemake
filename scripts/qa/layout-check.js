@@ -12,6 +12,7 @@
 //   stickerOutside   stickers that drifted more than 14px off the board
 //   titleCollisions  Favorites tiles whose title runs into the tile's top row
 //   textUnderControls  text that sits behind a button/link it does not belong to (overlapping layout)
+//   topbarOverlaps   header parts (brand, nav tabs, search/label) overlapping each other or running off the page
 //   hScroll          the page scrolls sideways
 // A clean run has every list empty and hScroll false.
 //
@@ -113,6 +114,31 @@ export function checkCurrentScreen() {
     }
   }
 
+  // Header: brand, nav tabs and the search/label area must not overlap or run off the page. Compared by the
+  // extent of their content, because a part can overflow its grid cell without changing its own box.
+  const topbarOverlaps = [];
+  const topbar = document.querySelector(".topbar");
+  if (topbar) {
+    const extent = (el) => {
+      let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+      for (const node of [el, ...el.querySelectorAll("*")]) {
+        if (!isVisible(node)) continue;
+        const r = node.getBoundingClientRect();
+        left = Math.min(left, r.left); top = Math.min(top, r.top); right = Math.max(right, r.right); bottom = Math.max(bottom, r.bottom);
+      }
+      return { left, top, right, bottom };
+    };
+    const parts = [".brand-cluster", ".stepper", ".topbar-aside"]
+      .map((selector) => ({ selector, el: topbar.querySelector(selector) }))
+      .filter((part) => part.el && isVisible(part.el))
+      .map((part) => ({ ...part, box: extent(part.el) }));
+    const shell = document.querySelector(".app-shell").getBoundingClientRect();
+    parts.forEach((a, i) => {
+      if (a.box.left < shell.left - 1 || a.box.right > shell.right + 1) topbarOverlaps.push(`${a.selector} runs off the page`);
+      parts.slice(i + 1).forEach((b) => { if (hit(a.box, b.box)) topbarOverlaps.push(`${a.selector} overlaps ${b.selector}`); });
+    });
+  }
+
   return {
     width: innerWidth,
     stickers: stickers.length,
@@ -121,6 +147,7 @@ export function checkCurrentScreen() {
     stickerOutside,
     titleCollisions,
     textUnderControls,
+    topbarOverlaps,
     hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth
   };
 }

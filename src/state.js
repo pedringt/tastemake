@@ -8,6 +8,8 @@ export const state = {
   recommendationSets: [recommendations],
   // Loved picks the user starred as Favorites. Only meaningful while the pick is still "Loved it before".
   libraryFavorites: new Set(),
+  // Items the user typed in themselves (search > "Add something"), keyed by id. Registered on first action.
+  customItems: {},
   favoriteFilter: "all",
   recommendationFilter: "all",
   libraryFilter: "all"

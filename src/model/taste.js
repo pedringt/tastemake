@@ -50,7 +50,8 @@ export function isPositiveExperience(feedback) {
   return feedback?.rating === "more" && (feedback.detail === "loved-before" || feedback.detail === "liked-before");
 }
 
-export function hypothesisMatches(itemHypotheses, hypothesisId) {
+// Items added by the user (or found by search) can have no pattern tags; they simply match nothing.
+export function hypothesisMatches(itemHypotheses = [], hypothesisId) {
   const aliases = hypothesisId === "H01/H07" ? ["H01", "H07", "H01/H07"] : [hypothesisId];
   return itemHypotheses.some((id) => aliases.includes(id));
 }
@@ -114,8 +115,14 @@ function feedbackInShownOrder(state) {
 // the remainder is shown as ordinary picks. An empty list means this demo has run out of picks.
 export function nextRecommendations(state) {
   const shownIds = new Set(shownRecommendations(state).map((item) => item.id));
-  const feedbacks = feedbackInShownOrder(state);
-  const scored = followUpPool.filter((item) => !shownIds.has(item.id)).map((item) => {
+  // Anything the user already told us about (for example through search) is never recommended again,
+  // and explicit reactions to items outside the shown sets still steer what comes next.
+  const reactedIds = new Set(Object.keys(state.feedbackByRecommendation));
+  const feedbacks = [
+    ...feedbackInShownOrder(state),
+    ...Object.values(state.feedbackByRecommendation).filter((feedback) => !shownIds.has(feedback.item.id))
+  ];
+  const scored = followUpPool.filter((item) => !shownIds.has(item.id) && !reactedIds.has(item.id)).map((item) => {
     const score = item.hypotheses.reduce((sum, id) => sum + hypothesisSignal(state, id, feedbacks), 0);
     return { ...item, score };
   }).sort((a, b) => b.score - a.score);
