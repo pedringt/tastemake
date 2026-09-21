@@ -12,6 +12,8 @@ export async function run() {
   const S = await import("/src/model/search.js");
   const B = await import("/src/model/blindspots.js");
   const M = await import("/src/model/tastemap.js");
+  const MINE = await import("/src/model/mine.js");
+  const ST = await import("/src/state.js");
   const { favorites, recommendations, followUpPool, hypotheses } = catalog;
   const NEW = T;
   const TASTE = T;
@@ -324,6 +326,74 @@ export async function run() {
     eq("read and play are thin at 2", empty.thinDomains.map((d) => d.domain).sort().join(), "play,read");
     eq("reacting to a pick removes its patterns from the quiet list", M.thinAreas(st).quietPatterns.length < 5, true);
     eq("evidenceCount adds up", M.evidenceCount(M.patternEvidence(st, pattern("H04"))), 3);
+  });
+
+
+  // ---- My Tastemake (#8): areas and curveball are settings (not taste); the ledger is derived ----
+  suite("my tastemake", (eq) => {
+    const mk = () => ({
+      selectedFavorites: new Set(favorites.filter((f) => f.selected).map((f) => f.id)),
+      feedbackByRecommendation: {}, recommendationSets: [recommendations], libraryFavorites: new Set(), customItems: {},
+      blindSpots: {}, blindSpotDrafts: {}, areas: { watch: true, read: true, play: true }, curveball: true
+    });
+    const ids = (list) => list.map((p) => p.id).join(",");
+
+    // defaults change nothing (the old behavior, exactly)
+    const plain = mk(); delete plain.areas; delete plain.curveball;
+    eq("with everything on, picks are identical to having no settings at all", ids(T.nextRecommendations(mk())), ids(T.nextRecommendations(plain)));
+    eq("...and the default set is four picks plus one curveball", T.nextRecommendations(mk()).filter((p) => p.surprise).length, 1);
+
+    // areas: an item is offered while at least one of its areas is on
+    const noWatch = mk(); noWatch.areas.watch = false;
+    const offered = T.nextRecommendations(noWatch);
+    eq("turning Watch off hides items that are only Watch", offered.every((p) => p.domains.some((d) => d !== "watch")), true);
+    const onlyPlay = mk(); onlyPlay.areas = { watch: false, read: false, play: true };
+    eq("with only Play on, every pick is a game", T.nextRecommendations(onlyPlay).every((p) => p.domains.includes("play")), true);
+    eq("areaOn is true for an item with no areas listed", T.areaOn(noWatch, { id: "x" }), true);
+    eq("areas never change what is already reacted to or its evidence", Object.keys(noWatch.feedbackByRecommendation).length, 0);
+    const allOff = mk(); allOff.areas = { watch: false, read: false, play: false };
+    eq("with every area off nothing is offered", T.nextRecommendations(allOff).length, 0);
+    eq("...and it is reported as hidden by areas, not as running out", T.picksHiddenByAreas(allOff), true);
+    eq("running out with everything on is not 'hidden by areas'", T.picksHiddenByAreas(mk()), false);
+
+    // curveball
+    const noCurve = mk(); noCurve.curveball = false;
+    eq("curveball off: no exploratory pick", T.nextRecommendations(noCurve).some((p) => p.surprise), false);
+    eq("curveball off: the same five titles, just none marked as the curveball", ids(T.nextRecommendations(noCurve)), ids(T.nextRecommendations(mk())));
+    eq("curveball off: still five picks", T.nextRecommendations(noCurve).length, 5);
+    eq("curveball off keeps the rank order", T.nextRecommendations(noCurve).map((p) => p.rank).join(), "1,2,3,4,5");
+
+    // the ledger
+    const s = mk();
+    const item = recommendations[0], other = recommendations[1], third = recommendations[2], custom = S.makeCustomItem("Severance", "tv");
+    S.applySearchAction(s, item, "loved"); S.applySearchAction(s, other, "bookmark"); S.applySearchAction(s, third, "not-interested"); S.applySearchAction(s, custom, "liked");
+    const told = MINE.toldItems(s);
+    eq("starter favorites are listed once each", told.counts.filter((e) => e.starter).length, s.selectedFavorites.size);
+    eq("Loved and Liked count as taste", told.counts.filter((e) => !e.starter).map((e) => e.id).sort().join(), [item.id, custom.id].sort().join());
+    eq("a bookmark and Not interested only steer", told.steers.map((e) => e.id).sort().join(), [other.id, third.id].sort().join());
+    eq("nothing is in both groups", told.counts.filter((e) => told.steers.some((x) => x.id === e.id)).length, 0);
+    eq("total is everything told", told.total, told.counts.length + told.steers.length);
+    eq("provenance: told through search", told.counts.find((e) => e.id === item.id).source, "Told through search");
+    eq("provenance: added by you", told.counts.find((e) => e.id === custom.id).source, "Added by you in search");
+    eq("status wording for a bookmark", told.steers.find((e) => e.id === other.id).status, "Bookmarked (haven't tried)");
+    const bookmarked = mk(); S.applySearchAction(bookmarked, other, "bookmark"); S.applySearchAction(bookmarked, other, "loved");
+    eq("provenance: bookmarked, then tried", MINE.toldItems(bookmarked).counts.find((e) => e.id === other.id).source, "Bookmarked, then tried");
+    const listedTwice = mk(); listedTwice.selectedFavorites.add(item.id); S.applySearchAction(listedTwice, item, "loved");
+    eq("a starter favorite is never listed twice", [...MINE.toldItems(listedTwice).counts, ...MINE.toldItems(listedTwice).steers].filter((e) => e.id === item.id).length <= 1, true);
+    eq("the ledger agrees with the Library", LIB.libraryItems(s).library.map((e) => e.id).sort().join(), told.counts.filter((e) => !e.starter && e.positive).map((e) => e.id).sort().join());
+
+    // removing from here is the same removal search makes, and the ledger follows
+    S.applySearchAction(s, item, "remove");
+    eq("removing an item takes it off the ledger", MINE.toldItems(s).total, told.total - 1);
+
+    // start over keeps the look and clears everything else
+    ST.state.look = "analog"; ST.state.feedbackByRecommendation.x = { rating: "more" }; ST.state.areas.play = false; ST.state.curveball = false; ST.state.selectedFavorites.clear();
+    ST.resetState();
+    eq("start over clears reactions", Object.keys(ST.state.feedbackByRecommendation).length, 0);
+    eq("start over restores the starter favorites", ST.state.selectedFavorites.size, favorites.filter((f) => f.selected).length);
+    eq("start over restores areas and curveball", `${ST.state.areas.play},${ST.state.curveball}`, "true,true");
+    eq("start over keeps your look", ST.state.look, "analog");
+    ST.state.look = "editorial";
   });
 
   return { passed: total - failures.length, failed: failures.length, total, failures: failures.length ? failures : undefined };

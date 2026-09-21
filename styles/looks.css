@@ -177,7 +177,7 @@
 :root[data-look="graphic"] h1 { font-weight:900; letter-spacing:-.04em; word-spacing:.08em; line-height:.92; }
 :root[data-look="graphic"] :is(h2, h3) { font-weight:800; letter-spacing:-.03em; }
 :root[data-look="graphic"] .brand { white-space:nowrap; }
-:root[data-look="graphic"] .brand-tagline { font-size:13px; line-height:1.05; font-weight:500; white-space:normal; max-width:128px; }
+:root[data-look="graphic"] .brand-tagline { font-size:13px; line-height:1.05; font-weight:500; white-space:normal; max-width:172px; }
 :root[data-look="graphic"] .brand-word { font-weight:900; letter-spacing:-.045em; font-size:clamp(26px, 2.5vw, 36px); }
 :root[data-look="graphic"] :is(.favorite-tile, .library-card, .bookmark-card, .editorial-rec, .rec-progress-card, .taste-map-node) { border-width:3px; }
 :root[data-look="graphic"] .favorite-tile::before { border-color:rgb(11 11 11 / .14); }

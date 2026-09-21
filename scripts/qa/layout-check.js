@@ -108,14 +108,14 @@ function lowContrast(root, field) {
 }
 
 export function checkCurrentScreen() {
-  const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen");
+  const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen, .mine-screen");
   const field = screen.querySelector(".sticker-field");
   const board = screen.getBoundingClientRect();
   const stickers = [...screen.querySelectorAll(".sticker")].filter(isVisible);
 
   const boxes = [];
   screen.querySelectorAll("*").forEach((el) => {
-    if (field.contains(el) || !isVisible(el)) return;
+    if (field?.contains(el) || !isVisible(el)) return;
     const r = visibleRect(el, screen);
     if (r) boxes.push({ el, r });
   });
@@ -123,7 +123,7 @@ export function checkCurrentScreen() {
   const texts = [];
   const walker = document.createTreeWalker(screen, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!node.textContent.trim() || field.contains(node) || !isVisible(node.parentElement)) continue;
+    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement)) continue;
     const range = document.createRange();
     range.selectNodeContents(node);
     for (const r of range.getClientRects()) {
@@ -159,11 +159,11 @@ export function checkCurrentScreen() {
   });
 
   // Text hidden behind a control it is not part of (e.g. a paragraph running under a button).
-  const controls = [...screen.querySelectorAll("button, a, input, select")].filter((el) => !field.contains(el) && isVisible(el));
+  const controls = [...screen.querySelectorAll("button, a, input, select")].filter((el) => !field?.contains(el) && isVisible(el));
   const textUnderControls = [];
   const textWalker = document.createTreeWalker(screen, NodeFilter.SHOW_TEXT);
   for (let node = textWalker.nextNode(); node; node = textWalker.nextNode()) {
-    if (!node.textContent.trim() || field.contains(node) || !isVisible(node.parentElement)) continue;
+    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement)) continue;
     const range = document.createRange();
     range.selectNodeContents(node);
     for (const r of range.getClientRects()) {

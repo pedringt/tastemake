@@ -1,4 +1,4 @@
-import { state } from "./state.js";
+import { resetState, state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, isBookmarked, isPositiveExperience, nextRecommendations } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
@@ -7,6 +7,9 @@ import { reactionLabel, renderRecommendations } from "./screens/recommendations.
 import { renderBookmarks } from "./screens/bookmarks.js";
 import { renderLibrary } from "./screens/library.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
+import { renderMine } from "./screens/mine.js";
+import { applySearchAction } from "./model/search.js";
+import { AREAS } from "./model/taste.js";
 import { isLook, lookLabel } from "./data/looks.js";
 import { initSearch } from "./components/search.js";
 import { blindSpotFor, isBlindSpotCandidate, removeBlindSpot, saveBlindSpot } from "./model/blindspots.js";
@@ -19,7 +22,8 @@ const views = {
   recommendations: renderRecommendations,
   library: renderLibrary,
   bookmarks: renderBookmarks,
-  look: renderLook
+  look: renderLook,
+  mine: renderMine
 };
 
 function hasEnoughFavorites() {
@@ -27,7 +31,7 @@ function hasEnoughFavorites() {
 }
 
 function canAccess(screen) {
-  if (screen === "look") return true;
+  if (screen === "look" || screen === "mine") return true;
   if (screen === "bookmarks") return bookmarkedFeedback(state).length > 0;
   return screen === "favorites" || hasEnoughFavorites();
 }
@@ -87,6 +91,92 @@ function setLook(id) {
   announce(`Look: ${lookLabel(id)}.`);
 }
 
+// ---- My Tastemake (#8) ----
+function openMine() {
+  if (state.screen !== "mine") state.mineReturn = state.screen;
+  navigate("mine");
+}
+
+function mineRemoveFocusAfter(rowEl) {
+  const next = rowEl?.nextElementSibling ?? rowEl?.previousElementSibling;
+  if (next?.dataset.mineId) return `[data-mine-id="${next.dataset.mineId}"] .mine-action`;
+  if (next?.dataset.mineBlind) return `[data-mine-blind="${next.dataset.mineBlind}"] .mine-action`;
+  return null;
+}
+
+app.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button || state.screen !== "mine") return;
+
+  if (button.dataset.mineItem) {
+    const id = button.dataset.mineItem;
+    const item = state.feedbackByRecommendation[id]?.item;
+    if (!item) return;
+    const selector = button.dataset.mineAction === "remove"
+      ? mineRemoveFocusAfter(button.closest(".mine-row"))
+      : `[data-mine-item="${id}"][data-mine-action="${button.dataset.mineAction}"]`;
+    const message = applySearchAction(state, item, button.dataset.mineAction);
+    if (!message) return;
+    render();
+    updateStepper();
+    restoreFocus(selector);
+    announce(message);
+    return;
+  }
+
+  if (button.dataset.mineBlindRemove) {
+    const id = button.dataset.mineBlindRemove;
+    const title = state.feedbackByRecommendation[id]?.item.title ?? "That pick";
+    const selector = mineRemoveFocusAfter(button.closest(".mine-row"));
+    removeBlindSpot(state, id);
+    render();
+    restoreFocus(selector);
+    announce(`${title}: what you told it it got wrong was removed.`);
+    return;
+  }
+
+  if (button.dataset.mineReset) {
+    const step = button.dataset.mineReset;
+    if (step === "confirm") {
+      resetState();
+      state.resetArmed = false;
+      navigate("favorites");
+      announce("Started over. Everything you told Tastemake in this visit is cleared.");
+      return;
+    }
+    state.resetArmed = step === "arm";
+    render();
+    restoreFocus(step === "arm" ? '[data-mine-reset="cancel"]' : '[data-mine-reset="arm"]');
+    announce(step === "arm" ? "Are you sure? This clears everything you told Tastemake." : "Nothing was cleared.");
+    return;
+  }
+
+  if (button.dataset.action === "mine-back") {
+    navigate(canAccess(state.mineReturn) ? state.mineReturn : "favorites");
+  }
+});
+
+app.addEventListener("change", (event) => {
+  if (state.screen !== "mine") return;
+  const area = event.target.closest("[data-mine-area]");
+  if (area) {
+    const id = area.dataset.mineArea;
+    state.areas[id] = area.checked;
+    if (!AREAS.some((a) => state.areas[a.id] !== false)) state.areas[id] = true;   // never all off
+    const label = AREAS.find((a) => a.id === id).label;
+    render();
+    restoreFocus(`[data-mine-area="${id}"]`);
+    announce(`${label} is ${state.areas[id] ? "on" : "off"} for new sets.`);
+    return;
+  }
+  if (event.target.closest("[data-mine-curveball]")) {
+    state.curveball = event.target.checked;
+    render();
+    restoreFocus("[data-mine-curveball]");
+    announce(`Curveball is ${state.curveball ? "on" : "off"} for new sets.`);
+  }
+});
+
 function openLookPicker() {
   if (state.screen !== "look") state.lookReturn = state.screen;
   state.lookOnboarding = false;
@@ -112,6 +202,9 @@ function focusSelectorFor(el) {
   if (d.bookmarkItem && d.bookmarkAction) return `[data-bookmark-item="${d.bookmarkItem}"][data-bookmark-action="${d.bookmarkAction}"]`;
   if (d.libraryItem && d.libraryAction) return `[data-library-item="${d.libraryItem}"][data-library-action="${d.libraryAction}"]`;
   if (d.blindItem && d.blindAction) return `[data-blind-item="${d.blindItem}"][data-blind-action="${d.blindAction}"]${d.blindValue ? `[data-blind-value="${d.blindValue}"]` : ""}`;
+  if (d.mineItem && d.mineAction) return `[data-mine-item="${d.mineItem}"][data-mine-action="${d.mineAction}"]`;
+  if (d.mineBlindRemove) return `[data-mine-blind-remove="${d.mineBlindRemove}"]`;
+  if (d.mineReset) return `[data-mine-reset="${d.mineReset === "arm" ? "cancel" : "arm"}"]`;
   if (d.profileView) return `[data-profile-view="${d.profileView}"]`;
   if (d.mapPattern) return `[data-map-pattern="${d.mapPattern}"]`;
   if (d.mapItem) return `[data-map-item="${d.mapItem}"]`;
@@ -471,6 +564,7 @@ app.addEventListener("click", (event) => {
 
 document.addEventListener("click", (event) => {
   if (event.target.closest("[data-open-look]")) { openLookPicker(); return; }
+  if (event.target.closest("[data-open-mine]")) { openMine(); return; }
   if (event.target.closest('[data-action="look-done"]')) { finishLookPicker(); return; }
   if (!event.target.closest(".editorial-why")) closeWhyPopovers();
 

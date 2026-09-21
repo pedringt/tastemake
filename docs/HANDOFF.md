@@ -68,21 +68,21 @@ The Sept 20 batch is deployed. Vercel (Hobby plan, shared with the State project
 Run them all with `scripts/qa/headless.sh` (headless Chrome, no install, no build; exit code 1 on any failure):
 
 ```
-scripts/qa/headless.sh model                       # 137 model checks
-scripts/qa/headless.sh flow   1440 1024 768 390    # 166-check click-through at each width
+scripts/qa/headless.sh model                       # 166 model checks
+scripts/qa/headless.sh flow   1440 1024 768 390    # 205-check click-through at each width
 scripts/qa/headless.sh layout 1440 1024 768 390    # overlap / sideways-scroll / contrast checks at each width
 LOOK=collage scripts/qa/headless.sh flow 1440      # any look: editorial (default) | collage | analog | graphic
 ```
 
 The flow test also switches through all four looks on every main screen (plus the Taste Map) and checks the picker and the first-visit flow.
 
-Last full run (Sept 21, with the looks): model 137/137; flow 166/166 at 1600, 1440, 1300, 1024, 860, 768, 430, 390, 360 and 320 (starting in Clean editorial), and at 1440/390 starting in each of the other looks (Bold graphic also at 1600-768); layout clean in Editorial, Analog and Graphic at ten widths (Collage: no overlaps; its known low-contrast labels are not gated). Widths under 500 run in an iframe because headless Chrome will not go below a 500px layout width. Ranking parity against the original two-round code (30,000 random reaction sets, identical) was a one-off scratch harness, not committed; the old code is in git history before the Bookmark commit `d4c4037`.
+Last full run (Sept 21, with My Tastemake): model 166/166; flow 205/205 at 1600, 1440, 1300, 1024, 860, 768, 430, 390, 360 and 320 (starting in Clean editorial), and at 1440, 768, 390, 360 and 320 starting in each of the other looks; layout clean in Editorial, Analog and Graphic at ten widths (Collage: no overlaps; its known low-contrast labels are not gated). Widths under 500 run in an iframe because headless Chrome will not go below a 500px layout width. Ranking parity against the original two-round code (30,000 random reaction sets, identical) was a one-off scratch harness, not committed; the old code is in git history before the Bookmark commit `d4c4037`.
 
 Three browser-side scripts (no dependencies; usage in each file header) live in `scripts/qa/`:
 
 - `layout-check.js` — per page (Favorites, Recommendations, Taste Profile, Library) at the current width, ignoring anything inside a collapsed `<details>`: header parts overlapping or running off the page, Taste Map cards overlapping or leaving the map, stickers touching text/cards, Favorites titles colliding with their tile's top row, text hidden behind buttons, sideways scroll. Run at 1440, 1024 and 768 after any layout or sticker change.
 - `model-rules.js` — the evidence, Library and Search rules checked directly against `src/model/*` (137 checks). Note: ranking parity against the *original* two-round code was verified once in a scratch Node harness (30,000 random reaction sets) and is not committed.
-- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, the Library, Search, Blind Spots, the Taste Map, focus/announcement behavior, and Looks (the picker, first visit, and every screen in every look) (166 checks).
+- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, the Library, Search, Blind Spots, the Taste Map, focus/announcement behavior, and Looks (the picker, first visit, and every screen in every look) and My Tastemake (205 checks).
 
 Headless Chrome will not go below a 500px layout width; to test real phone widths load the page in a narrower iframe.
 
@@ -144,6 +144,17 @@ Four looks: **Clean editorial** (default, the starting point), **Collage** (the 
 - Fonts added: Newsreader, Fraunces, Archivo (one Google Fonts request in `index.html`).
 - **Not built (documented in `docs/visual-design-spec.md`):** the personalized, taste-based look (opt-in reveal, explains itself, use/tweak/keep/regenerate). Header Look button is icon-only below 620px. Phone-width stickers remain on hold (they are hidden below 620px in the sticker looks).
 
+## My Tastemake (#8, phase 1), built
+
+A header person-icon button opens **My Tastemake** (route `/my-tastemake`, `src/screens/mine.js`, ledger model `src/model/mine.js`). It is the deeper management layer behind the Library, Bookmarks and Taste Profile, not a new tab. Scope was decided by me under "go with your plan"; adjust freely.
+
+- **Your evidence:** everything the user told Tastemake, derived from the same store as the Library/Bookmarks/Profile (so it can't disagree). Two groups: **Counts as taste** (starter favorites, Loved/Liked it before, Tried it and disliked it) and **Only steers what comes next** (plain More/Less on untried picks, Not interested, Bookmarks). Each item shows its **provenance** (Picked on Favorites / From Recommendations / Told through search / Added by you / Bookmarked, then tried). Non-starter rows can be changed (Loved / Liked / Didn't like) or removed with the same write search makes (`applySearchAction`). Confirmed blind spots are listed and removable. Starter favorites are one compact card that links to the Favorites page.
+- **Areas** (Watch / Read / Play): "show me or don't show me this kind of thing" for **new** sets. **A setting, not taste**: it changes no reaction or score (tested). At least one stays on. Search always finds everything. If areas hide every remaining pick, Recommendations says so and links here instead of claiming the demo ran out (`picksHiddenByAreas`).
+- **Include a curveball:** on = four picks plus one Surprise Me per new set (today's behavior, identical when left on); off = the five best fits. Changes how a set is put together, not taste.
+- **Start over:** two-step (focus goes to Cancel), clears everything told in the visit and the settings, keeps the look. `resetState()` in `src/state.js`.
+- Everything is announced and keeps keyboard focus; the page uses only look tokens so it fits all four looks.
+- **Not built (needs a decision first):** correcting a pattern ("not really me", "matters a lot"). #8 says a correction becomes strong explicit user evidence; that would change the "exactly three things count as taste" rule and ranking parity, so it needs Paige's call. Also not built: taste modes/contexts, hard boundaries, platform preferences, connected sources, export, and a familiar-vs-exploratory dial.
+
 ## What to do next
 
 Closed on Sept 20 as built for the prototype: #12, #13, #20, #21, #22, #23, #24 (each has a comment listing what was deliberately left out).
@@ -151,7 +162,7 @@ Closed on Sept 20 as built for the prototype: #12, #13, #20, #21, #22, #23, #24 
 Paige picks the next build. The options I laid out:
 
 1. **#25 selectable looks: built.** What remains is the optional taste-based look (#17/#25), documented as opt-in in `docs/visual-design-spec.md` and not built; it needs enough taste evidence to mean something.
-2. **#8, a Taste control center.** One place to see and edit everything Tastemake believes, built on the Library, Blind Spots and Map.
+2. **#8 control center: phase 1 built** (see above). Next slice needs a decision: pattern corrections as explicit evidence.
 3. **#10, where to find it.** Plain search links only for the prototype; real availability needs an outside data source. Hold.
 4. **Polish:** phone-width stickers (on hold), a look at the Bookmarks page on the live preview.
 

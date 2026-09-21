@@ -143,3 +143,11 @@
   .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen { background-size:22px 22px,26px 26px,100% 100%; }
   .editorial-rec::before { display:none; }
 }
+
+/* Very small phones: three header buttons (search, My Tastemake, Look) plus the brand must fit on one row. */
+@media (max-width:400px) {
+  .brand-word { font-size:25px; }
+  .brand-cluster { gap:8px; }
+  .topbar-aside { gap:6px; }
+  .search-open, .me-open, .look-open { width:40px; height:40px; min-height:40px; }
+}

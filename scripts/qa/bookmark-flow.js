@@ -20,6 +20,7 @@ export async function run() {
   const blind = await import("/src/model/blindspots.js");
   const mapModel = await import("/src/model/tastemap.js");
   const layout = await import("/scripts/qa/layout-check.js");
+  const libModel = await import("/src/model/library.js");
   const results = [];
   const check = (name, ok, detail = "") => results.push({ name, ok: Boolean(ok), detail: String(detail) });
   const tick = () => new Promise((resolve) => setTimeout(resolve, 100));
@@ -305,6 +306,73 @@ export async function run() {
   check("Bookmarks tab hides again when nothing is saved", bookmarksStep().hidden);
 
 
+
+  // ---- My Tastemake (#8): the ledger of what you told it, areas, curveball, and start over ----
+  const mineModel = await import("/src/model/mine.js");
+  const searchModel = await import("/src/model/search.js");
+  const beforeScreen = state.screen;
+  check("a My Tastemake button is in the header", Boolean($("#open-mine")) && $("#open-mine").getAttribute("aria-label") === "My Tastemake");
+  await act("#open-mine");
+  check("the button opens My Tastemake", state.screen === "mine" && Boolean($(".mine-screen")));
+  const told = mineModel.toldItems(state);
+  const rowIds = $$(".mine-row[data-mine-id]").map((row) => row.dataset.mineId).sort().join();
+  const expectedIds = [...told.counts, ...told.steers].filter((e) => !e.starter).map((e) => e.id).sort().join();
+  check("the page lists exactly what the model says you told it (one row per item)", rowIds === expectedIds && expectedIds.length > 0, `${rowIds} vs ${expectedIds}`);
+  check("starter favorites are one compact card, not one row each", $$(".mine-starters").length === 1 && $$(".mine-chips li").length === state.selectedFavorites.size);
+  check("evidence is split into 'Counts as taste' and 'Only steers what comes next'", /Counts as taste/.test($(".mine-screen").textContent) && /Only steers what comes next/.test($(".mine-screen").textContent));
+  check("every item shows where it came from", $$(".mine-row[data-mine-id]").every((row) => row.querySelector(".mine-source")?.textContent.trim().length > 3));
+  check("settings are described as not being taste", /says nothing about what you like/.test($(".mine-screen").textContent) && /not what Tastemake thinks you like/.test($(".mine-screen").textContent));
+  check("a blind spot you confirmed is listed, with a way to remove it", Object.keys(state.blindSpots).length === 0 || $$("[data-mine-blind]").length === blind.activeBlindSpots(state).length);
+
+  // change what you told it (the same write search makes), and everything else follows
+  const lovedRow = $$(".mine-row[data-mine-id]").find((row) => row.querySelector('[data-mine-action="loved"][aria-pressed="true"]'));
+  if (lovedRow) {
+    const id = lovedRow.dataset.mineId;
+    const title = state.feedbackByRecommendation[id].item.title;
+    await act(`[data-mine-item="${id}"][data-mine-action="liked"]`);
+    check("changing Loved to Liked here changes the reaction", state.feedbackByRecommendation[id].detail === "liked-before", state.feedbackByRecommendation[id].detail);
+    check("...keeps keyboard focus on the button you used", document.activeElement === $(`[data-mine-item="${id}"][data-mine-action="liked"]`), document.activeElement?.className);
+    check("...and is announced by title", live().includes(title), live());
+    check("...and the Library agrees (now Liked, not Loved)", libraryModelSource(id) === "liked");
+    await act(`[data-mine-item="${id}"][data-mine-action="loved"]`);
+    check("...and can be put back", state.feedbackByRecommendation[id].detail === "loved-before");
+  } else check("(no Loved row to change)", false, "the flow left no Loved item");
+  function libraryModelSource(id) { const all = libModel.libraryItems(state); return [...all.favorites, ...all.library].find((e) => e.id === id)?.source; }
+
+  const tasteBefore = JSON.stringify(Object.values(state.feedbackByRecommendation).map((f) => [f.item.id, f.rating, f.detail]));
+  const scoreBefore = Object.values(state.feedbackByRecommendation).reduce((sum, f) => sum + taste.tasteDelta(f), 0);
+  // areas: a setting, not taste
+  await act('[data-mine-area="play"]');
+  check("turning Play off is stored and announced", state.areas.play === false && /Play is off for new sets/.test(live()), live());
+  check("...keeps focus on the checkbox", document.activeElement === $('[data-mine-area="play"]'));
+  check("...hides play-only picks from new sets", taste.nextRecommendations(state).every((p) => !p.domains.every((d) => d === "play")));
+  check("...changes no reaction and no taste score", JSON.stringify(Object.values(state.feedbackByRecommendation).map((f) => [f.item.id, f.rating, f.detail])) === tasteBefore &&
+    Object.values(state.feedbackByRecommendation).reduce((sum, f) => sum + taste.tasteDelta(f), 0) === scoreBefore);
+  await act('[data-mine-area="watch"]');
+  check("the last area left on cannot be turned off (its checkbox is disabled)", $('[data-mine-area="read"]').disabled === true);
+  await act('[data-mine-area="watch"]'); await act('[data-mine-area="play"]');
+  check("turning areas back on restores them all", Object.values(state.areas).every(Boolean));
+
+  await act("[data-mine-curveball]");
+  check("turning the curveball off is stored and announced", state.curveball === false && /Curveball is off/.test(live()), live());
+  check("...and the checkbox reflects it (the pick logic itself is covered by model-rules.js)", $("[data-mine-curveball]").checked === false);
+  await act("[data-mine-curveball]");
+  check("...and back on restores it", state.curveball === true && $("[data-mine-curveball]").checked === true);
+
+  // remove: focus moves on, the change ripples to Library / Bookmarks
+  const removable = $$(".mine-row[data-mine-id]");
+  const target = removable[Math.floor(removable.length / 2)];
+  const targetId = target.dataset.mineId;
+  const targetTitle = state.feedbackByRecommendation[targetId].item.title;
+  const rowsBefore = removable.length;
+  await act(`[data-mine-item="${targetId}"][data-mine-action="remove"]`);
+  check("Remove takes the item off the ledger and out of Tastemake", !state.feedbackByRecommendation[targetId] && $$(".mine-row[data-mine-id]").length === rowsBefore - 1);
+  check("...announces the removal by title", live().includes(targetTitle) && /removed/.test(live()), live());
+  check("...and focus lands on another control, not nowhere", document.activeElement && document.activeElement !== document.body, document.activeElement?.tagName);
+  check("the Bookmarks tab count still matches", (bookmarksStep().querySelector("[data-bookmark-count]").textContent || "0") === String(taste.bookmarkedFeedback(state).length || 0) || bookmarksStep().hidden);
+  await act('[data-action="mine-back"]');
+  check("Back returns to the page you came from", state.screen === beforeScreen, state.screen);
+
   // ---- Looks (#25): choosing a look is presentation only; every screen must work in every look ----
   const looksData = await import("/src/data/looks.js");
   const startLook = state.look;
@@ -348,8 +416,8 @@ export async function run() {
   const screens = { favorites: "favorites", recommendations: "recommendations", model: "model", library: "library" };
   for (const look of looksData.LOOKS) {
     state.look = look.id; document.documentElement.dataset.look = look.id;
-    for (const [name, jump] of Object.entries(screens)) {
-      await act(`.step[data-step-jump="${jump}"]`);
+    for (const [name, jump] of Object.entries({ ...screens, mine: null })) {
+      if (jump) await act(`.step[data-step-jump="${jump}"]`); else await act("#open-mine");
       await new Promise((resolve) => setTimeout(resolve, 250));
       const r = layout.checkCurrentScreen();
       const problems = Object.entries(r).filter(([k, v]) => Array.isArray(v) && v.length && (k !== "lowContrast" || look.id !== "collage"));
@@ -391,6 +459,25 @@ export async function run() {
   check("a ?look= link skips the picker and uses that look", linked.picker === false && linked.look === "collage" && linked.favorites === true, JSON.stringify(linked));
   const bogus = await frameCheck("/?look=nonsense", async (doc) => ({ look: doc.documentElement.dataset.look }));
   check("an unknown ?look= value is ignored", bogus.look === "editorial", JSON.stringify(bogus));
+
+
+  // ---- Start over (last: it clears everything) ----
+  await act("#open-mine");
+  await act('[data-mine-reset="arm"]');
+  check("Start over asks first, and focus goes to the safe choice (Cancel)", Boolean($('[data-mine-reset="confirm"]')) && document.activeElement === $('[data-mine-reset="cancel"]'), document.activeElement?.textContent);
+  check("...and announces the question", /Are you sure/.test(live()), live());
+  const beforeReset = Object.keys(state.feedbackByRecommendation).length;
+  await act('[data-mine-reset="cancel"]');
+  check("Cancel clears nothing and puts focus back on Start over", Object.keys(state.feedbackByRecommendation).length === beforeReset && document.activeElement === $('[data-mine-reset="arm"]'));
+  await act('[data-mine-reset="arm"]');
+  const lookKept = state.look;
+  await act('[data-mine-reset="confirm"]');
+  check("Yes, clear everything empties reactions, bookmarks, custom items and blind spots",
+    Object.keys(state.feedbackByRecommendation).length === 0 && Object.keys(state.customItems).length === 0 && Object.keys(state.blindSpots).length === 0 && state.libraryFavorites.size === 0);
+  check("...restores the starter favorites and default settings", state.selectedFavorites.size === catalog.favorites.filter((f) => f.selected).length && state.areas.play === true && state.curveball === true);
+  check("...keeps your look", state.look === lookKept && document.documentElement.dataset.look === lookKept);
+  check("...goes back to Favorites and announces it", state.screen === "favorites" && /Started over/.test(live()), `${state.screen} / ${live()}`);
+  check("...and the Bookmarks tab is hidden again", bookmarksStep().hidden);
 
   const failed = results.filter((r) => !r.ok);
   return { passed: results.length - failed.length, failed: failed.length, results: failed.length ? failed : undefined, total: results.length };

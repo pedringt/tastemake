@@ -87,6 +87,8 @@ if not ok:
 print(msg)
 for f in (r.get("results") or [])[:12]:
     print("    x", f.get("name"), "|", str(f.get("detail"))[:300])
+for f in (r.get("failures") or [])[:12]:
+    print("    x", str(f)[:300])
 sys.exit(0 if ok else 1)
 PY
 

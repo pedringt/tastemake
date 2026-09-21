@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, isPositiveExperience, outOfPicks } from "../model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 
@@ -190,6 +190,22 @@ function renderNextSteps() {
         </div>
         <div class="action-group recommendation-footer-actions">
           <button class="button button-primary" type="button" data-action="keep-discovering">Keep discovering &rarr;</button>
+          ${viewBookmarks}
+        </div>
+      </div>`;
+  }
+
+  if (picksHiddenByAreas(state)) {
+    return `
+      <div class="refresh-banner is-finished">
+        <div>
+          <span class="refresh-kicker">Nothing left in your areas</span>
+          <strong>No more picks in the areas you have turned on.</strong>
+          <p>There are still picks in areas you turned off. You can turn them back on in My Tastemake.</p>
+          ${bookmarkNote(bookmarks)}
+        </div>
+        <div class="action-group recommendation-footer-actions">
+          <button class="button button-primary" type="button" data-open-mine>Open My Tastemake</button>
           ${viewBookmarks}
         </div>
       </div>`;

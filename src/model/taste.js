@@ -128,6 +128,23 @@ function feedbackInShownOrder(state) {
 // The next set comes from the follow-up pool minus anything already shown, ranked by everything
 // reacted to so far. With five or more left it is four picks plus one exploratory pick; with fewer,
 // the remainder is shown as ordinary picks. An empty list means this demo has run out of picks.
+// Areas (#8) are a setting, not taste: an item is offered while at least one of its areas is on.
+export const AREAS = [
+  { id: "watch", label: "Watch", about: "Movies and TV" },
+  { id: "read", label: "Read", about: "Books" },
+  { id: "play", label: "Play", about: "Games" }
+];
+export function areaOn(state, item) {
+  const areas = state.areas;
+  if (!areas || !item.domains?.length) return true;
+  return item.domains.some((domain) => areas[domain] !== false);
+}
+
+// True when picks are left but the areas turned off are hiding all of them.
+export function picksHiddenByAreas(state) {
+  return nextRecommendations(state).length === 0 && nextRecommendations({ ...state, areas: undefined }).length > 0;
+}
+
 export function nextRecommendations(state) {
   const shownIds = new Set(shownRecommendations(state).map((item) => item.id));
   // Anything the user already told us about (for example through search) is never recommended again,
@@ -137,7 +154,7 @@ export function nextRecommendations(state) {
     ...feedbackInShownOrder(state),
     ...Object.values(state.feedbackByRecommendation).filter((feedback) => !shownIds.has(feedback.item.id))
   ];
-  const scored = followUpPool.filter((item) => !shownIds.has(item.id) && !reactedIds.has(item.id)).map((item) => {
+  const scored = followUpPool.filter((item) => !shownIds.has(item.id) && !reactedIds.has(item.id) && areaOn(state, item)).map((item) => {
     const score = item.hypotheses.reduce((sum, id) => sum + hypothesisSignal(state, id, feedbacks), 0);
     return { ...item, score };
   }).sort((a, b) => b.score - a.score);
@@ -150,7 +167,9 @@ export function nextRecommendations(state) {
     surprise: false
   });
 
+  // With the curveball setting off (#8), a new set is just the five best picks, none of them the exploratory one.
   if (scored.length < 5) return scored.map(asPick);
+  if (state.curveball === false) return scored.slice(0, 5).map(asPick);
 
   const surpriseSource = scored[4];
   const surprise = {

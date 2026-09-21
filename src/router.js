@@ -4,7 +4,8 @@ export const routes = {
   recommendations: "/recommendations",
   library: "/library",
   bookmarks: "/bookmarks",
-  look: "/look"
+  look: "/look",
+  mine: "/my-tastemake"
 };
 
 export function screenFromPath(pathname = window.location.pathname) {
