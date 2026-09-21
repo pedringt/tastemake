@@ -110,6 +110,41 @@ The Favorites, Recommendations and Taste Profile boards read as a junk-journal b
 - Neon is a black paper scrap with a glowing tube icon or word, static (no animation). It is inspired by bright neon signage generally; do not copy brand marks or specific artwork.
 - To add or change decoration, edit the lists in `stickers.js`. Verify with `scripts/qa/layout-check.js` (usage is in the file header) at 1440, 1024 and 768: no sticker may touch text, controls or cards, no Favorites title may collide with its tile's top row, no text may sit behind a button, and no page may scroll sideways. The Bookmarks page uses the same frame.
 
+## Looks (#25)
+
+Tastemake has four **looks**: different visual expressions of one product. A look changes typography, color, texture and decoration. It never changes layout, features, accessibility or interaction.
+
+| Look | Feel | Heading face | Decoration |
+|---|---|---|---|
+| **Clean editorial** (starting point) | warm, polished, type-first | Newsreader (serif) | none in the frame; thin rules, soft shadows |
+| **Collage** | the playful pinned-and-stickered corkboard (the original look) | Space Grotesk | full sticker frame, tilted cards, hard shadows |
+| **Warm analog** | soft paper, archive tabs, hand-written labels | Fraunces | quieter sticker set (tape, tickets, tags, stamps, notes), muted like old paper |
+| **Bold graphic** | high contrast, big type, flat blocks of color | Archivo 900 | flat color blocks in the frame, thick black borders, hard black shadows |
+
+How it works:
+
+- The look is a `data-look` attribute on `<html>` (default `editorial`). Everything a look can change is a **token** (`--navy`, `--pink`, `--heading`, `--tilt`, `--hard`, `--tone-1..8`, `--tint-*` ...) or one of the marked overrides in `styles/looks.css`. Adding a look is one token block plus a few surface rules.
+- `--tilt` multiplies every card/label rotation and `--hard` multiplies every hard offset shadow (0 = none). Collage is `1`/`1`, so it is **pixel-identical to the pre-looks styling**; this was verified by comparing computed styles of 1,658 elements before and after the refactor (0 differences).
+- Choosing: **"Choose a starting look"** is shown before Favorites on a first visit to the bare address, with small previews drawn in each look's own tokens (people choose by seeing, not by reading a label). A **Look** button in the header reopens the same picker any time. Picking a look applies it to the whole page straight away, so the page behind the picker is a live preview.
+- `?look=collage|editorial|analog|graphic` in a link skips the picker and uses that look (handy for sharing a link that matches what you want a reviewer to see). Deep links such as `/library` also skip the picker and use the default look. Like everything else, the choice is in memory only.
+- **Choosing a look is never taste evidence**, and the picker says so.
+
+Rules every look must keep (checked by `scripts/qa/layout-check.js` and the flow test in all four looks, on every main screen):
+
+- no overlaps, no sideways scroll, decoration never covers text or controls;
+- **text contrast at least WCAG AA** (4.5:1, or 3:1 for large text). Collage is the original look and is not gated (it has known low-contrast decorative labels such as the pink kickers on cork);
+- the same markup, controls, focus behavior and announcements in every look.
+
+## Future: a look from your taste (opt-in, not built)
+
+Once Tastemake has enough evidence about someone's taste, it could offer an optional personalized look, built from what the taste model has learned. Not built; the design intent, so the door stays open (#25, #17):
+
+- **An explicit reveal, never a silent change.** Something like *"Your taste has a look now."* The interface must not change by itself as Tastemake learns.
+- **It explains itself.** A short note on the signals behind the look (for example "you keep coming back to restrained, geometric work"), not an unexplained AI-generated theme.
+- **The user stays in control:** *Use it*, *Tweak it*, *Keep my current look*, and *Regenerate later* as the profile evolves.
+- **Compatible looks, not "your style is X".** Build it from the existing look families (or a blend of a few) so it stays usable and accessible; eclectic taste can be offered several looks rather than one.
+- **Guardrails** (from #17): readability and accessibility always outrank aesthetic adaptation; never infer personality from visual taste; picking or keeping a look is not itself preference evidence unless the user explicitly reacts to it; no commercial or affiliate influence on which look is offered; provide a stable default and easy manual control.
+
 ## Surprise Me
 
 Surprise items get a stronger cyan treatment, playful burst/sticker details, and permission to be visually louder than standard recommendation cards.

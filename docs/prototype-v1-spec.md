@@ -100,6 +100,10 @@ Requirements:
 - Tensions, thin spots and "little to go on" areas are shown, but only when the data supports them.
 - Every connection also appears as text under the picture; small screens show stacked cards instead of lines.
 
+## Looks (#25)
+
+Four looks (Clean editorial, Collage, Warm analog, Bold graphic) change only the visual expression. "Choose a starting look" appears before Favorites on a first visit, and a header **Look** button reopens it. The default is Clean editorial; Collage is one click away. Choosing a look changes no taste data. Details, the token system and the accessibility rules are in `docs/visual-design-spec.md`. A personalized, taste-based look is documented there as a future opt-in feature and is not built.
+
 ## Recommendation refresh
 Purpose: show that feedback improves the next set without forcing a separate learning screen.
 

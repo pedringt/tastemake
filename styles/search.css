@@ -10,7 +10,7 @@
   background:#fff;
   color:var(--navy);
   cursor:pointer;
-  box-shadow:3px 3px 0 rgba(17,26,75,.12);
+  box-shadow:calc(3px * var(--hard)) calc(3px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12));
 }
 .search-open:hover { background:var(--pink-soft); }
 
@@ -23,10 +23,10 @@
   max-width:none;
   background:#fff;
   color:var(--ink);
-  box-shadow:10px 10px 0 rgba(17,26,75,.2);
+  box-shadow:calc(10px * var(--hard)) calc(10px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .2));
   overflow:hidden;
 }
-.search-dialog::backdrop { background:rgba(17,26,75,.5); backdrop-filter:blur(2px); }
+.search-dialog::backdrop { background:rgb(var(--ink-rgb,17 26 75) / .5); backdrop-filter:blur(2px); }
 .search-shell { display:flex; flex-direction:column; max-height:min(88vh,780px); }
 .search-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:18px 20px 6px; }
 .search-head h2 { margin:0; font-size:clamp(22px,3vw,28px); }
@@ -43,7 +43,7 @@
   line-height:1;
   cursor:pointer;
 }
-.search-principle { margin:0; padding:0 20px 12px; color:#3f4774; font-size:13px; line-height:1.4; }
+.search-principle { margin:0; padding:0 20px 12px; color:var(--text2,#3f4774); font-size:13px; line-height:1.4; }
 .search-controls { display:grid; gap:10px; padding:0 20px 12px; }
 .search-controls input {
   width:100%;
@@ -74,7 +74,7 @@
   font:inherit;
   cursor:pointer;
 }
-.search-result:hover { border-color:var(--navy); background:#faf9ff; }
+.search-result:hover { border-color:var(--navy); background:var(--tint-hover,#faf9ff); }
 .search-result-main b { display:block; font-size:16px; }
 .search-result-main span { color:var(--muted); font-size:13px; }
 .search-status {
@@ -92,7 +92,7 @@
 .search-hint { margin:8px 0 14px; color:var(--muted); line-height:1.45; }
 .search-add-row { margin:14px 0 0; }
 
-.search-back { padding:4px 0; border:0; background:transparent; color:#5749bf; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.search-back { padding:4px 0; border:0; background:transparent; color:var(--note-ink,#5749bf); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
 .search-view h3 { margin:10px 0 2px; font-size:clamp(24px,3.4vw,32px); }
 .search-view h3:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:3px; }
 .search-sheet-meta { margin:0 0 14px; color:var(--muted); font-size:14px; }

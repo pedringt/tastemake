@@ -14,6 +14,8 @@
 //   textUnderControls  text that sits behind a button/link it does not belong to (overlapping layout)
 //   topbarOverlaps   header parts (brand, nav tabs, search/label) overlapping each other or running off the page
 //   mapOverlaps      Taste Map cards overlapping each other or leaving the map
+//   lowContrast      text below WCAG AA (4.5:1, or 3:1 for large text) against its background; skips text over
+//                    images/gradients, disabled controls, de-emphasized (unselected) tiles and decoration
 //   hScroll          the page scrolls sideways
 // A clean run has every list empty and hScroll false.
 //
@@ -48,6 +50,62 @@ function visibleRect(el, boundary) {
 
 const describe = (el) => `${el.tagName.toLowerCase()}.${[...el.classList].join(".")}`;
 const stickerName = (el) => [...el.classList].find((c) => c.startsWith("st-") && c !== "st-neon") || "sticker";
+
+
+// ---- text contrast (WCAG AA) ------------------------------------------------------------------
+const parseColor = (s) => {
+  const m = s.match(/rgba?\(([^)]+)\)/);
+  if (!m) return null;
+  const [r, g, b, a = 1] = m[1].split(/[\s,\/]+/).filter(Boolean).map(Number);
+  return { r, g, b, a };
+};
+const over = (top, base) => ({ r: top.r * top.a + base.r * (1 - top.a), g: top.g * top.a + base.g * (1 - top.a), b: top.b * top.a + base.b * (1 - top.a), a: 1 });
+const lum = ({ r, g, b }) => {
+  const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+};
+const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+const BOARD = ".favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen";
+
+// The color behind an element, or null when it sits over an image/gradient (can't be judged from CSS colors).
+function backgroundBehind(el) {
+  const layers = [];
+  for (let p = el; p; p = p.parentElement) {
+    const cs = getComputedStyle(p);
+    const isPage = p === document.body || p === document.documentElement || p.matches(BOARD);
+    if (cs.backgroundImage !== "none" && !isPage) return null;
+    if (Number(cs.opacity) < 0.99) return null;
+    const c = parseColor(cs.backgroundColor);
+    if (c && c.a > 0) { layers.push(c); if (c.a >= 1) break; }
+  }
+  let base = { r: 255, g: 255, b: 255, a: 1 };
+  for (let i = layers.length - 1; i >= 0; i -= 1) base = over(layers[i], base);
+  return base;
+}
+
+function lowContrast(root, field) {
+  const found = new Map();
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const el = node.parentElement;
+    if (!node.textContent.trim() || !isVisible(el) || field?.contains(el)) continue;
+    if (el.closest('[aria-hidden="true"], [aria-pressed="false"].favorite-tile, :disabled, [aria-disabled="true"], .look-preview')) continue;
+    const bg = backgroundBehind(el);
+    if (!bg) continue;
+    const cs = getComputedStyle(el);
+    const fg = parseColor(cs.color);
+    if (!fg) continue;
+    const size = parseFloat(cs.fontSize);
+    const large = size >= 24 || (size >= 18.66 && Number(cs.fontWeight) >= 700);
+    const need = large ? 3 : 4.5;
+    const got = ratio(over(fg, bg), bg);
+    if (got < need) {
+      const key = `${node.textContent.trim().slice(0, 32)} (${got.toFixed(1)}:1, needs ${need})`;
+      if (!found.has(key)) found.set(key, describe(el));
+    }
+  }
+  return [...found.entries()].map(([text, where]) => `${text} in ${where}`);
+}
 
 export function checkCurrentScreen() {
   const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen");
@@ -162,6 +220,7 @@ export function checkCurrentScreen() {
     textUnderControls,
     topbarOverlaps,
     mapOverlaps,
+    lowContrast: [...lowContrast(screen, field), ...lowContrast(document.querySelector(".topbar"), null)],
     hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth
   };
 }

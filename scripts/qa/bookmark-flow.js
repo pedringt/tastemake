@@ -1,5 +1,6 @@
 // Browser-side flow check for Bookmark + Keep discovering + the taste-evidence rule + keeping the
-// user's place (focus, announcements) + the Taste Profile lean + the Library + Search + Blind Spots + the Taste Map. No dependencies.
+// user's place (focus, announcements) + the Taste Profile lean + the Library + Search + Blind Spots + the Taste Map
+// + Looks (#25: the picker, first visit, and every screen in every look). No dependencies.
 //
 //   await (await import("/scripts/qa/bookmark-flow.js")).run()
 //
@@ -29,8 +30,10 @@ export async function run() {
   // focus() first, like a keyboard user would have, so we can check focus survives the re-render
   const act = async (selector) => { const el = $(selector); if (!el) throw new Error(`missing ${selector}`); el.focus(); el.click(); await tick(); };
   const live = () => $("#live")?.textContent || "";
+  // Text contrast is gated in the newer looks; Collage is the original look and keeps its known decorative low-contrast labels.
   const layoutClean = (r) => !r.stickerTextHits.length && !r.stickerBoxHits.length && !r.stickerOutside.length &&
-    !r.titleCollisions.length && !r.textUnderControls.length && !r.topbarOverlaps.length && !r.mapOverlaps.length && !r.hScroll;
+    !r.titleCollisions.length && !r.textUnderControls.length && !r.topbarOverlaps.length && !r.mapOverlaps.length && !r.hScroll &&
+    (state.look === "collage" || !r.lowContrast.length);
   const rate = (id, rating) => act(`[data-feedback-item="${id}"][data-rating="${rating}"]`);
   const detail = (id, value) => act(`[data-feedback-item="${id}"][data-feedback-detail="${value}"]`);
 
@@ -300,6 +303,94 @@ export async function run() {
   check("removed bookmark stays untried, no evidence", state.feedbackByRecommendation[lastId].rating === "not-tried" && taste.tasteDelta(state.feedbackByRecommendation[lastId]) === 0);
   await act('[data-action="show-recs"]');
   check("Bookmarks tab hides again when nothing is saved", bookmarksStep().hidden);
+
+
+  // ---- Looks (#25): choosing a look is presentation only; every screen must work in every look ----
+  const looksData = await import("/src/data/looks.js");
+  const startLook = state.look;
+  const startScreen = state.screen;
+  const evidenceBefore = JSON.stringify(Object.entries(state.feedbackByRecommendation).map(([id, f]) => [id, f.rating, f.detail]));
+  const favoritesBefore = [...state.selectedFavorites].sort().join(",");
+
+  check("four looks are defined, with Clean editorial as the starting point",
+    looksData.LOOKS.length === 4 && looksData.DEFAULT_LOOK === "editorial" && looksData.LOOKS.some((l) => l.id === "collage"),
+    looksData.LOOKS.map((l) => l.id).join(","));
+  check("the page's look and the app's look agree", document.documentElement.dataset.look === state.look, `${document.documentElement.dataset.look} vs ${state.look}`);
+  check("a Look button is in the header", Boolean($("#open-look")) && /Look/.test($("#open-look").textContent + ($("#open-look").title || "")));
+
+  await act("#open-look");
+  check("the Look button opens the picker", Boolean($(".look-screen")) && state.screen === "look");
+  check("the picker shows all four looks as visual previews", $$(".look-card .look-preview").length === 4 && $$('input[name="look"]').length === 4,
+    `${$$(".look-card .look-preview").length} previews`);
+  check("each preview is drawn in its own look", $$(".look-preview").map((p) => p.dataset.look).join(",") === looksData.LOOKS.map((l) => l.id).join(","));
+  check("previews are hidden from screen readers; the labels carry the meaning", $$(".look-preview").every((p) => p.getAttribute("aria-hidden") === "true") &&
+    $$(".look-card-name").every((n) => n.textContent.trim().length > 3));
+  check("the current look is the checked one", $(`input[name="look"]:checked`)?.value === startLook, $(`input[name="look"]:checked`)?.value);
+  check("the picker says choosing a look tells Tastemake nothing about taste", /doesn.t tell Tastemake anything about your taste/.test($(".look-note").textContent));
+  const picked = startLook === "graphic" ? "analog" : "graphic";
+  const pickedLabel = looksData.LOOKS.find((l) => l.id === picked).label;
+  const radio = $(`input[name="look"][value="${picked}"]`);
+  radio.focus(); radio.click(); await tick();
+  check("picking a look applies it to the whole page straight away", document.documentElement.dataset.look === picked && state.look === picked);
+  check("...and is announced", new RegExp(`Look: ${pickedLabel}\\.`).test(live()), live());
+  check("...and keeps keyboard focus on the radio you used", document.activeElement === radio, document.activeElement?.tagName);
+  check("...and moves the selected marker", $(".look-card.is-selected")?.dataset.lookChoice === picked && $$(".look-card.is-selected").length === 1);
+  check("choosing a look changes no taste evidence and no favorites",
+    JSON.stringify(Object.entries(state.feedbackByRecommendation).map(([id, f]) => [id, f.rating, f.detail])) === evidenceBefore &&
+    [...state.selectedFavorites].sort().join(",") === favoritesBefore);
+  check("the picker does not scroll sideways in this look", document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+  check("the button says Done when reopened from the header", $('[data-action="look-done"]').textContent.trim() === "Done");
+  await act('[data-action="look-done"]');
+  check("Done returns to the page you were on", state.screen === startScreen && !$(".look-screen"), state.screen);
+  check("the chosen look stays after leaving the picker", document.documentElement.dataset.look === picked);
+
+  // every main screen in every look: no overlaps, no sideways scroll, readable text (see layout-check.js)
+  const screens = { favorites: "favorites", recommendations: "recommendations", model: "model", library: "library" };
+  for (const look of looksData.LOOKS) {
+    state.look = look.id; document.documentElement.dataset.look = look.id;
+    for (const [name, jump] of Object.entries(screens)) {
+      await act(`.step[data-step-jump="${jump}"]`);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const r = layout.checkCurrentScreen();
+      const problems = Object.entries(r).filter(([k, v]) => Array.isArray(v) && v.length && (k !== "lowContrast" || look.id !== "collage"));
+      check(`${look.label}: ${name} screen has no overlaps, no sideways scroll and readable text`, layoutClean(r) && problems.length === 0,
+        JSON.stringify(problems.map(([k, v]) => [k, v.slice(0, 2)])).slice(0, 400));
+    }
+  }
+  // Map and Blind Spot panels only exist in the profile's Map view; check the Map in each look too
+  await act('.step[data-step-jump="model"]');
+  await act('[data-profile-view="map"]');
+  for (const look of looksData.LOOKS) {
+    state.look = look.id; document.documentElement.dataset.look = look.id;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const r = layout.checkCurrentScreen();
+    check(`${look.label}: Taste Map has no overlaps and readable text`, layoutClean(r), JSON.stringify({ map: r.mapOverlaps, txt: r.lowContrast.slice(0, 2) }).slice(0, 300));
+  }
+  await act('[data-profile-view="list"]');
+  state.look = startLook; document.documentElement.dataset.look = startLook;
+
+  // first visit: the bare address shows "Choose a starting look" before Favorites; a ?look= link goes straight in
+  const frameCheck = (src, work) => new Promise((resolve) => {
+    const frame = document.createElement("iframe");
+    frame.style.cssText = "position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0";
+    frame.onload = () => setTimeout(async () => { try { resolve(await work(frame.contentDocument, frame.contentWindow)); } catch (e) { resolve({ error: String(e) }); } frame.remove(); }, 500);
+    frame.src = src;
+    document.body.appendChild(frame);
+  });
+  const firstVisit = await frameCheck("/", async (doc) => {
+    const out = { picker: Boolean(doc.querySelector(".look-screen")), look: doc.documentElement.dataset.look, button: doc.querySelector('[data-action="look-done"]')?.textContent.trim() };
+    doc.querySelector('[data-action="look-done"]').click();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    out.afterContinue = Boolean(doc.querySelector(".favorites-screen")) && !doc.querySelector(".look-screen");
+    return out;
+  });
+  check("first visit shows the look picker before Favorites", firstVisit.picker === true && firstVisit.look === "editorial", JSON.stringify(firstVisit));
+  check("...starting on Clean editorial, with a 'Continue with' button", /^Continue with Clean editorial$/.test(firstVisit.button || ""), firstVisit.button);
+  check("...and Continue goes on to Favorites", firstVisit.afterContinue === true, JSON.stringify(firstVisit));
+  const linked = await frameCheck("/?look=collage", async (doc) => ({ picker: Boolean(doc.querySelector(".look-screen")), look: doc.documentElement.dataset.look, favorites: Boolean(doc.querySelector(".favorites-screen")) }));
+  check("a ?look= link skips the picker and uses that look", linked.picker === false && linked.look === "collage" && linked.favorites === true, JSON.stringify(linked));
+  const bogus = await frameCheck("/?look=nonsense", async (doc) => ({ look: doc.documentElement.dataset.look }));
+  check("an unknown ?look= value is ignored", bogus.look === "editorial", JSON.stringify(bogus));
 
   const failed = results.filter((r) => !r.ok);
   return { passed: results.length - failed.length, failed: failed.length, results: failed.length ? failed : undefined, total: results.length };

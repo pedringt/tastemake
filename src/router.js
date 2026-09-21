@@ -3,7 +3,8 @@ export const routes = {
   model: "/taste-profile",
   recommendations: "/recommendations",
   library: "/library",
-  bookmarks: "/bookmarks"
+  bookmarks: "/bookmarks",
+  look: "/look"
 };
 
 export function screenFromPath(pathname = window.location.pathname) {

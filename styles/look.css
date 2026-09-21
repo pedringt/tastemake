@@ -1,0 +1,96 @@
+/* "Choose a starting look" (#25): the picker screen, the header Look button and the mini previews.
+   Each preview re-declares its own look's tokens (see looks.css), so it always draws in that look
+   no matter which look the page is currently using. */
+
+.look-open {
+  min-height:44px;
+  padding:0 16px 0 12px;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  border:2px solid var(--navy);
+  border-radius:999px;
+  background:#fff;
+  color:var(--navy);
+  font-weight:700;
+  font-size:14px;
+  cursor:pointer;
+  box-shadow:calc(3px * var(--hard)) calc(3px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12));
+}
+.look-open:hover { background:var(--pink-soft); }
+.look-open svg { flex:none; }
+
+.look-screen { max-width:1120px; margin:0 auto; padding:14px 4px 40px; }
+.look-eyebrow { margin:0 0 6px; color:var(--accent-text,var(--pink)); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+.look-screen h1 { max-width:760px; }
+.look-lede { max-width:640px; margin:0; color:var(--muted); font-size:18px; line-height:1.45; }
+.look-picker { min-width:0; margin:28px 0 14px; padding:0; border:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; }
+.look-card {
+  position:relative;
+  display:grid;
+  align-content:start;
+  gap:6px;
+  padding:10px 10px 14px;
+  border:2px solid transparent;
+  border-radius:18px;
+  cursor:pointer;
+  background:transparent;
+}
+.look-card:hover { background:rgb(var(--ink-rgb,17 26 75) / .04); }
+.look-card.is-selected { border-color:var(--navy); background:#fff; }
+.look-card input:focus-visible ~ .look-preview { outline:3px solid var(--pink); outline-offset:3px; }
+.look-card-name { margin-top:6px; color:var(--navy); font-size:18px; font-weight:700; letter-spacing:-.02em; }
+.look-default { color:var(--muted); font-size:13px; font-weight:600; letter-spacing:0; }
+.look-card-blurb { color:var(--muted); font-size:14px; line-height:1.4; }
+.look-note { margin:8px 0 18px; color:var(--muted); font-size:14px; }
+.look-actions { display:flex; gap:12px; flex-wrap:wrap; }
+
+/* ---- mini previews ---------------------------------------------------------------------- */
+.look-preview {
+  position:relative;
+  display:block;
+  aspect-ratio:4 / 3;
+  overflow:hidden;
+  border-radius:14px;
+  border:1px solid rgb(var(--ink-rgb,17 26 75) / .18);
+  background:var(--pv-surface,var(--bg));
+  color:var(--navy);
+  font-family:var(--display);
+  isolation:isolate;
+  container-type:inline-size;   /* everything inside scales with the card, so it is a true miniature at any width */
+}
+.pv-bar { position:absolute; left:0; right:0; top:0; display:flex; align-items:center; gap:2.4cqw; padding:3.6cqw 5cqw 0; }
+.pv-brand { margin-right:auto; font-family:var(--heading,var(--display)); font-size:6.2cqw; letter-spacing:-.04em; }
+.pv-pill { width:9cqw; height:2.8cqw; border-radius:99px; background:var(--navy); opacity:.22; }
+.pv-card {
+  position:absolute;
+  left:9%;
+  right:9%;
+  top:27%;
+  bottom:9%;
+  z-index:2;
+  display:grid;
+  align-content:start;
+  gap:2cqw;
+  padding:3.6cqw 4.6cqw;
+  background:var(--pv-card,#fff);
+  border:var(--pv-border,.6cqw) solid var(--navy);
+  border-radius:var(--pv-radius,10px);
+  box-shadow:calc(4px * var(--hard)) calc(4px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .16));
+  transform:rotate(calc(-1.6deg * var(--tilt)));
+}
+.pv-chip { justify-self:start; padding:.4cqw 2.4cqw; border-radius:99px; background:var(--pink-soft); color:var(--navy); font-size:3.3cqw; font-style:normal; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.pv-title { font-family:var(--heading,var(--display)); font-size:5.4cqw; line-height:1.08; letter-spacing:-.03em; }
+.pv-line { display:block; height:2cqw; border-radius:99px; background:var(--navy); opacity:.16; }
+.pv-short { width:62%; }
+.pv-row { display:flex; gap:2cqw; margin-top:auto; }
+.pv-btn { padding:.8cqw 3.6cqw; border:.6cqw solid var(--navy); border-radius:99px; font-size:3.3cqw; font-style:normal; font-weight:700; background:#fff; }
+.pv-btn-on { background:var(--navy); color:#fff; }
+.pv-deco { position:absolute; z-index:1; display:none; }
+
+@media (max-width: 1000px) { .look-picker { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width: 560px) { .look-picker { grid-template-columns:minmax(0,1fr); } }
+@media (max-width: 620px) {
+  .look-open { width:44px; padding:0; justify-content:center; }
+  .look-open-label { display:none; }
+}

@@ -6,6 +6,8 @@ import { renderProfile } from "./screens/profile.js";
 import { reactionLabel, renderRecommendations } from "./screens/recommendations.js";
 import { renderBookmarks } from "./screens/bookmarks.js";
 import { renderLibrary } from "./screens/library.js";
+import { lookContinueLabel, renderLook } from "./screens/look.js";
+import { isLook, lookLabel } from "./data/looks.js";
 import { initSearch } from "./components/search.js";
 import { blindSpotFor, isBlindSpotCandidate, removeBlindSpot, saveBlindSpot } from "./model/blindspots.js";
 
@@ -16,7 +18,8 @@ const views = {
   model: renderProfile,
   recommendations: renderRecommendations,
   library: renderLibrary,
-  bookmarks: renderBookmarks
+  bookmarks: renderBookmarks,
+  look: renderLook
 };
 
 function hasEnoughFavorites() {
@@ -24,6 +27,7 @@ function hasEnoughFavorites() {
 }
 
 function canAccess(screen) {
+  if (screen === "look") return true;
   if (screen === "bookmarks") return bookmarkedFeedback(state).length > 0;
   return screen === "favorites" || hasEnoughFavorites();
 }
@@ -69,6 +73,32 @@ function announce(message) {
   if (!live) return;
   live.textContent = "";
   window.setTimeout(() => { live.textContent = message; }, 40);
+}
+
+// Apply a look to the whole page right away (the picker is a live preview). Not taste evidence.
+function setLook(id) {
+  if (!isLook(id)) return;
+  state.look = id;
+  state.lookChosen = true;
+  document.documentElement.dataset.look = id;
+  document.querySelectorAll(".look-card").forEach((card) => card.classList.toggle("is-selected", card.dataset.lookChoice === id));
+  const done = app.querySelector('[data-action="look-done"]');
+  if (done) done.textContent = lookContinueLabel();
+  announce(`Look: ${lookLabel(id)}.`);
+}
+
+function openLookPicker() {
+  if (state.screen !== "look") state.lookReturn = state.screen;
+  state.lookOnboarding = false;
+  navigate("look");
+}
+
+function finishLookPicker() {
+  state.lookChosen = true;
+  const wasOnboarding = state.lookOnboarding;
+  state.lookOnboarding = false;
+  const target = wasOnboarding ? "favorites" : state.lookReturn;
+  navigate(canAccess(target) ? target : "favorites");
 }
 
 // Every action re-renders the screen, which would drop keyboard focus to the page. Remember which
@@ -440,6 +470,8 @@ app.addEventListener("click", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  if (event.target.closest("[data-open-look]")) { openLookPicker(); return; }
+  if (event.target.closest('[data-action="look-done"]')) { finishLookPicker(); return; }
   if (!event.target.closest(".editorial-why")) closeWhyPopovers();
 
   const jump = event.target.closest("[data-step-jump]");
@@ -450,6 +482,11 @@ document.addEventListener("click", (event) => {
 
   event.preventDefault();
   navigate(jump.dataset.stepJump);
+});
+
+document.addEventListener("change", (event) => {
+  const radio = event.target.closest('input[name="look"]');
+  if (radio) setLook(radio.value);
 });
 
 document.addEventListener("keydown", (event) => {
@@ -480,8 +517,17 @@ initSearch({
   goTo(screen) { navigate(screen); }
 });
 
+// First visit at the bare address shows "Choose a starting look" before Favorites. A deep link
+// (/library, ...) or a ?look=... link goes straight to the page, using that look.
+const atRoot = (window.location.pathname.replace(/\/$/, "") || "/") === "/";
+if (new URLSearchParams(window.location.search).has("look")) state.lookChosen = true;
 const initialScreen = screenFromPath();
-state.screen = canAccess(initialScreen) ? initialScreen : "favorites";
+if (atRoot && !state.lookChosen) {
+  state.screen = "look";
+  state.lookOnboarding = true;
+} else {
+  state.screen = canAccess(initialScreen) ? initialScreen : "favorites";
+}
 writeRoute(state.screen, { replace: true });
 render();
 updateStepper();
