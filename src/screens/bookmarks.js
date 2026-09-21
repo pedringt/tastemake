@@ -39,6 +39,7 @@ export function renderBookmarks() {
         <p class="lede">Things you haven't tried yet but want to. Bookmarks don't change your taste profile. Only what you actually try does, so come back and tell Tastemake how it went.</p>
       </div>
 
+      <h2 class="visually-hidden">Saved to try</h2>
       <div class="bookmark-grid">
         ${bookmarks.length
           ? bookmarks.map(bookmarkCard).join("")

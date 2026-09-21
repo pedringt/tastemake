@@ -29,6 +29,8 @@ function isVisible(el) {
   // Content inside a collapsed <details> (other than its summary) is not on screen.
   const closed = el.closest("details:not([open])");
   if (closed && closed !== el && !el.closest("summary")) return false;
+  // Visually-hidden text (screen-reader-only headings and labels) is not on screen, so it cannot sit under anything.
+  if (el.closest(".visually-hidden")) return false;
   const r = el.getBoundingClientRect();
   const cs = getComputedStyle(el);
   return r.width > 0 && r.height > 0 && cs.display !== "none" && cs.visibility !== "hidden";

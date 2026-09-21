@@ -52,6 +52,7 @@ export function renderFavorites() {
         ${renderDomainFilter({ selected: state.favoriteFilter, scope: "favorites", label: "Filter favorites by type" })}
       </div>
 
+      <h2 class="visually-hidden">Starter favorites to choose from</h2>
       <div class="taste-board" aria-label="Starter favorites">
         ${visible.length
           ? visible.map(({ item, originalIndex }, visibleIndex) => favoriteCard(item, originalIndex, visibleIndex)).join("")

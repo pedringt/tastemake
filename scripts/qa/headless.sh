@@ -4,6 +4,7 @@
 #   scripts/qa/headless.sh model            # model-rules.js (137 checks)
 #   scripts/qa/headless.sh flow   1440 390  # bookmark-flow.js (123 checks) at each width
 #   scripts/qa/headless.sh layout 1440 1024 768 390   # layout-check.js at each width
+#   scripts/qa/headless.sh a11y   1440 390            # a11y-check.js (names, labels, headings, targets, focus rings)
 #   LOOK=collage scripts/qa/headless.sh flow 1440      # run in another look (editorial by default;
 #                                                      #  editorial | collage | analog | graphic)
 #
@@ -23,7 +24,7 @@ BASE="http://localhost:$PORT"
 MODE="${1:-}"; shift || true
 
 [ -x "$CHROME" ] || { echo "Chrome not found at: $CHROME (set CHROME=...)"; exit 2; }
-case "$MODE" in model|flow|layout) ;; *) sed -n '2,12p' "$0"; exit 2 ;; esac
+case "$MODE" in model|flow|layout|a11y) ;; *) sed -n '2,12p' "$0"; exit 2 ;; esac
 
 python3 - "$ROOT" "$H" <<'PY'
 import sys
@@ -40,6 +41,7 @@ def runner(module, call, delay):
 page("tm-model-" + look + ".html", runner("model-rules.js", "run();", 400))
 page("tm-flow-" + look + ".html", runner("bookmark-flow.js", "run();", 600))
 page("tm-run-" + look + ".html", runner("layout-check.js", "runAll();", 500))
+page("tm-a11y-" + look + ".html", runner("a11y-check.js", "runAll();", 500))
 open(h + "/tm-frame-" + look + ".html", "w").write("""<!doctype html><html><body style="margin:0;background:#fff">
 <iframe id="f" style="border:0;display:block"></iframe>
 <script>
@@ -64,6 +66,16 @@ if not m:
 r = json.loads(html.unescape(m.group(1)))
 if "error" in r:
     print("  ERROR:", r["error"][:600]); sys.exit(1)
+if mode == "a11y":
+    bad = 0
+    for page, v in r.items():
+        n = sum(len(x) for x in v.values())
+        bad += n
+        print("  %-16s issues=%d" % (page, n))
+        for k, xs in v.items():
+            for x in xs[:4]:
+                print("       ", k, x)
+    sys.exit(1 if bad else 0)
 if mode == "layout":
     keys = ["stickerTextHits", "stickerBoxHits", "stickerOutside", "titleCollisions", "textUnderControls", "topbarOverlaps", "mapOverlaps", "lowContrast"]
     import os
@@ -92,7 +104,7 @@ for f in (r.get("failures") or [])[:12]:
 sys.exit(0 if ok else 1)
 PY
 
-PAGE=tm-model-$LOOK_NAME.html; BUDGET=8000; [ "$MODE" = flow ] && { PAGE=tm-flow-$LOOK_NAME.html; BUDGET=70000; }; [ "$MODE" = layout ] && { PAGE=tm-run-$LOOK_NAME.html; BUDGET=15000; }
+PAGE=tm-model-$LOOK_NAME.html; BUDGET=8000; [ "$MODE" = flow ] && { PAGE=tm-flow-$LOOK_NAME.html; BUDGET=70000; }; [ "$MODE" = layout ] && { PAGE=tm-run-$LOOK_NAME.html; BUDGET=15000; }; [ "$MODE" = a11y ] && { PAGE=tm-a11y-$LOOK_NAME.html; BUDGET=25000; }
 WIDTHS=("$@"); [ "$MODE" = model ] && WIDTHS=(1000); [ ${#WIDTHS[@]} -eq 0 ] && WIDTHS=(1440)
 STATUS=0
 for w in "${WIDTHS[@]}"; do

@@ -95,6 +95,7 @@ export function renderProfile() {
         </div>
       </div>
 
+      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>
       <div class="profile-map">
         <aside class="profile-map-aside">
           <span class="profile-aside-number">${hypotheses.length}</span>

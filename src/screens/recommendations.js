@@ -264,6 +264,7 @@ export function renderRecommendations() {
 
       ${renderNextSteps()}
 
+      <h2 class="visually-hidden">Your picks</h2>
       <div class="editorial-grid">
         ${visible.length
           ? visible.map(recommendationCard).join("")

@@ -72,7 +72,10 @@ scripts/qa/headless.sh model                       # 166 model checks
 scripts/qa/headless.sh flow   1440 1024 768 390    # 205-check click-through at each width
 scripts/qa/headless.sh layout 1440 1024 768 390    # overlap / sideways-scroll / contrast checks at each width
 LOOK=collage scripts/qa/headless.sh flow 1440      # any look: editorial (default) | collage | analog | graphic
+scripts/qa/headless.sh a11y   1440 390             # accessibility audit (see below)
 ```
+
+`a11y-check.js` audits every screen (plus the Taste Map, My Tastemake, the look picker and the search dialog) for: controls with no accessible name, duplicate ids and dangling aria references, exactly one h1 and no skipped heading levels, unlabeled form controls, missing alt text, controls smaller than 24x24px (WCAG 2.2 AA), and controls with no visible keyboard-focus indicator. Its first run found skipped heading levels on four pages (fixed with visually-hidden h2 section headings placed *outside* the card grids so `:nth-child` tile styling did not shift) and two controls under 24px tall (the "Why this one?" trigger and the Library's collapsed section header). It is clean in all four looks at 1440, 1024, 768, 390 and 320. It cannot judge everything (screen-reader wording, focus order, color-only cues); a real assistive-technology pass is still worth doing.
 
 The flow test also switches through all four looks on every main screen (plus the Taste Map) and checks the picker and the first-visit flow.
 

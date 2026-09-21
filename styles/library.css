@@ -73,7 +73,7 @@
   background:rgba(255,255,255,.85);
   color:var(--text2,#3f4774);
 }
-.library-disliked summary { cursor:pointer; color:var(--navy); font-weight:700; }
+.library-disliked summary { min-height:28px; display:flex; align-items:center; cursor:pointer; color:var(--navy); font-weight:700; }
 .library-disliked p { margin:10px 0 0; font-size:13px; line-height:1.45; }
 .library-disliked ul { list-style:none; margin:12px 0 0; padding:0; display:grid; gap:10px; }
 .library-disliked li { display:block; }
