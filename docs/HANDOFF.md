@@ -8,7 +8,7 @@ Last updated: September 20, 2026
 - Working branch: `prototype-v1-core-loop`
 - Canonical handoff issue: #16
 - Draft PR: #5
-- Current visual state: the collage-frame sticker rebuild at `9c5a4783d21712cfe754b0d9bd1190ff958310ba` (supersedes the `df7895f` cleanup); later commits may only update handoff documentation
+- State (Sept 20, 2026): the branch carries the collage frame **plus** Bookmarks, Library, Search, Taste Blind Spot, Taste Map and the weakening rule, all built and QA-verified, and deployed to the preview. Use `git log` for the exact tip; do not trust a SHA written here.
 - `main` is intentionally unchanged at `1a12d709bbebfd748a926a3397ee6c1995eb2e09`
 - Do not merge or push anything to `main` unless Paige explicitly says to.
 
@@ -18,9 +18,9 @@ Tastemake learns patterns in what a person likes, recommends things across domai
 
 Current prototype flow:
 
-**Favorites → Recommendations → Taste Profile**
+**Favorites → Recommendations → Taste Profile → Library → Bookmarks**, plus a header search (`/`) and a List / Map toggle on the Taste Profile.
 
-The current prototype is deterministic and front-end only.
+The current prototype is deterministic and front-end only. Everything is in memory and resets on reload (decided: no saving until a real backend).
 
 ## Visual direction
 
@@ -59,11 +59,21 @@ Paige's reaction to the deployed result: "liking that better."
 
 ## Preview status
 
-Preview: https://tastemake-git-prototype-v1-core-loop-cairn10.vercel.app
+Preview: https://tastemake-git-prototype-v1-core-loop-cairn10.vercel.app (behind Vercel login; sign in to the cairn10 team to view it).
 
-Vercel deployed `9c5a478` successfully. The Sept 20 batch (Bookmarks, Library, Search, Blind Spots, Taste Map; head `d94cfe3` on GitHub) was pushed to the branch, but Vercel refused the build: "Deployment rate limited — retry in 24 hours" (Hobby plan, limit shared with the State project). Until a build for the current head is READY, the preview still shows the older collage-only version. Confirm the preview is built from the current branch head before judging visuals. Do not push again just to retry; the next push should carry real changes.
+The Sept 20 batch is deployed. Vercel (Hobby plan, shared with the State project) refused two pushes that day with "Deployment rate limited — retry in 24 hours", but the limit actually lifted after about three hours. A refused build creates no deployment and Vercel never retries by itself; a new push retriggers it (an empty commit is enough). Always confirm the preview is built from the current branch head before judging visuals, and batch pushes to save build budget.
 
 ## QA scripts
+
+Run them all with `scripts/qa/headless.sh` (headless Chrome, no install, no build; exit code 1 on any failure):
+
+```
+scripts/qa/headless.sh model                       # 137 model checks
+scripts/qa/headless.sh flow   1440 1024 768 390    # 123-check click-through at each width
+scripts/qa/headless.sh layout 1440 1024 768 390    # overlap / sideways-scroll checks at each width
+```
+
+Last full run (Sept 20, at `d94cfe3`): model 137/137; flow 123/123 at 1600, 1440, 1300, 1024, 860, 768, 430, 390, 360 and 320; layout clean. Widths under 500 run in an iframe because headless Chrome will not go below a 500px layout width. Ranking parity against the original two-round code (30,000 random reaction sets, identical) was a one-off scratch harness, not committed; the old code is in git history before the Bookmark commit `d4c4037`.
 
 Three browser-side scripts (no dependencies; usage in each file header) live in `scripts/qa/`:
 
@@ -118,14 +128,26 @@ Decisions (also on #12, #14, #24): a single **Bookmark** replaces both Up Next a
   - Link strength describes the model's known picks, not the user, and is labelled that way.
   - Not built: "what changed" over time, domain filters on the cards, challenging or correcting a cluster, launching recommendation experiments from the map, cross-domain highlighting, and Taste Autopsy (#19).
 - Header: three columns only from 1440px (five tabs + search would overflow between ~1280 and 1439 once Bookmarks is visible); below that it is two rows. The search button is icon-only on purpose.
-- Not done: Favorites carrying extra taste weight, other domains beyond Watch/Read/Play, search/imports/provider links, and decoration on phones (stickers hidden below 620px; Paige is fine holding that).
+- Not done: Favorites carrying extra taste weight, other domains beyond Watch/Read/Play, imports and provider links, a real catalog behind search, and decoration on phones (stickers hidden below 620px; Paige is fine holding that).
 
 ## What to do next
 
-1. Only if Paige has more visual notes: collect the whole round first, then scope, then implement.
-2. Product focus returns to #15 (live unseen recommendation experiment). Its pre-try "Up Next" baseline maps to Bookmark now; do not rewrite the recorded predictions.
-3. #17 (taste-driven site skins) can build on the sticker data lists.
-4. Do not touch `main` without explicit authorization.
+Closed on Sept 20 as built for the prototype: #12, #13, #20, #21, #22, #23, #24 (each has a comment listing what was deliberately left out).
+
+Paige picks the next build. The options I laid out:
+
+1. **#25 (and #17), selectable designs and a taste-based skin.** Front-end only and the sticker data lists make sets swappable. Recommended order: pick-a-design first, then a skin derived from the Taste Profile. A skin must never hurt readability; `layout-check.js` already guards that.
+2. **#8, a Taste control center.** One place to see and edit everything Tastemake believes, built on the Library, Blind Spots and Map.
+3. **#10, where to find it.** Plain search links only for the prototype; real availability needs an outside data source. Hold.
+4. **Polish:** phone-width stickers (on hold), a look at the Bookmarks page on the live preview.
+
+Needs a live model, so not buildable yet: #18 and #19 (Tastebreak, "help me put it into words"), and the model-driven parts of #20.
+
+Standing items:
+
+- **#15 stays parked.** Paige has no time to watch the picks. Do not nag. Its pre-try "Up Next" baseline maps to Bookmark now; do not rewrite the recorded predictions.
+- Only if Paige has more visual notes: collect the whole round first, then scope, then implement.
+- Do not touch `main` without explicit authorization. Draft PR #5 stays a draft.
 
 ## Workflow rule
 
