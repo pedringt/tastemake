@@ -1,0 +1,644 @@
+{
+  "experiment_id": "001-blind-taste-model",
+  "profile_id": "pilot-user-001",
+  "schema_version": "1.0",
+  "reaction_scale": {
+    "strong_positive": "A favorite, all-time favorite, or clear love.",
+    "positive": "Liked, enjoyed, or described as fun/good.",
+    "mixed": "Meh, mixed, or neither clearly liked nor disliked.",
+    "negative": "Did not like, not a favorite, bounced off, or found the experience frustrating.",
+    "strong_negative": "Strong dislike."
+  },
+  "items": [
+    {
+      "id": "book_asoiaf",
+      "title": "A Song of Ice and Fire",
+      "medium": "book_series",
+      "reaction": "strong_positive",
+      "user_signal": "love",
+      "reason": null
+    },
+    {
+      "id": "book_watchmen",
+      "title": "Watchmen",
+      "medium": "graphic_novel",
+      "reaction": "positive",
+      "user_signal": "really like",
+      "reason": null
+    },
+    {
+      "id": "book_ninth_house",
+      "title": "Ninth House series",
+      "medium": "book_series",
+      "reaction": "positive",
+      "user_signal": "like a lot",
+      "reason": null
+    },
+    {
+      "id": "book_mexican_gothic",
+      "title": "Mexican Gothic",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_gideon",
+      "title": "Gideon the Ninth",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_silence_girls",
+      "title": "The Silence of the Girls",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_witchs_heart",
+      "title": "The Witch's Heart",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_song_achilles",
+      "title": "The Song of Achilles",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_six_crows",
+      "title": "Six of Crows",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_locke_lamora",
+      "title": "The Lies of Locke Lamora",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_night_circus",
+      "title": "The Night Circus",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_sabriel",
+      "title": "Sabriel",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_homegoing",
+      "title": "Homegoing",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_tomorrow",
+      "title": "Tomorrow, and Tomorrow, and Tomorrow",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_ted_chiang",
+      "title": "Ted Chiang's short fiction",
+      "medium": "books",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_hard_to_be_god",
+      "title": "Hard to Be a God",
+      "medium": "book",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "book_starless_sea",
+      "title": "The Starless Sea",
+      "medium": "book",
+      "reaction": "negative",
+      "user_signal": "could not get into it",
+      "reason": null
+    },
+    {
+      "id": "movie_fall",
+      "title": "The Fall",
+      "medium": "movie",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "movie_green_knight",
+      "title": "The Green Knight",
+      "medium": "movie",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "movie_pan_labyrinth",
+      "title": "Pan's Labyrinth",
+      "medium": "movie",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "movie_northman",
+      "title": "The Northman",
+      "medium": "movie",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "movie_star_wars_original",
+      "title": "Original Star Wars trilogy",
+      "medium": "movie_series",
+      "reaction": "strong_positive",
+      "user_signal": "all-time favorite",
+      "reason": null
+    },
+    {
+      "id": "movie_crouching_tiger",
+      "title": "Crouching Tiger, Hidden Dragon",
+      "medium": "movie",
+      "reaction": "strong_positive",
+      "user_signal": "all-time favorite",
+      "reason": "User likes good martial arts movies with cool fight scenes."
+    },
+    {
+      "id": "movie_matrix",
+      "title": "The Matrix",
+      "medium": "movie",
+      "reaction": "strong_positive",
+      "user_signal": "all-time favorite",
+      "reason": null
+    },
+    {
+      "id": "movie_liar_liar",
+      "title": "Liar Liar",
+      "medium": "movie",
+      "reaction": "strong_positive",
+      "user_signal": "favorite since childhood",
+      "reason": null
+    },
+    {
+      "id": "movie_macgruber",
+      "title": "MacGruber",
+      "medium": "movie",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "movie_hot_rod",
+      "title": "Hot Rod",
+      "medium": "movie",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "movie_popstar",
+      "title": "Popstar: Never Stop Never Stopping",
+      "medium": "movie",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "movie_walk_hard",
+      "title": "Walk Hard: The Dewey Cox Story",
+      "medium": "movie",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "movie_oddity",
+      "title": "Oddity",
+      "medium": "movie",
+      "reaction": "positive",
+      "user_signal": "liked",
+      "reason": null
+    },
+    {
+      "id": "movie_first_omen",
+      "title": "The First Omen",
+      "medium": "movie",
+      "reaction": "positive",
+      "user_signal": "liked",
+      "reason": null
+    },
+    {
+      "id": "movie_immaculate",
+      "title": "Immaculate",
+      "medium": "movie",
+      "reaction": "negative",
+      "user_signal": "did not care for it",
+      "reason": null
+    },
+    {
+      "id": "movie_raid",
+      "title": "The Raid",
+      "medium": "movie",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": "User likes good martial arts movies with cool fight scenes."
+    },
+    {
+      "id": "movie_night_comes_for_us",
+      "title": "The Night Comes for Us",
+      "medium": "movie",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": "User likes good martial arts movies with cool fight scenes."
+    },
+    {
+      "id": "game_portal",
+      "title": "Portal",
+      "medium": "game",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "game_portal_2",
+      "title": "Portal 2",
+      "medium": "game",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "game_bioshock",
+      "title": "BioShock",
+      "medium": "game",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "game_bioshock_infinite",
+      "title": "BioShock Infinite",
+      "medium": "game",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "game_control",
+      "title": "Control",
+      "medium": "game",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "game_alan_wake",
+      "title": "Alan Wake",
+      "medium": "game",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "game_evil_within_2",
+      "title": "The Evil Within 2",
+      "medium": "game",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "game_obra_dinn",
+      "title": "Return of the Obra Dinn",
+      "medium": "game",
+      "reaction": "strong_positive",
+      "user_signal": "favorite",
+      "reason": null
+    },
+    {
+      "id": "game_resident_evil_new",
+      "title": "Resident Evil games from Resident Evil 7 onward, including the newer remakes",
+      "medium": "game_series",
+      "reaction": "strong_positive",
+      "user_signal": "love",
+      "reason": null
+    },
+    {
+      "id": "game_edith_finch",
+      "title": "What Remains of Edith Finch",
+      "medium": "game",
+      "reaction": "positive",
+      "user_signal": "like",
+      "reason": null
+    },
+    {
+      "id": "game_wow",
+      "title": "World of Warcraft",
+      "medium": "game",
+      "reaction": "positive",
+      "user_signal": "liked",
+      "reason": null
+    },
+    {
+      "id": "game_diablo",
+      "title": "Diablo",
+      "medium": "game_series",
+      "reaction": "positive",
+      "user_signal": "liked",
+      "reason": null
+    },
+    {
+      "id": "game_tomb_raider_new",
+      "title": "Newer Tomb Raider games",
+      "medium": "game_series",
+      "reaction": "positive",
+      "user_signal": "pretty fun",
+      "reason": null
+    },
+    {
+      "id": "game_elden_ring",
+      "title": "Elden Ring",
+      "medium": "game",
+      "reaction": "positive",
+      "user_signal": "liked more than Dark Souls or Bloodborne",
+      "reason": "The open world let the user move around more and avoid being stuck on one path."
+    },
+    {
+      "id": "game_dear_esther",
+      "title": "Dear Esther",
+      "medium": "game",
+      "reaction": "mixed",
+      "user_signal": "kind of meh",
+      "reason": null
+    },
+    {
+      "id": "game_myst",
+      "title": "Myst",
+      "medium": "game",
+      "reaction": "negative",
+      "user_signal": "did not click",
+      "reason": null
+    },
+    {
+      "id": "game_bloodborne",
+      "title": "Bloodborne",
+      "medium": "game",
+      "reaction": "negative",
+      "user_signal": "too hard",
+      "reason": "Difficulty was a barrier."
+    },
+    {
+      "id": "game_dark_souls",
+      "title": "Dark Souls",
+      "medium": "game_series",
+      "reaction": "negative",
+      "user_signal": "too hard",
+      "reason": "Difficulty was a barrier."
+    },
+    {
+      "id": "game_dawnwalker",
+      "title": "The Blood of Dawnwalker",
+      "medium": "game",
+      "reaction": "negative",
+      "user_signal": "too hard even on the easiest difficulty",
+      "reason": "Difficulty was a barrier."
+    },
+    {
+      "id": "game_cod",
+      "title": "Call of Duty",
+      "medium": "game_series",
+      "reaction": "negative",
+      "user_signal": "dislike",
+      "reason": null
+    },
+    {
+      "id": "game_gta",
+      "title": "Grand Theft Auto",
+      "medium": "game_series",
+      "reaction": "negative",
+      "user_signal": "dislike",
+      "reason": null
+    },
+    {
+      "id": "tv_buffy",
+      "title": "Buffy the Vampire Slayer",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "loved",
+      "reason": null
+    },
+    {
+      "id": "tv_breaking_bad",
+      "title": "Breaking Bad",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "loved",
+      "reason": null
+    },
+    {
+      "id": "tv_better_call_saul",
+      "title": "Better Call Saul",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "loved",
+      "reason": null
+    },
+    {
+      "id": "tv_lost",
+      "title": "Lost",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "loved",
+      "reason": null
+    },
+    {
+      "id": "tv_eastbound",
+      "title": "Eastbound & Down",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "loved",
+      "reason": null
+    },
+    {
+      "id": "tv_always_sunny",
+      "title": "It's Always Sunny in Philadelphia",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "loved",
+      "reason": null
+    },
+    {
+      "id": "tv_xfiles",
+      "title": "The X-Files",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "loved",
+      "reason": null
+    },
+    {
+      "id": "tv_twin_peaks",
+      "title": "Twin Peaks",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "loved",
+      "reason": null
+    },
+    {
+      "id": "tv_got_early",
+      "title": "Game of Thrones, first couple of seasons",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "loved",
+      "reason": null
+    },
+    {
+      "id": "tv_iwtv",
+      "title": "Interview with the Vampire",
+      "medium": "tv",
+      "reaction": "positive",
+      "user_signal": "better than expected",
+      "reason": null
+    },
+    {
+      "id": "tv_real_housewives",
+      "title": "Real Housewives",
+      "medium": "reality_tv",
+      "reaction": "positive",
+      "user_signal": "watch and like",
+      "reason": null
+    },
+    {
+      "id": "tv_vanderpump",
+      "title": "Vanderpump Rules",
+      "medium": "reality_tv",
+      "reaction": "positive",
+      "user_signal": "watch and like",
+      "reason": null
+    },
+    {
+      "id": "tv_americans",
+      "title": "The Americans",
+      "medium": "tv",
+      "reaction": "strong_positive",
+      "user_signal": "so good",
+      "reason": null
+    },
+    {
+      "id": "tv_succession",
+      "title": "Succession",
+      "medium": "tv",
+      "reaction": "positive",
+      "user_signal": "liked",
+      "reason": null
+    },
+    {
+      "id": "tv_widows_bay",
+      "title": "Widow's Bay",
+      "medium": "tv",
+      "reaction": "positive",
+      "user_signal": "fun",
+      "reason": null
+    },
+    {
+      "id": "tv_abbott",
+      "title": "Abbott Elementary",
+      "medium": "tv",
+      "reaction": "negative",
+      "user_signal": "not a favorite",
+      "reason": null
+    },
+    {
+      "id": "tv_ted_lasso",
+      "title": "Ted Lasso",
+      "medium": "tv",
+      "reaction": "negative",
+      "user_signal": "not a favorite",
+      "reason": null
+    },
+    {
+      "id": "comedy_conan",
+      "title": "Conan O'Brien",
+      "medium": "comedy_personality",
+      "reaction": "strong_positive",
+      "user_signal": "really like",
+      "reason": null
+    },
+    {
+      "id": "music_beatles",
+      "title": "The Beatles",
+      "medium": "music_artist",
+      "reaction": "strong_positive",
+      "user_signal": "love",
+      "reason": null
+    },
+    {
+      "id": "music_tool",
+      "title": "Tool",
+      "medium": "music_artist",
+      "reaction": "strong_positive",
+      "user_signal": "love",
+      "reason": null
+    },
+    {
+      "id": "music_phoebe",
+      "title": "Phoebe Bridgers",
+      "medium": "music_artist",
+      "reaction": "positive",
+      "user_signal": "pretty good",
+      "reason": null
+    },
+    {
+      "id": "music_lana",
+      "title": "Lana Del Rey",
+      "medium": "music_artist",
+      "reaction": "positive",
+      "user_signal": "starting to like",
+      "reason": null
+    }
+  ],
+  "explicit_preferences": [
+    {
+      "statement": "The user likes good martial arts movies with cool fight scenes.",
+      "sentiment": "positive"
+    },
+    {
+      "statement": "The user dislikes myth retellings that feel too YA.",
+      "sentiment": "negative"
+    },
+    {
+      "statement": "In difficult games, the user responds better when an open world provides freedom to move elsewhere instead of being stuck on one path.",
+      "sentiment": "positive"
+    }
+  ]
+}

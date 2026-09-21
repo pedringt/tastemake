@@ -1,0 +1,63 @@
+{
+  "experiment_id": "002-discovery-adventure-boundaries",
+  "profile_id": "pilot-user-001",
+  "instructions": "Predict reactions using only the locked H01-H09 model. Do not revise the model before predicting. Some items may later be marked not experienced and excluded from scoring.",
+  "items": [
+    {
+      "id": "d01_witness",
+      "title": "The Witness",
+      "medium": "game",
+      "test_dimension": "discovery_as_main_appeal",
+      "why_selected": "Puzzle/discovery-focused with sparse external narrative propulsion."
+    },
+    {
+      "id": "d02_forgotten_city",
+      "title": "The Forgotten City",
+      "medium": "game",
+      "test_dimension": "structured_discovery",
+      "why_selected": "Mystery and discovery are embedded in explicit goals, dialogue, and narrative structure."
+    },
+    {
+      "id": "d03_firewatch",
+      "title": "Firewatch",
+      "medium": "game",
+      "test_dimension": "guided_narrative_exploration",
+      "why_selected": "Exploration exists inside a strongly guided character and narrative experience."
+    },
+    {
+      "id": "d04_999",
+      "title": "999: Nine Hours, Nine Persons, Nine Doors",
+      "medium": "game",
+      "test_dimension": "structured_mystery_and_puzzles",
+      "why_selected": "Mystery/puzzles with strong goals, stakes, and narrative propulsion rather than open wandering."
+    },
+    {
+      "id": "a01_mummy",
+      "title": "The Mummy (1999)",
+      "medium": "movie",
+      "test_dimension": "straightforward_adventure_charisma",
+      "why_selected": "Pulpy adventure, humor, charismatic leads, supernatural spectacle, and momentum."
+    },
+    {
+      "id": "a02_pirates",
+      "title": "Pirates of the Caribbean: The Curse of the Black Pearl",
+      "medium": "movie",
+      "test_dimension": "adventure_charisma_worldbuilding",
+      "why_selected": "Adventure, charisma, action, fantasy, humor, and a distinctive world without relying heavily on darkness or ambiguity."
+    },
+    {
+      "id": "a03_national_treasure",
+      "title": "National Treasure",
+      "medium": "movie",
+      "test_dimension": "adventure_plus_structured_discovery",
+      "why_selected": "Straightforward adventure where clues and discovery are tightly attached to momentum and clear objectives."
+    },
+    {
+      "id": "a04_fury_road",
+      "title": "Mad Max: Fury Road",
+      "medium": "movie",
+      "test_dimension": "spectacle_momentum_low_mystery",
+      "why_selected": "Tests whether action, visual identity, momentum, and spectacle can succeed without mystery or deep world explanation."
+    }
+  ]
+}

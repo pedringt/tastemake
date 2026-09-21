@@ -1,0 +1,224 @@
+/* Looks (#25): four visual skins of the same product.
+
+   A look changes typography, color, texture and decoration. It never changes layout, features,
+   accessibility or interaction. Everything a look can change is either a token below or one of the
+   marked overrides, so a new look is one token block plus a few surface rules.
+
+   Each token block applies to the page (:root) and to that look's preview card in the picker, so a
+   preview always draws in its own look. Every block sets every dial, so nothing leaks from the page's
+   current look into a preview. "initial" on a dial means "use the built-in Collage value".
+
+   Dials:  --tilt  multiplies every card/label rotation (0 = square)
+           --hard  multiplies every hard offset shadow (0 = none)
+           --shadow-ink / --ink-rgb / --accent-rgb  shadow color, ink and accent as r g b
+           --heading  display face for headings;  --hand  the "handwritten note" face
+           --tone-1..8  the eight Favorites tile colors,  --tint-*  small highlight fills */
+
+/* ---- Collage: the original look. These values are the built-in defaults. -------------------- */
+:root[data-look="collage"], .look-preview[data-look="collage"] {
+  --bg:#f8f5ff; --paper:#fffefe; --navy:#111a4b; --ink:#1a2256; --muted:#646a8a; --line:#dcdcf0;
+  --pink:#ff2fb3; --pink-soft:#ffe3f6; --cyan:#20d9e8; --cyan-soft:#dcfbfd; --lime:#c8f52a;
+  --violet:#8870ff; --violet-soft:#ece8ff; --coral:#ff776e; --yellow:#ffe36e;
+  --display:"Space Grotesk", ui-rounded, system-ui, sans-serif;
+  --heading:"Space Grotesk", ui-rounded, system-ui, sans-serif;
+  --hand:"Patrick Hand", "Comic Sans MS", cursive;
+  --tilt:1; --hard:1;
+  --shadow-ink:initial; --ink-rgb:initial; --accent-rgb:initial;
+  --text2:initial; --note-ink:initial; --tint-lime:initial; --tint-warm:initial; --tint-cool:initial;
+  --tint-hover:initial; --tint-pink:initial; --tint-red:initial; --tint-lilac:initial; --on-lime:initial;
+  --accent-text:initial; --faint:initial; --on-pink:initial; --warn:initial;
+  --tone-1:initial; --tone-2:initial; --tone-3:initial; --tone-4:initial; --tone-5:initial; --tone-6:initial; --tone-7:initial; --tone-8:initial;
+  --pv-surface:#d8aa76; --pv-card:#fff; --pv-border:2px; --pv-radius:10px;
+}
+
+/* ---- Clean editorial: warm, polished, type-first. The starting point. ----------------------- */
+:root[data-look="editorial"], .look-preview[data-look="editorial"] {
+  --bg:#faf7f2; --paper:#ffffff; --navy:#25211c; --ink:#2f2a24; --muted:#635c52; --line:#e5dfd3;
+  --pink:#a9472f; --pink-soft:#f5e4dd; --cyan:#3f6f6c; --cyan-soft:#e2edeb; --lime:#ecdca0;
+  --violet:#6e5f8f; --violet-soft:#ebe6f2; --coral:#c26a52; --yellow:#efdc9c;
+  --display:"Space Grotesk", ui-rounded, system-ui, sans-serif;
+  --heading:"Newsreader", "Iowan Old Style", Georgia, serif;
+  --hand:"Newsreader", "Iowan Old Style", Georgia, serif;
+  --tilt:0; --hard:0;
+  --shadow-ink:transparent; --ink-rgb:37 33 28; --accent-rgb:169 71 47;
+  --text2:#4a443b; --note-ink:#7a4a38; --tint-lime:#f3ecc6; --tint-warm:#f8f1e0; --tint-cool:#eaf1ef;
+  --tint-hover:#f4efe6; --tint-pink:#f7e9e3; --tint-red:#f3dbd3; --tint-lilac:#eeeaf3; --on-lime:#5d5320;
+  --accent-text:#a9472f; --faint:#615b51; --on-pink:#7a2c19; --warn:#9a3f34;
+  --tone-1:#f6e8e1; --tone-2:#e6eeec; --tone-3:#eee9f2; --tone-4:#f1eccf; --tone-5:#f5ead6; --tone-6:#e7ebf1; --tone-7:#f3e2dc; --tone-8:#e8eedd;
+  --pv-surface:#faf7f2; --pv-card:#fff; --pv-border:1px; --pv-radius:8px;
+}
+
+/* ---- Warm analog: softer paper, archive tabs, hand-written labels. -------------------------- */
+:root[data-look="analog"], .look-preview[data-look="analog"] {
+  --bg:#efe7d6; --paper:#fbf6ea; --navy:#3a2f27; --ink:#42362d; --muted:#6c5d48; --line:#d8ccb3;
+  --pink:#a8483a; --pink-soft:#f0dcd0; --cyan:#5b7c74; --cyan-soft:#dde7df; --lime:#dccb8b;
+  --violet:#816b8a; --violet-soft:#e7dfe8; --coral:#c46f55; --yellow:#e9d28f;
+  --display:"Space Grotesk", ui-rounded, system-ui, sans-serif;
+  --heading:"Fraunces", "Iowan Old Style", Georgia, serif;
+  --hand:"Patrick Hand", "Comic Sans MS", cursive;
+  --tilt:.45; --hard:.55;
+  --shadow-ink:rgb(70 45 25 / .2); --ink-rgb:58 47 39; --accent-rgb:168 72 58;
+  --text2:#5a4c3f; --note-ink:#7a4d3a; --tint-lime:#efe6bd; --tint-warm:#f6ecd3; --tint-cool:#e9efe9;
+  --tint-hover:#f6f0e1; --tint-pink:#f5e2d8; --tint-red:#f0d3c8; --tint-lilac:#e9e2e3; --on-lime:#5d5320;
+  --accent-text:#a8483a; --faint:#66573f; --on-pink:#7d3327; --warn:#9a4034;
+  --tone-1:#efd9cf; --tone-2:#dfe8e0; --tone-3:#e6dde6; --tone-4:#ece6c4; --tone-5:#f0e0c0; --tone-6:#dde3e8; --tone-7:#ecd0c8; --tone-8:#dfe9d2;
+  --pv-surface:#e9dcc2; --pv-card:#fbf6ea; --pv-border:1.5px; --pv-radius:5px;
+}
+
+/* ---- Bold graphic: high contrast, big type, flat blocks of color. --------------------------- */
+:root[data-look="graphic"], .look-preview[data-look="graphic"] {
+  --bg:#fffbea; --paper:#ffffff; --navy:#0b0b0b; --ink:#0b0b0b; --muted:#2e2e2e; --line:#0b0b0b;
+  --pink:#ff3b1f; --pink-soft:#ffd2c9; --cyan:#1fb5ff; --cyan-soft:#c9efff; --lime:#c6ff3d;
+  --violet:#5b3dff; --violet-soft:#ddd6ff; --coral:#ff6a4d; --yellow:#ffd400;
+  --display:"Space Grotesk", ui-rounded, system-ui, sans-serif;
+  --heading:"Archivo", "Arial Black", "Helvetica Neue", sans-serif;
+  --hand:"Space Grotesk", ui-rounded, system-ui, sans-serif;
+  --tilt:0; --hard:1.35;
+  --shadow-ink:#0b0b0b; --ink-rgb:11 11 11; --accent-rgb:255 59 31;
+  --text2:#1c1c1c; --note-ink:#1f2bd6; --tint-lime:#dfff8a; --tint-warm:#fff2b0; --tint-cool:#d6f3ff;
+  --tint-hover:#fff4c2; --tint-pink:#ffd6cf; --tint-red:#ffb8ab; --tint-lilac:#ddd6ff; --on-lime:#1f2a00;
+  --accent-text:#b01800; --faint:#1c1c1c; --on-pink:#8a1200; --warn:#a01400;
+  --tone-1:#ffb3d1; --tone-2:#8fe8f0; --tone-3:#c4b5ff; --tone-4:#d9f75a; --tone-5:#ffc861; --tone-6:#a9b9ff; --tone-7:#ff9a85; --tone-8:#a6f0a0;
+  --pv-surface:#ffd83d; --pv-card:#fff; --pv-border:3px; --pv-radius:3px;
+}
+
+/* ---- Shared: headings use the look's heading face. (Zero specificity, so components can still override.) */
+:where(h1, h2, h3, h4, .brand-word) { font-family:var(--heading, var(--display)); }
+
+/* ========================================================================================== */
+/* Page + board surface + decoration, per look                                                */
+/* ========================================================================================== */
+
+/* ---- Clean editorial ---- */
+:root[data-look="editorial"] body { background:#faf7f2; }
+:root[data-look="editorial"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen) {
+  --gutter:clamp(14px, 2.6vw, 36px);
+  --band:clamp(18px, 2.6vw, 32px);
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fffdf9;
+  box-shadow:0 1px 2px rgb(60 40 20 / .05), 0 14px 34px rgb(60 40 20 / .06);
+}
+:root[data-look="editorial"] .sticker-field { display:none; }
+:root[data-look="editorial"] :is(.blind-card, .bookmark-card, .favorite-tile, .library-card, .profile-map-aside, .rec-progress-card, .refresh-banner, .editorial-rec, .rec-surprise, .why-popover, .search-dialog, .taste-map, .taste-map-node, .map-detail) {
+  box-shadow:0 1px 2px rgb(60 40 20 / .06), 0 6px 18px rgb(60 40 20 / .05);
+}
+:root[data-look="editorial"] :is(.favorite-tile, .library-card, .bookmark-card, .editorial-rec) { border-width:1px; }
+:root[data-look="editorial"] .favorite-tile::before { display:none; }
+:root[data-look="editorial"] .favorite-tape { display:none; }
+:root[data-look="editorial"] :is(.brand-tagline, .topbar-note, .footer-note, .progress-note, .favorites-side-note, .profile-aside-note, .prototype-next-step) { font-style:italic; font-weight:400; }
+:root[data-look="editorial"] .note-arrow { display:none; }
+:root[data-look="editorial"] h1 { letter-spacing:-.03em; font-weight:600; }
+:root[data-look="editorial"] :is(h2, h3) { letter-spacing:-.02em; font-weight:600; }
+:root[data-look="editorial"] .brand-word { font-weight:600; letter-spacing:-.04em; }
+:root[data-look="editorial"] .brand::after { height:2px; transform:none; }
+:root[data-look="editorial"] .marker-word::after { height:.14em; transform:none; opacity:.85; }
+
+/* ---- Warm analog ---- */
+:root[data-look="analog"] body {
+  background-color:#efe7d6;
+  background-image:radial-gradient(rgb(90 60 30 / .07) 1px, transparent 1.5px);
+  background-size:16px 16px;
+}
+:root[data-look="analog"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen) {
+  border:1px solid #cdbf9f;
+  border-radius:8px;
+  background-color:#f5ecd9;
+  background-image:radial-gradient(rgb(90 60 30 / .08) 1px, transparent 1.6px), linear-gradient(180deg, rgb(255 255 255 / .35), transparent 40%);
+  background-size:14px 14px, 100% 100%;
+  box-shadow:0 1px 0 rgb(255 255 255 / .6) inset, 0 12px 28px rgb(70 45 25 / .14);
+}
+/* Quieter sticker set: paper things only (tape, tickets, tags, stamps, notes), muted like old paper. */
+:root[data-look="analog"] :is(.st-neon, .st-star, .st-heart, .st-bolt, .st-flower, .st-rainbow, .st-cloud, .st-cherry, .st-sparkle-lime, .st-sparkle-pink, .st-sparkle-yellow, .st-squiggle, .st-doodle-arrow) { display:none; }
+:root[data-look="analog"] .sticker { filter:sepia(.32) saturate(.62) drop-shadow(0 2px 2px rgb(70 45 25 / .25)); }
+:root[data-look="analog"] :is(.favorite-tile, .library-card, .bookmark-card, .editorial-rec) { border-width:1.5px; }
+:root[data-look="analog"] .favorite-tile::before { border-color:rgb(90 60 30 / .08); }
+:root[data-look="analog"] h1 { font-weight:700; letter-spacing:-.02em; word-spacing:.05em; }
+:root[data-look="analog"] :is(h2, h3) { font-weight:700; letter-spacing:-.01em; word-spacing:.03em; }
+:root[data-look="analog"] .brand-word { font-weight:700; letter-spacing:-.04em; }
+:root[data-look="analog"] .brand::after { height:3px; }
+
+/* ---- Bold graphic ---- */
+:root[data-look="graphic"] body { background:#fffbea; }
+:root[data-look="graphic"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen) {
+  --gutter:clamp(22px, 3.6vw, 56px);
+  --band:clamp(26px, 3.4vw, 46px);
+  border:3px solid #0b0b0b;
+  border-radius:6px;
+  background:#ffd83d;
+  box-shadow:8px 8px 0 #0b0b0b;
+}
+:root[data-look="graphic"] .sticker-field { display:none; }
+/* Flat color blocks in the reserved frame (never over content). */
+:root[data-look="graphic"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen)::before,
+:root[data-look="graphic"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen)::after {
+  content:"";
+  position:absolute;
+  z-index:0;
+  border:3px solid #0b0b0b;
+  pointer-events:none;
+}
+:root[data-look="graphic"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen)::before {
+  left:calc(var(--gutter) * .2);
+  top:calc(var(--band) * 1.1);
+  bottom:calc(var(--band) * 1.1);
+  width:calc(var(--gutter) * .4);
+  background:var(--pink);
+  border-radius:99px;
+}
+:root[data-look="graphic"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen)::after {
+  right:calc(var(--gutter) * .2);
+  top:calc(var(--band) * 1.1);
+  height:calc(var(--gutter) * .4);
+  width:calc(var(--gutter) * .4);
+  background:var(--violet);
+  border-radius:50%;
+}
+:root[data-look="graphic"] h1 { font-weight:900; letter-spacing:-.04em; word-spacing:.08em; line-height:.92; }
+:root[data-look="graphic"] :is(h2, h3) { font-weight:800; letter-spacing:-.03em; }
+:root[data-look="graphic"] .brand { white-space:nowrap; }
+:root[data-look="graphic"] .brand-tagline { font-size:13px; line-height:1.05; font-weight:500; white-space:normal; max-width:172px; }
+:root[data-look="graphic"] .brand-word { font-weight:900; letter-spacing:-.045em; font-size:clamp(26px, 2.5vw, 36px); }
+:root[data-look="graphic"] :is(.favorite-tile, .library-card, .bookmark-card, .editorial-rec, .rec-progress-card, .taste-map-node) { border-width:3px; }
+:root[data-look="graphic"] .favorite-tile::before { border-color:rgb(11 11 11 / .14); }
+:root[data-look="graphic"] .button { border-width:3px; }
+:root[data-look="graphic"] .brand::after { height:6px; transform:none; border-radius:0; }
+:root[data-look="graphic"] .marker-word::after { height:.3em; transform:none; border-radius:0; }
+
+/* ========================================================================================== */
+/* Picker previews: a little decoration per look (the mini card itself uses the tokens above)   */
+/* ========================================================================================== */
+.look-preview[data-look="collage"] {
+  background-image:radial-gradient(rgb(85 55 34 / .18) 1px, transparent 1.6px), radial-gradient(rgb(255 255 255 / .28) 1px, transparent 1.8px);
+  background-size:12px 12px, 17px 17px;
+}
+.look-preview[data-look="collage"] .pv-deco-a { display:block; left:7%; top:21%; width:34%; height:8%; background:repeating-linear-gradient(-45deg, var(--pink) 0 4px, #fff 4px 8px); transform:rotate(-7deg); }
+.look-preview[data-look="collage"] .pv-deco-b { display:block; right:7%; top:9%; width:14%; aspect-ratio:1; background:#ffe36e; clip-path:polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.look-preview[data-look="collage"] .pv-deco-c { display:block; right:3%; bottom:4%; width:26%; height:15%; background:#111a4b; border-radius:4px; box-shadow:inset 0 0 0 2px #20d9e8; transform:rotate(3deg); }
+.look-preview[data-look="collage"] .pv-brand { font-weight:700; }
+
+.look-preview[data-look="editorial"] .pv-brand { font-weight:600; letter-spacing:-.03em; }
+.look-preview[data-look="editorial"] .pv-title { font-weight:600; font-size:5.8cqw; }
+.look-preview[data-look="editorial"] .pv-deco-a { display:block; left:12%; top:21%; width:14%; height:2px; background:var(--pink); }
+.look-preview[data-look="editorial"] .pv-chip { background:transparent; padding-left:0; color:var(--pink); }
+.look-preview[data-look="editorial"] .pv-card { box-shadow:0 1px 2px rgb(60 40 20 / .08), 0 5px 14px rgb(60 40 20 / .07); }
+
+.look-preview[data-look="analog"] {
+  background-image:radial-gradient(rgb(90 60 30 / .12) 1px, transparent 1.6px);
+  background-size:10px 10px;
+}
+.look-preview[data-look="analog"] .pv-brand { font-weight:700; letter-spacing:-.04em; }
+.look-preview[data-look="analog"] .pv-title { font-weight:700; }
+.look-preview[data-look="analog"] .pv-deco-a { display:block; left:8%; top:21%; width:30%; height:8%; background:rgb(220 200 150 / .85); transform:rotate(-4deg); }
+.look-preview[data-look="analog"] .pv-deco-b { display:block; right:8%; top:12%; width:15%; height:18%; background:#e8d8b0; border:1px solid #b9a678; border-radius:3px 3px 6px 6px; transform:rotate(6deg); }
+.look-preview[data-look="analog"] .pv-deco-c { display:block; right:5%; bottom:5%; width:15%; aspect-ratio:1; border:2px dashed var(--pink); border-radius:50%; opacity:.7; transform:rotate(-10deg); }
+
+.look-preview[data-look="graphic"] .pv-brand { font-weight:900; letter-spacing:-.05em; }
+.look-preview[data-look="graphic"] .pv-title { font-weight:900; font-size:5.8cqw; }
+.look-preview[data-look="graphic"] .pv-chip { background:var(--lime); border:1.5px solid #0b0b0b; }
+.look-preview[data-look="graphic"] .pv-deco-a { display:block; left:-6%; bottom:-10%; width:34%; aspect-ratio:1; background:var(--pink); border:3px solid #0b0b0b; border-radius:50%; }
+.look-preview[data-look="graphic"] .pv-deco-b { display:block; right:6%; top:9%; width:13%; aspect-ratio:1; background:var(--violet); border:3px solid #0b0b0b; }
+
+/* ---- Readability fixes found by the every-look contrast sweep (scripts/qa/layout-check.js) ---- */
+/* white on the vermilion accent is 3.6:1; black on it is 5.8:1 */
+:root[data-look="graphic"] .rating-button[aria-pressed="true"][data-rating="more"] { color:#0b0b0b; }

@@ -1,0 +1,65 @@
+.bookmarks-masthead { margin:12px 0 26px; }
+.bookmarks-masthead h1 { max-width:900px; }
+
+.bookmark-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+  align-items:stretch;
+}
+.bookmark-card {
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  border:2px solid var(--navy);
+  border-radius:14px;
+  padding:22px 20px 18px;
+  background:#fff;
+  box-shadow:calc(7px * var(--hard)) calc(7px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12));
+  filter:drop-shadow(0 3px 2px rgba(66,39,19,.08));
+}
+.bookmark-card:nth-child(odd) { transform:rotate(calc(-.4deg * var(--tilt))); }
+.bookmark-card:nth-child(even) { transform:rotate(calc(.4deg * var(--tilt))); }
+.bookmark-tape {
+  position:absolute;
+  top:-9px;
+  left:22%;
+  width:64px;
+  height:18px;
+  background:rgba(255,241,178,.9);
+  border:1px solid rgb(var(--ink-rgb,17 26 75) / .16);
+  transform:rotate(calc(-5deg * var(--tilt)));
+}
+.bookmark-card:nth-child(even) .bookmark-tape { left:auto; right:20%; background:rgba(220,251,253,.92); transform:rotate(calc(6deg * var(--tilt))); }
+.bookmark-medium {
+  align-self:flex-start;
+  padding:3px 9px;
+  border:1px solid var(--navy);
+  border-radius:999px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.bookmark-card h3 { margin:2px 0 0; font-size:clamp(24px,2.2vw,30px); }
+.bookmark-about { margin:0; color:var(--muted); font-size:14px; line-height:1.45; }
+.bookmark-why { margin:0; color:var(--text2,#424a75); font-size:12px; line-height:1.45; }
+.bookmark-actions {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  margin-top:auto;
+  padding-top:12px;
+  border-top:1px solid var(--line);
+}
+.bookmark-actions-label { color:var(--navy); font-size:12px; font-weight:700; margin-right:2px; }
+.bookmark-action { min-height:38px; min-width:0; padding:6px 12px; font-size:13px; }
+.bookmark-empty { grid-column:1 / -1; }
+.bookmark-note { margin:8px 0 0; color:var(--navy); font-size:13px; font-weight:700; }
+
+/* Keep the tilt subtle where cards are wide; stack cleanly on small screens. */
+@media (max-width:860px) {
+  .bookmark-card:nth-child(odd),.bookmark-card:nth-child(even) { transform:none; }
+}

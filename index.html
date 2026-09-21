@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" data-look="editorial">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Tastemake prototype: recommendations that get better as you react." />
+    <title>Tastemake Prototype</title>
+    <script>try{var l=new URLSearchParams(location.search).get("look");if(/^(editorial|collage|analog|graphic)$/.test(l))document.documentElement.dataset.look=l}catch(e){}</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Space+Grotesk:wght@500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,400&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Archivo:wght@800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles/base.css" />
+    <link rel="stylesheet" href="/styles/favorites.css" />
+    <link rel="stylesheet" href="/styles/profile.css" />
+    <link rel="stylesheet" href="/styles/recommendations.css" />
+    <link rel="stylesheet" href="/styles/bookmarks.css" />
+    <link rel="stylesheet" href="/styles/library.css" />
+    <link rel="stylesheet" href="/styles/search.css" />
+    <link rel="stylesheet" href="/styles/blindspot.css" />
+    <link rel="stylesheet" href="/styles/tastemap.css" />
+    <link rel="stylesheet" href="/styles/mine.css" />
+    <link rel="stylesheet" href="/styles/look.css" />
+    <link rel="stylesheet" href="/styles/looks.css" />
+    <link rel="stylesheet" href="/styles/responsive.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-cluster">
+          <a class="brand" href="/favorites" data-step-jump="favorites" aria-label="Go to Tastemake favorites">
+            <span class="brand-word">Tastemake</span>
+            <span class="brand-zap" aria-hidden="true">*</span>
+          </a>
+          <span class="brand-tagline">recommendations that<br />get better as you react.</span>
+        </div>
+
+        <nav class="stepper" aria-label="Tastemake sections">
+          <a class="step" href="/favorites" data-step-jump="favorites"><span aria-hidden="true">01</span>Favorites</a>
+          <a class="step" href="/recommendations" data-step-jump="recommendations"><span aria-hidden="true">02</span>Recommendations</a>
+          <a class="step" href="/taste-profile" data-step-jump="model"><span aria-hidden="true">03</span>Taste Profile</a>
+          <a class="step" href="/library" data-step-jump="library"><span aria-hidden="true">04</span>Library</a>
+          <a class="step" href="/bookmarks" data-step-jump="bookmarks" hidden><span aria-hidden="true">05</span>Bookmarks<span class="step-count" data-bookmark-count></span></a>
+        </nav>
+
+        <div class="topbar-aside">
+          <button class="search-open" id="open-search" type="button" aria-haspopup="dialog" aria-keyshortcuts="/" title="Search or add something (press /)">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="10.500" cy="10.500" r="6.500" fill="none" stroke="currentColor" stroke-width="2.400"/><path d="M15.500 15.500 21 21" stroke="currentColor" stroke-width="2.400" stroke-linecap="round"/></svg>
+            <span class="visually-hidden">Search or add something</span>
+          </button>
+          <button class="me-open" id="open-mine" type="button" data-open-mine aria-label="My Tastemake" title="My Tastemake: what you've told it, and your settings">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="12" cy="8.500" r="3.800" fill="none" stroke="currentColor" stroke-width="2.200"/><path d="M4.500 20c.6-4 3.700-6 7.500-6s6.900 2 7.500 6" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round"/></svg>
+          </button>
+          <button class="look-open" id="open-look" type="button" data-open-look title="Choose a look">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.8 0-1.4-1.2-1.5-1.2-2.7 0-1 .8-1.5 1.8-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="7.500" cy="11.500" r="1.400" fill="currentColor"/><circle cx="10.500" cy="7.500" r="1.400" fill="currentColor"/><circle cx="15" cy="7.800" r="1.400" fill="currentColor"/></svg>
+            <span class="look-open-label">Look</span>
+          </button>
+          <span class="prototype-label">Prototype - no live AI</span>
+          <span class="topbar-note">good taste lives here.</span>
+        </div>
+      </header>
+
+      <main id="app" tabindex="-1"></main>
+      <div id="live" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+      <dialog id="search-dialog" class="search-dialog" aria-labelledby="search-title">
+        <div class="search-shell">
+          <header class="search-head">
+            <h2 id="search-title">Search or add something</h2>
+            <button type="button" class="search-close" data-search-close aria-label="Close search">&times;</button>
+          </header>
+          <p class="search-principle">Looking something up never teaches Tastemake anything. Only the buttons you choose do.</p>
+          <div class="search-controls">
+            <label class="visually-hidden" for="search-input">Search by title</label>
+            <input id="search-input" type="search" autocomplete="off" spellcheck="false" placeholder="Try &ldquo;fargo&rdquo;, &ldquo;LOTR&rdquo;, or a typo" />
+            <div class="domain-filter" role="group" aria-label="Filter results by type">
+              <button type="button" class="domain-filter-button is-active" data-search-filter="all" aria-pressed="true">All</button>
+              <button type="button" class="domain-filter-button" data-search-filter="watch" aria-pressed="false">Watch</button>
+              <button type="button" class="domain-filter-button" data-search-filter="read" aria-pressed="false">Read</button>
+              <button type="button" class="domain-filter-button" data-search-filter="play" aria-pressed="false">Play</button>
+            </div>
+          </div>
+          <div id="search-view" class="search-view"></div>
+        </div>
+      </dialog>
+    </div>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

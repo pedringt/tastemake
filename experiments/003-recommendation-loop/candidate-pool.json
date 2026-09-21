@@ -1,0 +1,395 @@
+{
+  "experiment_id": "003-recommendation-loop",
+  "pool_version": "1.0",
+  "note": "Exposure status and actual reactions are intentionally hidden. Metadata is neutral catalog information, not preference evidence.",
+  "candidates": [
+    {
+      "id": "b01_addie_larue",
+      "title": "The Invisible Life of Addie LaRue",
+      "medium": "book",
+      "traits": [
+        "adult fantasy",
+        "immortality bargain",
+        "romance",
+        "long-spanning story",
+        "lyrical style"
+      ]
+    },
+    {
+      "id": "b02_diavola",
+      "title": "Diavola",
+      "medium": "book",
+      "traits": [
+        "contemporary horror",
+        "dysfunctional family",
+        "haunted villa",
+        "dark humor",
+        "family tension"
+      ]
+    },
+    {
+      "id": "b03_library_mount_char",
+      "title": "The Library at Mount Char",
+      "medium": "book",
+      "traits": [
+        "dark fantasy",
+        "secret knowledge",
+        "surrealism",
+        "violence",
+        "unconventional mythology"
+      ]
+    },
+    {
+      "id": "b04_spear_cuts_water",
+      "title": "The Spear Cuts Through Water",
+      "medium": "book",
+      "traits": [
+        "epic fantasy",
+        "mythic storytelling",
+        "experimental structure",
+        "quest",
+        "romance"
+      ]
+    },
+    {
+      "id": "b05_vita_nostra",
+      "title": "Vita Nostra",
+      "medium": "book",
+      "traits": [
+        "dark academic fantasy",
+        "transformation",
+        "metaphysical ideas",
+        "strangeness",
+        "demanding ambiguity"
+      ]
+    },
+    {
+      "id": "b06_legends_lattes",
+      "title": "Legends & Lattes",
+      "medium": "book",
+      "traits": [
+        "cozy fantasy",
+        "low stakes",
+        "found family",
+        "romance",
+        "warm humor"
+      ]
+    },
+    {
+      "id": "b07_midnight_library",
+      "title": "The Midnight Library",
+      "medium": "book",
+      "traits": [
+        "contemporary speculative fiction",
+        "alternate lives",
+        "regret",
+        "emotional reflection",
+        "accessible structure"
+      ]
+    },
+    {
+      "id": "b08_and_i_darken",
+      "title": "And I Darken",
+      "medium": "book",
+      "traits": [
+        "historical fiction",
+        "political ambition",
+        "morally ruthless protagonist",
+        "court intrigue",
+        "YA framing"
+      ]
+    },
+    {
+      "id": "m01_witch",
+      "title": "The Witch",
+      "medium": "movie",
+      "traits": [
+        "folk horror",
+        "historical setting",
+        "family conflict",
+        "religious dread",
+        "slow-burn atmosphere"
+      ]
+    },
+    {
+      "id": "m02_lighthouse",
+      "title": "The Lighthouse",
+      "medium": "movie",
+      "traits": [
+        "psychological drama",
+        "black comedy",
+        "surrealism",
+        "claustrophobia",
+        "ambiguity"
+      ]
+    },
+    {
+      "id": "m03_annihilation",
+      "title": "Annihilation",
+      "medium": "movie",
+      "traits": [
+        "science-fiction horror",
+        "expedition",
+        "transformation",
+        "mystery",
+        "visual surrealism"
+      ]
+    },
+    {
+      "id": "m04_handmaiden",
+      "title": "The Handmaiden",
+      "medium": "movie",
+      "traits": [
+        "period thriller",
+        "deception",
+        "twists",
+        "morally complex characters",
+        "stylized filmmaking"
+      ]
+    },
+    {
+      "id": "m05_dnd",
+      "title": "Dungeons & Dragons: Honor Among Thieves",
+      "medium": "movie",
+      "traits": [
+        "fantasy adventure",
+        "ensemble",
+        "comedy",
+        "action",
+        "warm character dynamics"
+      ]
+    },
+    {
+      "id": "m06_nice_guys",
+      "title": "The Nice Guys",
+      "medium": "movie",
+      "traits": [
+        "buddy comedy",
+        "crime mystery",
+        "abrasive humor",
+        "1970s setting",
+        "character chemistry"
+      ]
+    },
+    {
+      "id": "m07_prestige",
+      "title": "The Prestige",
+      "medium": "movie",
+      "traits": [
+        "period thriller",
+        "rivalry",
+        "obsession",
+        "mystery",
+        "nonlinear reveals"
+      ]
+    },
+    {
+      "id": "m08_eeaao",
+      "title": "Everything Everywhere All at Once",
+      "medium": "movie",
+      "traits": [
+        "science-fiction",
+        "action",
+        "absurd comedy",
+        "family drama",
+        "martial arts",
+        "tonal mixing"
+      ]
+    },
+    {
+      "id": "t01_severance",
+      "title": "Severance",
+      "medium": "tv",
+      "traits": [
+        "science-fiction",
+        "workplace mystery",
+        "identity",
+        "slow reveal",
+        "dark humor",
+        "distinctive visual design"
+      ]
+    },
+    {
+      "id": "t02_barry",
+      "title": "Barry",
+      "medium": "tv",
+      "traits": [
+        "dark comedy",
+        "crime",
+        "morally compromised lead",
+        "violence",
+        "absurdity"
+      ]
+    },
+    {
+      "id": "t03_fargo",
+      "title": "Fargo",
+      "medium": "tv",
+      "traits": [
+        "crime anthology",
+        "dark comedy",
+        "moral messiness",
+        "violence",
+        "stylized dialogue"
+      ]
+    },
+    {
+      "id": "t04_yellowjackets",
+      "title": "Yellowjackets",
+      "medium": "tv",
+      "traits": [
+        "survival drama",
+        "mystery",
+        "horror",
+        "dual timelines",
+        "messy ensemble"
+      ]
+    },
+    {
+      "id": "t05_leftovers",
+      "title": "The Leftovers",
+      "medium": "tv",
+      "traits": [
+        "grief drama",
+        "mystery",
+        "ambiguity",
+        "spiritual themes",
+        "character focus"
+      ]
+    },
+    {
+      "id": "t06_wwdits",
+      "title": "What We Do in the Shadows",
+      "medium": "tv",
+      "traits": [
+        "supernatural sitcom",
+        "absurd comedy",
+        "selfish characters",
+        "mockumentary",
+        "ensemble"
+      ]
+    },
+    {
+      "id": "t07_dark",
+      "title": "Dark",
+      "medium": "tv",
+      "traits": [
+        "science-fiction mystery",
+        "time travel",
+        "dense plotting",
+        "family drama",
+        "somber tone"
+      ]
+    },
+    {
+      "id": "t08_good_place",
+      "title": "The Good Place",
+      "medium": "tv",
+      "traits": [
+        "philosophical sitcom",
+        "warmth",
+        "moral growth",
+        "high-concept fantasy",
+        "ensemble comedy"
+      ]
+    },
+    {
+      "id": "g01_signalis",
+      "title": "Signalis",
+      "medium": "game",
+      "traits": [
+        "survival horror",
+        "science fiction",
+        "puzzles",
+        "atmosphere",
+        "fragmented narrative"
+      ]
+    },
+    {
+      "id": "g02_soma",
+      "title": "SOMA",
+      "medium": "game",
+      "traits": [
+        "science-fiction horror",
+        "exploration",
+        "philosophical narrative",
+        "limited combat",
+        "underwater setting"
+      ]
+    },
+    {
+      "id": "g03_disco_elysium",
+      "title": "Disco Elysium",
+      "medium": "game",
+      "traits": [
+        "narrative RPG",
+        "morally messy protagonist",
+        "dense dialogue",
+        "choices",
+        "dark humor"
+      ]
+    },
+    {
+      "id": "g04_pentiment",
+      "title": "Pentiment",
+      "medium": "game",
+      "traits": [
+        "historical narrative",
+        "mystery",
+        "investigation",
+        "dialogue",
+        "choices",
+        "slow pace"
+      ]
+    },
+    {
+      "id": "g05_inscryption",
+      "title": "Inscryption",
+      "medium": "game",
+      "traits": [
+        "card game",
+        "puzzles",
+        "horror",
+        "meta structure",
+        "genre shifts",
+        "mystery"
+      ]
+    },
+    {
+      "id": "g06_golden_idol",
+      "title": "The Case of the Golden Idol",
+      "medium": "game",
+      "traits": [
+        "deduction puzzles",
+        "murder mysteries",
+        "explicit inference",
+        "minimal action",
+        "structured cases"
+      ]
+    },
+    {
+      "id": "g07_immortality",
+      "title": "Immortality",
+      "medium": "game",
+      "traits": [
+        "interactive film",
+        "mystery",
+        "nonlinear discovery",
+        "experimental structure",
+        "performance-focused"
+      ]
+    },
+    {
+      "id": "g08_pathologic_2",
+      "title": "Pathologic 2",
+      "medium": "game",
+      "traits": [
+        "survival narrative",
+        "punishing systems",
+        "bleak world",
+        "moral choices",
+        "high difficulty"
+      ]
+    }
+  ]
+}

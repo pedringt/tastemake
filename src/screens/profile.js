@@ -1,0 +1,122 @@
+import { favorites, hypotheses } from "../data/catalog.js";
+import { state } from "../state.js";
+import { modelUpdateFor, untriedReactionLean } from "../model/taste.js";
+import { renderStickerField } from "../components/stickers.js";
+import { renderBlindSpotPanel } from "../components/blindspot.js";
+import { renderTasteMap } from "./tastemap.js";
+import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
+
+function hypothesisCard(item, index) {
+  const update = modelUpdateFor(state, item);
+  const confidenceLabel = update.label === item.strength ? item.strength : update.label;
+  const spots = blindSpotsFor(state, item.id);
+  const blindLine = spots.length
+    ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${spot.item.title}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
+    : "";
+  const lean = untriedReactionLean(state, item);
+  const leanLine = lean.direction
+    ? `<div class="signal-lean is-${lean.direction}" title="Not counted as taste until you have tried them.">
+          <span aria-hidden="true">${lean.direction === "toward" ? "&nearr;" : "&searr;"}</span>
+          Your reactions lean ${lean.direction === "toward" ? "toward" : "away from"} this
+          <em>(from ${lean.count} ${lean.count === 1 ? "pick" : "picks"} you haven't tried)</em>
+        </div>`
+    : "";
+  return `
+    <article class="signal-row signal-row-${index + 1}">
+      <div class="signal-index">${String(index + 1).padStart(2, "0")}</div>
+      <div class="signal-main">
+        <div class="signal-title-row">
+          <h3>${item.title}</h3>
+          <span class="signal-status ${update.status}">${confidenceLabel}</span>
+        </div>
+        <p class="signal-claim">${item.claim}</p>
+        <div class="signal-evidence"><span>shows up in</span> ${item.evidence}</div>
+        ${update.note ? `<div class="signal-update"><strong>New signal:</strong> ${update.note}</div>` : ""}
+        ${leanLine}
+        ${blindLine}
+      </div>
+    </article>`;
+}
+
+function blindSpotSection() {
+  const spots = activeBlindSpots(state);
+  if (!spots.length) return "";
+  const themes = recurringThemes(state);
+  const lines = [
+    ...themes.patterns.map((theme) => `\u201c${theme.title}\u201d (${theme.n} times)`),
+    ...themes.reasons.map((theme) => `${theme.label.toLowerCase()} (${theme.n} times)`)
+  ];
+  return `
+    <section class="blind-section" aria-labelledby="blind-heading">
+      <h2 id="blind-heading">Things Tastemake keeps getting wrong about you</h2>
+      <p class="blind-intro">When Tastemake was confident you'd like something and you tried it and didn't, that is evidence about the model, not just a thumbs-down. These stay on record so it can see where it overreaches. Nothing here rewrites your patterns until the same thing keeps happening.</p>
+      ${lines.length ? `<p class="blind-themes"><strong>Keeps coming up:</strong> ${lines.join("; ")}.</p>` : ""}
+      <ul class="blind-list">
+        ${spots.map((spot) => `
+          <li class="blind-card">
+            <div class="blind-card-head">
+              <h3>${spot.item.title} <em>${spot.item.medium}</em></h3>
+              <span class="blind-status ${isRecurring(state, spot) ? "is-recurring" : ""}">${isRecurring(state, spot) ? "Recurring" : "Noted once"}</span>
+            </div>
+            ${renderBlindSpotPanel(spot.itemId)}
+          </li>`).join("")}
+      </ul>
+    </section>`;
+}
+
+export function renderProfile() {
+  const selectedTitles = favorites.filter((item) => state.selectedFavorites.has(item.id)).map((item) => item.title);
+
+  return `
+    <section class="profile-screen">
+      ${renderStickerField("profile")}
+      <div class="profile-hero">
+        <div class="profile-title-block">
+          <p class="kicker">Taste Profile</p>
+          <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
+          <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
+          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they show up below as a lean, not as taste.</p>
+          <div class="profile-view-toggle" role="group" aria-label="How to see your Taste Profile">
+            <button type="button" class="button button-secondary profile-view-button" data-profile-view="list" aria-pressed="${state.profileView !== "map"}">List</button>
+            <button type="button" class="button button-secondary profile-view-button" data-profile-view="map" aria-pressed="${state.profileView === "map"}">Map</button>
+          </div>
+        </div>
+        <div class="profile-stamp" aria-hidden="true">
+          <strong>WORKING</strong>
+          <span>PROFILE</span>
+        </div>
+      </div>
+
+      ${state.profileView === "map" ? renderTasteMap() : `
+      <div class="profile-evidence-strip">
+        <span class="profile-evidence-label">Built from</span>
+        <div class="profile-evidence-track">
+          ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${title}</span>`).join("")}
+        </div>
+      </div>
+
+      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>
+      <div class="profile-map">
+        <aside class="profile-map-aside">
+          <span class="profile-aside-number">${hypotheses.length}</span>
+          <p>patterns currently shaping your recommendations</p>
+          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>
+        </aside>
+
+        <div class="signal-stack">
+          ${hypotheses.map(hypothesisCard).join("")}
+        </div>
+      </div>
+      `}
+
+      ${blindSpotSection()}
+
+      <div class="profile-footer">
+        <span class="footer-note">useful if you are curious. invisible if you are not.</span>
+        <div class="action-group">
+          <button class="button button-secondary" type="button" data-action="back-favorites">Edit favorites</button>
+          <button class="button button-primary" type="button" data-action="show-recs">Back to recommendations <span aria-hidden="true">&rarr;</span></button>
+        </div>
+      </div>
+    </section>`;
+}

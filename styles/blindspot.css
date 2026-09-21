@@ -1,0 +1,33 @@
+/* Taste Blind Spot (#20): a small dashed "note pinned to the card", so it reads as help, not as an error. */
+.blind-panel {
+  margin-top:12px;
+  padding:12px 14px;
+  border:1.5px dashed var(--navy);
+  border-radius:12px;
+  background:var(--tint-warm,#fff9e6);
+  color:var(--text2,#3f4774);
+}
+.blind-panel.is-quiet { padding:6px 10px; background:transparent; border-style:solid; border-color:var(--line); }
+.blind-title { margin:0 0 8px; color:var(--navy); font-size:14px; font-weight:700; line-height:1.35; }
+.blind-title:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:3px; }
+.blind-note { margin:6px 0 0; font-size:12px; line-height:1.4; }
+.blind-summary { margin:0; font-size:13px; line-height:1.5; }
+.blind-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.blind-button { min-height:38px; min-width:0; padding:6px 14px; font-size:13px; }
+.blind-button:disabled { opacity:.4; cursor:not-allowed; }
+.blind-chip[aria-pressed="true"] { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+.blind-section { margin-top:34px; }
+.blind-section h2 { margin:0 0 8px; }
+.blind-intro { margin:0; max-width:78ch; color:var(--text2,#3f4774); line-height:1.5; }
+.blind-themes { margin:10px 0 0; color:var(--navy); font-size:14px; }
+.blind-list { list-style:none; margin:16px 0 0; padding:0; display:grid; gap:16px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.blind-card { padding:16px 18px; border:2px solid var(--navy); border-radius:14px; background:#fff; box-shadow:calc(6px * var(--hard)) calc(6px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12)); }
+.blind-card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; }
+.blind-card h3 { margin:0; font-size:clamp(20px,2vw,26px); }
+.blind-card h3 em { color:var(--muted); font-style:normal; font-size:12px; font-weight:600; margin-left:6px; }
+.blind-status { padding:3px 10px; border:1px solid var(--navy); border-radius:999px; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.blind-status.is-recurring { background:var(--coral); }
+.blind-card .blind-panel { background:var(--tint-warm,#fff9e6); }
+
+@media (max-width:860px) { .blind-list { grid-template-columns:1fr; } }
