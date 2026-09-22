@@ -107,7 +107,15 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
       }),
       signal: controller.signal
     });
-    if (!response.ok) throw new Error(`Anthropic returned ${response.status}`);
+    if (!response.ok) {
+      // Surface why, without ever echoing the key or the full body: status plus Anthropic's own error type.
+      let type = "unknown";
+      try { type = (await response.json())?.error?.type ?? "unknown"; } catch { /* body was not JSON */ }
+      const err = new Error(`Anthropic returned ${response.status} (${type})`);
+      err.status = response.status;
+      err.anthropicType = type;
+      throw err;
+    }
     const data = await response.json();
     const text = data.content?.find((block) => block.type === "text")?.text;
     if (!text) throw new Error("Anthropic returned no text block");
@@ -164,8 +172,16 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       meta: { model: model.model, usage: model.usage, rejected: result.rejected ?? 0, paidCallMade: true }
     };
   } catch (error) {
-    const reason = error?.name === "AbortError" ? "model request timed out" : "model unavailable";
-    return fallbackPayload(deterministic, reason, { paidCallMade: true });
+    const timedOut = error?.name === "AbortError";
+    const reason = timedOut ? "model request timed out" : "model unavailable";
+    // Visible in the Vercel logs for debugging; no key, no prompt, no response body.
+    console.error("[tastemake-ai]", reason, error?.status ?? "", error?.anthropicType ?? error?.message ?? "");
+    return fallbackPayload(deterministic, reason, {
+      // A refused call (bad key, unknown model) is not charged, so only count an attempt that got past the API's checks.
+      paidCallMade: !timedOut && !error?.status,
+      errorStatus: error?.status ?? null,
+      errorType: error?.anthropicType ?? (timedOut ? "timeout" : "transport")
+    });
   }
 }
 
