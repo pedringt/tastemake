@@ -173,6 +173,28 @@ function bookmarkNote(count) {
   return count ? `<p class="bookmark-note">${count} ${count === 1 ? "thing" : "things"} bookmarked.</p>` : "";
 }
 
+function renderAiStatus() {
+  if (state.aiStatus === "loading") {
+    return `
+      <div class="refresh-banner" role="status" aria-live="polite" aria-busy="true">
+        <div>
+          <span class="refresh-kicker">Checking the evidence</span>
+          <strong>Tastemake is building the next set.</strong>
+          <p>${state.aiMessage || "Looking at what you have actually tried, not just what caught your eye."}</p>
+        </div>
+      </div>`;
+  }
+  if (!state.aiMessage) return "";
+  return `
+    <div class="refresh-banner ${state.aiSource === "deterministic" ? "is-finished" : ""}">
+      <div>
+        <span class="refresh-kicker">${state.aiSource === "model" ? "Live AI + product rules" : "Safe fallback"}</span>
+        <strong>${state.aiSource === "model" ? "This set passed Tastemake's checks." : "The deterministic version took over."}</strong>
+        <p>${state.aiMessage}</p>
+      </div>
+    </div>`;
+}
+
 function renderNextSteps() {
   if (!currentRoundComplete(state)) return "";
   const bookmarks = bookmarkedFeedback(state).length;
@@ -181,16 +203,18 @@ function renderNextSteps() {
     : "";
 
   if (!outOfPicks(state)) {
+    const loading = state.aiStatus === "loading";
     return `
       <div class="refresh-banner">
         <div>
           <span class="refresh-kicker">Nice. That is enough signal.</span>
           <strong>Want a fresh set?</strong>
           <p>Your reactions can now reshape what Tastemake shows next.</p>
+          <p class="quality-note-help">When live AI is enabled, Tastemake sends this visit\'s typed taste evidence and eligible picks to Anthropic to choose and explain the next set. No name or contact details are included.</p>
           ${bookmarkNote(bookmarks)}
         </div>
         <div class="action-group recommendation-footer-actions">
-          <button class="button button-primary" type="button" data-action="keep-discovering">Keep discovering &rarr;</button>
+          <button class="button button-primary" type="button" data-action="keep-discovering" ${loading ? "disabled aria-busy=\"true\"" : ""}>${loading ? "Finding a set…" : "Keep discovering &rarr;"}</button>
           ${viewBookmarks}
         </div>
       </div>`;
@@ -263,6 +287,7 @@ export function renderRecommendations() {
         <span class="filter-context">This changes what you browse, not what Tastemake thinks you like.</span>
       </div>
 
+      ${renderAiStatus()}
       ${renderNextSteps()}
 
       <h2 class="visually-hidden">Your picks</h2>
