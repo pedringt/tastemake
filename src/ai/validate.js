@@ -44,6 +44,8 @@ export function allowedLevel(supportRecords, counterRecords) {
 const capLevel = (claimed, allowed) => LEVELS[Math.min(LEVELS.indexOf(claimed), LEVELS.indexOf(allowed))];
 
 const asRows = (records) => records.map((r) => ({ item: { id: r.itemId, domains: r.domains } }));
+const hypothesisAliases = (id) => id === "H01/H07" ? ["H01", "H07", "H01/H07"] : [id];
+const sameHypothesis = (a, b) => hypothesisAliases(a).some((id) => hypothesisAliases(b).includes(id));
 
 export function validateHypotheses(response, ctx) {
   const evidence = new Map((ctx.evidence ?? []).map((r) => [r.ref, r]));
@@ -116,6 +118,10 @@ export function validatePicks(response, ctx) {
     if (!reasons.length) {
       if (!candidates.has(p.itemId)) reasons.push("not one of the eligible candidates (invented, already reacted to, or area off)");
       if (used.has(p.itemId)) reasons.push("duplicate pick");
+      const candidate = candidates.get(p.itemId);
+      if (candidate && p.tests && !(candidate.hypotheses ?? []).some((id) => sameHypothesis(id, p.tests))) reasons.push("tests a pattern that is not attached to this candidate");
+      const rejectedStatement = p.tests && (ctx.statements ?? []).find((x) => x.says === "not-me" && sameHypothesis(x.hypothesisId, p.tests));
+      if (rejectedStatement) reasons.push("tests a pattern the user said is not them (user-confirmed outranks inference)");
       const cited = p.cites.map((ref) => evidence.get(ref));
       if (!cited.length) reasons.push("no evidence cited");
       else if (cited.some((r) => !r)) reasons.push("cites evidence that does not exist");
