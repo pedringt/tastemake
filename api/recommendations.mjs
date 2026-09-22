@@ -102,7 +102,9 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
       body: JSON.stringify({
         model: env.TASTEMAKE_AI_MODEL,
         max_tokens: Number(env.TASTEMAKE_AI_MAX_TOKENS || MAX_OUTPUT_TOKENS),
-        temperature: 0,
+        // No `temperature`: newer models reject it ("temperature is deprecated for this model"), which
+        // failed every live call with 400 invalid_request_error. Runs are therefore not bit-identical;
+        // eval comparisons allow for that (docs/ai-evals.md).
         messages: [{ role: "user", content: prompt }]
       }),
       signal: controller.signal

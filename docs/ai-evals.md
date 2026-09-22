@@ -55,6 +55,10 @@ Automatic checks can't judge specificity or usefulness. For each fixture a revie
 
 **First live-AI milestone:** given 8-12 things the user knows well, the profile feels specific rather than generic, picks are plausible, reasons point to real evidence, and one miss teaches something rather than just lowering a score.
 
+## A note on repeatability
+
+The request sends no `temperature`: the current model rejects it outright (a 400 that failed every live call until Sept 22). Live runs are therefore not bit-identical. Compare fixtures on the rules and the scored dimensions, not on exact wording, and re-run before concluding that a wording change is real.
+
 ## Rules for changing the eval
 - Never loosen a scorer to make a run pass. If a rule is wrong, change it deliberately and say why in the commit.
 - Model, prompt or context changes need a before/after run on the same fixtures.

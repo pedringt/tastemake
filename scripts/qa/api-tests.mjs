@@ -121,7 +121,7 @@ await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: async (
 const prompt = seenBody.messages[0].content;
 check("prompt: no API key or env values", !prompt.includes(ON.ANTHROPIC_API_KEY) && !/process\.env/.test(prompt));
 check("prompt: candidates are sent as ids and public fields only", /"candidates":/.test(prompt) && !/"reason":/.test(prompt.split('"candidates":')[1].slice(0, 2000)), "candidate fields");
-check("prompt: temperature 0 for repeatable evals", seenBody.temperature === 0, String(seenBody.temperature));
+check("prompt: no temperature is sent (newer models reject it)", seenBody.temperature === undefined, String(seenBody.temperature));
 
 // ---- the HTTP handler --------------------------------------------------------------------------------
 const res = () => { const r = { code: null, body: null, headers: {} }; r.status = (c) => { r.code = c; return r; }; r.json = (b) => { r.body = b; return r; }; r.setHeader = (k, v) => { r.headers[k] = v; }; return r; };
