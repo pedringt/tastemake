@@ -27,6 +27,16 @@ Notable: with only four favorites the model still cited real evidence; in the "n
 
 Screens render with template strings and `innerHTML`, and live AI made that urgent: the model's own prose (`item.reason`) was going in raw, as were titles the user types. One helper, `src/lib/html.js` (`esc`), is now used everywhere; the three local copies of an escaper were replaced with it. `scripts/qa/escaping-tests.mjs` (32 checks, free, no browser) renders every screen with `<img src=x onerror=...>` in each untrusted slot (typed titles, notes, model pick reasons, model hypothesis label/claim, blind-spot summaries) and fails if any of it survives as markup. It caught two paths the first pass missed: the recommendation artwork title and the blind-spot summary shown on the Profile, Library and Map.
 
+## Async live-AI request state (#42), done
+
+`src/ai/requests.js` is the small explicit model: one request at a time, with an id, an AbortController and a **fingerprint of the evidence it was computed from** (favorites, every reaction, pattern statements, areas, the curveball setting, what has already been shown; presentation state like the look or a filter is deliberately excluded). When an answer arrives, the fingerprint is taken again:
+
+- **evidence changed** (the user reacted, corrected a pattern, changed a setting): the answer is dropped and the deterministic picks are used, with the reason shown;
+- **the user left the page**: the request is cancelled and nothing is shown;
+- **a newer request started**: the older one is aborted and its answer refused.
+
+`navigate()` cancels an in-flight request for another screen. This is separate from validation: #31 decides whether an answer is allowed, #42 decides whether it is still about the user's current state. `scripts/qa/async-tests.mjs` (23 checks, free) covers the fingerprint's sensitivity, each stale reason, cancellation and completion.
+
 ## Purpose
 
 This handoff is for Claude Code to resume Tastemake without reopening the prior ChatGPT thread. Continue from the newly promoted live-AI foundation, verify the production deployment state, and complete the first controlled Anthropic-backed recommendation test without reopening settled architecture decisions.

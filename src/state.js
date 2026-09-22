@@ -20,7 +20,10 @@ function fresh() {
     patternStatements: [],
     blindSpotDrafts: {},
     blindSpotDismissed: new Set(),
-    // Transient live-AI UI state. None of this is taste evidence and none of it is persisted.
+    // Transient live-AI UI state (#42). None of this is taste evidence and none of it is persisted.
+    // aiRequest is the in-flight request: its id, the evidence fingerprint it was computed from, and its
+    // AbortController, so a stale or cancelled answer is never shown.
+    aiRequest: null,
     aiStatus: "idle",
     aiSource: null,
     aiMessage: null,
