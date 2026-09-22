@@ -60,7 +60,7 @@ function detailHTML(pattern) {
       <div class="map-detail-grid">
         <div>
           <h4>Where it came from</h4>
-          <p class="map-came-from">Shows up in ${esc(pattern.evidence)}. <em>From your earlier ratings.</em></p>
+          <p class="map-came-from">Shows up in ${esc(pattern.evidence)}. <em>A starting pattern; it is fixed in this prototype.</em></p>
           ${leaning.direction ? `<p class="map-lean">Your reactions to picks you haven't tried lean ${leaning.direction === "toward" ? "toward" : "away from"} this. That's a lean, not taste.</p>` : ""}
           ${spots.length ? `<p class="map-lean">Blind spot: ${spots.map((spot) => `“${esc(spot.item.title)}”`).join(", ")} didn't hold up here.</p>` : ""}
         </div>
@@ -134,8 +134,8 @@ export function renderTasteMap() {
       </div>
 
       <ul class="map-key" aria-label="How to read the map">
-        <li><span class="key-swatch look-firm"></span> Solid: fairly sure</li>
-        <li><span class="key-swatch look-tentative"></span> Dashed: conditional, still learning</li>
+        <li><span class="key-swatch look-firm"></span> Solid: Strong. Several things you've tried back it</li>
+        <li><span class="key-swatch look-tentative"></span> Dashed: Emerging, Supported or Still learning</li>
         <li><span class="key-swatch look-shaky"></span> Dotted: less certain, after more than one pick didn't land</li>
         <li class="map-key-lines"><span class="key-line"></span> Thicker line: more picks lean on both</li>
       </ul>

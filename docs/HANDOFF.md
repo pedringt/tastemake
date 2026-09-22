@@ -68,8 +68,8 @@ The Sept 20 batch is deployed. Vercel (Hobby plan, shared with the State project
 Run them all with `scripts/qa/headless.sh` (headless Chrome, no install, no build; exit code 1 on any failure):
 
 ```
-scripts/qa/headless.sh model                       # 166 model checks
-scripts/qa/headless.sh flow   1440 1024 768 390    # 205-check click-through at each width
+scripts/qa/headless.sh model                       # 186 model checks
+scripts/qa/headless.sh flow   1440 1024 768 390    # 215-check click-through at each width
 scripts/qa/headless.sh layout 1440 1024 768 390    # overlap / sideways-scroll / contrast checks at each width
 LOOK=collage scripts/qa/headless.sh flow 1440      # any look: editorial (default) | collage | analog | graphic
 scripts/qa/headless.sh a11y   1440 390             # accessibility audit (see below)
@@ -85,7 +85,7 @@ Three browser-side scripts (no dependencies; usage in each file header) live in 
 
 - `layout-check.js` — per page (Favorites, Recommendations, Taste Profile, Library) at the current width, ignoring anything inside a collapsed `<details>`: header parts overlapping or running off the page, Taste Map cards overlapping or leaving the map, stickers touching text/cards, Favorites titles colliding with their tile's top row, text hidden behind buttons, sideways scroll. Run at 1440, 1024 and 768 after any layout or sticker change.
 - `model-rules.js` — the evidence, Library and Search rules checked directly against `src/model/*` (137 checks). Note: ranking parity against the *original* two-round code was verified once in a scratch Node harness (30,000 random reaction sets) and is not committed.
-- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, the Library, Search, Blind Spots, the Taste Map, focus/announcement behavior, and Looks (the picker, first visit, and every screen in every look) and My Tastemake (205 checks).
+- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, the Library, Search, Blind Spots, the Taste Map, focus/announcement behavior, and Looks (the picker, first visit, and every screen in every look) and My Tastemake (215 checks).
 
 Headless Chrome will not go below a 500px layout width; to test real phone widths load the page in a narrower iframe.
 
@@ -156,7 +156,14 @@ A header person-icon button opens **My Tastemake** (route `/my-tastemake`, `src/
 - **Include a curveball:** on = four picks plus one Surprise Me per new set (today's behavior, identical when left on); off = the five best fits. Changes how a set is put together, not taste.
 - **Start over:** two-step (focus goes to Cancel), clears everything told in the visit and the settings, keeps the look. `resetState()` in `src/state.js`.
 - Everything is announced and keeps keyboard focus; the page uses only look tokens so it fits all four looks.
-- **Not built (needs a decision first):** correcting a pattern ("not really me", "matters a lot"). #8 says a correction becomes strong explicit user evidence; that would change the "exactly three things count as taste" rule and ranking parity, so it needs Paige's call. Also not built: taste modes/contexts, hard boundaries, platform preferences, connected sources, export, and a familiar-vs-exploratory dial.
+- **Not built (needs a decision first; proposal in `docs/ai-readiness.md`):** correcting a pattern ("not really me", "matters a lot"). #8 says a correction becomes strong explicit user evidence; that would change the "exactly three things count as taste" rule and ranking parity, so it needs Paige's call. Also not built: taste modes/contexts, hard boundaries, platform preferences, connected sources, export, and a familiar-vs-exploratory dial.
+
+## Confidence and the evidence contract (#26, #27), built
+
+- **Confidence is now computed, not authored** (`patternConfidence` in `src/model/tastemap.js`). Levels: Emerging, Supported, Strong, Still learning, Less certain (definitions in `docs/evidence-contract.md`). The old hand-written `strength` labels in `catalog.js` no longer decide anything: they said "Strong" for patterns nothing the user did had tested.
+- **The honest fact behind it:** the patterns are a fixed, pre-written starting set that does not change with the favorites you pick. The Profile now says so, the favorites strip is labeled "Your starting favorites" (not "Built from"), and each card shows a provenance line ("A starting pattern. Nothing you've tried has tested it yet." / "Backed by 2 things you've tried, across 2 areas."). A "What do the confidence labels mean?" legend explains the levels. The Map uses the same levels (solid = Strong; dashed = Emerging/Supported/Still learning; dotted = Less certain).
+- Only experienced reactions move a level. Starter favorites, bookmarks and untried More/Less never do. Ranking is untouched (`modelUpdateFor`, `tasteDelta` and `recommendationDelta` are unchanged).
+- **`docs/evidence-contract.md`** writes down every action, its evidence class and its weights, plus the rules a live model would have to obey. **`docs/ai-readiness.md`** is the checklist and order of work before live AI, including a proposal for pattern corrections (needs a decision).
 
 ## What to do next
 

@@ -32,11 +32,55 @@ export function nodeLayout(count) {
   });
 }
 
-// How firmly Tastemake holds a pattern, as one of three looks (solid / dashed / dotted).
+// ---- Confidence (#26) ---------------------------------------------------------------------------------
+// Two different things used to be blurred into one word ("Strong"):
+//   inferred    a pattern that is plausible from the starting picture (a starting pattern), and
+//   validated   a pattern that the user's own experienced reactions actually back up.
+// In this prototype the patterns are a fixed, pre-written starting set (they do not change with your favorites),
+// so every pattern begins as Emerging. What moves it is only what the user tried: Loved / Liked it (backs it) and
+// Tried it and disliked it (counts against it, unless a blind spot says this pattern held up).
+//
+//   Emerging       nothing the user tried backs it yet (and nothing counts against it)
+//   Supported      at least one thing they tried backs it, and more back it than count against it
+//   Strong         three or more things they tried back it, and at least two more back it than count against it
+//   Still learning something counted against it and it is not backed clearly (one miss never weakens a pattern)
+//   Less certain   two or more misses that outweigh the support (the existing weakening rule)
+// Untried reactions and bookmarks never count here; they are shown separately as a "lean".
+export function patternConfidence(state, pattern) {
+  const evidence = patternEvidence(state, pattern);
+  const supports = evidence.supports.length;
+  const against = evidence.against.length;
+  const areas = new Set(evidence.supports.flatMap((row) => row.item.domains ?? [])).size;
+  const update = modelUpdateFor(state, pattern);
+  const backed = `${supports} ${supports === 1 ? "thing" : "things"} you've tried`;
+
+  let level, status, look, basis, provenance;
+  if (update.status === "revision") {
+    level = "Less certain"; status = "revision"; look = "shaky"; basis = "doubted";
+    provenance = `${against} things you tried didn't land${supports ? `, and ${supports} backed it` : ""}, so it carries less weight.`;
+  } else if (supports >= 3 && supports - against >= 2) {
+    level = "Strong"; status = "strong"; look = "firm"; basis = "confirmed";
+    provenance = `Backed by ${backed}${areas > 1 ? `, across ${areas} areas` : ""}.${against ? ` ${against} didn't land, which doesn't outweigh that.` : ""}`;
+  } else if (supports >= 1 && supports > against) {
+    level = "Supported"; status = "supported"; look = "tentative"; basis = "confirmed";
+    provenance = `Backed by ${backed}${areas > 1 ? `, across ${areas} areas` : ""}.${against ? ` ${against} didn't land.` : ""} More would make it Strong.`;
+  } else if (against >= 1) {
+    level = "Still learning"; status = "conditional"; look = "tentative"; basis = "mixed";
+    provenance = supports
+      ? `Backed by ${backed}, but ${against} didn't land. It takes more than one to weaken a pattern.`
+      : "A pick you tried didn't land, and nothing you've tried backs it yet. It takes more than one to weaken a pattern.";
+  } else {
+    level = "Emerging"; status = "emerging"; look = "tentative"; basis = "starting";
+    provenance = "A starting pattern. Nothing you've tried has tested it yet.";
+  }
+  return { level, status, look, basis, provenance, supports, against, heldUp: evidence.heldUp.length, areas };
+}
+
+// How firmly Tastemake holds a pattern: the computed level, plus one of three looks (solid / dashed / dotted).
 export function confidenceOf(state, pattern) {
   const update = modelUpdateFor(state, pattern);
-  const look = update.status === "conditional" ? "tentative" : update.status === "revision" ? "shaky" : "firm";
-  return { ...update, look };
+  const c = patternConfidence(state, pattern);
+  return { ...update, ...c, label: c.level, note: c.provenance, change: update.note };
 }
 
 // What the user has told Tastemake that touches this pattern.

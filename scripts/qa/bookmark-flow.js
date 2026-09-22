@@ -461,6 +461,35 @@ export async function run() {
   check("an unknown ?look= value is ignored", bogus.look === "editorial", JSON.stringify(bogus));
 
 
+
+  // ---- Confidence (#26): inferred is not validated; the Profile and the Map say which ----
+  const tastemapModel = await import("/src/model/tastemap.js");
+  await act('.step[data-step-jump="model"]');
+  const cards = $$(".signal-row");
+  check("every pattern card shows its computed confidence level", cards.length === catalog.hypotheses.length &&
+    cards.every((card, i) => card.querySelector(".signal-status")?.textContent.trim() === tastemapModel.confidenceOf(state, catalog.hypotheses[i]).level),
+    cards.map((c) => c.querySelector(".signal-status")?.textContent.trim()).join(","));
+  check("every pattern card says where its confidence comes from", cards.every((card, i) => card.querySelector(".signal-provenance")?.textContent.trim() === tastemapModel.confidenceOf(state, catalog.hypotheses[i]).provenance));
+  check("the confidence labels are explained (a legend the user can open)", Boolean($(".profile-legend summary")) && /Emerging/.test($(".profile-legend").textContent) && /Strong/.test($(".profile-legend").textContent) && /Less certain/.test($(".profile-legend").textContent));
+  check("the page says the patterns are a fixed starting set and reactions are what changes them", /fixed starting set/.test($(".profile-evidence-note").textContent));
+  check("the favorites strip is labeled as your starting favorites, not what the patterns were built from", /Your starting favorites/.test($(".profile-evidence-label").textContent) && !/Built from/.test($(".profile-screen").textContent));
+  check("an authored conditional pattern still carries its 'Conditional' flag", $$(".signal-flag").length === catalog.hypotheses.filter((h) => h.status === "conditional").length && $$(".signal-flag").length > 0);
+  await act('[data-profile-view="map"]');
+  const nodes = $$(".taste-map-node");
+  check("the Map shows the same level as the Profile for every pattern", nodes.length === catalog.hypotheses.length &&
+    catalog.hypotheses.every((h) => nodes.some((n) => n.textContent.includes(h.title) && n.querySelector(".map-node-conf")?.textContent.trim() === tastemapModel.confidenceOf(state, h).level)));
+  check("the Map legend uses the new meanings", /Emerging, Supported or Still learning/.test($(".map-key")?.textContent || document.body.textContent));
+  await act('[data-profile-view="list"]');
+
+  // a brand-new visit: nothing you tried yet, so nothing may look validated
+  const coldStart = await frameCheck("/?look=editorial", async (doc) => {
+    doc.querySelector('[data-action="peek"], [data-action="show-model"], [data-step-jump="model"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    return { chips: [...doc.querySelectorAll(".signal-status")].map((n) => n.textContent.trim()), lines: [...doc.querySelectorAll(".signal-provenance")].map((n) => n.textContent.trim()) };
+  });
+  check("cold start: every pattern is Emerging, none Strong or Supported", coldStart.chips?.length === catalog.hypotheses.length && coldStart.chips.every((c) => c === "Emerging"), JSON.stringify(coldStart));
+  check("cold start: each says it is a starting pattern that nothing has tested", coldStart.lines?.every((l) => /starting pattern/.test(l) && /Nothing you've tried/.test(l)), JSON.stringify(coldStart.lines));
+
   // ---- Start over (last: it clears everything) ----
   await act("#open-mine");
   await act('[data-mine-reset="arm"]');

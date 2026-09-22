@@ -69,6 +69,10 @@ Requirements:
 - **Taste evidence rule:** only Loved it before, Liked it before and Tried it and disliked it count as taste evidence. Every other reaction, including a plain More or Less and a bookmark, steers what comes next but never changes the Taste Profile's "Stronger / Less certain" labels. You cannot know a pick fits until you have tried it.
 - **Weakening needs more than one miss:** a pattern is marked "Less certain" only after at least two experienced dislikes on it. One dislike shows "Still learning" and says it takes more than one.
 
+## Confidence in the Taste Profile
+
+Each pattern shows a computed level, not an authored one: **Emerging** (a starting pattern nothing you tried has tested), **Supported**, **Strong** (three or more things you tried back it), **Still learning** (something didn't land; one miss never weakens a pattern) or **Less certain** (more than one miss). Each card says where its confidence comes from, and a legend explains the labels. The patterns themselves are a fixed starting set in this prototype. See `docs/evidence-contract.md`.
+
 ## Bookmarks
 - One Bookmark replaces the earlier Up Next and Interested ideas. It is offered only on picks marked Haven't tried.
 - Own page and nav tab, hidden until something is saved, with a count.

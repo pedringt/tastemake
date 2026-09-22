@@ -1,14 +1,14 @@
 import { favorites, hypotheses } from "../data/catalog.js";
 import { state } from "../state.js";
-import { modelUpdateFor, untriedReactionLean } from "../model/taste.js";
+import { untriedReactionLean } from "../model/taste.js";
+import { confidenceOf } from "../model/tastemap.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { renderTasteMap } from "./tastemap.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
 
 function hypothesisCard(item, index) {
-  const update = modelUpdateFor(state, item);
-  const confidenceLabel = update.label === item.strength ? item.strength : update.label;
+  const update = confidenceOf(state, item);
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
     ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${spot.item.title}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
@@ -27,11 +27,14 @@ function hypothesisCard(item, index) {
       <div class="signal-main">
         <div class="signal-title-row">
           <h3>${item.title}</h3>
-          <span class="signal-status ${update.status}">${confidenceLabel}</span>
+          <span class="signal-badges">
+            ${item.status === "conditional" ? `<span class="signal-flag" title="This pattern holds in some picks and not others.">Conditional</span>` : ""}
+            <span class="signal-status ${update.status}">${update.level}</span>
+          </span>
         </div>
         <p class="signal-claim">${item.claim}</p>
-        <div class="signal-evidence"><span>shows up in</span> ${item.evidence}</div>
-        ${update.note ? `<div class="signal-update"><strong>New signal:</strong> ${update.note}</div>` : ""}
+        <div class="signal-evidence"><span>starting evidence</span> ${item.evidence}</div>
+        <div class="signal-provenance">${update.provenance}</div>
         ${leanLine}
         ${blindLine}
       </div>
@@ -75,7 +78,18 @@ export function renderProfile() {
           <p class="kicker">Taste Profile</p>
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
-          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they show up below as a lean, not as taste.</p>
+          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they show up below as a lean, not as taste. The patterns themselves are a fixed starting set in this prototype (they do not change with your favorites); what changes is how much your own reactions back each one.</p>
+          <details class="profile-legend">
+            <summary>What do the confidence labels mean?</summary>
+            <ul>
+              <li><strong>Emerging:</strong> a starting pattern. Nothing you've tried has tested it yet.</li>
+              <li><strong>Supported:</strong> at least one thing you've tried backs it, and more back it than count against it.</li>
+              <li><strong>Strong:</strong> three or more things you've tried back it, and misses don't outweigh them.</li>
+              <li><strong>Still learning:</strong> something you tried didn't land. One miss never weakens a pattern.</li>
+              <li><strong>Less certain:</strong> more than one thing you tried didn't land.</li>
+            </ul>
+            <p>Reactions to things you haven't tried never count here. They show up as a separate "lean".</p>
+          </details>
           <div class="profile-view-toggle" role="group" aria-label="How to see your Taste Profile">
             <button type="button" class="button button-secondary profile-view-button" data-profile-view="list" aria-pressed="${state.profileView !== "map"}">List</button>
             <button type="button" class="button button-secondary profile-view-button" data-profile-view="map" aria-pressed="${state.profileView === "map"}">Map</button>
@@ -89,7 +103,7 @@ export function renderProfile() {
 
       ${state.profileView === "map" ? renderTasteMap() : `
       <div class="profile-evidence-strip">
-        <span class="profile-evidence-label">Built from</span>
+        <span class="profile-evidence-label">Your starting favorites</span>
         <div class="profile-evidence-track">
           ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${title}</span>`).join("")}
         </div>

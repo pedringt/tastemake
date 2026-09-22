@@ -284,7 +284,7 @@ export async function run() {
 
     // confidence looks
     let st = mk();
-    eq("a strong pattern looks solid", M.confidenceOf(st, pattern("H04")).look, "firm");
+    eq("with no reactions no pattern looks solid: they are all starting patterns (dashed)", hypotheses.every((h) => M.confidenceOf(st, h).look === "tentative"), true);
     eq("a conditional pattern looks dashed", M.confidenceOf(st, pattern("H01/H07")).look, "tentative");
 
     // evidence classification (H04)
@@ -394,6 +394,69 @@ export async function run() {
     eq("start over restores areas and curveball", `${ST.state.areas.play},${ST.state.curveball}`, "true,true");
     eq("start over keeps your look", ST.state.look, "analog");
     ST.state.look = "editorial";
+  });
+
+
+  // ---- Confidence (#26): inferred is not validated. Levels are computed from what the user tried. ----
+  suite("confidence levels", (eq) => {
+    const mk = () => ({
+      selectedFavorites: new Set(favorites.filter((f) => f.selected).map((f) => f.id)),
+      feedbackByRecommendation: {}, recommendationSets: [recommendations], libraryFavorites: new Set(), customItems: {},
+      blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set()
+    });
+    const react = (st, item, rating, detail) => { st.feedbackByRecommendation[item.id] = { item, rating, detail }; };
+    const h04 = hypotheses.find((h) => h.id === "H04");
+    const lvl = (st) => M.patternConfidence(st, h04);
+    const items = [...recommendations, ...followUpPool].filter((item) => item.hypotheses.some((id) => id === "H04" || id.split("/").includes("H04")));
+    eq("there are enough H04 picks to test with", items.length >= 4, true);
+    const [a, b, c, d] = items;
+
+    eq("cold start: every pattern is Emerging, none Strong", hypotheses.every((h) => M.patternConfidence(mk(), h).level === "Emerging"), true);
+    eq("cold start says it is a starting pattern that nothing has tested", /starting pattern.*Nothing you've tried/.test(lvl(mk()).provenance), true);
+    eq("the authored strength labels no longer decide anything", hypotheses.some((h) => h.strength === "Strong") && M.patternConfidence(mk(), h04).level !== "Strong", true);
+
+    const one = mk(); react(one, a, "more", "liked-before");
+    eq("one thing tried and liked: Supported", lvl(one).level, "Supported");
+    eq("...and it says how many backed it", /Backed by 1 thing you've tried/.test(lvl(one).provenance), true);
+    const two = mk(); react(two, a, "more", "loved-before"); react(two, b, "more", "liked-before");
+    eq("two backing it: still Supported, not Strong", lvl(two).level, "Supported");
+    const three = mk(); react(three, a, "more", "loved-before"); react(three, b, "more", "liked-before"); react(three, c, "more", "liked-before");
+    eq("three backing it: Strong", lvl(three).level, "Strong");
+    eq("...with solid look and status 'strong'", `${lvl(three).look},${lvl(three).status}`, "firm,strong");
+    const threeOneMiss = mk(); [a, b, c].forEach((x) => react(threeOneMiss, x, "more", "liked-before")); react(threeOneMiss, d, "less", "tried-disliked");
+    eq("three backing it and one miss: still Strong (a miss does not undo three)", lvl(threeOneMiss).level, "Strong");
+    const e = items[4];
+    if (e) {
+      const threeTwoMisses = mk(); [a, b, c].forEach((x) => react(threeTwoMisses, x, "more", "liked-before")); react(threeTwoMisses, d, "less", "tried-disliked"); react(threeTwoMisses, e, "less", "tried-disliked");
+      eq("three backing it but two misses: only Supported (Strong needs to stay two clear)", lvl(threeTwoMisses).level, "Supported");
+    } else eq("(a fifth H04 pick exists to test two misses against three)", false, true);
+    const oneMiss = mk(); react(oneMiss, a, "less", "tried-disliked");
+    eq("one miss and nothing backing it: Still learning, never weakened", lvl(oneMiss).level, "Still learning");
+    const mixed = mk(); react(mixed, a, "more", "liked-before"); react(mixed, b, "less", "tried-disliked");
+    eq("one backs it, one counts against: Still learning", lvl(mixed).level, "Still learning");
+    const twoMisses = mk(); react(twoMisses, a, "less", "tried-disliked"); react(twoMisses, b, "less", "tried-disliked");
+    eq("two misses: Less certain (the existing weakening rule)", lvl(twoMisses).level, "Less certain");
+
+    // things that must NOT move confidence: intent and untried reactions
+    const intent = mk(); react(intent, a, "not-tried", "bookmarked"); react(intent, b, "more", null); react(intent, c, "less", "not-interested");
+    eq("bookmarks and untried More/Less/Not interested leave it Emerging", lvl(intent).level, "Emerging");
+    eq("...and the starter favorites alone never make anything Supported or Strong", hypotheses.every((h) => ["Emerging"].includes(M.patternConfidence(mk(), h).level)), true);
+
+    // a blind spot that says the pattern held up: that miss is not counted against it
+    const held = mk(); react(held, a, "less", "tried-disliked"); B.saveBlindSpot(held, a.id, { broken: ["H03"] });
+    eq("a miss the user says this pattern survived is not counted against it (back to Emerging)", lvl(held).level, "Emerging");
+
+    // across areas
+    const playPick = [...recommendations, ...followUpPool].find((item) => item.domains.includes("play") && !item.domains.includes("watch") && item.hypotheses.some((id) => id === "H04" || id.split("/").includes("H04")));
+    const watchPick = items.find((item) => item.domains.includes("watch") && !item.domains.includes("play"));
+    if (playPick && watchPick) {
+      const spread = mk(); react(spread, watchPick, "more", "liked-before"); react(spread, playPick, "more", "liked-before");
+      eq("provenance mentions areas when backing spans more than one", /across 2 areas/.test(M.patternConfidence(spread, h04).provenance), true);
+    } else eq("an H04 pick in each of two areas exists to test spread (the catalog changed?)", false, true);
+
+    // every level has a defined look, and the map/profile use the same one
+    eq("confidenceOf agrees with patternConfidence", M.confidenceOf(three, h04).label, "Strong");
+    eq("modelUpdateFor is untouched (ranking and old wording unchanged)", T.modelUpdateFor(twoMisses, h04).label, "Less certain");
   });
 
   return { passed: total - failures.length, failed: failures.length, total, failures: failures.length ? failures : undefined };
