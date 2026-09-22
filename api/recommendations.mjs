@@ -4,8 +4,8 @@ import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { nextRecommendations } from "../src/model/taste.js";
 
 const MAX_BODY_BYTES = 160_000;
-const MAX_OUTPUT_TOKENS = 1200;
-const REQUEST_TIMEOUT_MS = 12_000;
+const MAX_OUTPUT_TOKENS = 900;    // five picks with reasons is ~400; a lower cap keeps the wait short
+const REQUEST_TIMEOUT_MS = 25_000;   // 12s was tripping on every real call; the function allows 30s
 const DEFAULT_VISITOR_LIMIT = 6;
 const DEFAULT_WINDOW_MS = 60_000;
 const rateBuckets = globalThis.__tastemakeAiRateBuckets ??= new Map();

@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/*.mjs": {
-      "maxDuration": 15
+      "maxDuration": 30
     }
   },
   "rewrites": [
