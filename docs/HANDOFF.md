@@ -23,6 +23,10 @@ Notable: with only four favorites the model still cited real evidence; in the "n
 
 **Open, small:** four reasons say "This is a curveball" while `kind` is `pick`. The prompt should either ask for `kind: "curveball"` or stop inviting that phrasing.
 
+## Escaping untrusted text (#38), done
+
+Screens render with template strings and `innerHTML`, and live AI made that urgent: the model's own prose (`item.reason`) was going in raw, as were titles the user types. One helper, `src/lib/html.js` (`esc`), is now used everywhere; the three local copies of an escaper were replaced with it. `scripts/qa/escaping-tests.mjs` (32 checks, free, no browser) renders every screen with `<img src=x onerror=...>` in each untrusted slot (typed titles, notes, model pick reasons, model hypothesis label/claim, blind-spot summaries) and fails if any of it survives as markup. It caught two paths the first pass missed: the recommendation artwork title and the blind-spot summary shown on the Profile, Library and Map.
+
 ## Purpose
 
 This handoff is for Claude Code to resume Tastemake without reopening the prior ChatGPT thread. Continue from the newly promoted live-AI foundation, verify the production deployment state, and complete the first controlled Anthropic-backed recommendation test without reopening settled architecture decisions.

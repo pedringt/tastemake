@@ -1,11 +1,11 @@
 import { state } from "../state.js";
 import { MEDIA, applySearchAction, findExisting, itemStatus, makeCustomItem, searchItems, searchableItems } from "../model/search.js";
 import { displayLabel, domainFilterOptions } from "../data/domains.js";
+import { esc } from "../lib/html.js";
 
 // Search dialog (#13). It lives outside #app, so re-rendering a screen never closes it.
 // Nothing here changes state except applySearchAction, called from an explicit button.
 
-const esc = (text) => String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 export function initSearch({ onChange, announce, goTo }) {
   // Filter chips come from the domain registry, so a new visible domain shows up here too.

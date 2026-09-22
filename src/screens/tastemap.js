@@ -5,12 +5,12 @@ import { blindSpotsFor } from "../model/blindspots.js";
 import { confidenceOf, evidenceCount, lean, nodeLayout, patternEvidence, patternLinks, patternsOfItem, tensions, thinAreas } from "../model/tastemap.js";
 import { visibleDomains } from "../data/domains.js";
 import { statementFor } from "../model/statements.js";
+import { esc } from "../lib/html.js";
 
 // Taste Map (#21): the Taste Profile as a picture you can poke at. Cards are Tastemake's guesses; the rows
 // under "What you've told it" are yours. Confidence and link strength come in coarse steps, never numbers.
 // A text version of every connection sits under the picture, so nothing depends on seeing the lines.
 
-const esc = (text) => String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const LEVEL_TEXT = { strong: "strong link", some: "some link", weak: "weak link" };
 const GROUPS = [
   ["supports", "Supports it", "counts toward this pattern"],

@@ -3,6 +3,7 @@ import { state } from "../state.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
 import { renderStickerField } from "../components/stickers.js";
 import { displayLabel } from "../data/domains.js";
+import { esc } from "../lib/html.js";
 
 const widthClasses = ["tile-w4", "tile-w2", "tile-w3", "tile-w3", "tile-w3", "tile-w4", "tile-w2", "tile-w3"];
 
@@ -16,12 +17,12 @@ function favoriteCard(item, originalIndex, visibleIndex) {
       <span class="favorite-tape" aria-hidden="true"></span>
       <div class="favorite-tile-top">
         <span class="favorite-number">${String(originalIndex + 1).padStart(2, "0")}</span>
-        <span class="favorite-medium">${displayLabel(item)}</span>
+        <span class="favorite-medium">${esc(displayLabel(item))}</span>
         <span class="favorite-check" aria-hidden="true">&#10003;</span>
       </div>
       <div class="favorite-tile-copy">
-        <h3>${item.title}</h3>
-        <p>${item.note}</p>
+        <h3>${esc(item.title)}</h3>
+        <p>${esc(item.note)}</p>
       </div>
     </button>`;
 }

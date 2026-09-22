@@ -4,6 +4,7 @@ import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filt
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel } from "../data/domains.js";
+import { esc } from "../lib/html.js";
 
 // Library: things the user has actually tried and liked, plus their starter favorites.
 // Everything here is derived (see model/library.js); the buttons just correct the underlying reaction.
@@ -21,7 +22,7 @@ function libraryCard(entry) {
 
   const controls = tried
     ? `
-      <div class="library-actions" role="group" aria-label="How did ${item.title} go?">
+      <div class="library-actions" role="group" aria-label="How did ${esc(item.title)} go?">
         <span class="library-actions-label">How did it go?</span>
         ${reactionButton(id, "loved", "Loved it", source === "loved")}
         ${reactionButton(id, "liked", "Liked it", source === "liked")}
@@ -39,11 +40,11 @@ function libraryCard(entry) {
     <article class="library-card ${entry.isFavorite ? "is-favorite" : ""}" data-library-id="${id}">
       <span class="library-tape" aria-hidden="true"></span>
       <div class="library-meta">
-        <span class="library-medium">${displayLabel(item)}</span>
+        <span class="library-medium">${esc(displayLabel(item))}</span>
         <span class="library-source">${entry.isFavorite && tried ? "Favorite" : SOURCE_LABEL[source]}</span>
       </div>
-      <h3>${item.title}</h3>
-      <p class="library-blurb">${entry.blurb}</p>
+      <h3>${esc(item.title)}</h3>
+      <p class="library-blurb">${esc(entry.blurb)}</p>
       ${controls}
     </article>`;
 }
@@ -71,8 +72,8 @@ function dislikedBlock(items) {
         ${items.map(({ id, item }) => `
           <li>
             <div class="library-disliked-row">
-              <span>${item.title} <em>${displayLabel(item)}</em></span>
-              <span class="library-restore" role="group" aria-label="Correct ${item.title}">
+              <span>${esc(item.title)} <em>${esc(displayLabel(item))}</em></span>
+              <span class="library-restore" role="group" aria-label="Correct ${esc(item.title)}">
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="liked">Actually, I liked it</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>
               </span>

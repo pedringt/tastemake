@@ -1,11 +1,11 @@
 import { state } from "../state.js";
 import { REASONS, blindSpotFor, isBlindSpotCandidate, patternsFor, reasonLabel } from "../model/blindspots.js";
+import { esc } from "../lib/html.js";
 
 // The Blind Spot panel (#20): offered on a pick Tastemake was confident about that the user tried and
 // disliked. Two tappable questions, then a summary the user can keep, change or discard. The steps live in
 // state.blindSpotDrafts, so re-rendering a screen never loses your place.
 
-const esc = (text) => String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 function chip(itemId, action, value, label, pressed) {
   return `<button class="detail-chip blind-chip" type="button" data-blind-item="${itemId}" data-blind-action="${action}" data-blind-value="${value}" aria-pressed="${pressed}">${esc(label)}</button>`;
@@ -17,8 +17,8 @@ const heading = (itemId, text) => `<p class="blind-title" tabindex="-1" data-bli
 
 function summaryText(item, draft) {
   const patterns = patternsFor(item);
-  const named = patterns.filter((pattern) => draft.broken.includes(pattern.id)).map((pattern) => `\u201c${pattern.title}\u201d`);
-  const why = draft.reasons.length ? ` It got in the way mostly because of ${draft.reasons.map((id) => reasonLabel(id).toLowerCase()).join(", ")}.` : "";
+  const named = patterns.filter((pattern) => draft.broken.includes(pattern.id)).map((pattern) => `\u201c${esc(pattern.title)}\u201d`);
+  const why = draft.reasons.length ? ` It got in the way mostly because of ${draft.reasons.map((id) => esc(reasonLabel(id).toLowerCase())).join(", ")}.` : "";
   const which = draft.none
     ? "None of the patterns it leaned on seem to be the problem, so Tastemake may be missing something else about you."
     : `You said ${named.join(" and ")} didn't hold up for this one.`;

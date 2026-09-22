@@ -4,6 +4,7 @@ import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentR
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel } from "../data/domains.js";
+import { esc } from "../lib/html.js";
 
 export function ratingLabel(value) {
   return ({
@@ -112,11 +113,11 @@ function mediaArt(item, index) {
 
   return `
     <div class="editorial-art art-${item.id} art-layout-${(index % 4) + 1}" aria-hidden="true">
-      <span class="art-kicker">${displayLabel(item)}</span>
+      <span class="art-kicker">${esc(displayLabel(item))}</span>
       <span class="art-shape art-shape-a"></span>
       <span class="art-shape art-shape-b"></span>
       <span class="art-pattern"></span>
-      <span class="art-title">${item.surprise ? "SURPRISE ME" : shortTitle}</span>
+      <span class="art-title">${item.surprise ? "SURPRISE ME" : esc(shortTitle)}</span>
       <span class="art-corner">TM/${String(index + 1).padStart(2, "0")}</span>
     </div>`;
 }
@@ -135,15 +136,15 @@ function recommendationCard(item, index) {
       <div class="editorial-rec-body">
         <div class="editorial-rec-meta">
           <span>${item.surprise ? "Surprise Me" : `Pick ${String(index + 1).padStart(2, "0")}`}</span>
-          <span>${displayLabel(item)}</span>
+          <span>${esc(displayLabel(item))}</span>
         </div>
 
         <div class="editorial-title-row">
-          <h3>${item.title}</h3>
+          <h3>${esc(item.title)}</h3>
           ${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}
         </div>
 
-        <p class="editorial-about">${item.about}</p>
+        <p class="editorial-about">${esc(item.about)}</p>
 
         <div class="editorial-why">
           <button
@@ -153,11 +154,11 @@ function recommendationCard(item, index) {
             aria-controls="${whyId}"
           >Why this one?</button>
           <div class="why-popover" id="${whyId}" role="tooltip">
-            <p>${item.reason}</p>
+            <p>${esc(item.reason)}</p>
           </div>
         </div>
 
-        <div class="reaction-rail" aria-label="Rate ${item.title}">
+        <div class="reaction-rail" aria-label="Rate ${esc(item.title)}">
           ${ratingButton(item.id, "more", "More", "+", saved)}
           ${ratingButton(item.id, "less", "Less", "-", saved)}
           ${ratingButton(item.id, "not-tried", "Not tried", "o", saved)}

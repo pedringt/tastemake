@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { LOOKS, lookLabel } from "../data/looks.js";
+import { esc } from "../lib/html.js";
 
 // "Choose a starting look" (#25). Each card is a small preview drawn with that look's own styles
 // (see styles/look.css), so people choose by seeing, not by reading a label. Picking one also
@@ -35,8 +36,8 @@ export function renderLook() {
           <label class="look-card ${look.id === state.look ? "is-selected" : ""}" data-look-choice="${look.id}">
             <input class="visually-hidden" type="radio" name="look" value="${look.id}" ${look.id === state.look ? "checked" : ""} />
             ${preview(look.id)}
-            <span class="look-card-name">${look.label}${look.id === "editorial" ? '<span class="look-default"> (starting point)</span>' : ""}</span>
-            <span class="look-card-blurb">${look.blurb}</span>
+            <span class="look-card-name">${esc(look.label)}${look.id === "editorial" ? '<span class="look-default"> (starting point)</span>' : ""}</span>
+            <span class="look-card-blurb">${esc(look.blurb)}</span>
           </label>`).join("")}
       </fieldset>
       <p class="look-note">Choosing a look doesn't tell Tastemake anything about your taste.</p>

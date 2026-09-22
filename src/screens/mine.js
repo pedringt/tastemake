@@ -4,6 +4,7 @@ import { toldItems } from "../model/mine.js";
 import { reasonLabel } from "../model/blindspots.js";
 import { FIT, WEIGHT, activeStatements } from "../model/statements.js";
 import { displayLabel } from "../data/domains.js";
+import { esc } from "../lib/html.js";
 
 // My Tastemake (#8, phase 1): what you've told Tastemake, which areas it may use, how picks are put together,
 // and a way to start over. It is the deeper management layer behind Library, Bookmarks and the Taste Profile.
@@ -19,7 +20,7 @@ function row(entry) {
   const { id, item } = entry;
   const controls = entry.starter
     ? `<div class="mine-actions"><button class="button button-quiet mine-action" type="button" data-action="back-favorites">Change on the Favorites page</button></div>`
-    : `<div class="mine-actions" role="group" aria-label="Change what you told Tastemake about ${item.title}">
+    : `<div class="mine-actions" role="group" aria-label="Change what you told Tastemake about ${esc(item.title)}">
         ${actionButton(id, "loved", "Loved it", Boolean(entry.loved))}
         ${actionButton(id, "liked", "Liked it", Boolean(entry.liked))}
         ${actionButton(id, "disliked", "Didn't like it", Boolean(entry.disliked))}
@@ -28,10 +29,10 @@ function row(entry) {
   return `
     <li class="mine-row" data-mine-id="${id}">
       <div class="mine-row-main">
-        <strong class="mine-title">${item.title}</strong>
-        <span class="mine-medium">${mediumOf(item)}</span>
-        <span class="mine-status">${entry.status}</span>
-        <span class="mine-source">${entry.source}</span>
+        <strong class="mine-title">${esc(item.title)}</strong>
+        <span class="mine-medium">${esc(mediumOf(item))}</span>
+        <span class="mine-status">${esc(entry.status)}</span>
+        <span class="mine-source">${esc(entry.source)}</span>
       </div>
       ${controls}
     </li>`;
@@ -45,7 +46,7 @@ function startersRow(starters) {
       <div class="mine-row-main">
         <strong class="mine-title">Starter favorites <span class="mine-count">${starters.length}</span></strong>
         <span class="mine-source">Picked on Favorites</span>
-        <ul class="mine-chips">${starters.map((entry) => `<li>${entry.item.title}</li>`).join("")}</ul>
+        <ul class="mine-chips">${starters.map((entry) => `<li>${esc(entry.item.title)}</li>`).join("")}</ul>
       </div>
       <div class="mine-actions"><button class="button button-quiet mine-action" type="button" data-action="back-favorites">Change on the Favorites page</button></div>
     </li>`;
@@ -73,7 +74,7 @@ function blindSpotList(spots) {
         ${spots.map((spot) => `
           <li class="mine-row" data-mine-blind="${spot.itemId}">
             <div class="mine-row-main">
-              <strong class="mine-title">${spot.item.title}</strong>
+              <strong class="mine-title">${esc(spot.item.title)}</strong>
               <span class="mine-status">${spot.none ? "None of the patterns held up" : `${spot.hypotheses.length} pattern${spot.hypotheses.length === 1 ? "" : "s"} set aside`}</span>
               <span class="mine-source">${(spot.reasons ?? []).map(reasonLabel).join(", ") || "No reason chosen"}</span>
             </div>
@@ -94,7 +95,7 @@ function statementList() {
         ${said.map((s) => `
           <li class="mine-row" data-mine-said="${s.hypothesisId}">
             <div class="mine-row-main">
-              <strong class="mine-title">${s.label}</strong>
+              <strong class="mine-title">${esc(s.label)}</strong>
               <span class="mine-status">${[s.says ? FIT[s.says] : "", s.weight ? WEIGHT[s.weight] : ""].filter(Boolean).join(" \u00b7 ")}</span>
               <span class="mine-source">Said on the Taste Profile</span>
             </div>

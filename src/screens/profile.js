@@ -8,6 +8,7 @@ import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { renderTasteMap } from "./tastemap.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
 import { displayLabel } from "../data/domains.js";
+import { esc } from "../lib/html.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -19,12 +20,12 @@ function sayButton(item, field, value, label, said) {
 function sayControls(item, said) {
   return `
     <div class="signal-say">
-      <div class="signal-say-group" role="group" aria-label="Is \u201c${item.title}\u201d you?">
+      <div class="signal-say-group" role="group" aria-label="Is \u201c${esc(item.title)}\u201d you?">
         <span class="signal-say-label">Is this you?</span>
         ${sayButton(item, "says", "accurate", "Yes, accurate", said)}
         ${sayButton(item, "says", "not-me", "Not really me", said)}
       </div>
-      <div class="signal-say-group" role="group" aria-label="How much does \u201c${item.title}\u201d matter to you?">
+      <div class="signal-say-group" role="group" aria-label="How much does \u201c${esc(item.title)}\u201d matter to you?">
         <span class="signal-say-label">How much does it matter?</span>
         ${sayButton(item, "weight", "lot", "A lot", said)}
         ${sayButton(item, "weight", "little", "A little", said)}
@@ -37,7 +38,7 @@ function hypothesisCard(item, index) {
   const said = statementFor(state, item.id);
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
-    ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${spot.item.title}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
+    ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${esc(spot.item.title)}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
     : "";
   const lean = untriedReactionLean(state, item);
   const leanLine = lean.direction
@@ -52,16 +53,16 @@ function hypothesisCard(item, index) {
       <div class="signal-index">${String(index + 1).padStart(2, "0")}</div>
       <div class="signal-main">
         <div class="signal-title-row">
-          <h3>${item.title}</h3>
+          <h3>${esc(item.title)}</h3>
           <span class="signal-badges">
             ${item.status === "conditional" ? `<span class="signal-flag" title="This pattern holds in some picks and not others.">Conditional</span>` : ""}
             ${said?.says === "accurate" ? `<span class="signal-flag signal-confirmed">${FIT.accurate}</span>` : ""}
-            <span class="signal-status ${update.status}">${update.level}</span>
+            <span class="signal-status ${update.status}">${esc(update.level)}</span>
           </span>
         </div>
-        <p class="signal-claim">${item.claim}</p>
-        <div class="signal-evidence"><span>starting evidence</span> ${item.evidence}</div>
-        <div class="signal-provenance">${update.provenance}</div>
+        <p class="signal-claim">${esc(item.claim)}</p>
+        <div class="signal-evidence"><span>starting evidence</span> ${esc(item.evidence)}</div>
+        <div class="signal-provenance">${esc(update.provenance)}</div>
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
         ${sayControls(item, said)}
@@ -76,8 +77,8 @@ function blindSpotSection() {
   if (!spots.length) return "";
   const themes = recurringThemes(state);
   const lines = [
-    ...themes.patterns.map((theme) => `\u201c${theme.title}\u201d (${theme.n} times)`),
-    ...themes.reasons.map((theme) => `${theme.label.toLowerCase()} (${theme.n} times)`)
+    ...themes.patterns.map((theme) => `\u201c${esc(theme.title)}\u201d (${theme.n} times)`),
+    ...themes.reasons.map((theme) => `${esc(theme.label.toLowerCase())} (${theme.n} times)`)
   ];
   return `
     <section class="blind-section" aria-labelledby="blind-heading">
@@ -88,7 +89,7 @@ function blindSpotSection() {
         ${spots.map((spot) => `
           <li class="blind-card">
             <div class="blind-card-head">
-              <h3>${spot.item.title} <em>${displayLabel(spot.item)}</em></h3>
+              <h3>${esc(spot.item.title)} <em>${esc(displayLabel(spot.item))}</em></h3>
               <span class="blind-status ${isRecurring(state, spot) ? "is-recurring" : ""}">${isRecurring(state, spot) ? "Recurring" : "Noted once"}</span>
             </div>
             ${renderBlindSpotPanel(spot.itemId)}
@@ -135,7 +136,7 @@ export function renderProfile() {
       <div class="profile-evidence-strip">
         <span class="profile-evidence-label">Your starting favorites</span>
         <div class="profile-evidence-track">
-          ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${title}</span>`).join("")}
+          ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}
         </div>
       </div>
 
