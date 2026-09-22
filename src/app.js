@@ -14,6 +14,7 @@ import { AREAS } from "./model/taste.js";
 import { isLook, lookLabel } from "./data/looks.js";
 import { initSearch } from "./components/search.js";
 import { blindSpotFor, isBlindSpotCandidate, removeBlindSpot, saveBlindSpot } from "./model/blindspots.js";
+import { requestRecommendations } from "./ai/live-client.js";
 
 const app = document.querySelector("#app");
 
@@ -414,7 +415,7 @@ function toggleWhyPopover(trigger) {
   trigger.setAttribute("aria-expanded", String(shouldPin));
 }
 
-app.addEventListener("click", (event) => {
+app.addEventListener("click", async (event) => {
   const focusSelector = focusSelectorFor(event.target.closest("button"));
 
   const whyTrigger = event.target.closest(".why-trigger");
@@ -578,11 +579,32 @@ app.addEventListener("click", (event) => {
 
   if (action === "view-bookmarks") navigate("bookmarks");
 
-  if (action === "keep-discovering" && canKeepDiscovering(state)) {
-    state.recommendationSets.push(nextRecommendations(state));
+  if (action === "keep-discovering" && canKeepDiscovering(state) && state.aiStatus !== "loading") {
+    state.aiStatus = "loading";
+    state.aiSource = null;
+    state.aiMessage = "Tastemake is checking what you have actually tried against the next eligible picks.";
+    render();
+    updateStepper();
+    announce("Tastemake is finding a new set.");
+
+    try {
+      const result = await requestRecommendations(state);
+      if (!result.picks.length) throw new Error("no picks returned");
+      state.recommendationSets.push(result.picks);
+      state.aiSource = result.source;
+      state.aiMessage = result.source === "model"
+        ? "Live AI chose and explained this set. Tastemake checked every pick and citation against its evidence rules before showing it."
+        : "Live AI was unavailable or its answer did not pass the rules, so Tastemake used its deterministic fallback.";
+    } catch {
+      state.recommendationSets.push(nextRecommendations(state));
+      state.aiSource = "deterministic";
+      state.aiMessage = "The live service was unavailable, so Tastemake used its deterministic fallback.";
+    }
+
+    state.aiStatus = "ready";
     state.recommendationFilter = "all";
     navigate("recommendations", { replace: true });
-    announce(`New set: ${plural(activeRecommendations(state).length, "pick", "picks")}.`);
+    announce(`New set: ${plural(activeRecommendations(state).length, "pick", "picks")}. ${state.aiSource === "model" ? "Live AI was used and validated." : "Deterministic fallback was used."}`);
   }
 });
 
