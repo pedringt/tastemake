@@ -4,7 +4,7 @@ import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { nextRecommendations } from "../src/model/taste.js";
 
 const MAX_BODY_BYTES = 160_000;
-const MAX_OUTPUT_TOKENS = 900;    // five picks with reasons is ~400; a lower cap keeps the wait short
+const MAX_OUTPUT_TOKENS = 2000;   // the cap has to cover any thinking tokens as well as the JSON itself
 const REQUEST_TIMEOUT_MS = 25_000;   // 12s was tripping on every real call; the function allows 30s
 const DEFAULT_VISITOR_LIMIT = 6;
 const DEFAULT_WINDOW_MS = 60_000;
@@ -122,7 +122,13 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
     }
     const data = await response.json();
     const text = data.content?.find((block) => block.type === "text")?.text;
-    if (!text) throw new Error("Anthropic returned no text block");
+    if (!text) {
+      // Seen when the cap is spent before any text is produced: content holds no text block.
+      const err = new Error(`Anthropic returned no text block (stop_reason ${data.stop_reason ?? "?"}, blocks: ${(data.content ?? []).map((b) => b.type).join(",") || "none"})`);
+      err.anthropicType = "no-text-block";
+      err.anthropicDetail = `stop_reason=${data.stop_reason ?? "?"} blocks=${(data.content ?? []).map((b) => b.type).join(",") || "none"} out_tokens=${data.usage?.output_tokens ?? "?"}`;
+      throw err;
+    }
     return { json: parseModelJson(text), usage: data.usage ?? null, model: data.model ?? env.TASTEMAKE_AI_MODEL };
   } finally {
     clearTimeout(timer);
