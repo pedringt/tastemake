@@ -2,8 +2,13 @@
 // Live-AI eval suite (#32). Runs a producer over fixed fixtures, validates every answer with the product's
 // contract (src/ai/validate.js), scores it, and writes a report a product reviewer can read.
 //
-//   node scripts/evals/run.mjs                    # the deterministic baseline (free, no model)
-//   node scripts/evals/run.mjs --producer live    # a live model (not wired yet; will require an explicit yes)
+//   node scripts/evals/run.mjs                        # the deterministic baseline (free, no model)
+//   node scripts/evals/run.mjs --producer live --dry-run   # the exact prompts + a cost estimate, no call
+//   node scripts/evals/run.mjs --producer live            # PAID: one Anthropic call per fixture
+//
+// The live producer uses the same prompt builder and transport as the production endpoint
+// (api/recommendations.mjs), so what is measured here is what production would send. It needs
+// ANTHROPIC_API_KEY and TASTEMAKE_AI_MODEL in the environment, and --yes to actually spend.
 //
 // Output: scripts/evals/reports/<producer>-latest.md (+ .json). Exit code 1 if a hard check fails or the
 // validator lets a deliberately bad answer through.
@@ -17,10 +22,22 @@ import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
 import { CONTRACT_VERSION } from "../../src/ai/contract.js";
 import * as baseline from "../../src/ai/baseline.js";
+import { buildPickPrompt, callAnthropic } from "../../api/recommendations.mjs";
+import { nextRecommendations } from "../../src/model/taste.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const producerName = args.includes("--producer") ? args[args.indexOf("--producer") + 1] : "baseline";
+const dryRun = args.includes("--dry-run");
+const confirmed = args.includes("--yes");
+
+// Rough per-million-token prices, only for the estimate printed before a paid run. Override with
+// TASTEMAKE_AI_PRICE_IN / TASTEMAKE_AI_PRICE_OUT if the model's pricing differs.
+const PRICE_IN = Number(process.env.TASTEMAKE_AI_PRICE_IN || 3);
+const PRICE_OUT = Number(process.env.TASTEMAKE_AI_PRICE_OUT || 15);
+const spend = { calls: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
+const dryRunPlan = [];
+const estimateTokens = (text) => Math.ceil(String(text).length / 4);   // ~4 characters per token
 
 const PRODUCERS = {
   baseline: {
@@ -29,9 +46,27 @@ const PRODUCERS = {
     pick: async (state, ctx) => baseline.explainPicks(state, ctx)
   },
   live: {
-    label: "Live model",
-    infer: async () => { throw new Error("live producer not wired yet (needs the server function and an explicit OK to spend)"); },
-    pick: async () => { throw new Error("live producer not wired yet"); }
+    label: dryRun ? "Live model (DRY RUN: no calls made)" : `Live model (PAID: ${process.env.TASTEMAKE_AI_MODEL || "model not set"})`,
+    // Hypothesis inference is not a live job yet (#31 v1 is picks only): use the baseline so the report
+    // still shows the profile side, and say so.
+    infer: async (state) => baseline.inferHypotheses(state),
+    pick: async (state, ctx) => {
+      const count = nextRecommendations(state).length;
+      if (!count) return { picks: [] };
+      const prompt = buildPickPrompt(ctx, count);
+      if (dryRun) {
+        dryRunPlan.push({ fixture: ctx.__fixture, count, promptChars: prompt.length, estIn: estimateTokens(prompt), prompt });
+        return { picks: [] };   // nothing is called; the fixture will report the fallback
+      }
+      if (!process.env.ANTHROPIC_API_KEY || !process.env.TASTEMAKE_AI_MODEL) throw new Error("ANTHROPIC_API_KEY and TASTEMAKE_AI_MODEL must be set for a live run");
+      if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
+      const model = await callAnthropic({ prompt });
+      spend.calls += 1;
+      spend.inputTokens += model.usage?.input_tokens ?? 0;
+      spend.outputTokens += model.usage?.output_tokens ?? 0;
+      spend.usd = (spend.inputTokens / 1e6) * PRICE_IN + (spend.outputTokens / 1e6) * PRICE_OUT;
+      return model.json;
+    }
   }
 };
 const producer = PRODUCERS[producerName];
@@ -40,6 +75,7 @@ if (!producer) { console.error(`unknown producer "${producerName}"`); process.ex
 async function runOne(fixture) {
   const state = fixture.build();
   const ctx = buildContext(state);
+  ctx.__fixture = fixture.id;
   const hyp = validateHypotheses(await producer.infer(state, ctx), ctx);
   const picks = validatePicks(await producer.pick(state, ctx), ctx);
   let before = null;
@@ -73,6 +109,21 @@ for (const id of ["about-10", "intent-heavy", "single-miss"]) {
     const reasons = v.rejected[0]?.reasons ?? [];
     selfTest.push({ fixture: id, name: c.name, caught: v.accepted.length === 0 && reasons.some((r) => c.reason.test(r)), reasons });
   }
+}
+
+// ---- dry run: show exactly what would be sent, and what it would cost ----
+if (dryRun) {
+  const totalIn = dryRunPlan.reduce((sum, p) => sum + p.estIn, 0);
+  const estOut = dryRunPlan.length * Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200);
+  const estUsd = (totalIn / 1e6) * PRICE_IN + (estOut / 1e6) * PRICE_OUT;
+  console.log(`DRY RUN: ${dryRunPlan.length} call(s) would be made, one per fixture that has picks left.`);
+  dryRunPlan.forEach((p) => console.log(`  ${p.fixture}: ${p.count} picks asked for, prompt ~${p.estIn} tokens (${p.promptChars} chars)`));
+  console.log(`Estimated input ~${totalIn} tokens; output capped at ${estOut} tokens across all calls.`);
+  console.log(`Estimated cost at $${PRICE_IN}/M in and $${PRICE_OUT}/M out: about $${estUsd.toFixed(2)} (worst case; real output is usually far below the cap).`);
+  console.log(`Model: ${process.env.TASTEMAKE_AI_MODEL || "(TASTEMAKE_AI_MODEL not set)"}; key ${process.env.ANTHROPIC_API_KEY ? "present" : "absent"}.`);
+  const first = dryRunPlan[0];
+  if (first) console.log(`\nFirst prompt (${first.fixture}), truncated:\n${first.prompt.slice(0, 1200)}\n...`);
+  console.log("\nNo call was made. Re-run with --producer live --yes to spend.");
 }
 
 // ---- report ----
@@ -129,5 +180,6 @@ console.log(`${producer.label}: ${hardFails.length ? `${hardFails.length} rule c
 hardFails.forEach((f) => console.log(`  x ${f.fixture}: ${f.name} (${f.detail})`));
 quality.forEach((f) => console.log(`  - finding ${f.fixture}: ${f.name} (${f.detail})`));
 missed.forEach((m) => console.log(`  x validator missed: ${m.fixture} / ${m.name} (${m.reasons.join("; ") || "accepted"})`));
+if (spend.calls) console.log(`paid calls: ${spend.calls}; tokens in ${spend.inputTokens}, out ${spend.outputTokens}; estimated cost $${spend.usd.toFixed(3)}`);
 console.log(`report: scripts/evals/reports/${producerName}-latest.md`);
 process.exit(hardFails.length || missed.length ? 1 : 0);

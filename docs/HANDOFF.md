@@ -1,5 +1,12 @@
 # Handoff: Tastemake live AI producer
 
+## Fixes and tests added on `live-producer-preview` (Sept 22, after the rollout)
+
+- **The deterministic fallback is the product's own picks again.** `api/recommendations.mjs` used to run the baseline through `validatePicks`, whose grounding rules exist to judge *model* output; a legitimate pick whose pattern cannot cite anything the user has tried was dropped. A cold-start request returned 4 picks where the app shows 5. Fixed: the fallback is `nextRecommendations(state)` as-is, and the model's output is still fully validated.
+- **The live-AI status banner no longer borrows the end-of-demo style.** It used `is-finished`, so two "finished" banners could stack and the end-of-demo message was no longer the first match. It now has `is-fallback` / `is-live`. Flow QA is back to 222/222 in all four looks.
+- **`scripts/qa/api-tests.mjs` (new, free, no network):** 49 checks over the endpoint with a fake model. Covers every gate reason, production needing its own approval, the fallback being unfiltered, valid model answers, and refusals (invented ids, missing or invented citations, intent cited as taste, circular reasons, identity claims, duplicates, too few picks, non-JSON, a pattern the user rejected), transport timeout / error / non-200, that the prompt carries no secrets, and the handler's 405 / 400 / 413 / 429 / no-store behavior.
+- **`--producer live` is wired**, with `--dry-run` (prints the prompts and a cost estimate, makes no call) and a `--yes` requirement before any spend.
+
 ## Purpose
 
 This handoff is for Claude Code to resume Tastemake without reopening the prior ChatGPT thread. Continue from the newly promoted live-AI foundation, verify the production deployment state, and complete the first controlled Anthropic-backed recommendation test without reopening settled architecture decisions.

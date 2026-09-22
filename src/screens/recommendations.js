@@ -186,7 +186,7 @@ function renderAiStatus() {
   }
   if (!state.aiMessage) return "";
   return `
-    <div class="refresh-banner ${state.aiSource === "deterministic" ? "is-finished" : ""}">
+    <div class="refresh-banner ${state.aiSource === "deterministic" ? "is-fallback" : "is-live"}">
       <div>
         <span class="refresh-kicker">${state.aiSource === "model" ? "Live AI + product rules" : "Safe fallback"}</span>
         <strong>${state.aiSource === "model" ? "This set passed Tastemake's checks." : "The deterministic version took over."}</strong>

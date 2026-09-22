@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
-import * as baseline from "../src/ai/baseline.js";
 import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
+import { nextRecommendations } from "../src/model/taste.js";
 
 const MAX_BODY_BYTES = 160_000;
 const MAX_OUTPUT_TOKENS = 1200;
@@ -52,7 +52,7 @@ function underBestEffortRateLimit(ip, now = Date.now()) {
   return true;
 }
 
-function liveConfig(env = process.env) {
+export function liveConfig(env = process.env) {
   const reasons = [];
   if (env.TASTEMAKE_AI_ENABLED !== "1") reasons.push("off-switch");
   if (!env.ANTHROPIC_API_KEY) reasons.push("missing-key");
@@ -65,7 +65,7 @@ function liveConfig(env = process.env) {
   return { enabled: reasons.length === 0, reasons, model: env.TASTEMAKE_AI_MODEL || null };
 }
 
-function buildPickPrompt(ctx, count) {
+export function buildPickPrompt(ctx, count) {
   const safeContext = {
     evidence: ctx.evidence,
     candidates: ctx.candidates.map(({ id, title, type, domains, about, hypotheses }) => ({ id, title, type, domains, about, hypotheses })),
@@ -88,7 +88,7 @@ function parseModelJson(text) {
   return JSON.parse(cleaned);
 }
 
-async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch }) {
+export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Number(env.TASTEMAKE_AI_TIMEOUT_MS || REQUEST_TIMEOUT_MS));
   try {
@@ -125,28 +125,31 @@ function clientPicks(validated) {
   }));
 }
 
-function fallbackPayload(validatedBaseline, reason, meta = {}) {
+// The fallback is exactly what the app would show on its own. The grounding rules in validate.js exist to
+// judge MODEL output; running the product's own picks through them could drop a legitimate pick (for example
+// one whose pattern cannot cite anything this user has tried yet), so the fallback must not be filtered.
+function fallbackPayload(deterministicPicks, reason, meta = {}) {
   return {
     source: "deterministic",
     reason,
-    picks: clientPicks(validatedBaseline.accepted),
+    picks: deterministicPicks,
     meta: { ...meta, paidCallMade: meta.paidCallMade ?? false }
   };
 }
 
-async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch } = {}) {
+export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch } = {}) {
   const state = hydrateState(rawState);
   const ctx = buildContext(state);
-  const deterministic = validatePicks(baseline.explainPicks(state, ctx), ctx);
-  if (!deterministic.accepted.length) return fallbackPayload(deterministic, "no eligible deterministic picks remain");
+  const deterministic = nextRecommendations(state);
+  if (!deterministic.length) return fallbackPayload(deterministic, "no eligible deterministic picks remain");
 
   const config = liveConfig(env);
   if (!config.enabled) return fallbackPayload(deterministic, "live AI is not enabled");
 
   try {
-    const model = await callAnthropic({ prompt: buildPickPrompt(ctx, deterministic.accepted.length), env, fetchImpl });
+    const model = await callAnthropic({ prompt: buildPickPrompt(ctx, deterministic.length), env, fetchImpl });
     const validated = validatePicks(model.json, ctx);
-    const result = acceptOrFallback(validated, deterministic.accepted, { minAccepted: deterministic.accepted.length });
+    const result = acceptOrFallback(validated, deterministic, { minAccepted: deterministic.length });
     if (result.source !== "model") {
       return fallbackPayload(deterministic, result.reason || "model output did not pass validation", {
         model: model.model,

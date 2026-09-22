@@ -52,9 +52,13 @@
 .refresh-banner p { margin:0; color:#465078; font-size:13px; }
 .refresh-kicker { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#5a6a1c; }
 .refresh-banner.is-finished { background:var(--cyan-soft); align-items:stretch; }
+/* Where the last set came from. Not an end state: the demo may still have picks left. */
+.refresh-banner.is-fallback { background:var(--tint-warm,#fff9e6); }
+.refresh-banner.is-live { background:var(--tint-lime,#efffc2); }
 .refresh-banner > div:first-child { flex:1 1 320px; min-width:0; }
 .refresh-banner .action-group { flex:0 1 auto; justify-content:flex-end; }
 .refresh-banner.is-finished .action-group { min-width:0; }
+.refresh-banner.is-fallback .action-group,.refresh-banner.is-live .action-group { min-width:0; }
 /* The banner shares its row with text, so its buttons may wrap (the footer's single row may not). */
 .refresh-banner .recommendation-footer-actions { flex-wrap:wrap; }
 .refresh-banner .recommendation-footer-actions .button { flex:0 1 auto; }

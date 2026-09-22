@@ -883,8 +883,8 @@
         {
           "kind": "quality",
           "name": "all proposals valid",
-          "pass": true,
-          "detail": "4 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+          "pass": false,
+          "detail": "4 hypotheses kept, 0 rejected; 4 picks kept, 1 rejected"
         },
         {
           "kind": "rule",
@@ -994,16 +994,6 @@
             "ev:barry",
             "ev:wwdits",
             "ev:alanwake2"
-          ]
-        },
-        {
-          "itemId": "lighthouse",
-          "kind": "pick",
-          "cites": [
-            "ev:eeaao",
-            "ev:barry",
-            "ev:wwdits",
-            "ev:buffy"
           ]
         },
         {

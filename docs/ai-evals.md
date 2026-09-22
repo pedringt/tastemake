@@ -5,9 +5,21 @@ Quality is judged by evals, not by vibes, every time a model, prompt or context 
 ## Run it
 
 ```
-node scripts/evals/run.mjs                    # deterministic baseline: free, no model, runs anywhere with Node
-node scripts/evals/run.mjs --producer live    # a live model (not wired yet; will state call count and cost first)
+node scripts/evals/run.mjs                              # deterministic baseline: free, no model
+node scripts/evals/run.mjs --producer live --dry-run    # exact prompts + cost estimate, makes no call
+node scripts/evals/run.mjs --producer live --yes        # PAID: one call per fixture
+node scripts/qa/api-tests.mjs                           # the live endpoint, with a fake model: free
 ```
+
+The live producer uses the **same prompt builder and transport as the production endpoint**
+(`api/recommendations.mjs`), so the eval measures what production would actually send. A live run needs
+`ANTHROPIC_API_KEY` and `TASTEMAKE_AI_MODEL` in the environment **and** `--yes`; without both it refuses and
+explains why. Hypothesis inference is not a live job yet (v1 is picks only), so the profile side of a live
+report still comes from the baseline.
+
+Dry run as of Sept 22, 2026: 10 calls, about 23,400 input tokens, output capped at 12,000, worst case about
+**$0.25** at $3/M in and $15/M out (real output is usually far below the cap; the two synthetic scale
+fixtures are over half the input). Override the prices with `TASTEMAKE_AI_PRICE_IN` / `TASTEMAKE_AI_PRICE_OUT`.
 
 It writes `scripts/evals/reports/<producer>-latest.md` (for product review) and `.json` (for comparing runs). Exit code 1 means a **rule** failed or the validator let a deliberately bad answer through.
 
