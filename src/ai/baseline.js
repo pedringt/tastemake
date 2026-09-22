@@ -23,6 +23,7 @@ export function inferHypotheses(state) {
   const proposals = [];
   for (const pattern of hypotheses) {
     const rec = hypothesisRecord(state, pattern);
+    if (rec.excluded) continue;   // the user said this pattern is not them
     const starterRefs = startersNamedIn(pattern, state).map((f) => `ev:${f.id}`);
     const evidence = [...new Set([...starterRefs, ...rec.evidence])];
     if (!evidence.length) continue;   // nothing of this user's backs it: say nothing rather than invent

@@ -14,7 +14,7 @@
 
 **Deliverable when the foundation is ready:** a short handoff answering: what the model now does; what remains deterministic; what data structures changed; how failures fall back; how to run the evals.
 
-Tastemake is deterministic and front-end only ("Prototype - no live AI"). This is what has to be true before a live model is added, in the order it should happen. Status is as of Sept 21, 2026.
+Tastemake is deterministic and front-end only ("Prototype - no live AI"). This is what has to be true before a live model is added, in the order it should happen. Status is as of Sept 22, 2026.
 
 Guiding idea: **add the model behind rules that already exist and are already tested, and measure it against the deterministic version.** The deterministic app is the baseline and the fallback, not throwaway code.
 
@@ -24,7 +24,7 @@ Guiding idea: **add the model behind rules that already exist and are already te
 |---|---|---|
 | 1 | Evidence rules written down and tested (#27) | **Done**: `docs/evidence-contract.md`, model checks in `scripts/qa/model-rules.js` |
 | 2 | Confidence computed from evidence, inferred vs validated (#26) | **Done** (Sept 21): Emerging / Supported / Strong / Still learning / Less certain |
-| 3 | Decide how user corrections of a pattern work | **Decided (Sept 22): a separate user-confirmed authority, per the proposal below**; not built yet |
+| 3 | User corrections of a pattern | **Built** (Sept 22): Taste Profile controls, My Tastemake list, ranking factor, validator honors them |
 | 3b | Data model generalized: domain registry, item vs evidence vs interpretation, scope (#35) | **Done** (Sept 22) |
 | 4 | Authority boundary and output contract, with a validator and fallback (#31) | **Done** (Sept 22): `docs/ai-contract.md`, `src/ai/` |
 | 5 | Decide grounding (how real titles are guaranteed) | Options below |

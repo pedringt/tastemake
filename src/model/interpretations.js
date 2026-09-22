@@ -1,6 +1,7 @@
 import { hypotheses } from "../data/catalog.js";
 import { visibleDomains } from "../data/domains.js";
 import { patternConfidence, patternEvidence } from "./tastemap.js";
+import { statementFor } from "./statements.js";
 
 // Interpretations (#35, #31): what Tastemake thinks the user's evidence may mean. They are working
 // hypotheses, never facts about the user, and they are kept apart from evidence (evidence.js).
@@ -49,12 +50,17 @@ export function domainScope(evidence) {
 export function hypothesisRecord(state, pattern) {
   const evidence = patternEvidence(state, pattern);
   const { scope, crossDomain } = domainScope(evidence);
+  const said = statementFor(state, pattern.id);
   return {
     id: pattern.id,
     title: pattern.title,
     claim: pattern.claim,
     source: pattern.source ?? "starting-set",
-    authority: pattern.authority ?? "inferred",
+    // the user confirming it makes it user-confirmed; "not me" keeps it inferred but excluded
+    authority: said?.says === "accurate" ? "user-confirmed" : pattern.authority ?? "inferred",
+    userSays: said?.says ?? null,
+    userWeight: said?.weight ?? null,
+    excluded: said?.says === "not-me",
     evidence: evidence.supports.map(refOf),
     counter: evidence.against.map(refOf),
     heldUp: evidence.heldUp.map(refOf),

@@ -2,14 +2,39 @@ import { favorites, hypotheses } from "../data/catalog.js";
 import { state } from "../state.js";
 import { untriedReactionLean } from "../model/taste.js";
 import { confidenceOf } from "../model/tastemap.js";
+import { FIT, WEIGHT, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { renderTasteMap } from "./tastemap.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
 import { displayLabel } from "../data/domains.js";
 
+function sayButton(item, field, value, label, said) {
+  const pressed = said?.[field] === value;
+  return `<button type="button" class="button button-secondary signal-say-button" data-statement-pattern="${item.id}" data-statement-field="${field}" data-statement-value="${value}" aria-pressed="${pressed}">${label}</button>`;
+}
+
+// Pattern corrections: what the user says here is user-confirmed and outranks inference, but it is not taste
+// evidence, so it never changes the confidence level (see src/model/statements.js).
+function sayControls(item, said) {
+  return `
+    <div class="signal-say">
+      <div class="signal-say-group" role="group" aria-label="Is \u201c${item.title}\u201d you?">
+        <span class="signal-say-label">Is this you?</span>
+        ${sayButton(item, "says", "accurate", "Yes, accurate", said)}
+        ${sayButton(item, "says", "not-me", "Not really me", said)}
+      </div>
+      <div class="signal-say-group" role="group" aria-label="How much does \u201c${item.title}\u201d matter to you?">
+        <span class="signal-say-label">How much does it matter?</span>
+        ${sayButton(item, "weight", "lot", "A lot", said)}
+        ${sayButton(item, "weight", "little", "A little", said)}
+      </div>
+    </div>`;
+}
+
 function hypothesisCard(item, index) {
   const update = confidenceOf(state, item);
+  const said = statementFor(state, item.id);
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
     ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${spot.item.title}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
@@ -23,19 +48,23 @@ function hypothesisCard(item, index) {
         </div>`
     : "";
   return `
-    <article class="signal-row signal-row-${index + 1}">
+    <article class="signal-row signal-row-${index + 1}${said?.says === "not-me" ? " is-excluded" : ""}">
       <div class="signal-index">${String(index + 1).padStart(2, "0")}</div>
       <div class="signal-main">
         <div class="signal-title-row">
           <h3>${item.title}</h3>
           <span class="signal-badges">
             ${item.status === "conditional" ? `<span class="signal-flag" title="This pattern holds in some picks and not others.">Conditional</span>` : ""}
+            ${said?.says === "accurate" ? `<span class="signal-flag signal-confirmed">${FIT.accurate}</span>` : ""}
             <span class="signal-status ${update.status}">${update.level}</span>
           </span>
         </div>
         <p class="signal-claim">${item.claim}</p>
         <div class="signal-evidence"><span>starting evidence</span> ${item.evidence}</div>
         <div class="signal-provenance">${update.provenance}</div>
+        ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
+        ${said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
+        ${sayControls(item, said)}
         ${leanLine}
         ${blindLine}
       </div>

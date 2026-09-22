@@ -56,11 +56,22 @@ export function exonerated(state, feedback, patternId) {
   return !spot.hypotheses.some((id) => hypothesisMatches([patternId], id) || hypothesisMatches([id], patternId));
 }
 
+// What the user said about a pattern scales how much it steers ranking (see statements.js):
+// "not really me" = 0 (left out), "matters a lot" = 1.5, "matters a little" = 0.5. No statement = 1 (unchanged).
+function statementFactor(state, hypothesisId) {
+  const s = (state.patternStatements ?? []).find((x) => hypothesisMatches([x.hypothesisId], hypothesisId) || hypothesisMatches([hypothesisId], x.hypothesisId));
+  if (!s) return 1;
+  if (s.says === "not-me") return 0;
+  return s.weight === "lot" ? 1.5 : s.weight === "little" ? 0.5 : 1;
+}
+
 function hypothesisSignal(state, hypothesisId, feedbacks = Object.values(state.feedbackByRecommendation)) {
-  return feedbacks.reduce((sum, feedback) => {
+  const signal = feedbacks.reduce((sum, feedback) => {
     if (!hypothesisMatches(feedback.item.hypotheses, hypothesisId) || exonerated(state, feedback, hypothesisId)) return sum;
     return sum + recommendationDelta(feedback);
   }, 0);
+  const factor = statementFactor(state, hypothesisId);
+  return factor === 1 ? signal : signal * factor;
 }
 
 // The user said they actually tried it (the only reactions that count as taste evidence).

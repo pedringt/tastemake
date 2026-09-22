@@ -7,7 +7,7 @@ import { domainScope } from "../model/interpretations.js";
 //   evidence     evidenceRecords(state): the only refs that exist
 //   candidates   eligible pick items (not reacted to, area on, in the curated pool)
 //   curveball    whether a curveball pick is allowed
-//   statements   user-confirmed statements about patterns: [{ label or hypothesisId, says: "not-me" | ... }]
+//   statements   user-confirmed statements about patterns: [{ hypothesisId, label, says: "accurate" | "not-me" | null, weight }]
 //
 // Everything accepted is stamped by the product: authority "inferred", source "model", the contract version,
 // and a level capped at what the cited evidence allows. A model can never mark anything user-confirmed.

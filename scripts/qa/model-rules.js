@@ -17,6 +17,7 @@ export async function run() {
   const DOM = await import("/src/data/domains.js");
   const EV = await import("/src/model/evidence.js");
   const INT = await import("/src/model/interpretations.js");
+  const SAY = await import("/src/model/statements.js");
   const { favorites, recommendations, followUpPool, hypotheses } = catalog;
   const NEW = T;
   const TASTE = T;
@@ -534,6 +535,43 @@ export async function run() {
     const s4 = INT.domainScope({ supports: [row(["watch"])], against: [row(["play"]), row(["play"])], heldUp: [] });
     eq("a domain where it misses more than it lands is 'contradicted', not supported", `${s4.scope.contradicted.join()}|${s4.scope.supported.join()}|${s4.crossDomain}`, "play|watch|untested");
     eq("domains with nothing either way are 'untested'", s4.scope.untested.join(), "read");
+  });
+
+
+  // ---- Pattern corrections: user-confirmed statements outrank inference, but are not taste evidence ----
+  suite("pattern corrections", (eq) => {
+    const mk = () => ({ selectedFavorites: new Set(favorites.filter((f) => f.selected).map((f) => f.id)), feedbackByRecommendation: {}, recommendationSets: [recommendations], libraryFavorites: new Set(), customItems: {}, blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(), patternStatements: [] });
+    const ids = (s) => T.nextRecommendations(s).map((p) => p.id).join();
+    const base = mk(); S.applySearchAction(base, recommendations[0], "loved"); S.applySearchAction(base, recommendations[1], "liked");
+    const h04 = hypotheses.find((h) => h.id === "H04");
+    const before = ids(base);
+    const levelBefore = M.patternConfidence(base, h04).level;
+    eq("no statements: ranking unchanged", ids({ ...base, patternStatements: [] }), before);
+    SAY.setStatement(base, "H04", "says", "accurate");
+    eq("'accurate' is recorded as user-confirmed", `${SAY.statementFor(base, "H04").authority}|${INT.hypothesisRecord(base, h04).authority}`, "user-confirmed|user-confirmed");
+    eq("'accurate' does not raise the confidence level", M.patternConfidence(base, h04).level, levelBefore);
+    eq("'accurate' alone does not change ranking", ids(base), before);
+    SAY.setStatement(base, "H04", "says", "not-me");
+    eq("'not me' replaces 'accurate' (one fit answer per pattern)", SAY.statementFor(base, "H04").says, "not-me");
+    eq("'not me' marks the interpretation excluded, and it is not user-confirmed", `${INT.hypothesisRecord(base, h04).excluded}|${INT.hypothesisRecord(base, h04).authority}`, "true|inferred");
+    eq("'not me' changes no evidence and no confidence", `${EV.evidenceRecords(base).length}|${M.patternConfidence(base, h04).level}`, `${EV.evidenceRecords(mk()).length + 2}|${levelBefore}`);
+    eq("statements never appear as evidence records", EV.evidenceRecords(base).some((r) => /^H\d/.test(r.itemId)), false);
+    SAY.setStatement(base, "H04", "says", "not-me");
+    eq("choosing the same answer again clears it", SAY.statementFor(base, "H04"), null);
+    eq("...and ranking is back to the original", ids(base), before);
+    SAY.setStatement(base, "H04", "weight", "little");
+    SAY.setStatement(base, "H04", "weight", "lot");
+    eq("weight is its own answer and can change", SAY.statementFor(base, "H04").weight, "lot");
+    SAY.clearStatement(base, "H04");
+    eq("clearStatement removes it", SAY.activeStatements(base).length, 0);
+    const excluded = mk(); S.applySearchAction(excluded, recommendations[0], "loved");
+    const withoutStatement = ids(excluded);
+    SAY.setStatement(excluded, "H04", "says", "not-me");
+    eq("'not me' on a pattern changes what gets ranked when that pattern was steering", ids(excluded) !== withoutStatement || T.nextRecommendations(excluded).length === 0, true);
+    eq("an unknown pattern id is ignored", SAY.setStatement(mk(), "H99", "says", "accurate"), null);
+    ST.state.patternStatements = [{ hypothesisId: "H04", label: "x", says: "not-me", weight: null, authority: "user-confirmed" }];
+    ST.resetState();
+    eq("Start over clears statements", ST.state.patternStatements.length, 0);
   });
 
   return { passed: total - failures.length, failed: failures.length, total, failures: failures.length ? failures : undefined };

@@ -2,6 +2,26 @@
 
 Last updated: September 20, 2026
 
+## Next chat: start here (Sept 22, 2026)
+
+**North star:** Tastemake helps people understand the patterns in what they're drawn to across different parts of their life, without assuming they have one single aesthetic, then uses that understanding to find and test more things that might fit.
+
+**Where things are**
+- `main` = production (https://tastemake.vercel.app), at `1267ce4`. Untouched since the PR #5 merge.
+- Branch **`pre-ai-foundations`** (local in `~/code/tastemake`, **not pushed, no PR**) holds the live-AI foundation: #26 confidence, #27 evidence contract, #35 data model, #31 contract + validator, #32 evals, and pattern corrections. Pushing it (and a PR to `main`) needs Paige's go-ahead; every push is a Vercel build (free plan, shared with State).
+- Read together before touching live AI: `docs/ai-readiness.md` (status and order), `docs/ai-contract.md` (#31), `docs/ai-evals.md` (#32), `docs/evidence-contract.md`. Issues #31, #32, #35 are the core package; #30 (framing copy), #33 ("Why this one?" as a hypothesis test) and #34 (EEAAO artwork title collision) are open and smaller.
+
+**The five handoff questions, as of now (no model is live yet)**
+1. *What the model does:* nothing yet. The contract defines two jobs for it: infer working taste hypotheses from typed evidence, and choose/explain picks from eligible candidates, citing evidence.
+2. *What stays deterministic:* everything that decides evidence and state: what counts as taste vs intent, confidence thresholds, eligibility (seen, reacted, areas), user corrections, ranking (unchanged, parity 30,000/30,000), persistence.
+3. *Data structures that changed:* domain registry (`src/data/domains.js`); items have `type` + `domains` + optional `displayLabel` (no `medium`); `src/model/evidence.js` (generic kinds, one weight table, `evidenceRecords` with `ev:<id>` refs); `src/model/interpretations.js` (hypotheses with evidence refs, scope, cross-domain status, authority); `state.patternStatements` (`src/model/statements.js`).
+4. *How failures fall back:* `src/ai/validate.js` rejects bad proposals and lowers overconfidence; `acceptOrFallback` returns the deterministic answer (`src/ai/baseline.js`) on error, timeout or too little valid output.
+5. *How to run the evals:* `node scripts/evals/run.mjs` (free, deterministic baseline). App QA: `scripts/qa/headless.sh model|flow|layout|a11y <widths>`, with `LOOK=` for other looks.
+
+**Next step (not started):** the live producer. A Vercel serverless function (decided: Anthropic API) that holds the key, builds `buildContext(state)`, asks for the contract's JSON, runs `validate*` server-side and falls back. Needs: rate limit, daily spend cap, off switch, loading/error states in the UI, a privacy note, the header label change, and wiring `--producer live` in the eval runner. **Before any paid call: dry-run, state the call count and estimated cost, and get Paige's explicit yes.**
+
+**Standing rules (Paige):** AI interprets, the product owns evidence and state; interest is not experience; user-confirmed outranks inference; cross-domain links start as hypotheses; output structured and traceable; evals alongside, not after; make future domains possible, don't ship them; don't touch `main` without an explicit "main"/production.
+
 ## Start here
 
 - Repository: `pedringt/tastemake`
@@ -68,8 +88,8 @@ The Sept 20 batch is deployed. Vercel (Hobby plan, shared with the State project
 Run them all with `scripts/qa/headless.sh` (headless Chrome, no install, no build; exit code 1 on any failure):
 
 ```
-scripts/qa/headless.sh model                       # 226 model checks
-scripts/qa/headless.sh flow   1440 1024 768 390    # 215-check click-through at each width
+scripts/qa/headless.sh model                       # 241 model checks
+scripts/qa/headless.sh flow   1440 1024 768 390    # 222-check click-through at each width
 scripts/qa/headless.sh layout 1440 1024 768 390    # overlap / sideways-scroll / contrast checks at each width
 LOOK=collage scripts/qa/headless.sh flow 1440      # any look: editorial (default) | collage | analog | graphic
 scripts/qa/headless.sh a11y   1440 390             # accessibility audit (see below)
@@ -85,7 +105,7 @@ Three browser-side scripts (no dependencies; usage in each file header) live in 
 
 - `layout-check.js` — per page (Favorites, Recommendations, Taste Profile, Library) at the current width, ignoring anything inside a collapsed `<details>`: header parts overlapping or running off the page, Taste Map cards overlapping or leaving the map, stickers touching text/cards, Favorites titles colliding with their tile's top row, text hidden behind buttons, sideways scroll. Run at 1440, 1024 and 768 after any layout or sticker change.
 - `model-rules.js` — the evidence, Library and Search rules checked directly against `src/model/*` (137 checks). Note: ranking parity against the *original* two-round code was verified once in a scratch Node harness (30,000 random reaction sets) and is not committed.
-- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, the Library, Search, Blind Spots, the Taste Map, focus/announcement behavior, and Looks (the picker, first visit, and every screen in every look) and My Tastemake (215 checks).
+- `bookmark-flow.js` — drives the real UI (with real keyboard focus) through Bookmark, Keep discovering, the chip sets, the taste-evidence rule, the Taste Profile lean, the Library, Search, Blind Spots, the Taste Map, focus/announcement behavior, and Looks (the picker, first visit, and every screen in every look) and My Tastemake (222 checks).
 
 Headless Chrome will not go below a 500px layout width; to test real phone widths load the page in a narrower iframe.
 
@@ -178,6 +198,10 @@ A header person-icon button opens **My Tastemake** (route `/my-tastemake`, `src/
 - **Contract** (`docs/ai-contract.md`, `src/ai/`): the model only proposes; `validate.js` is the product's gate. It rejects invented citations, intent used as taste, dislikes cited as support, identity and genre-only claims, cross-domain overreach, invented contexts, invented or ineligible picks, circular reasons; it **lowers** overconfident levels to the product's thresholds (the same as the Taste Profile); it honors user-confirmed "not me" statements. Accepted output is stamped `inferred` / `model`. On error or too little valid output, `acceptOrFallback` uses the deterministic answer (`src/ai/baseline.js`).
 - **Evals** (`docs/ai-evals.md`): `node scripts/evals/run.mjs` runs 10 fixtures (cold start, ~10, intent-heavy, single and recurring miss, cross-domain, "not me", synthetic 50 and 100) through the validator and scorers, plus a self-test of 37 deliberately bad answers. Baseline: all rules pass, 37/37 caught. Findings: the fixed starting set can only cite the user's own favorites for 3 of 5 patterns, and 4 of 5 cold-start picks can't be grounded.
 - `src/package.json` (`"type": "module"`) lets Node load the model code; the browser is unaffected.
+
+## Pattern corrections, built
+
+Each Taste Profile card asks "Is this you?" (Yes, accurate / Not really me) and "How much does it matter?" (A lot / A little). Choosing again clears it. "Not really me" leaves the pattern out of ranking (weight 0) and out of anything a model may use, but keeps it visible with a note; "a lot / a little" is x1.5 / x0.5 in ranking; "accurate" shows "You confirmed this" and makes the interpretation user-confirmed. **None changes evidence or confidence.** Listed and removable in My Tastemake; cleared by Start over. With no statements, ranking is identical.
 
 ## What to do next
 

@@ -16,6 +16,8 @@ function fresh() {
     customItems: {},
     // Taste Blind Spot (#20): confirmed spots by item id, wizard drafts in progress, and "not now" dismissals.
     blindSpots: {},
+    // What the user said about a pattern (user-confirmed; outranks inference; not taste evidence). See statements.js.
+    patternStatements: [],
     blindSpotDrafts: {},
     blindSpotDismissed: new Set(),
     // Taste Profile view (#21): the list, or the map with an optional selected pattern / evidence pick.

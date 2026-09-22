@@ -490,6 +490,26 @@ export async function run() {
   check("cold start: every pattern is Emerging, none Strong or Supported", coldStart.chips?.length === catalog.hypotheses.length && coldStart.chips.every((c) => c === "Emerging"), JSON.stringify(coldStart));
   check("cold start: each says it is a starting pattern that nothing has tested", coldStart.lines?.every((l) => /starting pattern/.test(l) && /Nothing you've tried/.test(l)), JSON.stringify(coldStart.lines));
 
+
+  // ---- Pattern corrections on the Taste Profile (user-confirmed; not taste evidence) ----
+  await act('.step[data-step-jump="model"]');
+  const firstId = catalog.hypotheses[0].id;
+  const firstTitle = catalog.hypotheses[0].title;
+  const levelBeforeSay = $(".signal-row .signal-status")?.textContent.trim();
+  const sayNotMe = `[data-statement-pattern="${firstId}"][data-statement-field="says"][data-statement-value="not-me"]`;
+  check("each pattern card asks 'Is this you?' and 'How much does it matter?'", $$(".signal-say").length === catalog.hypotheses.length && $$(".signal-say-group[role=group]").length === catalog.hypotheses.length * 2);
+  await act(sayNotMe);
+  check("'Not really me' is saved, pressed, keeps focus and is announced", state.patternStatements.some((s) => s.hypothesisId === firstId && s.says === "not-me") &&
+    $(sayNotMe)?.getAttribute("aria-pressed") === "true" && document.activeElement === $(sayNotMe) && live().includes(firstTitle), live());
+  check("the card says it's left out of picks, and the pattern stays visible", /leaves it out of what it picks/.test($(".signal-row")?.textContent || "") && $(".signal-row")?.classList.contains("is-excluded"));
+  check("saying 'not me' does not change the confidence level", $(".signal-row .signal-status")?.textContent.trim() === levelBeforeSay);
+  await act("#open-mine");
+  check("My Tastemake lists what you said", $$("[data-mine-said]").length === 1 && /isn't you/.test($("[data-mine-said]")?.textContent || ""));
+  await act(`[data-mine-said-remove="${firstId}"]`);
+  check("...and Remove clears it", state.patternStatements.length === 0 && $$("[data-mine-said]").length === 0 && /removed/.test(live()), live());
+  await act('.step[data-step-jump="model"]');
+  check("after removing, the card is back to normal", !$(".signal-row")?.classList.contains("is-excluded"));
+
   // ---- Start over (last: it clears everything) ----
   await act("#open-mine");
   await act('[data-mine-reset="arm"]');
@@ -501,8 +521,8 @@ export async function run() {
   await act('[data-mine-reset="arm"]');
   const lookKept = state.look;
   await act('[data-mine-reset="confirm"]');
-  check("Yes, clear everything empties reactions, bookmarks, custom items and blind spots",
-    Object.keys(state.feedbackByRecommendation).length === 0 && Object.keys(state.customItems).length === 0 && Object.keys(state.blindSpots).length === 0 && state.libraryFavorites.size === 0);
+  check("Yes, clear everything empties reactions, bookmarks, custom items, blind spots and statements",
+    Object.keys(state.feedbackByRecommendation).length === 0 && Object.keys(state.customItems).length === 0 && Object.keys(state.blindSpots).length === 0 && state.libraryFavorites.size === 0 && state.patternStatements.length === 0);
   check("...restores the starter favorites and default settings", state.selectedFavorites.size === catalog.favorites.filter((f) => f.selected).length && state.areas.play === true && state.curveball === true);
   check("...keeps your look", state.look === lookKept && document.documentElement.dataset.look === lookKept);
   check("...goes back to Favorites and announces it", state.screen === "favorites" && /Started over/.test(live()), `${state.screen} / ${live()}`);

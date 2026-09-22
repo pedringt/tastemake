@@ -4,6 +4,7 @@ import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filt
 import { blindSpotsFor } from "../model/blindspots.js";
 import { confidenceOf, evidenceCount, lean, nodeLayout, patternEvidence, patternLinks, patternsOfItem, tensions, thinAreas } from "../model/tastemap.js";
 import { visibleDomains } from "../data/domains.js";
+import { statementFor } from "../model/statements.js";
 
 // Taste Map (#21): the Taste Profile as a picture you can poke at. Cards are Tastemake's guesses; the rows
 // under "What you've told it" are yours. Confidence and link strength come in coarse steps, never numbers.
@@ -108,7 +109,8 @@ export function renderTasteMap() {
     const notes = [
       tension.some((t) => t.patternId === pattern.id && t.kind === "mixed") ? "Mixed evidence" : "",
       blindSpotsFor(state, pattern.id).length ? "Blind spot" : "",
-      evidenceCount(evidence) === 0 ? "No reactions yet" : ""
+      evidenceCount(evidence) === 0 ? "No reactions yet" : "",
+      statementFor(state, pattern.id)?.says === "not-me" ? "You said: not you" : statementFor(state, pattern.id)?.says === "accurate" ? "You confirmed this" : ""
     ].filter(Boolean);
     return `
       <button type="button" class="taste-map-node look-${update.look} ${state.mapPattern === pattern.id ? "is-selected" : ""} ${itemPatterns.has(pattern.id) ? "is-linked" : ""}"

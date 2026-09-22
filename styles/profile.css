@@ -135,6 +135,13 @@
 .signal-status.revision { background:var(--tint-red,#ffd9d5); }
 .signal-badges { display:flex; flex:0 0 auto; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
 .signal-flag { padding:4px 8px; border:1.5px dashed var(--navy); border-radius:999px; color:var(--navy); font-size:10px; font-weight:700; text-transform:uppercase; }
+.signal-say { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; }
+.signal-say-group { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.signal-say-label { color:var(--muted); font-size:12px; font-weight:700; }
+.signal-say-button { min-height:32px; min-width:0; padding:4px 10px; font-size:12px; box-shadow:none; }
+.signal-say-button[aria-pressed="true"] { background:var(--navy); color:#fff; }
+.signal-said { margin-top:8px; padding:6px 10px; border-left:3px solid var(--navy); background:var(--tint-warm,#fff9e6); font-size:13px; color:var(--text2,#3f4774); }
+.signal-row.is-excluded .signal-claim, .signal-row.is-excluded h3 { opacity:.6; }
 .signal-provenance { margin-top:6px; font-size:13px; line-height:1.4; color:var(--text2,#3f4774); }
 .profile-legend { margin-top:10px; max-width:640px; font-size:14px; }
 .profile-legend summary { min-height:28px; display:flex; align-items:center; cursor:pointer; color:var(--navy); font-weight:700; }

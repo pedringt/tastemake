@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { AREAS } from "../model/taste.js";
 import { toldItems } from "../model/mine.js";
 import { reasonLabel } from "../model/blindspots.js";
+import { FIT, WEIGHT, activeStatements } from "../model/statements.js";
 import { displayLabel } from "../data/domains.js";
 
 // My Tastemake (#8, phase 1): what you've told Tastemake, which areas it may use, how picks are put together,
@@ -82,6 +83,27 @@ function blindSpotList(spots) {
     </section>`;
 }
 
+function statementList() {
+  const said = activeStatements(state);
+  if (!said.length) return "";
+  return `
+    <section class="mine-group" aria-labelledby="mine-said">
+      <h3 id="mine-said">What you've said about patterns <span class="mine-count">${said.length}</span></h3>
+      <p class="mine-blurb">These come from you, so they outrank anything Tastemake guessed. They change what it picks, not how sure it is about a pattern.</p>
+      <ul class="mine-list">
+        ${said.map((s) => `
+          <li class="mine-row" data-mine-said="${s.hypothesisId}">
+            <div class="mine-row-main">
+              <strong class="mine-title">${s.label}</strong>
+              <span class="mine-status">${[s.says ? FIT[s.says] : "", s.weight ? WEIGHT[s.weight] : ""].filter(Boolean).join(" \u00b7 ")}</span>
+              <span class="mine-source">Said on the Taste Profile</span>
+            </div>
+            <div class="mine-actions"><button class="button button-secondary mine-action mine-remove" type="button" data-mine-said-remove="${s.hypothesisId}">Remove</button></div>
+          </li>`).join("")}
+      </ul>
+    </section>`;
+}
+
 function areasBlock() {
   const onCount = AREAS.filter((area) => state.areas[area.id] !== false).length;
   return `
@@ -141,6 +163,7 @@ export function renderMine() {
           ${group("Counts as taste", "Starter favorites and things you have tried. These shape the Taste Profile.", told.counts, "Nothing here yet.")}
           ${group("Only steers what comes next", "Reactions to things you haven't tried, and bookmarks. These nudge which picks appear, but they are not taste.", told.steers, "Nothing here yet.")}
           ${blindSpotList(told.blindSpots)}
+          ${statementList()}
         </div>
         <aside class="mine-side">
           ${areasBlock()}

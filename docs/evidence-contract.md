@@ -15,6 +15,7 @@ Every action falls into exactly one class:
 | **Setting** | How Tastemake should behave (areas, curveball, look) | No | Only how sets are put together |
 | **Lookup** | Searching, browsing, opening something | No | No |
 | **Correction** | The user says which pattern failed for a pick (Blind Spot) | Re-assigns *which patterns* a miss counts against | Yes |
+| **User statement about a pattern** | "Accurate", "Not really me", "Matters a lot / a little" (user-confirmed) | No (not an experience) | Yes: weights or excludes the pattern in ranking |
 
 ## Where this lives in code (#35)
 
@@ -92,7 +93,7 @@ If a model ever chooses recommendations, writes explanations or proposes pattern
 4. Do not recommend anything the user already reacted to; respect areas that are off and the curveball setting.
 5. Cross-domain links must be supported by evidence in both areas, not assumed.
 6. Confidence follows the table above; a model may not label a pattern stronger than the evidence allows.
-7. **Decided (Sept 22):** a user's explicit statement about a pattern ("not really me", "matters a lot", "accurate") is its own authority, **user-confirmed**, which outranks model inference. It is not taste evidence (it is not an experience of anything) and never raises a confidence level. A model must treat it as a hard constraint. Not built yet; see `docs/ai-readiness.md`, section 3.
+7. **Decided (Sept 22):** a user's explicit statement about a pattern ("not really me", "matters a lot", "accurate") is its own authority, **user-confirmed**, which outranks model inference. It is not taste evidence (it is not an experience of anything) and never raises a confidence level. A model must treat it as a hard constraint. Built (Sept 22): `src/model/statements.js`. "Not really me" sets that pattern's ranking weight to 0 and excludes it from what a model may use; "matters a lot / a little" is x1.5 / x0.5; "accurate" marks it user-confirmed. None of them changes evidence or confidence.
 
 ## Open
 - Whether a fixed starting set of patterns stays once a model can infer them from a real user's favorites.

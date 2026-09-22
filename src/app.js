@@ -8,6 +8,7 @@ import { renderBookmarks } from "./screens/bookmarks.js";
 import { renderLibrary } from "./screens/library.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderMine } from "./screens/mine.js";
+import { clearStatement, setStatement } from "./model/statements.js";
 import { applySearchAction } from "./model/search.js";
 import { AREAS } from "./model/taste.js";
 import { isLook, lookLabel } from "./data/looks.js";
@@ -100,6 +101,7 @@ function openMine() {
 function mineRemoveFocusAfter(rowEl) {
   const next = rowEl?.nextElementSibling ?? rowEl?.previousElementSibling;
   if (next?.dataset.mineId) return `[data-mine-id="${next.dataset.mineId}"] .mine-action`;
+  if (next?.dataset.mineSaid) return `[data-mine-said="${next.dataset.mineSaid}"] .mine-action`;
   if (next?.dataset.mineBlind) return `[data-mine-blind="${next.dataset.mineBlind}"] .mine-action`;
   return null;
 }
@@ -121,6 +123,15 @@ app.addEventListener("click", (event) => {
     updateStepper();
     restoreFocus(selector);
     announce(message);
+    return;
+  }
+
+  if (button.dataset.mineSaidRemove) {
+    const selector = mineRemoveFocusAfter(button.closest(".mine-row"));
+    const message = clearStatement(state, button.dataset.mineSaidRemove);
+    render();
+    restoreFocus(selector);
+    if (message) announce(message);
     return;
   }
 
@@ -205,6 +216,8 @@ function focusSelectorFor(el) {
   if (d.mineItem && d.mineAction) return `[data-mine-item="${d.mineItem}"][data-mine-action="${d.mineAction}"]`;
   if (d.mineBlindRemove) return `[data-mine-blind-remove="${d.mineBlindRemove}"]`;
   if (d.mineReset) return `[data-mine-reset="${d.mineReset === "arm" ? "cancel" : "arm"}"]`;
+  if (d.statementPattern) return `[data-statement-pattern="${d.statementPattern}"][data-statement-field="${d.statementField}"][data-statement-value="${d.statementValue}"]`;
+  if (d.mineSaidRemove) return null;
   if (d.profileView) return `[data-profile-view="${d.profileView}"]`;
   if (d.mapPattern) return `[data-map-pattern="${d.mapPattern}"]`;
   if (d.mapItem) return `[data-map-item="${d.mapItem}"]`;
@@ -430,6 +443,17 @@ app.addEventListener("click", (event) => {
     if (scope === "map") state.mapFilter = filter.dataset.domainFilter;
     render();
     restoreFocus(focusSelector);
+    return;
+  }
+
+  const sayButton = event.target.closest("[data-statement-pattern]");
+  if (sayButton) {
+    const { statementPattern, statementField, statementValue } = sayButton.dataset;
+    const message = setStatement(state, statementPattern, statementField, statementValue);
+    if (!message) return;
+    render();
+    restoreFocus(focusSelector);
+    announce(message);
     return;
   }
 
