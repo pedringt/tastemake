@@ -1,0 +1,39 @@
+name: test
+
+# The required automated gate (#41). Runs on every push and PR: the three no-browser suites
+# (endpoint contract, escaping, async request state), one look's model/flow/layout/a11y checks,
+# and the free deterministic eval. No dependencies to install (this project has none), no build
+# step, and no model call — this workflow never spends money.
+#
+# The full multi-look, multi-width sweep (`npm run test:full`) and the paid live-model eval
+# (`npm run test:eval:endpoint`) are NOT run here; they stay manual (see docs/ai-evals.md and
+# docs/HANDOFF.md).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Chrome (for the headless browser suites)
+        uses: browser-actions/setup-chrome@v1
+        id: chrome
+
+      - name: npm test
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: npm test
