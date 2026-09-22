@@ -173,6 +173,12 @@ A header person-icon button opens **My Tastemake** (route `/my-tastemake`, `src/
 - **No behaviour change:** ranking parity with the original code 30,000/30,000; every page except the (intentionally changed) Taste Profile is pixel-identical in Collage.
 - Found and fixed while testing: `areaOn` would have offered an item from a future, invisible domain.
 
+## Live-AI contract and evals (#31, #32), built (no model yet)
+
+- **Contract** (`docs/ai-contract.md`, `src/ai/`): the model only proposes; `validate.js` is the product's gate. It rejects invented citations, intent used as taste, dislikes cited as support, identity and genre-only claims, cross-domain overreach, invented contexts, invented or ineligible picks, circular reasons; it **lowers** overconfident levels to the product's thresholds (the same as the Taste Profile); it honors user-confirmed "not me" statements. Accepted output is stamped `inferred` / `model`. On error or too little valid output, `acceptOrFallback` uses the deterministic answer (`src/ai/baseline.js`).
+- **Evals** (`docs/ai-evals.md`): `node scripts/evals/run.mjs` runs 10 fixtures (cold start, ~10, intent-heavy, single and recurring miss, cross-domain, "not me", synthetic 50 and 100) through the validator and scorers, plus a self-test of 37 deliberately bad answers. Baseline: all rules pass, 37/37 caught. Findings: the fixed starting set can only cite the user's own favorites for 3 of 5 patterns, and 4 of 5 cold-start picks can't be grounded.
+- `src/package.json` (`"type": "module"`) lets Node load the model code; the browser is unaffected.
+
 ## What to do next
 
 Closed on Sept 20 as built for the prototype: #12, #13, #20, #21, #22, #23, #24 (each has a comment listing what was deliberately left out).

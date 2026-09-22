@@ -1,0 +1,1871 @@
+{
+  "producer": "baseline",
+  "contract": "2026-09-22",
+  "fixtures": [
+    {
+      "id": "cold-4",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": false,
+          "detail": "1 hypotheses kept, 0 rejected; 1 picks kept, 4 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "rule",
+          "name": "no claim above \"emerging\"",
+          "pass": true,
+          "detail": "ok"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "rule",
+          "name": "cross-domain no further than \"untested\"",
+          "pass": true,
+          "detail": "ok"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "1 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe"
+          ],
+          "counter": []
+        }
+      ],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "vita-nostra",
+          "kind": "pick",
+          "cites": [
+            "ev:lotr",
+            "ev:circe"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "starter-6",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": false,
+          "detail": "3 hypotheses kept, 0 rejected; 4 picks kept, 1 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "rule",
+          "name": "no claim above \"emerging\"",
+          "pass": true,
+          "detail": "ok"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "rule",
+          "name": "cross-domain no further than \"untested\"",
+          "pass": true,
+          "detail": "ok"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 0%"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "3 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Discovery needs structure",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:alanwake2"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Tonal collision is often a plus",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:buffy"
+          ],
+          "counter": []
+        }
+      ],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "handmaiden",
+          "kind": "pick",
+          "cites": [
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "golden-idol",
+          "kind": "pick",
+          "cites": [
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "vita-nostra",
+          "kind": "pick",
+          "cites": [
+            "ev:lotr",
+            "ev:circe",
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "lighthouse",
+          "kind": "curveball",
+          "cites": [
+            "ev:buffy"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "about-10",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": true,
+          "detail": "5 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "rule",
+          "name": "only H04 may be Strong",
+          "pass": true,
+          "detail": "ok"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 0%"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "5 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Comedy works better when it has teeth",
+          "level": "strong",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits"
+          ],
+          "counter": [
+            "ev:fargo"
+          ]
+        },
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe",
+            "ev:wwdits"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Moral messiness is not a turnoff",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:barry",
+            "ev:wwdits"
+          ],
+          "counter": [
+            "ev:fargo"
+          ]
+        },
+        {
+          "label": "Discovery needs structure",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:alanwake2"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Tonal collision is often a plus",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:buffy",
+            "ev:eeaao",
+            "ev:barry"
+          ],
+          "counter": []
+        }
+      ],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "lighthouse",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "yellowjackets",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "dnd",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits",
+            "ev:lotr",
+            "ev:circe"
+          ]
+        },
+        {
+          "itemId": "handmaiden",
+          "kind": "pick",
+          "cites": [
+            "ev:barry",
+            "ev:wwdits",
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "vita-nostra",
+          "kind": "curveball",
+          "cites": [
+            "ev:wwdits",
+            "ev:lotr",
+            "ev:circe",
+            "ev:alanwake2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intent-heavy",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": true,
+          "detail": "3 hypotheses kept, 0 rejected; 2 picks kept, 0 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "rule",
+          "name": "no claim above \"emerging\"",
+          "pass": true,
+          "detail": "ok"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 0%"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "3 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Discovery needs structure",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:alanwake2"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Tonal collision is often a plus",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:buffy"
+          ],
+          "counter": []
+        }
+      ],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "dnd",
+          "kind": "pick",
+          "cites": [
+            "ev:lotr",
+            "ev:circe"
+          ]
+        },
+        {
+          "itemId": "yellowjackets",
+          "kind": "pick",
+          "cites": [
+            "ev:buffy"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "single-miss",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": true,
+          "detail": "5 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 0%"
+        },
+        {
+          "kind": "rule",
+          "name": "one miss does not rewrite the profile",
+          "pass": true,
+          "detail": "5 of 5 hypotheses kept after the miss"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "5 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Comedy works better when it has teeth",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:eeaao",
+            "ev:barry"
+          ],
+          "counter": [
+            "ev:wwdits"
+          ]
+        },
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe"
+          ],
+          "counter": [
+            "ev:wwdits"
+          ]
+        },
+        {
+          "label": "Moral messiness is not a turnoff",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:barry"
+          ],
+          "counter": [
+            "ev:wwdits"
+          ]
+        },
+        {
+          "label": "Discovery needs structure",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:alanwake2"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Tonal collision is often a plus",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:buffy",
+            "ev:eeaao",
+            "ev:barry"
+          ],
+          "counter": []
+        }
+      ],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "lighthouse",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "yellowjackets",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "fargo",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry"
+          ]
+        },
+        {
+          "itemId": "handmaiden",
+          "kind": "pick",
+          "cites": [
+            "ev:barry",
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "golden-idol",
+          "kind": "curveball",
+          "cites": [
+            "ev:alanwake2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "recurring-miss",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": true,
+          "detail": "4 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "rule",
+          "name": "no claim above \"supported\"",
+          "pass": true,
+          "detail": "ok"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 0%"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "4 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Comedy works better when it has teeth",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:eeaao"
+          ],
+          "counter": [
+            "ev:barry",
+            "ev:wwdits"
+          ]
+        },
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe"
+          ],
+          "counter": [
+            "ev:wwdits"
+          ]
+        },
+        {
+          "label": "Discovery needs structure",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:alanwake2"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Tonal collision is often a plus",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:buffy",
+            "ev:eeaao"
+          ],
+          "counter": [
+            "ev:barry"
+          ]
+        }
+      ],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "golden-idol",
+          "kind": "pick",
+          "cites": [
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "vita-nostra",
+          "kind": "pick",
+          "cites": [
+            "ev:lotr",
+            "ev:circe",
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "lighthouse",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "handmaiden",
+          "kind": "pick",
+          "cites": [
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "yellowjackets",
+          "kind": "curveball",
+          "cites": [
+            "ev:eeaao",
+            "ev:buffy"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cross-domain",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": true,
+          "detail": "5 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "rule",
+          "name": "cross-domain no further than \"tentative\"",
+          "pass": true,
+          "detail": "ok"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 0%"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "5 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Comedy works better when it has teeth",
+          "level": "supported",
+          "crossDomain": "tentative",
+          "evidence": [
+            "ev:eeaao",
+            "ev:disco"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Moral messiness is not a turnoff",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:disco"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Discovery needs structure",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:alanwake2"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Tonal collision is often a plus",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:buffy",
+            "ev:eeaao"
+          ],
+          "counter": []
+        }
+      ],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "fargo",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:disco"
+          ]
+        },
+        {
+          "itemId": "lighthouse",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:disco",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "yellowjackets",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:disco",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "dnd",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:disco",
+            "ev:lotr",
+            "ev:circe"
+          ]
+        },
+        {
+          "itemId": "handmaiden",
+          "kind": "curveball",
+          "cites": [
+            "ev:disco",
+            "ev:alanwake2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "user-said-not-me",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": false,
+          "detail": "4 hypotheses kept, 1 rejected; 5 picks kept, 0 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "rule",
+          "name": "respects what the user said (user-confirmed outranks inference)",
+          "pass": true,
+          "detail": "excluded pattern stayed out"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 0%"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "4 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe",
+            "ev:wwdits"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Moral messiness is not a turnoff",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:barry",
+            "ev:wwdits"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Discovery needs structure",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:alanwake2"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Tonal collision is often a plus",
+          "level": "supported",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:buffy",
+            "ev:eeaao",
+            "ev:barry"
+          ],
+          "counter": []
+        }
+      ],
+      "rejected": [
+        {
+          "label": "Comedy works better when it has teeth",
+          "reasons": [
+            "the user said this pattern is not them (user-confirmed outranks inference)"
+          ]
+        }
+      ],
+      "picks": [
+        {
+          "itemId": "fargo",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits"
+          ]
+        },
+        {
+          "itemId": "lighthouse",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "yellowjackets",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "dnd",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits",
+            "ev:lotr",
+            "ev:circe"
+          ]
+        },
+        {
+          "itemId": "handmaiden",
+          "kind": "curveball",
+          "cites": [
+            "ev:barry",
+            "ev:wwdits",
+            "ev:alanwake2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scale-50",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": true,
+          "detail": "5 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 0%"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "5 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Comedy works better when it has teeth",
+          "level": "strong",
+          "crossDomain": "supported",
+          "evidence": [
+            "ev:syn-2",
+            "ev:syn-31",
+            "ev:syn-34",
+            "ev:syn-36",
+            "ev:syn-41"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "emerging",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe",
+            "ev:syn-7",
+            "ev:syn-10",
+            "ev:syn-12",
+            "ev:syn-20",
+            "ev:syn-38"
+          ],
+          "counter": [
+            "ev:syn-1",
+            "ev:syn-9",
+            "ev:syn-22",
+            "ev:syn-35",
+            "ev:syn-43",
+            "ev:syn-48"
+          ]
+        },
+        {
+          "label": "Moral messiness is not a turnoff",
+          "level": "strong",
+          "crossDomain": "tentative",
+          "evidence": [
+            "ev:syn-5",
+            "ev:syn-13",
+            "ev:syn-18",
+            "ev:syn-26",
+            "ev:syn-47"
+          ],
+          "counter": []
+        },
+        {
+          "label": "Discovery needs structure",
+          "level": "strong",
+          "crossDomain": "tentative",
+          "evidence": [
+            "ev:alanwake2",
+            "ev:syn-0",
+            "ev:syn-4",
+            "ev:syn-15",
+            "ev:syn-23",
+            "ev:syn-44",
+            "ev:syn-46",
+            "ev:syn-49"
+          ],
+          "counter": [
+            "ev:syn-27"
+          ]
+        },
+        {
+          "label": "Tonal collision is often a plus",
+          "level": "supported",
+          "crossDomain": "tentative",
+          "evidence": [
+            "ev:buffy",
+            "ev:syn-25",
+            "ev:syn-28",
+            "ev:syn-33",
+            "ev:syn-39"
+          ],
+          "counter": [
+            "ev:syn-14",
+            "ev:syn-17",
+            "ev:syn-30"
+          ]
+        }
+      ],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "fargo",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-2",
+            "ev:syn-5",
+            "ev:syn-13",
+            "ev:syn-18",
+            "ev:syn-26",
+            "ev:syn-31",
+            "ev:syn-34",
+            "ev:syn-36",
+            "ev:syn-41",
+            "ev:syn-47"
+          ]
+        },
+        {
+          "itemId": "handmaiden",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-0",
+            "ev:syn-4",
+            "ev:syn-5",
+            "ev:syn-13",
+            "ev:syn-15",
+            "ev:syn-18",
+            "ev:syn-23",
+            "ev:syn-26",
+            "ev:syn-44",
+            "ev:syn-46",
+            "ev:syn-47",
+            "ev:syn-49",
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "lighthouse",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-2",
+            "ev:syn-25",
+            "ev:syn-28",
+            "ev:syn-31",
+            "ev:syn-33",
+            "ev:syn-34",
+            "ev:syn-36",
+            "ev:syn-39",
+            "ev:syn-41",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "yellowjackets",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-5",
+            "ev:syn-13",
+            "ev:syn-18",
+            "ev:syn-25",
+            "ev:syn-26",
+            "ev:syn-28",
+            "ev:syn-33",
+            "ev:syn-39",
+            "ev:syn-47",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "dnd",
+          "kind": "curveball",
+          "cites": [
+            "ev:syn-2",
+            "ev:syn-7",
+            "ev:syn-10",
+            "ev:syn-12",
+            "ev:syn-20",
+            "ev:syn-31",
+            "ev:syn-34",
+            "ev:syn-36",
+            "ev:syn-38",
+            "ev:syn-41",
+            "ev:lotr",
+            "ev:circe"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scale-100",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": true,
+          "detail": "5 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 0%"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "5 hypothesis(es) could cite this user's own evidence; fallback not needed"
+        }
+      ],
+      "hypotheses": [
+        {
+          "label": "Comedy works better when it has teeth",
+          "level": "strong",
+          "crossDomain": "supported",
+          "evidence": [
+            "ev:syn-4",
+            "ev:syn-7",
+            "ev:syn-15",
+            "ev:syn-31",
+            "ev:syn-46",
+            "ev:syn-47",
+            "ev:syn-54",
+            "ev:syn-57",
+            "ev:syn-59",
+            "ev:syn-83",
+            "ev:syn-88",
+            "ev:syn-89"
+          ],
+          "counter": [
+            "ev:syn-1",
+            "ev:syn-27",
+            "ev:syn-35",
+            "ev:syn-48",
+            "ev:syn-85"
+          ]
+        },
+        {
+          "label": "Fantasy lands when it feels adult",
+          "level": "strong",
+          "crossDomain": "supported",
+          "evidence": [
+            "ev:lotr",
+            "ev:circe",
+            "ev:syn-10",
+            "ev:syn-12",
+            "ev:syn-18",
+            "ev:syn-34",
+            "ev:syn-39",
+            "ev:syn-41",
+            "ev:syn-49",
+            "ev:syn-60",
+            "ev:syn-80",
+            "ev:syn-93",
+            "ev:syn-94",
+            "ev:syn-96",
+            "ev:syn-99"
+          ],
+          "counter": [
+            "ev:syn-9",
+            "ev:syn-43",
+            "ev:syn-69"
+          ]
+        },
+        {
+          "label": "Moral messiness is not a turnoff",
+          "level": "strong",
+          "crossDomain": "supported",
+          "evidence": [
+            "ev:syn-2",
+            "ev:syn-20",
+            "ev:syn-25",
+            "ev:syn-36",
+            "ev:syn-38",
+            "ev:syn-44",
+            "ev:syn-67",
+            "ev:syn-70",
+            "ev:syn-72",
+            "ev:syn-73",
+            "ev:syn-75",
+            "ev:syn-78",
+            "ev:syn-81"
+          ],
+          "counter": [
+            "ev:syn-22",
+            "ev:syn-61",
+            "ev:syn-77",
+            "ev:syn-82"
+          ]
+        },
+        {
+          "label": "Discovery needs structure",
+          "level": "strong",
+          "crossDomain": "untested",
+          "evidence": [
+            "ev:alanwake2",
+            "ev:syn-0",
+            "ev:syn-5",
+            "ev:syn-23",
+            "ev:syn-26",
+            "ev:syn-62",
+            "ev:syn-65",
+            "ev:syn-68",
+            "ev:syn-91"
+          ],
+          "counter": [
+            "ev:syn-17",
+            "ev:syn-30",
+            "ev:syn-51",
+            "ev:syn-56",
+            "ev:syn-90"
+          ]
+        },
+        {
+          "label": "Tonal collision is often a plus",
+          "level": "strong",
+          "crossDomain": "supported",
+          "evidence": [
+            "ev:buffy",
+            "ev:syn-13",
+            "ev:syn-28",
+            "ev:syn-33",
+            "ev:syn-52",
+            "ev:syn-86"
+          ],
+          "counter": [
+            "ev:syn-14",
+            "ev:syn-64",
+            "ev:syn-98"
+          ]
+        }
+      ],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "dnd",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-4",
+            "ev:syn-7",
+            "ev:syn-10",
+            "ev:syn-12",
+            "ev:syn-15",
+            "ev:syn-18",
+            "ev:syn-31",
+            "ev:syn-34",
+            "ev:syn-39",
+            "ev:syn-41",
+            "ev:syn-46",
+            "ev:syn-47",
+            "ev:syn-49",
+            "ev:syn-54",
+            "ev:syn-57",
+            "ev:syn-59",
+            "ev:syn-60",
+            "ev:syn-80",
+            "ev:syn-83",
+            "ev:syn-88",
+            "ev:syn-89",
+            "ev:syn-93",
+            "ev:syn-94",
+            "ev:syn-96",
+            "ev:syn-99",
+            "ev:lotr",
+            "ev:circe"
+          ]
+        },
+        {
+          "itemId": "fargo",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-2",
+            "ev:syn-4",
+            "ev:syn-7",
+            "ev:syn-15",
+            "ev:syn-20",
+            "ev:syn-25",
+            "ev:syn-31",
+            "ev:syn-36",
+            "ev:syn-38",
+            "ev:syn-44",
+            "ev:syn-46",
+            "ev:syn-47",
+            "ev:syn-54",
+            "ev:syn-57",
+            "ev:syn-59",
+            "ev:syn-67",
+            "ev:syn-70",
+            "ev:syn-72",
+            "ev:syn-73",
+            "ev:syn-75",
+            "ev:syn-78",
+            "ev:syn-81",
+            "ev:syn-83",
+            "ev:syn-88",
+            "ev:syn-89"
+          ]
+        },
+        {
+          "itemId": "vita-nostra",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-0",
+            "ev:syn-5",
+            "ev:syn-10",
+            "ev:syn-12",
+            "ev:syn-18",
+            "ev:syn-23",
+            "ev:syn-26",
+            "ev:syn-34",
+            "ev:syn-39",
+            "ev:syn-41",
+            "ev:syn-49",
+            "ev:syn-60",
+            "ev:syn-62",
+            "ev:syn-65",
+            "ev:syn-68",
+            "ev:syn-80",
+            "ev:syn-91",
+            "ev:syn-93",
+            "ev:syn-94",
+            "ev:syn-96",
+            "ev:syn-99",
+            "ev:lotr",
+            "ev:circe",
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "handmaiden",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-0",
+            "ev:syn-2",
+            "ev:syn-5",
+            "ev:syn-20",
+            "ev:syn-23",
+            "ev:syn-25",
+            "ev:syn-26",
+            "ev:syn-36",
+            "ev:syn-38",
+            "ev:syn-44",
+            "ev:syn-62",
+            "ev:syn-65",
+            "ev:syn-67",
+            "ev:syn-68",
+            "ev:syn-70",
+            "ev:syn-72",
+            "ev:syn-73",
+            "ev:syn-75",
+            "ev:syn-78",
+            "ev:syn-81",
+            "ev:syn-91",
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "lighthouse",
+          "kind": "curveball",
+          "cites": [
+            "ev:syn-4",
+            "ev:syn-7",
+            "ev:syn-13",
+            "ev:syn-15",
+            "ev:syn-28",
+            "ev:syn-31",
+            "ev:syn-33",
+            "ev:syn-46",
+            "ev:syn-47",
+            "ev:syn-52",
+            "ev:syn-54",
+            "ev:syn-57",
+            "ev:syn-59",
+            "ev:syn-83",
+            "ev:syn-86",
+            "ev:syn-88",
+            "ev:syn-89",
+            "ev:buffy"
+          ]
+        }
+      ]
+    }
+  ],
+  "selfTest": [
+    {
+      "fixture": "about-10",
+      "name": "cites evidence that does not exist",
+      "caught": true,
+      "reasons": [
+        "cites evidence that does not exist"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "no evidence at all",
+      "caught": true,
+      "reasons": [
+        "no supporting evidence cited"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "single-identity claim",
+      "caught": true,
+      "reasons": [
+        "states a single identity or aesthetic about the user"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "genre-only claim",
+      "caught": true,
+      "reasons": [
+        "genre-only or too generic to test"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "claims a domain with no evidence there",
+      "caught": true,
+      "reasons": [
+        "claims domains with no cited support: read, play"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "cross-domain overreach",
+      "caught": true,
+      "reasons": [
+        "cross-domain overreach: claimed supported, evidence shows untested"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "invents a context",
+      "caught": true,
+      "reasons": [
+        "invents a context the user never gave"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "malformed",
+      "caught": true,
+      "reasons": [
+        "claim missing",
+        "evidence not a list of evidence refs",
+        "counter not a list of evidence refs",
+        "domains not a list",
+        "crossDomain \"undefined\" not one of untested/tentative/supported",
+        "level \"undefined\" not one of emerging/supported/strong"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "cites a dislike as support",
+      "caught": true,
+      "reasons": [
+        "cites something the user disliked as support (contradicts explicit evidence)"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "invented title",
+      "caught": true,
+      "reasons": [
+        "not one of the eligible candidates (invented, already reacted to, or area off)"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "circular reason",
+      "caught": true,
+      "reasons": [
+        "circular reasoning"
+      ]
+    },
+    {
+      "fixture": "about-10",
+      "name": "pick with no citation",
+      "caught": true,
+      "reasons": [
+        "no evidence cited"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "cites evidence that does not exist",
+      "caught": true,
+      "reasons": [
+        "cites evidence that does not exist"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "no evidence at all",
+      "caught": true,
+      "reasons": [
+        "no supporting evidence cited"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "single-identity claim",
+      "caught": true,
+      "reasons": [
+        "states a single identity or aesthetic about the user"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "genre-only claim",
+      "caught": true,
+      "reasons": [
+        "genre-only or too generic to test"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "claims a domain with no evidence there",
+      "caught": true,
+      "reasons": [
+        "claims domains with no cited support: play"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "cross-domain overreach",
+      "caught": true,
+      "reasons": [
+        "cross-domain overreach: claimed supported, evidence shows tentative"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "invents a context",
+      "caught": true,
+      "reasons": [
+        "invents a context the user never gave"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "malformed",
+      "caught": true,
+      "reasons": [
+        "claim missing",
+        "evidence not a list of evidence refs",
+        "counter not a list of evidence refs",
+        "domains not a list",
+        "crossDomain \"undefined\" not one of untested/tentative/supported",
+        "level \"undefined\" not one of emerging/supported/strong"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "uses intent as taste",
+      "caught": true,
+      "reasons": [
+        "uses intent (bookmark / untried reaction / not interested) as taste evidence"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "invented title",
+      "caught": true,
+      "reasons": [
+        "not one of the eligible candidates (invented, already reacted to, or area off)"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "circular reason",
+      "caught": true,
+      "reasons": [
+        "circular reasoning"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "pick with no citation",
+      "caught": true,
+      "reasons": [
+        "no evidence cited"
+      ]
+    },
+    {
+      "fixture": "intent-heavy",
+      "name": "pick resting only on intent",
+      "caught": true,
+      "reasons": [
+        "rests only on intent, not on anything the user experienced"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "cites evidence that does not exist",
+      "caught": true,
+      "reasons": [
+        "cites evidence that does not exist"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "no evidence at all",
+      "caught": true,
+      "reasons": [
+        "no supporting evidence cited"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "single-identity claim",
+      "caught": true,
+      "reasons": [
+        "states a single identity or aesthetic about the user"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "genre-only claim",
+      "caught": true,
+      "reasons": [
+        "genre-only or too generic to test"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "claims a domain with no evidence there",
+      "caught": true,
+      "reasons": [
+        "claims domains with no cited support: read, play"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "cross-domain overreach",
+      "caught": true,
+      "reasons": [
+        "cross-domain overreach: claimed supported, evidence shows untested"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "invents a context",
+      "caught": true,
+      "reasons": [
+        "invents a context the user never gave"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "malformed",
+      "caught": true,
+      "reasons": [
+        "claim missing",
+        "evidence not a list of evidence refs",
+        "counter not a list of evidence refs",
+        "domains not a list",
+        "crossDomain \"undefined\" not one of untested/tentative/supported",
+        "level \"undefined\" not one of emerging/supported/strong"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "cites a dislike as support",
+      "caught": true,
+      "reasons": [
+        "cites something the user disliked as support (contradicts explicit evidence)"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "invented title",
+      "caught": true,
+      "reasons": [
+        "not one of the eligible candidates (invented, already reacted to, or area off)"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "circular reason",
+      "caught": true,
+      "reasons": [
+        "circular reasoning"
+      ]
+    },
+    {
+      "fixture": "single-miss",
+      "name": "pick with no citation",
+      "caught": true,
+      "reasons": [
+        "no evidence cited"
+      ]
+    }
+  ]
+}

@@ -26,9 +26,9 @@ Guiding idea: **add the model behind rules that already exist and are already te
 | 2 | Confidence computed from evidence, inferred vs validated (#26) | **Done** (Sept 21): Emerging / Supported / Strong / Still learning / Less certain |
 | 3 | Decide how user corrections of a pattern work | **Decided (Sept 22): a separate user-confirmed authority, per the proposal below**; not built yet |
 | 3b | Data model generalized: domain registry, item vs evidence vs interpretation, scope (#35) | **Done** (Sept 22) |
-| 4 | Decide the first AI job and its output contract (#31) | Next. First job: infer working hypotheses from typed evidence, plus grounded "Why this one?" |
+| 4 | Authority boundary and output contract, with a validator and fallback (#31) | **Done** (Sept 22): `docs/ai-contract.md`, `src/ai/` |
 | 5 | Decide grounding (how real titles are guaranteed) | Options below |
-| 6 | Eval plan and a synthetic-evidence generator (#28) | Plan below; generator not built |
+| 6 | Eval suite with fixtures, scorers, synthetic scale and validator self-test (#32, #28) | **Done** (Sept 22) against the deterministic baseline: `docs/ai-evals.md`, `node scripts/evals/run.mjs` |
 | 7 | Backend, secrets, cost protection, fallback | Not started. Decided: Anthropic API from a Vercel serverless function |
 | 8 | Loading / error / offline-to-deterministic states | Not started (everything is synchronous today) |
 | 9 | Privacy note: what is sent to a third party, what is logged | Not started |
