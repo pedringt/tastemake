@@ -72,6 +72,16 @@ Screens render with template strings and `innerHTML`, and live AI made that urge
 
 `navigate()` cancels an in-flight request for another screen. This is separate from validation: #31 decides whether an answer is allowed, #42 decides whether it is still about the user's current state. `scripts/qa/async-tests.mjs` (23 checks, free) covers the fingerprint's sensitivity, each stale reason, cancellation and completion.
 
+## One test command and CI (#41), done
+
+`npm test` runs the required gate: the three no-browser suites (endpoint contract, escaping, async request state), model rules, flow/layout/a11y at 1440 in Clean editorial, and the free deterministic eval. Zero dependencies, so nothing to install; root `package.json` did not change Vercel's build (still framework "Other", no build step; verified on a preview deploy before promoting).
+
+`.github/workflows/test.yml` runs `npm test` on every push to `main` and every PR, with Chrome via `browser-actions/setup-chrome`. It never runs a paid producer.
+
+**First CI run failed:** `scripts/qa/headless.sh model` returned a bare "NO RESULT after 3 tries" with no visible cause, because Chrome's stderr was discarded. Fixed: added `--no-sandbox --disable-dev-shm-usage` (standard for headless Chrome in CI containers) and made the script print Chrome's stderr on the final retry instead of failing silently. Verified via a diagnostic PR's `pull_request`-triggered run before merging, then confirmed green on `main` itself.
+
+`npm run test:full` (`scripts/qa/full-sweep.mjs`) is the slower every-look, every-width sweep this project has been run with by hand; it is not part of the required CI gate. `npm run test:eval:endpoint` is the paid live-model eval, run manually with `--yes`.
+
 ## Purpose
 
 This handoff is for Claude Code to resume Tastemake without reopening the prior ChatGPT thread. Continue from the newly promoted live-AI foundation, verify the production deployment state, and complete the first controlled Anthropic-backed recommendation test without reopening settled architecture decisions.
