@@ -1,5 +1,40 @@
 # Handoff: Tastemake live AI producer
 
+## Next chat: start here (updated Sept 22, 2026, end of session)
+
+**North star:** Tastemake helps people understand the patterns in what they're drawn to across different parts of their life, without assuming they have one single aesthetic, then uses that understanding to find and test more things that might fit.
+
+**State**
+- `main` is production: https://tastemake.vercel.app. Everything below is merged and deployed. `live-producer-preview` points at the same commit.
+- **Live AI is ON in production and stays on** (Paige, Sept 22: "I'm ok with the gate, no one is using this but me"). `TASTEMAKE_AI_PRODUCTION_APPROVED=1`. Do not re-open this each session; do tell her if spend changes shape.
+- Live job so far: **choose and explain the next recommendation set** on "Keep discovering". Hypothesis inference is still deterministic.
+- Model `claude-sonnet-5`, about **$0.014 a call**. Session total so far: roughly **$0.35** (10-fixture eval $0.21, plus debugging and verification calls).
+
+**The five handoff questions**
+1. *What the model does:* picks the next set from product-chosen eligible candidates and writes each "why", citing evidence refs. Nothing else.
+2. *What stays deterministic:* what counts as evidence, intent vs experience, confidence thresholds, eligibility, user corrections, ranking, all state changes, and the fallback (`src/ai/baseline.js`).
+3. *Data structures:* domain registry (`src/data/domains.js`); items are `type` + `domains` + display label; evidence records with `ev:<id>` refs (`src/model/evidence.js`); interpretations with scope and cross-domain status (`src/model/interpretations.js`); user statements about patterns (`src/model/statements.js`); async request state (`src/ai/requests.js`).
+4. *How failures fall back:* `src/ai/validate.js` refuses bad answers and lowers overconfidence; `acceptOrFallback()` uses the deterministic picks on error, timeout or too little valid output; `requests.js` drops answers whose evidence changed, cancels on navigation, and aborts superseded requests. Every fallback says why in the UI.
+5. *How to run the checks:*
+
+```
+node scripts/qa/api-tests.mjs          # endpoint, fake model (49)
+node scripts/qa/escaping-tests.mjs     # untrusted text never becomes markup (32)
+node scripts/qa/async-tests.mjs        # stale/cancelled answers (23)
+node scripts/evals/run.mjs             # deterministic eval baseline
+node scripts/evals/run.mjs --producer endpoint --yes   # PAID, ~$0.20: the live model through production
+scripts/qa/headless.sh model|flow|layout|a11y <widths>  # browser suites; LOOK=collage etc. for other looks
+```
+
+**What I would do next**
+1. **#41 one `npm test` and CI.** Six separate scripts today, all run by hand; a GitHub Action would have caught the red check I left behind mid-session. Careful: a root `package.json` changes what Vercel sees, so test it on the branch preview before `main`.
+2. **#40** centralize evidence predicates (cheap, protects the rules), **#34** the artwork collision on the first recommendation card (visible bug).
+3. **#33** reframe "Why this one?" now that the text is model-written, **#30** framing copy.
+4. **#37** hypothesis history and **#36** context/scope corrections: both needed before the model starts generating patterns rather than picks.
+5. Open nit: four live reasons said "This is a curveball" while `kind` was `pick`. Fix the prompt, then re-run the eval and compare.
+
+**Standing rules:** AI interprets, the product owns evidence and state; interest is not experience; user-confirmed outranks inference; cross-domain links start as hypotheses; model output must cite real evidence; evals alongside the model, not after; make future domains possible without shipping them; never loosen a scorer to make a run pass; say the call count and cost before any paid run.
+
 ## Fixes and tests added on `live-producer-preview` (Sept 22, after the rollout)
 
 - **The deterministic fallback is the product's own picks again.** `api/recommendations.mjs` used to run the baseline through `validatePicks`, whose grounding rules exist to judge *model* output; a legitimate pick whose pattern cannot cite anything the user has tried was dropped. A cold-start request returned 4 picks where the app shows 5. Fixed: the fallback is `nextRecommendations(state)` as-is, and the model's output is still fully validated.
@@ -179,6 +214,8 @@ vercel.json
 - configures api/*.mjs function runtime
 
 ## Production safety gate
+
+**Decision (Paige, Sept 22, 2026):** the gate stays on. She is the only user of the site, so the risk of public spend is acceptable to her. Everything below still describes how the gate works; it is no longer an open question.
 
 Production paid calls require:
 
