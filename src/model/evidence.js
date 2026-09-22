@@ -47,6 +47,33 @@ export function evidenceKind(feedback) {
 export const tasteWeight = (feedback) => EVIDENCE_KINDS[evidenceKind(feedback)].taste;
 export const isExperiencedKind = (kind) => EVIDENCE_KINDS[kind]?.class === "experienced";
 
+// ---- Predicates (#40): the canonical way to ask what a reaction means. -----------------------------
+// Everything downstream (Library, My Tastemake, Taste Map, Search, Blind Spots, Recommendations) should
+// ask evidence.js rather than re-decode `feedback.rating` / `feedback.detail` itself. UI copy (which exact
+// words a screen shows) can still live in that screen; which *bucket* a reaction falls into should not.
+//
+// These take a stored reaction ({ rating, detail, ... }), not a starter favorite (starters have no
+// feedback object; they are "experienced" only as an evidenceRecords() kind, see countsAsTasteRecord).
+const kindOf = (feedback) => evidenceKind(feedback);
+const classOf = (feedback) => EVIDENCE_KINDS[kindOf(feedback)].class;
+
+export const isExperienced = (feedback) => classOf(feedback) === "experienced";
+export const isIntentOnly = (feedback) => classOf(feedback) === "intent";
+
+export const isStrongPositive = (feedback) => kindOf(feedback) === "experienced-strong-positive";        // Loved it before
+export const isExperiencedPositive = (feedback) => isStrongPositive(feedback) || kindOf(feedback) === "experienced-positive";   // Loved or Liked it before
+export const isExperiencedNegative = (feedback) => kindOf(feedback) === "experienced-negative";           // Tried it and disliked it
+
+export const isSaved = (feedback) => kindOf(feedback) === "saved";                 // bookmarked, still untried
+export const isDeclined = (feedback) => kindOf(feedback) === "intent-declined";    // "Not interested": intent, not a dislike
+
+// Whether a reaction counts as taste evidence at all (the #27 rule, in one place).
+export const countsAsTaste = (feedback) => tasteWeight(feedback) !== 0;
+// A record from evidenceRecords() additionally has a "starter-favorite" kind, which is experienced
+// (the user told Tastemake this) but never counts as taste by itself (weight 0). Records already carry
+// `countsAsTaste`/`class`; this predicate is for records, mirroring the feedback-level one above.
+export const recordCountsAsTaste = (record) => record.weight !== 0;
+
 function sourceOf(feedback) {
   if (feedback.item.custom) return "added";
   if (feedback.source === "search") return "search";

@@ -1,5 +1,6 @@
 import { hypotheses } from "../data/catalog.js";
 import { hypothesisMatches } from "./taste.js";
+import { isExperiencedNegative } from "./evidence.js";
 
 // Taste Blind Spot (#20): when Tastemake was confident you'd like something and you tried it and
 // didn't, that is evidence about the MODEL, not just a thumbs-down. The user says which of the patterns
@@ -23,7 +24,7 @@ export const reasonLabel = (id) => REASON_LABEL[id] ?? id;
 // These say nothing specific about the model, so they never count towards "recurring".
 const VAGUE_REASONS = new Set(["not-for-me", "other"]);
 
-const isDisliked = (feedback) => feedback?.rating === "less" && feedback.detail === "tried-disliked";
+const isDisliked = isExperiencedNegative;
 
 // A blind spot needs a real mismatch: tried and disliked something Tastemake was confident about.
 // (An untried pick can't be a prediction failure, and "Worth testing" picks were never confident.)

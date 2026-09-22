@@ -1,5 +1,6 @@
 import { favorites, followUpPool, recommendations } from "../data/catalog.js";
 import { isBookmarked, isPositiveExperience } from "./taste.js";
+import { isDeclined, isExperiencedNegative, isExperiencedPositive, isStrongPositive } from "./evidence.js";
 import { addableTypes, displayLabel } from "../data/domains.js";
 
 // Search and "add something" (#13).
@@ -126,10 +127,10 @@ export function itemStatus(state, item) {
   const feedback = state.feedbackByRecommendation[item.id];
   if (!feedback) return { key: "none", label: "Not in your Tastemake yet" };
   if (isBookmarked(feedback)) return { key: "bookmarked", label: "Bookmarked" };
-  if (feedback.detail === "loved-before") return { key: "loved", label: state.libraryFavorites.has(item.id) ? "Loved it (a Favorite)" : "Loved it" };
-  if (feedback.detail === "liked-before") return { key: "liked", label: "Liked it" };
-  if (feedback.detail === "tried-disliked") return { key: "disliked", label: "Didn't like it" };
-  if (feedback.rating === "less" && feedback.detail === "not-interested") return { key: "not-interested", label: "Not interested" };
+  if (isStrongPositive(feedback)) return { key: "loved", label: state.libraryFavorites.has(item.id) ? "Loved it (a Favorite)" : "Loved it" };
+  if (isExperiencedPositive(feedback)) return { key: "liked", label: "Liked it" };
+  if (isExperiencedNegative(feedback)) return { key: "disliked", label: "Didn't like it" };
+  if (isDeclined(feedback)) return { key: "not-interested", label: "Not interested" };
   return { key: "other", label: "Reacted to" };
 }
 
@@ -157,7 +158,7 @@ export function applySearchAction(state, item, action) {
   if (action === "favorite" || action === "unfavorite") {
     if (!existing) return null;
     if (action === "favorite") {
-      if (existing.detail !== "loved-before") return null;   // only a loved pick can be a Favorite
+      if (!isStrongPositive(existing)) return null;   // only a loved pick can be a Favorite
       state.libraryFavorites.add(item.id);
       return `${item.title} added to Favorites.`;
     }

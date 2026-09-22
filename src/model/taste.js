@@ -1,6 +1,6 @@
 import { followUpPool } from "../data/catalog.js";
 import { domainById, visibleDomains } from "../data/domains.js";
-import { tasteWeight } from "./evidence.js";
+import { isExperienced, isExperiencedPositive, isSaved, tasteWeight } from "./evidence.js";
 
 // Taste evidence comes only from things the user has actually experienced (decided in #12/#24):
 // Loved it before, Liked it before, and Tried it and disliked. A reaction to a pick they have not
@@ -37,9 +37,8 @@ export function recommendationQualityDelta(feedback) {
 }
 
 // The user said they tried it and liked it: the only time "Surprised me" makes sense.
-export function isPositiveExperience(feedback) {
-  return feedback?.rating === "more" && (feedback.detail === "loved-before" || feedback.detail === "liked-before");
-}
+// Canonical predicates live in evidence.js (#40); these names stay for existing call sites.
+export const isPositiveExperience = isExperiencedPositive;
 
 // Items added by the user (or found by search) can have no pattern tags; they simply match nothing.
 export function hypothesisMatches(itemHypotheses = [], hypothesisId) {
@@ -75,10 +74,6 @@ function hypothesisSignal(state, hypothesisId, feedbacks = Object.values(state.f
 }
 
 // The user said they actually tried it (the only reactions that count as taste evidence).
-function isExperienced(feedback) {
-  return feedback?.detail === "loved-before" || feedback?.detail === "liked-before" || feedback?.detail === "tried-disliked";
-}
-
 // Reactions to picks the user has NOT tried (plain More/Less, Not interested, bookmarks). They steer
 // what comes next but are not taste evidence, so the Taste Profile shows them as a separate "lean"
 // and never as Stronger / Less certain. A lean needs a clear signal (about one plain More or Less).
@@ -206,9 +201,7 @@ export function outOfPicks(state) {
 }
 
 // Bookmarks are untried items the user saved. They are intent, not taste evidence.
-export function isBookmarked(feedback) {
-  return feedback?.rating === "not-tried" && feedback.detail === "bookmarked";
-}
+export const isBookmarked = isSaved;
 
 export function bookmarkedFeedback(state) {
   return Object.values(state.feedbackByRecommendation).filter(isBookmarked);

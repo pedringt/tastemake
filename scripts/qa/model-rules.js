@@ -574,5 +574,81 @@ export async function run() {
     eq("Start over clears statements", ST.state.patternStatements.length, 0);
   });
 
+
+  // ---- Centralized evidence predicates (#40): the canonical bucket for a reaction, in one place ----
+  suite("evidence predicates", (eq) => {
+    const item = recommendations[0];
+    const fb = (rating, detail) => ({ rating, detail, item });
+    const loved = fb("more", "loved-before");
+    const liked = fb("more", "liked-before");
+    const disliked = fb("less", "tried-disliked");
+    const bookmarked = fb("not-tried", "bookmarked");
+    const notInterested = fb("less", "not-interested");
+    const plainMore = fb("more", null);
+    const plainLess = fb("less", null);
+    const notTried = fb("not-tried", null);
+
+    // isExperienced / isIntentOnly partition every real reaction
+    eq("loved is experienced", EV.isExperienced(loved), true);
+    eq("liked is experienced", EV.isExperienced(liked), true);
+    eq("disliked is experienced", EV.isExperienced(disliked), true);
+    eq("bookmarked is NOT experienced (interest is not experience)", EV.isExperienced(bookmarked), false);
+    eq("not-interested is NOT experienced", EV.isExperienced(notInterested), false);
+    eq("plain more is NOT experienced", EV.isExperienced(plainMore), false);
+    [loved, liked, disliked].forEach((f) => eq(`isIntentOnly is false for ${f.detail}`, EV.isIntentOnly(f), false));
+    [bookmarked, notInterested, plainMore, plainLess].forEach((f) => eq(`isIntentOnly is true for rating=${f.rating} detail=${f.detail}`, EV.isIntentOnly(f), true));
+
+    // strong positive vs positive
+    eq("loved is strong positive", EV.isStrongPositive(loved), true);
+    eq("liked is NOT strong positive", EV.isStrongPositive(liked), false);
+    eq("loved counts as experienced-positive too", EV.isExperiencedPositive(loved), true);
+    eq("liked counts as experienced-positive", EV.isExperiencedPositive(liked), true);
+    eq("disliked is not experienced-positive", EV.isExperiencedPositive(disliked), false);
+    eq("plain more (untried) is not experienced-positive", EV.isExperiencedPositive(plainMore), false);
+
+    // negative / saved / declined
+    eq("disliked is experienced-negative", EV.isExperiencedNegative(disliked), true);
+    eq("plain less (untried) is not experienced-negative", EV.isExperiencedNegative(plainLess), false);
+    eq("bookmark is 'saved'", EV.isSaved(bookmarked), true);
+    eq("a loved pick is not 'saved'", EV.isSaved(loved), false);
+    eq("not-interested is 'declined'", EV.isDeclined(notInterested), true);
+    eq("...and declined is NOT experienced-negative (not a dislike)", EV.isExperiencedNegative(notInterested), false);
+
+    // countsAsTaste matches the #27 rule exactly (loved/liked/disliked only)
+    eq("counts as taste: loved", EV.countsAsTaste(loved), true);
+    eq("counts as taste: liked", EV.countsAsTaste(liked), true);
+    eq("counts as taste: disliked", EV.countsAsTaste(disliked), true);
+    eq("does NOT count as taste: bookmarked", EV.countsAsTaste(bookmarked), false);
+    eq("does NOT count as taste: not-interested", EV.countsAsTaste(notInterested), false);
+    eq("does NOT count as taste: plain more", EV.countsAsTaste(plainMore), false);
+    eq("does NOT count as taste: plain less", EV.countsAsTaste(plainLess), false);
+    eq("does NOT count as taste: not tried, no detail", EV.countsAsTaste(notTried), false);
+    eq("undefined feedback counts as nothing", EV.countsAsTaste(undefined), false);
+
+    // taste.js's re-exports agree with evidence.js exactly (no drift between the two)
+    eq("taste.js isPositiveExperience === evidence.js isExperiencedPositive (loved)", T.isPositiveExperience(loved), EV.isExperiencedPositive(loved));
+    eq("...same for liked", T.isPositiveExperience(liked), EV.isExperiencedPositive(liked));
+    eq("...same for disliked", T.isPositiveExperience(disliked), EV.isExperiencedPositive(disliked));
+    eq("taste.js isBookmarked === evidence.js isSaved (bookmarked)", T.isBookmarked(bookmarked), EV.isSaved(bookmarked));
+    eq("...same for loved (false)", T.isBookmarked(loved), EV.isSaved(loved));
+
+    // library.js, mine.js, search.js, tastemap.js, blindspots.js agree with the predicates on real state
+    const st = { selectedFavorites: new Set(favorites.filter((f) => f.selected).map((f) => f.id)), feedbackByRecommendation: {}, recommendationSets: [recommendations], libraryFavorites: new Set(), customItems: {}, blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(), patternStatements: [] };
+    const [r0, r1, r2, r3] = recommendations;
+    S.applySearchAction(st, r0, "loved"); S.applySearchAction(st, r1, "liked"); S.applySearchAction(st, r2, "disliked"); S.applySearchAction(st, r3, "bookmark");
+    const lib = LIB.libraryItems(st);
+    eq("library: a loved pick is source 'loved'", lib.library.find((e) => e.id === r0.id)?.source, "loved");
+    eq("library: a liked pick is source 'liked'", lib.library.find((e) => e.id === r1.id)?.source, "liked");
+    eq("library: disliked stays out, in dislikedItems instead", lib.library.some((e) => e.id === r2.id), false);
+    eq("...and shows up there", LIB.dislikedItems(st).some((e) => e.id === r2.id), true);
+    const told = MINE.toldItems(st);
+    eq("mine: loved/liked/disliked all count as taste", [r0.id, r1.id, r2.id].every((id) => told.counts.some((e) => e.id === id)), true);
+    eq("mine: a bookmark only steers", told.steers.some((e) => e.id === r3.id) && !told.counts.some((e) => e.id === r3.id), true);
+    eq("search: itemStatus agrees with the predicates", `${S.itemStatus(st, r0).key},${S.itemStatus(st, r1).key},${S.itemStatus(st, r2).key},${S.itemStatus(st, r3).key}`, "loved,liked,disliked,bookmarked");
+    const pattern = hypotheses.find((h) => h.id === r0.hypotheses[0]);
+    const ev = M.patternEvidence(st, pattern);
+    eq("taste map: a loved pick on this pattern is in supports", ev.supports.some((row) => row.item.id === r0.id) || !r0.hypotheses.includes(pattern.id), true);
+  });
+
   return { passed: total - failures.length, failed: failures.length, total, failures: failures.length ? failures : undefined };
 }

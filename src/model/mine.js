@@ -1,5 +1,6 @@
 import { favorites } from "../data/catalog.js";
-import { isPositiveExperience, tasteDelta } from "./taste.js";
+import { isPositiveExperience } from "./taste.js";
+import { countsAsTaste, isExperienced, isExperiencedNegative, isExperiencedPositive, isSaved, isStrongPositive, isDeclined } from "./evidence.js";
 import { activeBlindSpots } from "./blindspots.js";
 
 // My Tastemake (#8): "What have I told Tastemake?" Everything here is derived from what the app already
@@ -17,11 +18,11 @@ function sourceOf(feedback) {
 }
 
 function statusOf(feedback) {
-  if (feedback.detail === "loved-before") return "Loved it before";
-  if (feedback.detail === "liked-before") return "Liked it before";
-  if (feedback.detail === "tried-disliked") return "Tried it and disliked it";
-  if (feedback.detail === "bookmarked") return "Bookmarked (haven't tried)";
-  if (feedback.detail === "not-interested") return "Not interested";
+  if (isStrongPositive(feedback)) return "Loved it before";
+  if (isExperiencedPositive(feedback)) return "Liked it before";
+  if (isExperiencedNegative(feedback)) return "Tried it and disliked it";
+  if (isSaved(feedback)) return "Bookmarked (haven't tried)";
+  if (isDeclined(feedback)) return "Not interested";
   if (feedback.rating === "more") return "Wanted more like this (haven't tried)";
   if (feedback.rating === "less") return "Wanted less like this (haven't tried)";
   return "Haven't tried it";
@@ -41,12 +42,12 @@ export function toldItems(state) {
       starter: false,
       status: statusOf(feedback),
       source: sourceOf(feedback),
-      counts: tasteDelta(feedback) !== 0,
+      counts: countsAsTaste(feedback),
       positive: isPositiveExperience(feedback),
-      experienced: feedback.rating !== "not-tried" && (feedback.detail === "loved-before" || feedback.detail === "liked-before" || feedback.detail === "tried-disliked"),
-      loved: feedback.detail === "loved-before",
-      liked: feedback.detail === "liked-before",
-      disliked: feedback.detail === "tried-disliked"
+      experienced: isExperienced(feedback),
+      loved: isStrongPositive(feedback),
+      liked: isExperiencedPositive(feedback) && !isStrongPositive(feedback),
+      disliked: isExperiencedNegative(feedback)
     }));
 
   const all = [...starters, ...reacted];

@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
+import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel } from "../data/domains.js";
@@ -16,10 +17,10 @@ export function ratingLabel(value) {
 
 export function reactionLabel(feedback) {
   if (!feedback) return "";
-  if (feedback.detail === "loved-before") return "Loved it before";
-  if (feedback.detail === "liked-before") return "Liked it before";
-  if (feedback.detail === "tried-disliked") return "Disliked it before";
-  if (feedback.rating === "not-tried" && feedback.detail === "bookmarked") return "Bookmarked";
+  if (isStrongPositive(feedback)) return "Loved it before";
+  if (isPositiveExperience(feedback)) return "Liked it before";
+  if (isExperiencedNegative(feedback)) return "Disliked it before";
+  if (isBookmarked(feedback)) return "Bookmarked";
   return ratingLabel(feedback.rating);
 }
 

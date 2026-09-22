@@ -1,6 +1,7 @@
 import { resetState, state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, isBookmarked, isPositiveExperience, nextRecommendations } from "./model/taste.js";
+import { isStrongPositive } from "./model/evidence.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
 import { reactionLabel, renderRecommendations } from "./screens/recommendations.js";
@@ -331,7 +332,7 @@ function saveLibraryAction(itemId, action) {
   if (!existing) return false;
 
   if (action === "favorite") {
-    if (existing.detail !== "loved-before") return false;
+    if (!isStrongPositive(existing)) return false;
     state.libraryFavorites.add(itemId);
     return true;
   }
@@ -343,7 +344,7 @@ function saveLibraryAction(itemId, action) {
   const outcome = libraryOutcomes[action];
   if (!outcome) return false;
   [existing.rating, existing.detail] = outcome;
-  if (existing.detail !== "loved-before") state.libraryFavorites.delete(itemId);
+  if (!isStrongPositive(existing)) state.libraryFavorites.delete(itemId);
   // "Surprised me" only makes sense after Loved / Liked it before.
   if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
   return true;

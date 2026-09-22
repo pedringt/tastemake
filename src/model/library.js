@@ -1,5 +1,6 @@
 import { favorites } from "../data/catalog.js";
 import { isPositiveExperience } from "./taste.js";
+import { isExperiencedNegative, isStrongPositive } from "./evidence.js";
 
 // The Library is derived from what the app already knows, never stored on its own, so it cannot
 // disagree with the Taste Profile and every correction (Loved -> Liked -> Didn't like) fixes it for free.
@@ -18,8 +19,8 @@ export function libraryItems(state) {
     .map((feedback) => ({
       id: feedback.item.id,
       item: feedback.item,
-      source: feedback.detail === "loved-before" ? "loved" : "liked",
-      isFavorite: feedback.detail === "loved-before" && state.libraryFavorites.has(feedback.item.id),
+      source: isStrongPositive(feedback) ? "loved" : "liked",
+      isFavorite: isStrongPositive(feedback) && state.libraryFavorites.has(feedback.item.id),
       blurb: feedback.item.about ?? feedback.item.note ?? "",
       wasBookmarked: Boolean(feedback.wasBookmarked)
     }));
@@ -33,6 +34,6 @@ export function libraryItems(state) {
 // Tried and disliked stays out of the Library but is kept (as background evidence) and correctable.
 export function dislikedItems(state) {
   return Object.values(state.feedbackByRecommendation)
-    .filter((feedback) => feedback.rating === "less" && feedback.detail === "tried-disliked")
+    .filter(isExperiencedNegative)
     .map((feedback) => ({ id: feedback.item.id, item: feedback.item }));
 }

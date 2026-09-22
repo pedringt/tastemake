@@ -82,6 +82,14 @@ Screens render with template strings and `innerHTML`, and live AI made that urge
 
 `npm run test:full` (`scripts/qa/full-sweep.mjs`) is the slower every-look, every-width sweep this project has been run with by hand; it is not part of the required CI gate. `npm run test:eval:endpoint` is the paid live-model eval, run manually with `--yes`.
 
+## Centralized evidence predicates (#40), done
+
+`src/model/evidence.js` is now the one place that turns a stored reaction (`{ rating, detail }`) into a bucket: `isExperienced`, `isExperiencedPositive`, `isStrongPositive` (loved specifically), `isExperiencedNegative`, `isSaved`, `isDeclined`, `isIntentOnly`, `countsAsTaste`. `taste.js`'s `isPositiveExperience` and `isBookmarked` are now thin re-exports rather than their own decoders, so there is exactly one definition.
+
+Converted to use the predicates instead of raw `feedback.detail === "loved-before"`-style checks: `taste.js`, `tastemap.js` (`patternEvidence`, `domainCoverage`), `library.js`, `mine.js`, `search.js` (`itemStatus`), `blindspots.js` (`isDisliked`), and `recommendations.js`'s `reactionLabel`. Visible label text is unchanged everywhere — only the *condition* that picks a label moved to the shared predicate. Action-encoding tables that *write* a new reaction (`app.js`'s `libraryOutcomes`, `search.js`'s `OUTCOMES`) were left alone on purpose: they define what a button writes, not how existing evidence is read, which is a different concern.
+
+`scripts/qa/model-rules.js` gained a dedicated suite (47 checks): every predicate against every reaction kind, `taste.js`'s re-exports proven identical to `evidence.js`'s originals, and each converted module (library, mine, search, taste map) checked against real state built through `applySearchAction`. Model rules: 241 -> 288. No behavior change: flow 222/222 in all four looks, ranking parity untouched.
+
 ## Purpose
 
 This handoff is for Claude Code to resume Tastemake without reopening the prior ChatGPT thread. Continue from the newly promoted live-AI foundation, verify the production deployment state, and complete the first controlled Anthropic-backed recommendation test without reopening settled architecture decisions.

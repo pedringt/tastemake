@@ -2,6 +2,7 @@ import { favorites, hypotheses, followUpPool, recommendations } from "../data/ca
 import { exonerated, hypothesisMatches, isBookmarked, untriedReactionLean, modelUpdateFor } from "./taste.js";
 import { blindSpotsFor } from "./blindspots.js";
 import { visibleDomains } from "../data/domains.js";
+import { isExperiencedNegative, isExperiencedPositive, isStrongPositive } from "./evidence.js";
 
 // Taste Map (#21): the Taste Profile as a picture. Design principle from the issue: avoid fake precision.
 // So confidence and link strength are shown in coarse steps (never as numbers), every claim is backed by
@@ -94,9 +95,9 @@ export function patternEvidence(state, pattern) {
   for (const feedback of Object.values(state.feedbackByRecommendation)) {
     if (!hypothesisMatches(feedback.item.hypotheses, pattern.id)) continue;
     const row = { item: feedback.item, feedback };
-    if (feedback.rating === "more" && (feedback.detail === "loved-before" || feedback.detail === "liked-before")) {
-      rows.supports.push({ ...row, label: feedback.detail === "loved-before" ? "Loved it" : "Liked it" });
-    } else if (feedback.rating === "less" && feedback.detail === "tried-disliked") {
+    if (isExperiencedPositive(feedback)) {
+      rows.supports.push({ ...row, label: isStrongPositive(feedback) ? "Loved it" : "Liked it" });
+    } else if (isExperiencedNegative(feedback)) {
       if (exonerated(state, feedback, pattern.id)) rows.heldUp.push({ ...row, label: "Didn't like it, but this pattern held up" });
       else rows.against.push({ ...row, label: "Didn't like it" });
     } else {
@@ -114,8 +115,8 @@ export function domainCoverage(state) {
   const add = (item) => (item.domains ?? []).forEach((domain) => seen[domain]?.add(item.id));
   favorites.filter((item) => state.selectedFavorites.has(item.id)).forEach(add);
   for (const feedback of Object.values(state.feedbackByRecommendation)) {
-    if (feedback.rating === "more" && (feedback.detail === "loved-before" || feedback.detail === "liked-before")) add(feedback.item);
-    if (feedback.rating === "less" && feedback.detail === "tried-disliked") add(feedback.item);
+    if (isExperiencedPositive(feedback)) add(feedback.item);
+    if (isExperiencedNegative(feedback)) add(feedback.item);
   }
   return Object.fromEntries(Object.entries(seen).map(([domain, ids]) => [domain, ids.size]));
 }
