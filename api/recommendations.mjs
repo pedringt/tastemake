@@ -59,6 +59,9 @@ function liveConfig(env = process.env) {
   if (!env.TASTEMAKE_AI_MODEL) reasons.push("missing-model");
   if (env.TASTEMAKE_AI_RATE_LIMIT_CONFIRMED !== "1") reasons.push("rate-limit-not-confirmed");
   if (env.TASTEMAKE_AI_SPEND_CAP_CONFIRMED !== "1") reasons.push("spend-cap-not-confirmed");
+  // Main auto-deploys publicly. A production deployment needs its own explicit gate so merely
+  // having the API key and test flags present cannot turn on paid calls for public traffic.
+  if (env.VERCEL_ENV === "production" && env.TASTEMAKE_AI_PRODUCTION_APPROVED !== "1") reasons.push("production-live-not-approved");
   return { enabled: reasons.length === 0, reasons, model: env.TASTEMAKE_AI_MODEL || null };
 }
 
