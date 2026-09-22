@@ -101,6 +101,10 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
       },
       body: JSON.stringify({
         model: env.TASTEMAKE_AI_MODEL,
+        // This is a short, strict JSON job. With thinking on by default, the model spent the whole budget
+        // thinking and returned no text at all (stop_reason=max_tokens, blocks=thinking).
+        // Set TASTEMAKE_AI_THINKING=enabled to turn it back on, with a much larger cap.
+        ...(env.TASTEMAKE_AI_THINKING === "enabled" ? {} : { thinking: { type: "disabled" } }),
         max_tokens: Number(env.TASTEMAKE_AI_MAX_TOKENS || MAX_OUTPUT_TOKENS),
         // No `temperature`: newer models reject it ("temperature is deprecated for this model"), which
         // failed every live call with 400 invalid_request_error. Runs are therefore not bit-identical;
