@@ -1,5 +1,19 @@
 # Before live AI: readiness plan
 
+**North star:** Tastemake helps people understand the patterns in what they're drawn to across different parts of their life, without assuming they have one single aesthetic, then uses that understanding to find and test more things that might fit.
+
+**The core live-AI package is #31, #32 and #35, read together:** the authority boundary and structured output contract (#31), the eval suite (#32), and the future-proof data model (#35). Related: #30 (framing), #33 ("Why this one?" as a hypothesis test), #34 (artwork long titles).
+
+**Standing rules (Paige, Sept 22):**
+- **AI interprets; the product owns evidence and state.** The deterministic logic stays; the model adds interpretation on top.
+- Preserve the evidence rules: interest is not experience; user corrections outrank model inference; cross-domain links start as hypotheses, not facts.
+- User-confirmed interpretation is a different authority from AI inference (this matters for Tastebreak and imports).
+- Model output is structured and traceable: every generated hypothesis and every "Why this one?" points to real evidence.
+- Build eval hooks alongside the live model, not afterward.
+- Make future domains (Listen, Wear, Home, Pinterest-style evidence) *possible* in the data model; don't ship them.
+
+**Deliverable when the foundation is ready:** a short handoff answering: what the model now does; what remains deterministic; what data structures changed; how failures fall back; how to run the evals.
+
 Tastemake is deterministic and front-end only ("Prototype - no live AI"). This is what has to be true before a live model is added, in the order it should happen. Status is as of Sept 21, 2026.
 
 Guiding idea: **add the model behind rules that already exist and are already tested, and measure it against the deterministic version.** The deterministic app is the baseline and the fallback, not throwaway code.
