@@ -5,6 +5,8 @@
 //   node scripts/evals/run.mjs                        # the deterministic baseline (free, no model)
 //   node scripts/evals/run.mjs --producer live --dry-run   # the exact prompts + a cost estimate, no call
 //   node scripts/evals/run.mjs --producer live            # PAID: one Anthropic call per fixture
+//   node scripts/evals/run.mjs --producer endpoint --yes  # PAID: sends each fixture to the deployed
+//                                                         # endpoint, so the API key stays in Vercel
 //
 // The live producer uses the same prompt builder and transport as the production endpoint
 // (api/recommendations.mjs), so what is measured here is what production would send. It needs
@@ -24,12 +26,17 @@ import { CONTRACT_VERSION } from "../../src/ai/contract.js";
 import * as baseline from "../../src/ai/baseline.js";
 import { buildPickPrompt, callAnthropic } from "../../api/recommendations.mjs";
 import { nextRecommendations } from "../../src/model/taste.js";
+import { serializeAiState } from "../../src/ai/live-client.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const producerName = args.includes("--producer") ? args[args.indexOf("--producer") + 1] : "baseline";
 const dryRun = args.includes("--dry-run");
 const confirmed = args.includes("--yes");
+const endpointUrl = (args.includes("--url") ? args[args.indexOf("--url") + 1] : "https://tastemake.vercel.app").replace(/\/$/, "");
+const pauseMs = Number(args.includes("--pause") ? args[args.indexOf("--pause") + 1] : 11_000);   // the endpoint rate-limits a burst
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const endpointRuns = [];
 
 // Rough per-million-token prices, only for the estimate printed before a paid run. Override with
 // TASTEMAKE_AI_PRICE_IN / TASTEMAKE_AI_PRICE_OUT if the model's pricing differs.
@@ -44,6 +51,37 @@ const PRODUCERS = {
     label: "Deterministic baseline (today's logic, no model)",
     infer: async (state) => baseline.inferHypotheses(state),
     pick: async (state, ctx) => baseline.explainPicks(state, ctx)
+  },
+  // Sends each fixture to the deployed endpoint. The model call happens there, so no key is needed here,
+  // and what is measured is exactly what a visitor would get (including the endpoint's own validation).
+  endpoint: {
+    label: `Deployed endpoint (PAID, live AI where enabled): ${endpointUrl}`,
+    infer: async (state) => baseline.inferHypotheses(state),
+    pick: async (state, ctx) => {
+      if (!nextRecommendations(state).length) return { picks: [] };
+      if (dryRun) { dryRunPlan.push({ fixture: ctx.__fixture, count: nextRecommendations(state).length, promptChars: 0, estIn: 0, prompt: `(POST ${endpointUrl}/api/recommendations)` }); return { picks: [] }; }
+      if (!confirmed) throw new Error("this spends money on the deployed endpoint: re-run with --yes");
+      for (let attempt = 1; ; attempt += 1) {
+        const response = await fetch(`${endpointUrl}/api/recommendations`, {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ state: serializeAiState(state) })
+        });
+        if (response.status === 429 && attempt <= 5) { await sleep(pauseMs); continue; }
+        if (!response.ok) throw new Error(`endpoint returned ${response.status}`);
+        const payload = await response.json();
+        endpointRuns.push({ fixture: ctx.__fixture, source: payload.source, reason: payload.reason, meta: payload.meta });
+        if (payload.meta?.usage) {
+          spend.calls += 1;
+          spend.inputTokens += payload.meta.usage.input_tokens ?? 0;
+          spend.outputTokens += payload.meta.usage.output_tokens ?? 0;
+          spend.usd = (spend.inputTokens / 1e6) * PRICE_IN + (spend.outputTokens / 1e6) * PRICE_OUT;
+        }
+        await sleep(pauseMs);
+        // A deterministic answer from the endpoint carries no citations: report it as a fallback, not as model output.
+        if (payload.source !== "model") return { picks: [] };
+        return { picks: payload.picks.map((pick) => ({ itemId: pick.id, why: pick.reason, cites: pick.ai?.cites ?? [], tests: pick.ai?.tests ?? null, kind: pick.ai?.kind ?? "pick" })) };
+      }
+    }
   },
   live: {
     label: dryRun ? "Live model (DRY RUN: no calls made)" : `Live model (PAID: ${process.env.TASTEMAKE_AI_MODEL || "model not set"})`,
@@ -138,6 +176,7 @@ const lines = [
   "",
   `**Result:** ${hardFails.length ? `${hardFails.length} rule check(s) failed` : "every rule check passed"}; ${quality.length} quality finding(s); validator caught ${selfTest.length - missed.length} of ${selfTest.length} deliberately bad answers.`,
   "",
+  endpointRuns.length ? `Endpoint answers: ${endpointRuns.map((r) => `${r.fixture}=${r.source}`).join(", ")}.` : "",
   "Automatic checks cover structure, grounding, intent-vs-experience, calibration, cross-domain caution, user authority, repetition and stability after one miss. Specificity and usefulness need the human rubric in `docs/ai-evals.md`.",
   ""
 ];
@@ -180,6 +219,10 @@ console.log(`${producer.label}: ${hardFails.length ? `${hardFails.length} rule c
 hardFails.forEach((f) => console.log(`  x ${f.fixture}: ${f.name} (${f.detail})`));
 quality.forEach((f) => console.log(`  - finding ${f.fixture}: ${f.name} (${f.detail})`));
 missed.forEach((m) => console.log(`  x validator missed: ${m.fixture} / ${m.name} (${m.reasons.join("; ") || "accepted"})`));
+if (endpointRuns.length) {
+  console.log("endpoint answers:");
+  endpointRuns.forEach((r) => console.log(`  ${r.fixture}: ${r.source}${r.reason ? ` (${r.reason})` : ""}`));
+}
 if (spend.calls) console.log(`paid calls: ${spend.calls}; tokens in ${spend.inputTokens}, out ${spend.outputTokens}; estimated cost $${spend.usd.toFixed(3)}`);
 console.log(`report: scripts/evals/reports/${producerName}-latest.md`);
 process.exit(hardFails.length || missed.length ? 1 : 0);

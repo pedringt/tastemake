@@ -7,6 +7,22 @@
 - **`scripts/qa/api-tests.mjs` (new, free, no network):** 49 checks over the endpoint with a fake model. Covers every gate reason, production needing its own approval, the fallback being unfiltered, valid model answers, and refusals (invented ids, missing or invented citations, intent cited as taste, circular reasons, identity claims, duplicates, too few picks, non-JSON, a pattern the user rejected), transport timeout / error / non-200, that the prompt carries no secrets, and the handler's 405 / 400 / 413 / 429 / no-store behavior.
 - **`--producer live` is wired**, with `--dry-run` (prints the prompts and a cost estimate, makes no call) and a `--yes` requirement before any spend.
 
+## First live AI run (Sept 22, 2026)
+
+Live AI is enabled in production (Paige set `TASTEMAKE_AI_PRODUCTION_APPROVED=1`). Model: `claude-sonnet-5`. Three bugs had to be fixed first, each found in the Vercel logs:
+
+1. **`temperature` is rejected by this model** (400 invalid_request_error). It is no longer sent, so runs are not bit-identical.
+2. **The 12-second timeout tripped on every real call.** Now 25s, with the function allowed 30s.
+3. **Extended thinking spent the whole output budget** and returned no text (`stop_reason=max_tokens`, `blocks=thinking`). Thinking is now disabled for this short JSON job; set `TASTEMAKE_AI_THINKING=enabled` (with a much larger cap) to try it again.
+
+`paidCallMade` now only counts calls that got past the API's checks; a refused call is not billed.
+
+**Eval through the deployed endpoint** (`node scripts/evals/run.mjs --producer endpoint --yes`, so the key stays in Vercel): 10 of 10 fixtures came back from the model, every rule check passed, no quality findings, and the endpoint never had to fall back. 10 calls, 40,046 input and 5,961 output tokens, about **$0.21**. Report: `scripts/evals/reports/endpoint-latest.md`.
+
+Notable: with only four favorites the model still cited real evidence; in the "not me" fixture no pick tested the excluded pattern; phrase overlap between reasons stayed at 8% or below, including at 50 and 100 pieces of evidence.
+
+**Open, small:** four reasons say "This is a curveball" while `kind` is `pick`. The prompt should either ask for `kind: "curveball"` or stop inviting that phrasing.
+
 ## Purpose
 
 This handoff is for Claude Code to resume Tastemake without reopening the prior ChatGPT thread. Continue from the newly promoted live-AI foundation, verify the production deployment state, and complete the first controlled Anthropic-backed recommendation test without reopening settled architecture decisions.
