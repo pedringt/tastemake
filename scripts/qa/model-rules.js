@@ -14,6 +14,9 @@ export async function run() {
   const M = await import("/src/model/tastemap.js");
   const MINE = await import("/src/model/mine.js");
   const ST = await import("/src/state.js");
+  const DOM = await import("/src/data/domains.js");
+  const EV = await import("/src/model/evidence.js");
+  const INT = await import("/src/model/interpretations.js");
   const { favorites, recommendations, followUpPool, hypotheses } = catalog;
   const NEW = T;
   const TASTE = T;
@@ -457,6 +460,80 @@ export async function run() {
     // every level has a defined look, and the map/profile use the same one
     eq("confidenceOf agrees with patternConfidence", M.confidenceOf(three, h04).label, "Strong");
     eq("modelUpdateFor is untouched (ranking and old wording unchanged)", T.modelUpdateFor(twoMisses, h04).label, "Less certain");
+  });
+
+
+  // ---- Data model (#35): one domain registry; item vs evidence vs interpretation; scope ----
+  suite("data model", (eq) => {
+    const allItems = [...favorites, ...recommendations, ...followUpPool];
+    // registry
+    eq("visible domains are still exactly Watch, Read, Play", DOM.visibleDomains().map((d) => d.id).join(), "watch,read,play");
+    eq("future domains exist in the registry but are not visible", ["listen", "wear", "home"].every((id) => DOM.domainById(id) && !DOM.domainById(id).visible), true);
+    eq("the area toggles come from the registry", T.AREAS.map((a) => a.id).join(), "watch,read,play");
+    eq("filter chips come from the registry", catalog.domainFilters.map((f) => f.id).join(), "all,watch,read,play");
+    eq("only visible-domain types can be added by hand", Object.keys(S.MEDIA).join(), "movie,tv,book,game");
+    eq("new state starts with every visible area on", Object.entries(ST.state.areas).map(([k, v]) => `${k}:${v}`).join(), "watch:true,read:true,play:true");
+    // items
+    eq("every catalog item has a type", allItems.every((item) => DOM.typeById(item.type)), true);
+    eq("no catalog item carries the old overloaded 'medium' field", allItems.some((item) => "medium" in item), false);
+    eq("every item's type belongs to one of its domains", allItems.every((item) => item.domains.includes(DOM.typeById(item.type).domain)), true);
+    eq("display label: explicit where it differs", DOM.displayLabel(favorites.find((f) => f.id === "lotr")), "Book + film");
+    eq("display label: falls back to the type label", DOM.displayLabel({ type: "tv" }), "TV");
+    eq("an older item that still has 'medium' still displays", DOM.displayLabel({ medium: "Film" }), "Film");
+    const added = S.makeCustomItem("Severance", "tv");
+    eq("an added item has a type and domains, and no 'medium'", `${added.type}|${added.domains.join()}|${"medium" in added}`, "tv|watch|false");
+    const chair = { id: "chair-1", title: "Aged oak chair", type: "furniture" };
+    eq("a future-domain item resolves its domain from its type", DOM.domainsOf(chair).join(), "home");
+    eq("...and is never offered while its domain is not visible", T.areaOn({ areas: ST.state.areas }, { ...chair, domains: DOM.domainsOf(chair) }), false);
+
+    // evidence kinds: the old taste weights, exactly, from the new single table
+    const oldTaste = (f) => f.rating === "more" ? (f.detail === "loved-before" ? 2 : f.detail === "liked-before" ? 1.25 : 0) : f.rating === "less" ? (f.detail === "tried-disliked" ? -2 : 0) : 0;
+    const ratings = ["more", "less", "not-tried", null];
+    const details = [null, "loved-before", "liked-before", "tried-disliked", "not-interested", "bookmarked", "too-obvious", "exactly-my-taste", "wrong-vibe"];
+    let same = true;
+    ratings.forEach((rating) => details.forEach((detail) => { if (T.tasteDelta({ rating, detail }) !== oldTaste({ rating, detail })) same = false; }));
+    eq("taste weights are unchanged for every rating x detail combination", same, true);
+    eq("every intent kind carries zero taste weight", Object.values(EV.EVIDENCE_KINDS).filter((k) => k.class === "intent").every((k) => k.taste === 0), true);
+    eq("Not interested is intent, not a dislike", EV.evidenceKind({ rating: "less", detail: "not-interested" }), "intent-declined");
+    eq("plain Less is intent, not a dislike", EV.evidenceKind({ rating: "less", detail: null }), "intent-negative");
+    eq("a bookmark is 'saved' (intent)", EV.EVIDENCE_KINDS[EV.evidenceKind({ rating: "not-tried", detail: "bookmarked" })].class, "intent");
+    eq("kinds have no media words in them", Object.keys(EV.EVIDENCE_KINDS).some((k) => /tried|watch|read|play|movie|book|game/.test(k)), false);
+
+    // evidence records
+    const st = { selectedFavorites: new Set(favorites.filter((f) => f.selected).map((f) => f.id)), feedbackByRecommendation: {}, recommendationSets: [recommendations], libraryFavorites: new Set(), customItems: {}, blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set() };
+    const [r0, r1, r2, r3] = recommendations;
+    S.applySearchAction(st, r0, "loved"); S.applySearchAction(st, r1, "bookmark"); S.applySearchAction(st, r2, "not-interested"); S.applySearchAction(st, added, "liked");
+    const recs = EV.evidenceRecords(st);
+    eq("one record per thing told (starters + reactions)", recs.length, st.selectedFavorites.size + 4);
+    eq("refs are unique and stable (ev:<itemId>)", new Set(recs.map((r) => r.ref)).size === recs.length && recs.every((r) => r.ref === `ev:${r.itemId}`), true);
+    eq("every record's authority is the user", recs.every((r) => r.authority === "user"), true);
+    eq("starter favorites are experienced evidence with zero weight", recs.filter((r) => r.kind === "starter-favorite").every((r) => r.countsAsTaste && r.weight === 0), true);
+    eq("a bookmark record does not count as taste", recs.find((r) => r.itemId === r1.id).countsAsTaste, false);
+    eq("a Loved record counts, with its weight", `${recs.find((r) => r.itemId === r0.id).countsAsTaste}|${recs.find((r) => r.itemId === r0.id).weight}`, "true|2");
+    eq("provenance: search / added", `${recs.find((r) => r.itemId === r0.id).source}|${recs.find((r) => r.itemId === added.id).source}`, "search|added");
+    eq("records carry domain and type, not 'medium'", recs.every((r) => Array.isArray(r.domains) && "type" in r && !("medium" in r)), true);
+
+    // interpretations are separate from evidence and traceable to it
+    const cold = INT.hypothesisRecords({ ...st, feedbackByRecommendation: {} });
+    eq("cold start: every hypothesis is inferred, from the starting set, with no evidence refs", cold.every((h) => h.authority === "inferred" && h.source === "starting-set" && h.evidence.length === 0), true);
+    eq("cold start: nothing is cross-domain yet", cold.every((h) => h.crossDomain === "untested"), true);
+    const hs = INT.hypothesisRecords(st);
+    const refs = new Set(recs.map((r) => r.ref));
+    eq("every hypothesis's evidence and counter-evidence refs point at real evidence records", hs.every((h) => [...h.evidence, ...h.counter, ...h.heldUp].every((ref) => refs.has(ref))), true);
+    eq("hypotheses only cite experienced evidence (never a bookmark or Not interested)", hs.every((h) => [...h.evidence, ...h.counter].every((ref) => recs.find((r) => r.ref === ref).class === "experienced")), true);
+    eq("interpretations are never stored as evidence", recs.some((r) => /^H\d/.test(r.itemId)), false);
+    eq("confidence in the record matches the Profile", hs.every((h) => h.confidence === M.patternConfidence(st, hypotheses.find((p) => p.id === h.id)).level), true);
+    // scope and cross-domain status (synthetic rows, so every status is exercised)
+    const row = (domains) => ({ item: { id: Math.random().toString(36), domains } });
+    const s1 = INT.domainScope({ supports: [row(["watch"]), row(["watch"])], against: [], heldUp: [] });
+    eq("backed in one domain only: cross-domain untested", `${s1.crossDomain}|${s1.scope.supported.join()}`, "untested|watch");
+    const s2 = INT.domainScope({ supports: [row(["watch"]), row(["watch"]), row(["play"])], against: [], heldUp: [] });
+    eq("backed in two domains, one thinly: tentative", s2.crossDomain, "tentative");
+    const s3 = INT.domainScope({ supports: [row(["watch"]), row(["watch"]), row(["play"]), row(["play"])], against: [], heldUp: [] });
+    eq("backed twice in each of two domains: supported", s3.crossDomain, "supported");
+    const s4 = INT.domainScope({ supports: [row(["watch"])], against: [row(["play"]), row(["play"])], heldUp: [] });
+    eq("a domain where it misses more than it lands is 'contradicted', not supported", `${s4.scope.contradicted.join()}|${s4.scope.supported.join()}|${s4.crossDomain}`, "play|watch|untested");
+    eq("domains with nothing either way are 'untested'", s4.scope.untested.join(), "read");
   });
 
   return { passed: total - failures.length, failed: failures.length, total, failures: failures.length ? failures : undefined };

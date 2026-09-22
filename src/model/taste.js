@@ -1,24 +1,15 @@
 import { followUpPool } from "../data/catalog.js";
+import { domainById, visibleDomains } from "../data/domains.js";
+import { tasteWeight } from "./evidence.js";
 
 // Taste evidence comes only from things the user has actually experienced (decided in #12/#24):
 // Loved it before, Liked it before, and Tried it and disliked. A reaction to a pick they have not
 // tried steers what comes next (see recommendationDelta) but never changes the taste profile.
 // Everything not listed here is 0.
+// Taste evidence weight. The table lives in evidence.js (the single source); only experienced reactions move taste:
+// Loved it before +2, Liked it before +1.25, Tried it and disliked it -2. Everything else is 0.
 export function tasteDelta(feedback) {
-  if (!feedback) return 0;
-
-  if (feedback.rating === "more") {
-    if (feedback.detail === "loved-before") return 2;
-    if (feedback.detail === "liked-before") return 1.25;
-    return 0;
-  }
-
-  if (feedback.rating === "less") {
-    if (feedback.detail === "tried-disliked") return -2;
-    return 0;
-  }
-
-  return 0;
+  return tasteWeight(feedback);
 }
 
 export function recommendationDelta(feedback) {
@@ -129,15 +120,13 @@ function feedbackInShownOrder(state) {
 // reacted to so far. With five or more left it is four picks plus one exploratory pick; with fewer,
 // the remainder is shown as ordinary picks. An empty list means this demo has run out of picks.
 // Areas (#8) are a setting, not taste: an item is offered while at least one of its areas is on.
-export const AREAS = [
-  { id: "watch", label: "Watch", about: "Movies and TV" },
-  { id: "read", label: "Read", about: "Books" },
-  { id: "play", label: "Play", about: "Games" }
-];
+// The area toggles are the visible domains in the registry (src/data/domains.js).
+export const AREAS = visibleDomains().map(({ id, label, about }) => ({ id, label, about }));
+// Only domains the product shows can be offered (future domains in the registry are never recommended).
 export function areaOn(state, item) {
   const areas = state.areas;
-  if (!areas || !item.domains?.length) return true;
-  return item.domains.some((domain) => areas[domain] !== false);
+  if (!item.domains?.length) return true;
+  return item.domains.some((domain) => domainById(domain)?.visible && areas?.[domain] !== false);
 }
 
 // True when picks are left but the areas turned off are hiding all of them.

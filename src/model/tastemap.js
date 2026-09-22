@@ -1,6 +1,7 @@
 import { favorites, hypotheses, followUpPool, recommendations } from "../data/catalog.js";
 import { exonerated, hypothesisMatches, isBookmarked, untriedReactionLean, modelUpdateFor } from "./taste.js";
 import { blindSpotsFor } from "./blindspots.js";
+import { visibleDomains } from "../data/domains.js";
 
 // Taste Map (#21): the Taste Profile as a picture. Design principle from the issue: avoid fake precision.
 // So confidence and link strength are shown in coarse steps (never as numbers), every claim is backed by
@@ -109,7 +110,7 @@ export const evidenceCount = (rows) => rows.supports.length + rows.against.lengt
 
 // Experienced picks by area, so thin areas are visible (starter favorites count: you told us those).
 export function domainCoverage(state) {
-  const seen = { watch: new Set(), read: new Set(), play: new Set() };
+  const seen = Object.fromEntries(visibleDomains().map((domain) => [domain.id, new Set()]));
   const add = (item) => (item.domains ?? []).forEach((domain) => seen[domain]?.add(item.id));
   favorites.filter((item) => state.selectedFavorites.has(item.id)).forEach(add);
   for (const feedback of Object.values(state.feedbackByRecommendation)) {

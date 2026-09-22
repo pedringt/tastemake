@@ -16,6 +16,26 @@ Every action falls into exactly one class:
 | **Lookup** | Searching, browsing, opening something | No | No |
 | **Correction** | The user says which pattern failed for a pick (Blind Spot) | Re-assigns *which patterns* a miss counts against | Yes |
 
+## Where this lives in code (#35)
+
+- **Items** carry `type` and `domains` from one registry (`src/data/domains.js`); `displayLabel` is display only. The old `medium` field is gone.
+- **Evidence** is `src/model/evidence.js`: `evidenceKind(feedback)` maps every stored reaction to a generic kind, and `EVIDENCE_KINDS` holds the class and taste weight. `tasteDelta` reads its weight from there, so there is one table. `evidenceRecords(state)` returns typed records (`ref: "ev:<itemId>"`, kind, class, domains, source, authority `user`), which is what a model is handed and what its citations must point at.
+- **Interpretations** are `src/model/interpretations.js`: working hypotheses with evidence refs, counter-evidence, domain scope and cross-domain status. They are never stored as evidence.
+
+| Generic kind | Class | Taste weight | UI today |
+|---|---|---:|---|
+| experienced-strong-positive | experienced | +2 | Loved it before |
+| experienced-positive | experienced | +1.25 | Liked it before |
+| experienced-negative | experienced | −2 | Tried it and disliked it |
+| starter-favorite | experienced | 0 | Picked on Favorites (never validates a pattern alone) |
+| intent-positive | intent | 0 | More (untried) |
+| intent-negative | intent | 0 | Less (untried) |
+| intent-declined | intent | 0 | Not interested |
+| saved | intent | 0 | Bookmark |
+| neutral / unknown | neutral | 0 | Not tried |
+
+Kind names carry no media words, so a jacket that was "worn a lot" and a film that was "loved" are the same kind.
+
 ## Every reaction
 
 Weights are the current values in code. "Taste" is `tasteDelta`; "Steer" is `recommendationDelta`.
@@ -72,7 +92,7 @@ If a model ever chooses recommendations, writes explanations or proposes pattern
 4. Do not recommend anything the user already reacted to; respect areas that are off and the curveball setting.
 5. Cross-domain links must be supported by evidence in both areas, not assumed.
 6. Confidence follows the table above; a model may not label a pattern stronger than the evidence allows.
-7. **Pending decision:** whether a user's explicit statement about a pattern ("not really me", "matters a lot") is a new evidence class. See `docs/ai-readiness.md`.
+7. **Decided (Sept 22):** a user's explicit statement about a pattern ("not really me", "matters a lot", "accurate") is its own authority, **user-confirmed**, which outranks model inference. It is not taste evidence (it is not an experience of anything) and never raises a confidence level. A model must treat it as a hard constraint. Not built yet; see `docs/ai-readiness.md`, section 3.
 
 ## Open
 - Whether a fixed starting set of patterns stays once a model can infer them from a real user's favorites.

@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { bookmarkedFeedback } from "../model/taste.js";
 import { renderStickerField } from "../components/stickers.js";
+import { displayLabel } from "../data/domains.js";
 
 // Bookmarks are untried things the user saved to act on. They are not taste evidence; only what
 // the user actually tries (and reacts to) teaches Tastemake about their taste.
@@ -13,7 +14,7 @@ function bookmarkCard(feedback) {
   return `
     <article class="bookmark-card" data-bookmark-id="${item.id}">
       <span class="bookmark-tape" aria-hidden="true"></span>
-      <span class="bookmark-medium">${item.medium}</span>
+      <span class="bookmark-medium">${displayLabel(item)}</span>
       <h3>${item.title}</h3>
       <p class="bookmark-about">${item.about ?? item.note ?? ""}</p>
       ${item.reason ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${item.reason}</p>` : ""}

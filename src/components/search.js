@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { MEDIA, applySearchAction, findExisting, itemStatus, makeCustomItem, searchItems, searchableItems } from "../model/search.js";
+import { displayLabel, domainFilterOptions } from "../data/domains.js";
 
 // Search dialog (#13). It lives outside #app, so re-rendering a screen never closes it.
 // Nothing here changes state except applySearchAction, called from an explicit button.
@@ -7,6 +8,13 @@ import { MEDIA, applySearchAction, findExisting, itemStatus, makeCustomItem, sea
 const esc = (text) => String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 export function initSearch({ onChange, announce, goTo }) {
+  // Filter chips come from the domain registry, so a new visible domain shows up here too.
+  const filterGroup = document.querySelector("#search-dialog [data-search-filter]")?.parentElement;
+  if (filterGroup) {
+    filterGroup.innerHTML = domainFilterOptions().map((option) =>
+      `<button type="button" class="domain-filter-button${option.id === "all" ? " is-active" : ""}" data-search-filter="${option.id}" aria-pressed="${option.id === "all"}">${option.label}</button>`).join("");
+  }
+
   const dialog = document.querySelector("#search-dialog");
   const input = document.querySelector("#search-input");
   const view = document.querySelector("#search-view");
@@ -30,7 +38,7 @@ export function initSearch({ onChange, announce, goTo }) {
           ${hits.map((item) => `
             <li>
               <button type="button" class="search-result" data-search-pick="${item.id}">
-                <span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(item.medium)}${item.by ? ` · ${esc(item.by)}` : ""}</span></span>
+                <span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(displayLabel(item))}${item.by ? ` · ${esc(item.by)}` : ""}</span></span>
                 ${statusChip(item)}
               </button>
             </li>`).join("")}
@@ -52,7 +60,7 @@ export function initSearch({ onChange, announce, goTo }) {
     const head = `
       <button type="button" class="search-back" data-search-back>&larr; Back to results</button>
       <h3 id="search-sheet-title" tabindex="-1">${esc(item.title)}</h3>
-      <p class="search-sheet-meta">${esc(item.medium)} &middot; ${status.label}</p>`;
+      <p class="search-sheet-meta">${esc(displayLabel(item))} &middot; ${status.label}</p>`;
 
     if (status.key === "starter") {
       return `${head}

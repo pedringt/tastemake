@@ -1,5 +1,6 @@
 import { favorites, followUpPool, recommendations } from "../data/catalog.js";
 import { isBookmarked, isPositiveExperience } from "./taste.js";
+import { addableTypes, displayLabel } from "../data/domains.js";
 
 // Search and "add something" (#13).
 //
@@ -7,12 +8,8 @@ import { isBookmarked, isPositiveExperience } from "./taste.js";
 // state. Only an explicit action (applySearchAction) does, and it writes the same feedback the
 // Recommendations screen writes, so the Library, Bookmarks and Taste Profile all follow.
 
-export const MEDIA = {
-  movie: { label: "Movie", domains: ["watch"] },
-  tv: { label: "TV", domains: ["watch"] },
-  book: { label: "Book", domains: ["read"] },
-  game: { label: "Game", domains: ["play"] }
-};
+// What a user can add by hand, from the domain registry (only types in visible domains).
+export const MEDIA = Object.fromEntries(addableTypes().map((type) => [type.id, { label: type.label, domains: [type.domain] }]));
 
 export function normalize(text) {
   return String(text ?? "")
@@ -86,7 +83,7 @@ function scoreItem(item, query) {
     return editDistance(w, t) <= allowed || (w.length >= 4 && editDistance(w, t.slice(0, w.length)) <= 1);
   }));
   if (fuzzy) return 30;
-  const other = normalize(`${item.medium} ${item.by ?? ""} ${item.note ?? ""}`);
+  const other = normalize(`${displayLabel(item)} ${item.by ?? ""} ${item.note ?? ""}`);
   if (qWords.every((w) => other.includes(w))) return 15;
   return 0;
 }
@@ -116,7 +113,7 @@ export function makeCustomItem(title, mediumKey) {
   return {
     id: `custom-${slug(clean)}-${mediumKey}`,
     title: clean,
-    medium: medium.label,
+    type: MEDIA[mediumKey] ? mediumKey : "movie",
     domains: medium.domains,
     about: "Added by you.",
     custom: true

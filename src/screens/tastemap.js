@@ -3,6 +3,7 @@ import { hypotheses } from "../data/catalog.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
 import { blindSpotsFor } from "../model/blindspots.js";
 import { confidenceOf, evidenceCount, lean, nodeLayout, patternEvidence, patternLinks, patternsOfItem, tensions, thinAreas } from "../model/tastemap.js";
+import { visibleDomains } from "../data/domains.js";
 
 // Taste Map (#21): the Taste Profile as a picture you can poke at. Cards are Tastemake's guesses; the rows
 // under "What you've told it" are yours. Confidence and link strength come in coarse steps, never numbers.
@@ -159,7 +160,7 @@ export function renderTasteMap() {
           <h3 id="map-thin">Where Tastemake has little to go on</h3>
           <ul>
             ${thin.quietPatterns.length ? `<li>No reactions from you yet on: ${thin.quietPatterns.map((p) => esc(p.title)).join("; ")}. They rest only on your earlier ratings.</li>` : ""}
-            <li>Things you've told it about, by type: Watch ${thin.coverage.watch}, Read ${thin.coverage.read}, Play ${thin.coverage.play}.${thin.thinDomains.length ? ` Thin: ${thin.thinDomains.map((d) => d.domain).join(", ")}.` : ""}</li>
+            <li>Things you've told it about, by type: ${visibleDomains().map((d) => `${d.label} ${thin.coverage[d.id]}`).join(", ")}.${thin.thinDomains.length ? ` Thin: ${thin.thinDomains.map((d) => d.domain).join(", ")}.` : ""}</li>
           </ul>
         </section>
         <section class="map-panel" aria-labelledby="map-connections">

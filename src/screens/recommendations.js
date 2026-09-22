@@ -3,6 +3,7 @@ import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filt
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
+import { displayLabel } from "../data/domains.js";
 
 export function ratingLabel(value) {
   return ({
@@ -111,7 +112,7 @@ function mediaArt(item, index) {
 
   return `
     <div class="editorial-art art-${item.id} art-layout-${(index % 4) + 1}" aria-hidden="true">
-      <span class="art-kicker">${item.medium}</span>
+      <span class="art-kicker">${displayLabel(item)}</span>
       <span class="art-shape art-shape-a"></span>
       <span class="art-shape art-shape-b"></span>
       <span class="art-pattern"></span>
@@ -134,7 +135,7 @@ function recommendationCard(item, index) {
       <div class="editorial-rec-body">
         <div class="editorial-rec-meta">
           <span>${item.surprise ? "Surprise Me" : `Pick ${String(index + 1).padStart(2, "0")}`}</span>
-          <span>${item.medium}</span>
+          <span>${displayLabel(item)}</span>
         </div>
 
         <div class="editorial-title-row">

@@ -2,12 +2,13 @@ import { state } from "../state.js";
 import { AREAS } from "../model/taste.js";
 import { toldItems } from "../model/mine.js";
 import { reasonLabel } from "../model/blindspots.js";
+import { displayLabel } from "../data/domains.js";
 
 // My Tastemake (#8, phase 1): what you've told Tastemake, which areas it may use, how picks are put together,
 // and a way to start over. It is the deeper management layer behind Library, Bookmarks and the Taste Profile.
 // Settings here are configuration, not taste evidence; the page says so.
 
-function mediumOf(item) { return item.medium ?? ""; }
+const mediumOf = (item) => displayLabel(item);
 
 function actionButton(id, action, label, pressed = false, extra = "") {
   return `<button class="button button-secondary mine-action ${extra}" type="button" data-mine-item="${id}" data-mine-action="${action}" aria-pressed="${pressed}">${label}</button>`;

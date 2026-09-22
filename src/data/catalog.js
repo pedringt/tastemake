@@ -1,19 +1,16 @@
-export const domainFilters = [
-  { id: "all", label: "All" },
-  { id: "watch", label: "Watch" },
-  { id: "read", label: "Read" },
-  { id: "play", label: "Play" }
-];
+// Filter chips come from the domain registry (src/data/domains.js).
+import { domainFilterOptions } from "./domains.js";
+export const domainFilters = domainFilterOptions();
 
 export const favorites = [
-  { id: "lotr", title: "The Lord of the Rings", medium: "Book + film", domains: ["read", "watch"], note: "All-time favorite", selected: true },
-  { id: "circe", title: "Circe", medium: "Book", domains: ["read"], note: "Mythic, adult, character-driven", selected: true },
-  { id: "portal2", title: "Portal 2", medium: "Game", domains: ["play"], note: "Puzzle systems + specific humor", selected: true },
-  { id: "alanwake2", title: "Alan Wake 2", medium: "Game", domains: ["play"], note: "Mystery + structure + tonal collision", selected: true },
-  { id: "thefall", title: "The Fall", medium: "Movie", domains: ["watch"], note: "Distinctive visual identity", selected: true },
-  { id: "buffy", title: "Buffy the Vampire Slayer", medium: "TV", domains: ["watch"], note: "Genre mixing + character", selected: true },
-  { id: "starwars", title: "Original Star Wars trilogy", medium: "Film", domains: ["watch"], note: "Adventure + worldbuilding", selected: false },
-  { id: "breakingbad", title: "Breaking Bad", medium: "TV", domains: ["watch"], note: "Moral messiness", selected: false }
+  { id: "lotr", title: "The Lord of the Rings", type: "book", displayLabel: "Book + film", domains: ["read", "watch"], note: "All-time favorite", selected: true },
+  { id: "circe", title: "Circe", type: "book", domains: ["read"], note: "Mythic, adult, character-driven", selected: true },
+  { id: "portal2", title: "Portal 2", type: "game", domains: ["play"], note: "Puzzle systems + specific humor", selected: true },
+  { id: "alanwake2", title: "Alan Wake 2", type: "game", domains: ["play"], note: "Mystery + structure + tonal collision", selected: true },
+  { id: "thefall", title: "The Fall", type: "movie", domains: ["watch"], note: "Distinctive visual identity", selected: true },
+  { id: "buffy", title: "Buffy the Vampire Slayer", type: "tv", domains: ["watch"], note: "Genre mixing + character", selected: true },
+  { id: "starwars", title: "Original Star Wars trilogy", type: "movie", displayLabel: "Film", domains: ["watch"], note: "Adventure + worldbuilding", selected: false },
+  { id: "breakingbad", title: "Breaking Bad", type: "tv", domains: ["watch"], note: "Moral messiness", selected: false }
 ];
 
 export const hypotheses = [
@@ -65,7 +62,7 @@ export const recommendations = [
     about: "A multiverse action-comedy about a laundromat owner pulled into increasingly strange alternate realities.",
     rank: 1,
     title: "Everything Everywhere All at Once",
-    medium: "Movie",
+    type: "movie",
     domains: ["watch"],
     fit: "Very strong fit",
     prediction: "Likely to like",
@@ -78,7 +75,7 @@ export const recommendations = [
     about: "A dark comedy about a hitman who tries to leave crime behind after joining an acting class in Los Angeles.",
     rank: 2,
     title: "Barry",
-    medium: "TV",
+    type: "tv",
     domains: ["watch"],
     fit: "Very strong fit",
     prediction: "Likely to like",
@@ -91,7 +88,7 @@ export const recommendations = [
     about: "A mockumentary comedy about a group of selfish, centuries-old vampires sharing a house.",
     rank: 3,
     title: "What We Do in the Shadows",
-    medium: "TV",
+    type: "tv",
     domains: ["watch"],
     fit: "Strong fit",
     prediction: "Likely to like",
@@ -104,7 +101,7 @@ export const recommendations = [
     about: "A dialogue-heavy detective RPG where you investigate a murder while rebuilding a deeply unstable protagonist.",
     rank: 4,
     title: "Disco Elysium",
-    medium: "Game",
+    type: "game",
     domains: ["play"],
     fit: "Strong fit",
     prediction: "Likely to like",
@@ -117,7 +114,7 @@ export const recommendations = [
     about: "A horror card game that gradually turns into a puzzle-box mystery and keeps changing its own rules.",
     rank: null,
     title: "Inscryption",
-    medium: "Game",
+    type: "game",
     domains: ["play"],
     fit: "Exploratory fit",
     prediction: "Worth testing",
@@ -131,7 +128,7 @@ export const followUpPool = [
   {
     id: "fargo",
     title: "Fargo",
-    medium: "TV",
+    type: "tv",
     domains: ["watch"],
     about: "A crime anthology series mixing violence, moral messiness, eccentric characters, and very dark humor.",
     hypotheses: ["H03", "H04"],
@@ -140,7 +137,7 @@ export const followUpPool = [
   {
     id: "handmaiden",
     title: "The Handmaiden",
-    medium: "Movie",
+    type: "movie",
     domains: ["watch"],
     about: "A stylized period thriller built around deception, shifting loyalties, and multiple reveals.",
     hypotheses: ["H03", "H01/H07"],
@@ -149,7 +146,7 @@ export const followUpPool = [
   {
     id: "golden-idol",
     title: "The Case of the Golden Idol",
-    medium: "Game",
+    type: "game",
     domains: ["play"],
     about: "A deduction game where you inspect frozen crime scenes and reconstruct exactly what happened.",
     hypotheses: ["H01/H07"],
@@ -158,7 +155,7 @@ export const followUpPool = [
   {
     id: "vita-nostra",
     title: "Vita Nostra",
-    medium: "Book",
+    type: "book",
     domains: ["read"],
     about: "A strange adult fantasy about a student forced into a mysterious school that changes how she understands reality.",
     hypotheses: ["H05", "H01/H07"],
@@ -167,7 +164,7 @@ export const followUpPool = [
   {
     id: "lighthouse",
     title: "The Lighthouse",
-    medium: "Movie",
+    type: "movie",
     domains: ["watch"],
     about: "A surreal black-and-white psychological drama about two lighthouse keepers unraveling in isolation.",
     hypotheses: ["H04", "H09"],
@@ -176,7 +173,7 @@ export const followUpPool = [
   {
     id: "yellowjackets",
     title: "Yellowjackets",
-    medium: "TV",
+    type: "tv",
     domains: ["watch"],
     about: "A survival mystery following a girls soccer team after a crash and the adults they later become.",
     hypotheses: ["H03", "H09"],
@@ -185,7 +182,7 @@ export const followUpPool = [
   {
     id: "dnd",
     title: "Dungeons & Dragons: Honor Among Thieves",
-    medium: "Movie",
+    type: "movie",
     domains: ["watch"],
     about: "A fast-moving fantasy adventure about a mismatched group of thieves trying to fix a very bad mistake.",
     hypotheses: ["H05", "H04"],

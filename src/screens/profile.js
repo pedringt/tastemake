@@ -6,6 +6,7 @@ import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { renderTasteMap } from "./tastemap.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
+import { displayLabel } from "../data/domains.js";
 
 function hypothesisCard(item, index) {
   const update = confidenceOf(state, item);
@@ -58,7 +59,7 @@ function blindSpotSection() {
         ${spots.map((spot) => `
           <li class="blind-card">
             <div class="blind-card-head">
-              <h3>${spot.item.title} <em>${spot.item.medium}</em></h3>
+              <h3>${spot.item.title} <em>${displayLabel(spot.item)}</em></h3>
               <span class="blind-status ${isRecurring(state, spot) ? "is-recurring" : ""}">${isRecurring(state, spot) ? "Recurring" : "Noted once"}</span>
             </div>
             ${renderBlindSpotPanel(spot.itemId)}

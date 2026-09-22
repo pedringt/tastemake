@@ -1,5 +1,6 @@
 import { favorites, recommendations } from "./data/catalog.js";
 import { DEFAULT_LOOK, isLook } from "./data/looks.js";
+import { visibleDomains } from "./data/domains.js";
 
 // Everything the user has told Tastemake or configured, in one place so "Start over" can clear it.
 // (The look, and where the user is, are not part of this: starting over keeps your look.)
@@ -27,7 +28,7 @@ function fresh() {
     libraryFilter: "all",
     // My Tastemake (#8): settings, not taste. Areas are "show me / don't show me this kind of thing" and say
     // nothing about what the user likes; the curveball setting only changes how new sets are put together.
-    areas: { watch: true, read: true, play: true },
+    areas: Object.fromEntries(visibleDomains().map((domain) => [domain.id, true])),
     curveball: true,
     resetArmed: false
   };

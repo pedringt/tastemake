@@ -3,6 +3,7 @@ import { dislikedItems, libraryItems } from "../model/library.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
+import { displayLabel } from "../data/domains.js";
 
 // Library: things the user has actually tried and liked, plus their starter favorites.
 // Everything here is derived (see model/library.js); the buttons just correct the underlying reaction.
@@ -38,7 +39,7 @@ function libraryCard(entry) {
     <article class="library-card ${entry.isFavorite ? "is-favorite" : ""}" data-library-id="${id}">
       <span class="library-tape" aria-hidden="true"></span>
       <div class="library-meta">
-        <span class="library-medium">${item.medium}</span>
+        <span class="library-medium">${displayLabel(item)}</span>
         <span class="library-source">${entry.isFavorite && tried ? "Favorite" : SOURCE_LABEL[source]}</span>
       </div>
       <h3>${item.title}</h3>
@@ -70,7 +71,7 @@ function dislikedBlock(items) {
         ${items.map(({ id, item }) => `
           <li>
             <div class="library-disliked-row">
-              <span>${item.title} <em>${item.medium}</em></span>
+              <span>${item.title} <em>${displayLabel(item)}</em></span>
               <span class="library-restore" role="group" aria-label="Correct ${item.title}">
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="liked">Actually, I liked it</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>

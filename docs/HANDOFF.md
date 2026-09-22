@@ -68,7 +68,7 @@ The Sept 20 batch is deployed. Vercel (Hobby plan, shared with the State project
 Run them all with `scripts/qa/headless.sh` (headless Chrome, no install, no build; exit code 1 on any failure):
 
 ```
-scripts/qa/headless.sh model                       # 186 model checks
+scripts/qa/headless.sh model                       # 226 model checks
 scripts/qa/headless.sh flow   1440 1024 768 390    # 215-check click-through at each width
 scripts/qa/headless.sh layout 1440 1024 768 390    # overlap / sideways-scroll / contrast checks at each width
 LOOK=collage scripts/qa/headless.sh flow 1440      # any look: editorial (default) | collage | analog | graphic
@@ -164,6 +164,14 @@ A header person-icon button opens **My Tastemake** (route `/my-tastemake`, `src/
 - **The honest fact behind it:** the patterns are a fixed, pre-written starting set that does not change with the favorites you pick. The Profile now says so, the favorites strip is labeled "Your starting favorites" (not "Built from"), and each card shows a provenance line ("A starting pattern. Nothing you've tried has tested it yet." / "Backed by 2 things you've tried, across 2 areas."). A "What do the confidence labels mean?" legend explains the levels. The Map uses the same levels (solid = Strong; dashed = Emerging/Supported/Still learning; dotted = Less certain).
 - Only experienced reactions move a level. Starter favorites, bookmarks and untried More/Less never do. Ranking is untouched (`modelUpdateFor`, `tasteDelta` and `recommendationDelta` are unchanged).
 - **`docs/evidence-contract.md`** writes down every action, its evidence class and its weights, plus the rules a live model would have to obey. **`docs/ai-readiness.md`** is the checklist and order of work before live AI, including a proposal for pattern corrections (needs a decision).
+
+## Data model generalized for future domains (#35), built
+
+- **One domain registry** (`src/data/domains.js`): Watch, Read, Play visible; Listen, Wear, Home, Art / Design, See / Visit present but **not visible and never recommended** (architecture only; do not ship them from here). Area toggles, filter chips, search's "add something" types and coverage counts all read from it.
+- **Items:** `type` + `domains`, with `displayLabel` for display only. The overloaded `medium` field is gone (`displayLabel(item)` still reads an old `medium` if one turns up).
+- **Evidence vs interpretation:** `src/model/evidence.js` (generic evidence kinds, the single weight table, typed `evidenceRecords` with `ev:<itemId>` refs) and `src/model/interpretations.js` (hypothesis records with evidence refs, counter-evidence, domain scope supported/contradicted/untested, cross-domain status untested/tentative/supported, authority, source).
+- **No behaviour change:** ranking parity with the original code 30,000/30,000; every page except the (intentionally changed) Taste Profile is pixel-identical in Collage.
+- Found and fixed while testing: `areaOn` would have offered an item from a future, invisible domain.
 
 ## What to do next
 
