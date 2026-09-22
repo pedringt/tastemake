@@ -113,9 +113,15 @@ for w in "${WIDTHS[@]}"; do
   else URL="$BASE/.git/tm-frame-$LOOK_NAME.html?w=$w&src=/.git/$PAGE"; WIN="800,1200"; fi
   [ "$MODE" = model ] && echo "model rules"
   for try in 1 2 3; do
-    out=$(perl -e 'alarm 200; exec @ARGV' "$CHROME" --headless=new --disable-gpu --hide-scrollbars --window-size=$WIN --virtual-time-budget=$BUDGET --dump-dom "$URL" 2>/dev/null | python3 "$H/tm-summary-$LOOK_NAME.py" "$MODE"; echo "rc=${PIPESTATUS[1]}")
+    CHROME_ERR="$H/tm-chrome-err.log"
+    out=$(perl -e 'alarm 200; exec @ARGV' "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars --window-size=$WIN --virtual-time-budget=$BUDGET --dump-dom "$URL" 2>"$CHROME_ERR" | python3 "$H/tm-summary-$LOOK_NAME.py" "$MODE"; echo "rc=${PIPESTATUS[1]}")
     rc=${out##*rc=}
-    [ "$rc" = 3 ] && continue        # harness flake: try again
+    if [ "$rc" = 3 ]; then
+      # Harness flake on the first tries; on the last try, show Chrome's own stderr so a real
+      # launch failure (missing libs, no sandbox, etc.) is visible instead of a bare "NO RESULT".
+      [ "$try" = 3 ] && [ -s "$CHROME_ERR" ] && { echo "  Chrome stderr:"; tail -8 "$CHROME_ERR" | sed 's/^/    /'; }
+      continue
+    fi
     echo "${out%rc=*}" | sed '/^$/d'
     [ "$rc" = 0 ] || STATUS=1
     break
