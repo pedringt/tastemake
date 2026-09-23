@@ -90,6 +90,14 @@ Converted to use the predicates instead of raw `feedback.detail === "loved-befor
 
 `scripts/qa/model-rules.js` gained a dedicated suite (47 checks): every predicate against every reaction kind, `taste.js`'s re-exports proven identical to `evidence.js`'s originals, and each converted module (library, mine, search, taste map) checked against real state built through `applySearchAction`. Model rules: 241 -> 288. No behavior change: flow 222/222 in all four looks, ranking parity untouched.
 
+## Fixed the recommendation artwork collision (#34)
+
+The decorative shape `.art-shape-b` sat bottom-left, directly behind where a left-aligned, possibly multi-line title lands. A new overlap checker (`checkArtwork()` in `layout-check.js`) confirmed this on **every** card, 9-53% coverage depending on the title, not just EEAAO — systemic, as the issue suspected. Fix: the decorative shapes now live in the top half of the artwork box (the same "reserved frame" principle the sticker system already uses), leaving the whole bottom title band clear. Verified with 0 hits across all four looks at 1440/768/390/320, for every catalog title plus a synthetic very long one, geometry-checked and screenshot-confirmed.
+
+`checkArtwork()` is now wired into every layout/flow check going forward, with explicit named checks for a very-long synthetic title, so a title-length regression can't slip through silently again. Flow: 222 -> 224.
+
+**Local Chrome reliability note:** mid-fix, this machine's local headless Chrome got stuck in updater/crash-handler churn (visible in stderr, likely contention from other concurrent Claude Code sessions on the same box) and stopped completing any run. `headless.sh` now reuses a project-local Chrome profile (`$ROOT/.git/tm-chrome-profile`, not the machine's default one and not a fresh dir per call — a brand-new profile triggers first-run/updater machinery that ignores the script's alarm timeout) plus `--no-first-run --disable-background-networking --disable-component-update`. When local runs are still unreliable, push to `live-producer-preview`, open a throwaway diagnostic PR so the `pull_request`-triggered CI run happens in the clean, isolated GitHub Actions container, check the result there, then close the PR without merging and fast-forward `main` directly (same pattern used for the #41 CI fix). That is how this fix was actually verified end-to-end.
+
 ## Purpose
 
 This handoff is for Claude Code to resume Tastemake without reopening the prior ChatGPT thread. Continue from the newly promoted live-AI foundation, verify the production deployment state, and complete the first controlled Anthropic-backed recommendation test without reopening settled architecture decisions.
