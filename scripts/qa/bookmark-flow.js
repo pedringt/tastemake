@@ -181,13 +181,13 @@ export async function run() {
   check("Library tab is in the nav", Boolean($('[data-step-jump="library"]')) && !$('[data-step-jump="library"]').hidden);
   await act('[data-step-jump="library"]');
   const sections = $$(".library-section");
-  check("Library shows the 6 starter favorites", sections[0].querySelectorAll(".library-card").length === 6, sections[0].querySelectorAll(".library-card").length);
+  check("Library shows the 4 starter favorites", sections[0].querySelectorAll(".library-card").length === starterIds.length, sections[0].querySelectorAll(".library-card").length);
   const lovedCard = () => $(`[data-library-id="${ids[1]}"]`);
   check("a pick marked Loved it before is in the Library", Boolean(lovedCard()) && sections[1].contains(lovedCard()), lovedCard()?.textContent.slice(0, 60));
   check("a bookmark or plain More is NOT in the Library", !$(`[data-library-id="${ids[0]}"]`));
   check("'Tried it and disliked' is kept out, but listed to correct", Boolean($(".library-disliked")) && /Things you didn't like \(1\)/.test($(".library-disliked summary").textContent));
   await act(`[data-library-item="${ids[1]}"][data-library-action="favorite"]`);
-  check("'Add to Favorites' moves a loved pick into Favorites", $$(".library-section")[0].contains(lovedCard()) && $$(".library-section")[0].querySelectorAll(".library-card").length === 7);
+  check("'Add to Favorites' moves a loved pick into Favorites", $$(".library-section")[0].contains(lovedCard()) && $$(".library-section")[0].querySelectorAll(".library-card").length === starterIds.length + 1);
   check("...and announces it", /added to Favorites/.test(live()), live());
   check("focus is not lost after acting", document.activeElement?.classList.contains("library-action"), document.activeElement?.tagName + "." + document.activeElement?.className);
   await act(`[data-library-item="${ids[1]}"][data-library-action="liked"]`);
@@ -509,8 +509,13 @@ export async function run() {
   check("the Map legend uses the new meanings", /Emerging, Supported or Still learning/.test($(".map-key")?.textContent || document.body.textContent));
   await act('[data-profile-view="list"]');
 
-  // a brand-new visit: nothing you tried yet, so nothing may look validated
+  // a brand-new visit: nothing you tried yet, so nothing may look validated. #59: a fresh visit has 0
+  // favorites, so Taste Profile is locked until 4 are picked — pick the same known set first.
   const coldStart = await frameCheck("/?look=editorial", async (doc) => {
+    for (const id of starterIds) {
+      doc.querySelector(`[data-favorite="${id}"]`)?.click();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
     doc.querySelector('[data-action="peek"], [data-action="show-model"], [data-step-jump="model"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 400));
     return { chips: [...doc.querySelectorAll(".signal-status")].map((n) => n.textContent.trim()), lines: [...doc.querySelectorAll(".signal-provenance")].map((n) => n.textContent.trim()) };
