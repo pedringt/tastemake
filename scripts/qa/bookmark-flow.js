@@ -39,6 +39,14 @@ export async function run() {
   const rate = (id, rating) => act(`[data-feedback-item="${id}"][data-rating="${rating}"]`);
   const detail = (id, value) => act(`[data-feedback-item="${id}"][data-feedback-detail="${value}"]`);
 
+  // #59: a real visitor starts with 0 favorites selected (product state no longer pre-seeds them).
+  // This suite creates its own known starting set instead of relying on any product default.
+  const starterIds = catalog.favorites.slice(0, 4).map((f) => f.id);
+  check("a fresh page starts with no favorites selected", state.selectedFavorites.size === 0, state.selectedFavorites.size);
+  check("Recommendations is locked until 4 favorites are picked", Boolean($('[data-step-jump="recommendations"]')?.getAttribute("aria-disabled") === "true"));
+  for (const id of starterIds) await act(`[data-favorite="${id}"]`);
+  check("picking 4 favorites unlocks Recommendations", $('[data-step-jump="recommendations"]')?.getAttribute("aria-disabled") === "false");
+
   await act('[data-step-jump="recommendations"]');
   let ids = cardIds();
   check("opening set has 5 picks", ids.length === 5, ids.length);
@@ -544,7 +552,9 @@ export async function run() {
   await act('[data-mine-reset="confirm"]');
   check("Yes, clear everything empties reactions, bookmarks, custom items, blind spots and statements",
     Object.keys(state.feedbackByRecommendation).length === 0 && Object.keys(state.customItems).length === 0 && Object.keys(state.blindSpots).length === 0 && state.libraryFavorites.size === 0 && state.patternStatements.length === 0);
-  check("...restores the starter favorites and default settings", state.selectedFavorites.size === catalog.favorites.filter((f) => f.selected).length && state.areas.play === true && state.curveball === true);
+  // #59: nothing is pre-seeded any more, so "Start over" clears favorites too, back to the same
+  // blank slate a real first visit starts from.
+  check("...clears favorites too and restores default settings", state.selectedFavorites.size === 0 && state.areas.play === true && state.curveball === true);
   check("...keeps your look", state.look === lookKept && document.documentElement.dataset.look === lookKept);
   check("...goes back to Favorites and announces it", state.screen === "favorites" && /Started over/.test(live()), `${state.screen} / ${live()}`);
   check("...and the Bookmarks tab is hidden again", bookmarksStep().hidden);

@@ -127,6 +127,9 @@ export async function runAll() {
   const search = await import("/src/model/search.js");
   const catalog = await import("/src/data/catalog.js");
   const all = [...catalog.recommendations, ...catalog.followUpPool];
+  // #59: a real visitor starts with 0 favorites; Recommendations/Taste Profile/Library are locked until
+  // 4 are picked, so this suite picks its own known set rather than relying on any product default.
+  catalog.favorites.slice(0, 4).forEach((f) => state.selectedFavorites.add(f.id));
   // seed a bit of everything so the screens have real content
   search.applySearchAction(state, all[0], "loved"); search.applySearchAction(state, all[1], "liked");
   search.applySearchAction(state, all[2], "disliked"); search.applySearchAction(state, all[3], "bookmark");
