@@ -17,8 +17,12 @@
   cursor:pointer;
   box-shadow:calc(3px * var(--hard)) calc(3px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12));
 }
-.look-open:hover { background:var(--pink-soft); }
+.look-open:hover { background:var(--pink-soft); transform:translate(-1px,-1px); box-shadow:calc(5px * var(--hard)) calc(5px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .16)); }
+.look-open:active { transform:translate(1px,1px); box-shadow:calc(1px * var(--hard)) calc(1px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12)); }
 .look-open svg { flex:none; }
+/* #57: a small caret so the control reads as "opens something", not a status badge like .prototype-label
+   next to it (which has no shadow, no hover, and isn't a button at all). */
+.look-open-caret { flex:none; opacity:.65; }
 
 .look-screen { max-width:1120px; margin:0 auto; padding:14px 4px 40px; }
 .look-eyebrow { margin:0 0 6px; color:var(--accent-text,var(--pink)); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
@@ -86,11 +90,12 @@
 .pv-row { display:flex; gap:2cqw; margin-top:auto; }
 .pv-btn { padding:.8cqw 3.6cqw; border:.6cqw solid var(--navy); border-radius:99px; font-size:3.3cqw; font-style:normal; font-weight:700; background:#fff; }
 .pv-btn-on { background:var(--navy); color:#fff; }
+.pv-why { margin-left:auto; align-self:center; font-size:3cqw; font-style:normal; font-weight:700; color:var(--note-ink,#5749bf); text-decoration:underline; text-underline-offset:2px; }
 .pv-deco { position:absolute; z-index:1; display:none; }
 
 @media (max-width: 1000px) { .look-picker { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width: 560px) { .look-picker { grid-template-columns:minmax(0,1fr); } }
 @media (max-width: 620px) {
   .look-open { width:44px; padding:0; justify-content:center; }
-  .look-open-label { display:none; }
+  .look-open-label, .look-open-caret { display:none; }
 }
