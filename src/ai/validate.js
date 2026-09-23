@@ -84,6 +84,9 @@ export function validateHypotheses(response, ctx) {
     const scopedStatement = (ctx.statements ?? []).find((s) => (s.excludedDomains ?? []).length && (s.hypothesisId === h.id || (s.label && s.label.toLowerCase() === h.label.toLowerCase())));
     const excludedDomainsClaimed = scopedStatement ? h.domains.filter((d) => scopedStatement.excludedDomains.includes(d)) : [];
     if (excludedDomainsClaimed.length) reasons.push(`claims domains the user said this pattern is not them in: ${excludedDomainsClaimed.join(", ")}`);
+    // #36 v1: "only applies in some contexts" caps confidence the same way the product caps it from
+    // evidence alone (below) — the model cannot claim Strong for a pattern the user says isn't universal.
+    const contextQualified = (ctx.statements ?? []).some((s) => s.context === "some" && (s.hypothesisId === h.id || (s.label && s.label.toLowerCase() === h.label.toLowerCase())));
     const key = h.label.trim().toLowerCase();
     if (seenLabels.has(key)) reasons.push("duplicate of another hypothesis in this response");
 
@@ -95,9 +98,13 @@ export function validateHypotheses(response, ctx) {
       if (CROSS_DOMAIN.indexOf(h.crossDomain) > CROSS_DOMAIN.indexOf(crossDomain)) reasons.push(`cross-domain overreach: claimed ${h.crossDomain}, evidence shows ${crossDomain}`);
       if (!reasons.length) {
         // the same thresholds as the Taste Profile (#26); the product owns them, not the model
-        const allowed = allowedLevel(supports, counters);
+        const evidenceAllows = allowedLevel(supports, counters);
+        const allowed = contextQualified ? capLevel(evidenceAllows, "supported") : evidenceAllows;
         const level = capLevel(h.level, allowed);
-        if (level !== h.level) notes.push(`"${h.label}": level lowered from ${h.level} to ${level} (evidence allows ${allowed})`);
+        if (level !== h.level) {
+          const why = contextQualified && allowed !== evidenceAllows ? "the user said this only applies in some contexts" : `evidence allows ${allowed}`;
+          notes.push(`"${h.label}": level lowered from ${h.level} to ${level} (${why})`);
+        }
         seenLabels.add(key);
         accepted.push({ ...h, level, scope, crossDomain: h.crossDomain, authority: "inferred", source: "model", contract: CONTRACT_VERSION });
         continue;

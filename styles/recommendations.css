@@ -59,6 +59,25 @@
 .refresh-banner .action-group { flex:0 1 auto; justify-content:flex-end; }
 .refresh-banner.is-finished .action-group { min-width:0; }
 .refresh-banner.is-fallback .action-group,.refresh-banner.is-live .action-group { min-width:0; }
+
+/* #54: the technical live-AI/privacy disclosure lives behind a native <details> instead of sitting inline
+   in the primary flow — the short status (Live AI / Safe fallback) above already answers "was AI used?". */
+.ai-disclosure { margin-top:8px; }
+.ai-disclosure summary {
+  cursor:pointer;
+  min-height:24px;   /* WCAG 2.2 target size */
+  display:inline-flex;
+  align-items:center;
+  padding:2px 0;
+  font-size:11px;
+  font-weight:700;
+  color:var(--note-ink,#5749bf);
+  list-style:none;
+}
+.ai-disclosure summary::-webkit-details-marker { display:none; }
+.ai-disclosure summary::before { content:"\25b8 "; }
+.ai-disclosure[open] summary::before { content:"\25be "; }
+.ai-disclosure .quality-note-help { margin-top:6px; }
 /* The banner shares its row with text, so its buttons may wrap (the footer's single row may not). */
 .refresh-banner .recommendation-footer-actions { flex-wrap:wrap; }
 .refresh-banner .recommendation-footer-actions .button { flex:0 1 auto; }
@@ -313,6 +332,18 @@
 .quality-note-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
 .quality-chip { background:var(--yellow); color:var(--navy); }
 .quality-note-help { color:var(--faint,#747994); font-size:10px; line-height:1.35; flex:1 1 180px; }
+
+/* #52: discovery-quality feedback is a step behind the primary reaction, so it reads as optional and
+   quieter rather than competing with More/Less/Not tried. */
+.tertiary-feedback-toggle { margin-top:8px; }
+.more-feedback-toggle {
+  background:transparent;
+  border:1px dashed var(--line);
+  color:var(--muted);
+  font-weight:600;
+}
+.more-feedback-toggle[aria-expanded="true"] { border-style:solid; }
+.tertiary-feedback[hidden] { display:none; }
 
 .recommendation-footer {
   display:flex;

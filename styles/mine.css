@@ -54,6 +54,10 @@
 .mine-remove { border-style:dashed; }
 
 .mine-block { padding:16px 16px 18px; border:2px solid var(--navy); border-radius:16px; background:#fff; box-shadow:calc(5px * var(--hard)) calc(5px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12)); }
+.mine-concept-list { display:grid; gap:8px; margin:0; }
+.mine-concept { display:grid; gap:2px; }
+.mine-concept dt { font-weight:700; font-size:13px; color:var(--navy); }
+.mine-concept dd { margin:0; color:var(--muted); font-size:13px; line-height:1.4; }
 .mine-toggles { display:grid; gap:8px; }
 .mine-toggle {
   display:grid;

@@ -1,0 +1,33 @@
+/* Tastebreak (#19 v1): a small "note pinned to the card" for breaking down why something landed or didn't,
+   distinct from the Blind Spot's warm tint since this covers loved/liked items too, not just misses. */
+.tastebreak-panel {
+  margin-top:12px;
+  padding:12px 14px;
+  border:1.5px dashed var(--navy);
+  border-radius:12px;
+  background:var(--tint-lilac,#e7e9ff);
+  color:var(--text2,#3f4774);
+}
+.tastebreak-panel.is-offer { padding:0; background:transparent; border:0; }
+.tastebreak-title { margin:0 0 8px; color:var(--navy); font-size:14px; font-weight:700; line-height:1.35; }
+.tastebreak-title:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:3px; }
+.tastebreak-summary { margin:0; font-size:13px; line-height:1.5; }
+.tastebreak-help { margin:8px 0 0; font-size:12px; line-height:1.4; }
+.tastebreak-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.tastebreak-button { min-height:38px; min-width:0; padding:6px 14px; font-size:13px; }
+.tastebreak-chip[aria-pressed="true"] { background:var(--navy); color:#fff; border-color:var(--navy); }
+.tastebreak-chip.is-rejected { opacity:.55; text-decoration:line-through; }
+.tastebreak-note-label { display:block; margin:10px 0 4px; font-size:12px; font-weight:700; color:var(--navy); }
+.tastebreak-note {
+  width:100%;
+  min-height:52px;
+  padding:8px 10px;
+  border:1.5px solid var(--line);
+  border-radius:8px;
+  background:#fff;
+  color:inherit;
+  font:inherit;
+  font-size:13px;
+  resize:vertical;
+}
+.tastebreak-note:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:2px; }

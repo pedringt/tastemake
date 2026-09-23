@@ -16,7 +16,9 @@ import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback } from "./actions/recommendations.js";
+import { announceReaction, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback, toggleExpandedFeedback } from "./actions/recommendations.js";
+import { saveTastebreakAction } from "./actions/tastebreak.js";
+import { setTastebreakNote } from "./model/tastebreak.js";
 
 // app.js is orchestration only: routing between screens, rendering, focus/announce plumbing, and
 // dispatching DOM events to the action modules in ./actions/ and ./model/ (#39). Product rules and
@@ -143,8 +145,8 @@ function navigate(screen, { replace = false, scroll = true } = {}) {
   focusApp();
 }
 
-function renderPreservingCardPosition(itemId, focusSelector = null) {
-  const before = document.querySelector(`[data-rec-id="${itemId}"]`);
+function renderPreservingPosition(selector, focusSelector = null) {
+  const before = document.querySelector(selector);
   const beforeTop = before?.getBoundingClientRect().top;
 
   render();
@@ -152,11 +154,15 @@ function renderPreservingCardPosition(itemId, focusSelector = null) {
   restoreFocus(focusSelector);
 
   if (beforeTop === undefined) return;
-  const after = document.querySelector(`[data-rec-id="${itemId}"]`);
+  const after = document.querySelector(selector);
   if (!after) return;
 
   const afterTop = after.getBoundingClientRect().top;
   window.scrollBy({ top: afterTop - beforeTop, left: 0, behavior: "auto" });
+}
+
+function renderPreservingCardPosition(itemId, focusSelector = null) {
+  renderPreservingPosition(`[data-rec-id="${itemId}"]`, focusSelector);
 }
 
 function closeWhyPopovers(except = null) {
@@ -278,6 +284,19 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const tastebreakButton = event.target.closest("[data-tastebreak-action][data-tastebreak-item]");
+  if (tastebreakButton) {
+    const itemId = tastebreakButton.dataset.tastebreakItem;
+    const action = tastebreakButton.dataset.tastebreakAction;
+    const message = saveTastebreakAction(itemId, action, tastebreakButton.dataset.tastebreakValue);
+    const keepFocus = action === "toggle-pattern" ? focusSelector : null;
+    renderPreservingPosition(`[data-tastebreak-panel="${itemId}"]`, keepFocus);
+    // Starting or editing lands on the question so a screen reader hears it; toggling a pattern stays put.
+    if (!keepFocus && (action === "start" || action === "edit")) app.querySelector(`[data-tastebreak-focus="${itemId}"]`)?.focus({ preventScroll: true });
+    if (message) announce(message);
+    return;
+  }
+
   const libraryAction = event.target.closest("[data-library-action][data-library-item]");
   if (libraryAction) {
     const itemId = libraryAction.dataset.libraryItem;
@@ -343,6 +362,13 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const feedbackToggle = event.target.closest("[data-toggle-feedback]");
+  if (feedbackToggle) {
+    toggleExpandedFeedback(feedbackToggle.dataset.toggleFeedback);
+    renderPreservingCardPosition(feedbackToggle.dataset.toggleFeedback, focusSelector);
+    return;
+  }
+
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
 
@@ -376,6 +402,13 @@ document.addEventListener("click", (event) => {
 document.addEventListener("change", (event) => {
   const radio = event.target.closest('input[name="look"]');
   if (radio) setLook(radio.value);
+});
+
+// Written straight to the draft with no render, so typing never loses the cursor or scroll position.
+// Saved (and shown back) only when the Tastebreak panel's Save button is pressed.
+app.addEventListener("input", (event) => {
+  const note = event.target.closest("[data-tastebreak-note]");
+  if (note) setTastebreakNote(state, note.dataset.tastebreakItem, note.value);
 });
 
 document.addEventListener("keydown", (event) => {

@@ -66,7 +66,10 @@ export async function run() {
   const moreChips = $$(`[data-feedback-item="${ids[1]}"][data-feedback-detail]`).map((chip) => chip.textContent.trim());
   check("More offers only experience answers (Loved / Liked it before)", moreChips.join("|") === "Loved it before|Liked it before", moreChips.join("|"));
   const qualityChips = () => $$(`[data-feedback-item="${ids[1]}"][data-feedback-quality]`).map((chip) => chip.textContent.trim());
-  check("'Surprised me' is NOT offered on an untried pick", qualityChips().join("|") === "Too predictable", qualityChips().join("|"));
+  check("'Surprised me' is NOT offered on an untried pick", qualityChips().join("|") === "Good fit, but too obvious?", qualityChips().join("|"));
+  // #52: discovery-quality feedback is a step behind "More feedback", not shown by default.
+  const moreFeedbackBtn = (id) => `[data-toggle-feedback="${id}"]`;
+  check("discovery feedback starts collapsed behind 'More feedback'", $(`#quality-${ids[1]}`)?.hidden === true && $(moreFeedbackBtn(ids[1]))?.getAttribute("aria-expanded") === "false");
 
   await rate(ids[0], "not-tried");
   await detail(ids[0], "bookmarked");
@@ -155,12 +158,15 @@ export async function run() {
   await act('[data-step-jump="recommendations"]');
   await detail(ids[1], "loved-before");
   check("'Loved it before' IS taste evidence (+2)", taste.tasteDelta(state.feedbackByRecommendation[ids[1]]) === 2);
-  check("'Surprised me' appears once it is tried and loved", qualityChips().join("|") === "Too predictable|Surprised me", qualityChips().join("|"));
+  check("'Surprised me' appears once it is tried and loved", qualityChips().join("|") === "Good fit, but too obvious?|Surprised me", qualityChips().join("|"));
+  await act(moreFeedbackBtn(ids[1]));
+  check("'More feedback' opens the discovery-quality note and moves focus to it", $(`#quality-${ids[1]}`)?.hidden === false && document.activeElement === $(moreFeedbackBtn(ids[1])));
   await act(`[data-feedback-item="${ids[1]}"][data-feedback-quality="surprised-me"]`);
   const surprised = state.feedbackByRecommendation[ids[1]];
   check("'Surprised me' is recorded but adds no taste weight of its own", surprised.quality === "surprised-me" && taste.tasteDelta(surprised) === 2);
+  check("once answered, the note stays open even without the manual toggle", $(`#quality-${ids[1]}`)?.hidden === false);
   await detail(ids[1], "loved-before");
-  check("un-choosing 'Loved it before' also clears a stale 'Surprised me'", state.feedbackByRecommendation[ids[1]].quality === null && qualityChips().join("|") === "Too predictable");
+  check("un-choosing 'Loved it before' also clears a stale 'Surprised me'", state.feedbackByRecommendation[ids[1]].quality === null && qualityChips().join("|") === "Good fit, but too obvious?");
   await detail(ids[1], "loved-before");
 
   // ---- Library: things tried and liked, derived from reactions ----
@@ -511,7 +517,8 @@ export async function run() {
   const firstTitle = catalog.hypotheses[0].title;
   const levelBeforeSay = $(".signal-row .signal-status")?.textContent.trim();
   const sayNotMe = `[data-statement-pattern="${firstId}"][data-statement-field="says"][data-statement-value="not-me"]`;
-  check("each pattern card asks 'Is this you?' and 'How much does it matter?'", $$(".signal-say").length === catalog.hypotheses.length && $$(".signal-say-group[role=group]").length === catalog.hypotheses.length * 2);
+  // #36 v1: a third group, "Does this hold everywhere?", joined "Is this you?" and "How much does it matter?".
+  check("each pattern card asks 'Is this you?', 'How much does it matter?' and 'Does this hold everywhere?'", $$(".signal-say").length === catalog.hypotheses.length && $$(".signal-say-group[role=group]").length === catalog.hypotheses.length * 3);
   await act(sayNotMe);
   check("'Not really me' is saved, pressed, keeps focus and is announced", state.patternStatements.some((s) => s.hypothesisId === firstId && s.says === "not-me") &&
     $(sayNotMe)?.getAttribute("aria-pressed") === "true" && document.activeElement === $(sayNotMe) && live().includes(firstTitle), live());

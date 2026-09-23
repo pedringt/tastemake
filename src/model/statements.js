@@ -12,9 +12,16 @@ import { recordRevision } from "./history.js";
 //   - The original pattern and its history stay visible; nothing is deleted.
 // Stored as state.patternStatements = [{ hypothesisId, label, says, weight, authority }]; `says` is the fit
 // answer (the name the AI validator reads).
+//
+// #36 v1 (2026-09-23): a pattern can also carry a lightweight `context: "some"` qualifier — "this only
+// applies in some contexts, not always" — narrower than a full "not me" and separate from domain scope
+// (excludedDomains, below). It is deliberately just one boolean qualifier, not a context taxonomy: the
+// issue asked to prove context can be represented without hard-coding one. A live model cannot ignore or
+// overwrite it; src/ai/validate.js caps the confidence level it may claim for a context-qualified pattern.
 
 export const FIT = { accurate: "You confirmed this", "not-me": "You said this isn't you" };
 export const WEIGHT = { lot: "Matters a lot to you", little: "Matters a little to you" };
+export const CONTEXT = { some: "You said this only applies in some contexts, not always" };
 
 const same = (a, b) => hypothesisMatches([a], b) || hypothesisMatches([b], a);
 
@@ -22,22 +29,27 @@ export function statementFor(state, hypothesisId) {
   return (state.patternStatements ?? []).find((s) => same(s.hypothesisId, hypothesisId)) ?? null;
 }
 
+const MESSAGE = {
+  says: (pattern, now) => (now ? `${pattern.title}: ${FIT[now]}.` : `${pattern.title}: your answer was cleared.`),
+  weight: (pattern, now) => (now ? `${pattern.title}: ${WEIGHT[now]}.` : `${pattern.title}: how much it matters was cleared.`),
+  context: (pattern, now) => (now ? `${pattern.title}: ${CONTEXT[now]}.` : `${pattern.title}: the context qualifier was cleared.`)
+};
+
 // Toggle one answer. Returns a sentence for the live region.
 export function setStatement(state, hypothesisId, field, value) {
   const pattern = hypotheses.find((p) => p.id === hypothesisId);
-  if (!pattern || !["says", "weight"].includes(field)) return null;
+  if (!pattern || !["says", "weight", "context"].includes(field)) return null;
   state.patternStatements ??= [];
   let entry = statementFor(state, hypothesisId);
   if (!entry) {
-    entry = { hypothesisId, label: pattern.title, says: null, weight: null, authority: "user-confirmed" };
+    entry = { hypothesisId, label: pattern.title, says: null, weight: null, context: null, authority: "user-confirmed" };
     state.patternStatements.push(entry);
   }
   entry[field] = entry[field] === value ? null : value;
-  if (!entry.says && !entry.weight) state.patternStatements = state.patternStatements.filter((s) => s !== entry);
-  const now = entry[field];
-  const message = field === "says"
-    ? (now ? `${pattern.title}: ${FIT[now]}.` : `${pattern.title}: your answer was cleared.`)
-    : (now ? `${pattern.title}: ${WEIGHT[now]}.` : `${pattern.title}: how much it matters was cleared.`);
+  if (!entry.says && !entry.weight && !entry.context && !(entry.excludedDomains?.length)) {
+    state.patternStatements = state.patternStatements.filter((s) => s !== entry);
+  }
+  const message = MESSAGE[field](pattern, entry[field]);
   // A user correction outranks model inference (#31) and is its own kind of revision (#37):
   // record it as "user-confirmed" so it stays distinguishable from anything Tastemake infers.
   recordRevision(state, { hypothesisId: pattern.id, claim: pattern.claim, origin: "user-confirmed", reason: message });
@@ -49,6 +61,10 @@ export function setStatement(state, hypothesisId, field, value) {
 // it everywhere else. This narrows scope; it never deletes the evidence the exclusion is based on.
 export function excludedDomainsFor(state, hypothesisId) {
   return statementFor(state, hypothesisId)?.excludedDomains ?? [];
+}
+
+export function contextQualifiedFor(state, hypothesisId) {
+  return statementFor(state, hypothesisId)?.context === "some";
 }
 
 export function toggleDomainExclusion(state, hypothesisId, domainId) {
@@ -65,7 +81,7 @@ export function toggleDomainExclusion(state, hypothesisId, domainId) {
   entry.excludedDomains = excluding
     ? [...entry.excludedDomains, domainId]
     : entry.excludedDomains.filter((d) => d !== domainId);
-  if (!entry.says && !entry.weight && !entry.excludedDomains.length) {
+  if (!entry.says && !entry.weight && !entry.context && !entry.excludedDomains.length) {
     state.patternStatements = state.patternStatements.filter((s) => s !== entry);
   }
   const message = excluding
@@ -86,5 +102,5 @@ export function clearStatement(state, hypothesisId) {
 }
 
 export function activeStatements(state) {
-  return (state.patternStatements ?? []).filter((s) => s.says || s.weight);
+  return (state.patternStatements ?? []).filter((s) => s.says || s.weight || s.context || s.excludedDomains?.length);
 }

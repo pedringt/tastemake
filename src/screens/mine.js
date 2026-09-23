@@ -1,8 +1,9 @@
 import { state } from "../state.js";
+import { hypotheses } from "../data/catalog.js";
 import { AREAS } from "../model/taste.js";
 import { toldItems } from "../model/mine.js";
 import { reasonLabel } from "../model/blindspots.js";
-import { FIT, WEIGHT, activeStatements } from "../model/statements.js";
+import { CONTEXT, FIT, WEIGHT, activeStatements } from "../model/statements.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 
@@ -96,12 +97,67 @@ function statementList() {
           <li class="mine-row" data-mine-said="${s.hypothesisId}">
             <div class="mine-row-main">
               <strong class="mine-title">${esc(s.label)}</strong>
-              <span class="mine-status">${[s.says ? FIT[s.says] : "", s.weight ? WEIGHT[s.weight] : ""].filter(Boolean).join(" \u00b7 ")}</span>
+              <span class="mine-status">${[
+                s.says ? FIT[s.says] : "",
+                s.weight ? WEIGHT[s.weight] : "",
+                s.context ? CONTEXT[s.context] : "",
+                s.excludedDomains?.length ? `Not in ${s.excludedDomains.join(", ")}` : ""
+              ].filter(Boolean).join(" \u00b7 ")}</span>
               <span class="mine-source">Said on the Taste Profile</span>
             </div>
             <div class="mine-actions"><button class="button button-secondary mine-action mine-remove" type="button" data-mine-said-remove="${s.hypothesisId}">Remove</button></div>
           </li>`).join("")}
       </ul>
+    </section>`;
+}
+
+// #19 v1: lets a Tastebreak be revisited or removed from the same place as everything else told to Tastemake,
+// rather than only being reachable by finding the item again in the Library.
+function tastebreakList() {
+  const entries = Object.entries(state.tastebreaks)
+    .map(([itemId, entry]) => ({ itemId, entry, item: state.feedbackByRecommendation[itemId]?.item }))
+    .filter((row) => row.item);
+  if (!entries.length) return "";
+  return `
+    <section class="mine-group" aria-labelledby="mine-tastebreak">
+      <h3 id="mine-tastebreak">Tastebreaks <span class="mine-count">${entries.length}</span></h3>
+      <p class="mine-blurb">What you said actually pulled you in, or pushed you away, when you broke something down.</p>
+      <ul class="mine-list">
+        ${entries.map(({ itemId, entry, item }) => {
+          const names = hypotheses.filter((p) => entry.confirmed.includes(p.id)).map((p) => p.title);
+          return `
+          <li class="mine-row" data-mine-id="tastebreak-${itemId}">
+            <div class="mine-row-main">
+              <strong class="mine-title">${esc(item.title)}</strong>
+              <span class="mine-status">${names.length ? esc(names.join(", ")) : "Something else"}</span>
+              <span class="mine-source">${entry.positive ? "Why it landed" : "Why it didn't land"}</span>
+            </div>
+            <div class="mine-actions"><button class="button button-secondary mine-action mine-remove" type="button" data-tastebreak-item="${itemId}" data-tastebreak-action="remove">Remove</button></div>
+          </li>`;
+        }).join("")}
+      </ul>
+    </section>`;
+}
+
+// #29 (2026-09-23): a one-sentence definition for each concept, so the navigation doesn't have to be
+// figured out by trial and error. Deliberately just definitions — no new UX, no attempt at testing
+// whether they land with a new user (that needs someone other than Paige, tracked separately in #29).
+const CONCEPTS = [
+  ["Favorites", "The handful of already-known loves you started from."],
+  ["Recommendations", "Tastemake's current best guesses at what fits, and a way to test them."],
+  ["Taste Profile", "What Tastemake thinks the patterns in your reactions add up to, and how sure it is."],
+  ["Library", "Things you've actually tried and reacted to."],
+  ["Bookmarks", "Things you want to try. Saved, not evidence yet."],
+  ["My Tastemake (here)", "Everything you've told it, including the things that count against a pattern, kept in the background rather than a big visible list."]
+];
+
+function conceptsBlock() {
+  return `
+    <section class="mine-block mine-concepts" aria-labelledby="mine-concepts">
+      <h2 id="mine-concepts">What each part means</h2>
+      <dl class="mine-concept-list">
+        ${CONCEPTS.map(([term, def]) => `<div class="mine-concept"><dt>${esc(term)}</dt><dd>${esc(def)}</dd></div>`).join("")}
+      </dl>
     </section>`;
 }
 
@@ -165,8 +221,10 @@ export function renderMine() {
           ${group("Only steers what comes next", "Reactions to things you haven't tried, and bookmarks. These nudge which picks appear, but they are not taste.", told.steers, "Nothing here yet.")}
           ${blindSpotList(told.blindSpots)}
           ${statementList()}
+          ${tastebreakList()}
         </div>
         <aside class="mine-side">
+          ${conceptsBlock()}
           ${areasBlock()}
           ${picksBlock()}
           ${resetBlock()}
