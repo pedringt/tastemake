@@ -24,6 +24,15 @@ BASE="http://localhost:$PORT"
 MODE="${1:-}"; shift || true
 
 [ -x "$CHROME" ] || { echo "Chrome not found at: $CHROME (set CHROME=...)"; exit 2; }
+
+# A project-local, reused Chrome profile (not the machine's default one, not a fresh dir each call).
+# A brand-new profile makes Chrome run its first-run/updater machinery (network pings, crash-handler
+# forks) that ignore this script's alarm timeout and can hang for minutes; a profile that has already
+# been through first-run skips that and launches in ~1s. Isolated from the default profile so this never
+# fights the user's real Chrome, or another Claude Code session's own headless run, for its SingletonLock.
+CHROME_PROFILE="${CHROME_PROFILE:-$ROOT/.git/tm-chrome-profile}"
+mkdir -p "$CHROME_PROFILE"
+
 case "$MODE" in model|flow|layout|a11y) ;; *) sed -n '2,12p' "$0"; exit 2 ;; esac
 
 python3 - "$ROOT" "$H" <<'PY'
@@ -77,7 +86,7 @@ if mode == "a11y":
                 print("       ", k, x)
     sys.exit(1 if bad else 0)
 if mode == "layout":
-    keys = ["stickerTextHits", "stickerBoxHits", "stickerOutside", "titleCollisions", "textUnderControls", "topbarOverlaps", "mapOverlaps", "lowContrast"]
+    keys = ["stickerTextHits", "stickerBoxHits", "stickerOutside", "titleCollisions", "textUnderControls", "topbarOverlaps", "mapOverlaps", "lowContrast", "artworkHits"]
     import os
     # Collage is the original look; its decorative low-contrast labels are known and not gated (see visual-design-spec.md).
     gated = keys if os.environ.get("LOOK", "editorial") != "collage" else [k for k in keys if k != "lowContrast"]
@@ -114,7 +123,7 @@ for w in "${WIDTHS[@]}"; do
   [ "$MODE" = model ] && echo "model rules"
   for try in 1 2 3; do
     CHROME_ERR="$H/tm-chrome-err.log"
-    out=$(perl -e 'alarm 200; exec @ARGV' "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars --window-size=$WIN --virtual-time-budget=$BUDGET --dump-dom "$URL" 2>"$CHROME_ERR" | python3 "$H/tm-summary-$LOOK_NAME.py" "$MODE"; echo "rc=${PIPESTATUS[1]}")
+    out=$(perl -e 'alarm 200; exec @ARGV' "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars --no-first-run --disable-background-networking --disable-component-update --disable-features=ChromeWhatsNewUI --user-data-dir="$CHROME_PROFILE" --window-size=$WIN --virtual-time-budget=$BUDGET --dump-dom "$URL" 2>"$CHROME_ERR" | python3 "$H/tm-summary-$LOOK_NAME.py" "$MODE"; echo "rc=${PIPESTATUS[1]}")
     rc=${out##*rc=}
     if [ "$rc" = 3 ]; then
       # Harness flake on the first tries; on the last try, show Chrome's own stderr so a real

@@ -34,6 +34,7 @@ export async function run() {
   // Text contrast is gated in the newer looks; Collage is the original look and keeps its known decorative low-contrast labels.
   const layoutClean = (r) => !r.stickerTextHits.length && !r.stickerBoxHits.length && !r.stickerOutside.length &&
     !r.titleCollisions.length && !r.textUnderControls.length && !r.topbarOverlaps.length && !r.mapOverlaps.length && !r.hScroll &&
+    !(r.artworkHits ?? []).length &&
     (state.look === "collage" || !r.lowContrast.length);
   const rate = (id, rating) => act(`[data-feedback-item="${id}"][data-rating="${rating}"]`);
   const detail = (id, value) => act(`[data-feedback-item="${id}"][data-feedback-detail="${value}"]`);
@@ -42,6 +43,19 @@ export async function run() {
   let ids = cardIds();
   check("opening set has 5 picks", ids.length === 5, ids.length);
   check("Bookmarks tab hidden before anything is saved", bookmarksStep().hidden);
+
+  // #34: the decorative artwork title must never be obscured by the shapes behind it, for every
+  // title in the catalog, and for one deliberately very long one (a title-length regression is
+  // exactly what let the original bug through).
+  const realTitleHits = layout.checkArtwork();
+  check("no recommendation artwork title is obscured by its own decoration (catalog titles)", realTitleHits.length === 0, JSON.stringify(realTitleHits));
+  const originalTitle = catalog.recommendations[0].title;
+  catalog.recommendations[0].title = "An Extraordinarily Long And Wordy Title About Everything, Everywhere, All At Once, Again";
+  await act('[data-step-jump="recommendations"]');   // re-navigating forces a fresh render of the mutated title
+  const longTitleHits = layout.checkArtwork();
+  check("...and not for a deliberately very long title either", longTitleHits.length === 0, JSON.stringify(longTitleHits));
+  catalog.recommendations[0].title = originalTitle;   // restore before this item is used again below
+  await act('[data-step-jump="recommendations"]');
 
   await rate(ids[0], "not-tried");
   const chips = $$(`[data-feedback-item="${ids[0]}"][data-feedback-detail]`).map((chip) => chip.textContent.trim());

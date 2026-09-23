@@ -223,6 +223,7 @@ export function checkCurrentScreen() {
     topbarOverlaps,
     mapOverlaps,
     lowContrast: [...lowContrast(screen, field), ...lowContrast(document.querySelector(".topbar"), null)],
+    artworkHits: checkArtwork(),   // #34: recommendation artwork title vs. decorative shapes
     hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth
   };
 }
@@ -236,4 +237,33 @@ export async function runAll() {
     results[name] = checkCurrentScreen();
   }
   return results;
+}
+
+// ---- Recommendation artwork (#34): the decorative title/badges must never be obscured by the ----
+// ---- decorative shapes behind them. `.editorial-art` and its children are aria-hidden (the real, ----
+// ---- readable title is in the card body), but a hard-to-read decoration is still a visual bug. ----
+export function checkArtwork() {
+  const boxOf = (el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
+  const overlapArea = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+
+  const hits = [];
+  document.querySelectorAll(".editorial-art").forEach((art) => {
+    const title = art.querySelector(".art-title");
+    if (!title || !isVisible(title)) return;
+    const titleBox = boxOf(title);
+    const titleArea = Math.max(1, (titleBox.right - titleBox.left) * (titleBox.bottom - titleBox.top));
+    // .art-pattern is a faint full-bleed texture under everything by design, not a decoration that can
+    // "cover" the title; only the solid accent shapes are checked.
+    art.querySelectorAll(".art-shape-a, .art-shape-b").forEach((shape) => {
+      if (!isVisible(shape)) return;
+      const shapeBox = boxOf(shape);
+      const overlap = overlapArea(titleBox, shapeBox);
+      if (overlap / titleArea > 0.05) {
+        const artName = art.className.split(" ").find((c) => c.startsWith("art-") && c !== "art-layout-1" && c !== "art-layout-2" && c !== "art-layout-3" && c !== "art-layout-4") || "art";
+        const shapeName = [...shape.classList].find((c) => c === "art-shape-a" || c === "art-shape-b");
+        hits.push(`${artName}: ${shapeName} covers ${Math.round((overlap / titleArea) * 100)}% of the title`);
+      }
+    });
+  });
+  return hits;
 }
