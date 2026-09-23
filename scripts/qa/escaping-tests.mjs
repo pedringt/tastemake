@@ -13,7 +13,8 @@ const { state } = await import("../../src/state.js");
 const { recommendations, hypotheses } = await import("../../src/data/catalog.js");
 const { makeCustomItem, applySearchAction } = await import("../../src/model/search.js");
 const { setStatement } = await import("../../src/model/statements.js");
-const { saveBlindSpot } = await import("../../src/model/blindspots.js");
+const { saveBlindSpot, patternsFor } = await import("../../src/model/blindspots.js");
+const { startTastebreak, toggleTastebreakPattern, setTastebreakNote, saveTastebreak } = await import("../../src/model/tastebreak.js");
 const { esc } = await import("../../src/lib/html.js");
 
 const PAYLOAD = `<img src=x onerror="alert(1)">`;
@@ -42,6 +43,12 @@ applySearchAction(state, second, "bookmark");
 applySearchAction(state, third, "disliked");
 saveBlindSpot(state, third.id, { broken: [hypotheses[0].id], reasons: ["tone"] });
 setStatement(state, hypotheses[0].id, "says", "not-me");
+// a Tastebreak note (#19), the newest untrusted free-text slot: shown on the Library card and in My Tastemake
+startTastebreak(state, third.id);
+const taggedPattern = patternsFor(third)[0];
+if (taggedPattern) toggleTastebreakPattern(state, third.id, taggedPattern.id);
+setTastebreakNote(state, third.id, `${PAYLOAD} tastebreak note`);
+saveTastebreak(state, third.id);
 // a model-generated pattern, as inference will produce
 hypotheses[0].title = `${PAYLOAD} pattern`;
 hypotheses[0].claim = `${PAYLOAD} claim`;

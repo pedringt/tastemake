@@ -3,6 +3,7 @@ import { dislikedItems, libraryItems } from "../model/library.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
+import { renderTastebreakPanel } from "../components/tastebreak.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 
@@ -46,6 +47,7 @@ function libraryCard(entry) {
       <h3>${esc(item.title)}</h3>
       <p class="library-blurb">${esc(entry.blurb)}</p>
       ${controls}
+      ${tried ? renderTastebreakPanel(id) : ""}
     </article>`;
 }
 
@@ -79,6 +81,7 @@ function dislikedBlock(items) {
               </span>
             </div>
             ${renderBlindSpotPanel(id)}
+            ${renderTastebreakPanel(id)}
           </li>`).join("")}
       </ul>
     </details>`;

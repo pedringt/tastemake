@@ -11,6 +11,7 @@ export function focusSelectorFor(el) {
   if (d.bookmarkItem && d.bookmarkAction) return `[data-bookmark-item="${d.bookmarkItem}"][data-bookmark-action="${d.bookmarkAction}"]`;
   if (d.libraryItem && d.libraryAction) return `[data-library-item="${d.libraryItem}"][data-library-action="${d.libraryAction}"]`;
   if (d.blindItem && d.blindAction) return `[data-blind-item="${d.blindItem}"][data-blind-action="${d.blindAction}"]${d.blindValue ? `[data-blind-value="${d.blindValue}"]` : ""}`;
+  if (d.tastebreakItem && d.tastebreakAction) return `[data-tastebreak-item="${d.tastebreakItem}"][data-tastebreak-action="${d.tastebreakAction}"]${d.tastebreakValue ? `[data-tastebreak-value="${d.tastebreakValue}"]` : ""}`;
   if (d.mineItem && d.mineAction) return `[data-mine-item="${d.mineItem}"][data-mine-action="${d.mineAction}"]`;
   if (d.mineBlindRemove) return `[data-mine-blind-remove="${d.mineBlindRemove}"]`;
   if (d.mineReset) return `[data-mine-reset="${d.mineReset === "arm" ? "cancel" : "arm"}"]`;

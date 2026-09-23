@@ -20,6 +20,13 @@ function fresh() {
     patternStatements: [],
     blindSpotDrafts: {},
     blindSpotDismissed: new Set(),
+    // Tastebreak (#19 v1): confirmed/rejected patterns and a free-text note per item, wizard drafts in
+    // progress. Deterministic, not taste evidence on its own; confirmed patterns are recorded below as
+    // user-confirmed revisions.
+    tastebreaks: {},
+    tastebreakDrafts: {},
+    // Append-only revision history for taste hypotheses (#37). See src/model/history.js.
+    hypothesisHistory: [],
     // Transient live-AI UI state (#42). None of this is taste evidence and none of it is persisted.
     // aiRequest is the in-flight request: its id, the evidence fingerprint it was computed from, and its
     // AbortController, so a stale or cancelled answer is never shown.
