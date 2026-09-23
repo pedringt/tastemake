@@ -1,22 +1,26 @@
-import { resetState, state } from "./state.js";
+import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, isBookmarked, isPositiveExperience, nextRecommendations } from "./model/taste.js";
-import { isStrongPositive } from "./model/evidence.js";
+import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
-import { reactionLabel, renderRecommendations } from "./screens/recommendations.js";
+import { renderRecommendations } from "./screens/recommendations.js";
 import { renderBookmarks } from "./screens/bookmarks.js";
 import { renderLibrary } from "./screens/library.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderMine } from "./screens/mine.js";
-import { clearStatement, setStatement, toggleDomainExclusion } from "./model/statements.js";
-import { applySearchAction } from "./model/search.js";
-import { AREAS } from "./model/taste.js";
+import { setStatement, toggleDomainExclusion } from "./model/statements.js";
 import { isLook, lookLabel } from "./data/looks.js";
 import { initSearch } from "./components/search.js";
-import { blindSpotFor, isBlindSpotCandidate, removeBlindSpot, saveBlindSpot } from "./model/blindspots.js";
-import { requestRecommendations } from "./ai/live-client.js";
-import { AI_LOADING, cancelRequest, finishRequest, staleReason, startRequest } from "./ai/requests.js";
+import { AI_LOADING, cancelRequest } from "./ai/requests.js";
+import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
+import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
+import { saveBlindAction } from "./actions/blindspot.js";
+import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
+import { announceReaction, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback } from "./actions/recommendations.js";
+
+// app.js is orchestration only: routing between screens, rendering, focus/announce plumbing, and
+// dispatching DOM events to the action modules in ./actions/ and ./model/ (#39). Product rules and
+// state mutation live in those modules, not here.
 
 const app = document.querySelector("#app");
 
@@ -83,6 +87,10 @@ function announce(message) {
   window.setTimeout(() => { live.textContent = message; }, 40);
 }
 
+function restoreFocus(selector, fallback = app) {
+  restoreFocusIn(app, selector, fallback);
+}
+
 // Apply a look to the whole page right away (the picker is a live preview). Not taste evidence.
 function setLook(id) {
   if (!isLook(id)) return;
@@ -95,100 +103,16 @@ function setLook(id) {
   announce(`Look: ${lookLabel(id)}.`);
 }
 
-// ---- My Tastemake (#8) ----
-function openMine() {
-  if (state.screen !== "mine") state.mineReturn = state.screen;
-  navigate("mine");
-}
-
-function mineRemoveFocusAfter(rowEl) {
-  const next = rowEl?.nextElementSibling ?? rowEl?.previousElementSibling;
-  if (next?.dataset.mineId) return `[data-mine-id="${next.dataset.mineId}"] .mine-action`;
-  if (next?.dataset.mineSaid) return `[data-mine-said="${next.dataset.mineSaid}"] .mine-action`;
-  if (next?.dataset.mineBlind) return `[data-mine-blind="${next.dataset.mineBlind}"] .mine-action`;
-  return null;
-}
+const mineCtx = { render, updateStepper, restoreFocus, announce, navigate: (screen) => navigate(screen), canAccess };
 
 app.addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-  if (!button || state.screen !== "mine") return;
-
-  if (button.dataset.mineItem) {
-    const id = button.dataset.mineItem;
-    const item = state.feedbackByRecommendation[id]?.item;
-    if (!item) return;
-    const selector = button.dataset.mineAction === "remove"
-      ? mineRemoveFocusAfter(button.closest(".mine-row"))
-      : `[data-mine-item="${id}"][data-mine-action="${button.dataset.mineAction}"]`;
-    const message = applySearchAction(state, item, button.dataset.mineAction);
-    if (!message) return;
-    render();
-    updateStepper();
-    restoreFocus(selector);
-    announce(message);
-    return;
-  }
-
-  if (button.dataset.mineSaidRemove) {
-    const selector = mineRemoveFocusAfter(button.closest(".mine-row"));
-    const message = clearStatement(state, button.dataset.mineSaidRemove);
-    render();
-    restoreFocus(selector);
-    if (message) announce(message);
-    return;
-  }
-
-  if (button.dataset.mineBlindRemove) {
-    const id = button.dataset.mineBlindRemove;
-    const title = state.feedbackByRecommendation[id]?.item.title ?? "That pick";
-    const selector = mineRemoveFocusAfter(button.closest(".mine-row"));
-    removeBlindSpot(state, id);
-    render();
-    restoreFocus(selector);
-    announce(`${title}: what you told it it got wrong was removed.`);
-    return;
-  }
-
-  if (button.dataset.mineReset) {
-    const step = button.dataset.mineReset;
-    if (step === "confirm") {
-      resetState();
-      state.resetArmed = false;
-      navigate("favorites");
-      announce("Started over. Everything you told Tastemake in this visit is cleared.");
-      return;
-    }
-    state.resetArmed = step === "arm";
-    render();
-    restoreFocus(step === "arm" ? '[data-mine-reset="cancel"]' : '[data-mine-reset="arm"]');
-    announce(step === "arm" ? "Are you sure? This clears everything you told Tastemake." : "Nothing was cleared.");
-    return;
-  }
-
-  if (button.dataset.action === "mine-back") {
-    navigate(canAccess(state.mineReturn) ? state.mineReturn : "favorites");
-  }
+  if (state.screen !== "mine") return;
+  handleMineClick(event, mineCtx);
 });
 
 app.addEventListener("change", (event) => {
   if (state.screen !== "mine") return;
-  const area = event.target.closest("[data-mine-area]");
-  if (area) {
-    const id = area.dataset.mineArea;
-    state.areas[id] = area.checked;
-    if (!AREAS.some((a) => state.areas[a.id] !== false)) state.areas[id] = true;   // never all off
-    const label = AREAS.find((a) => a.id === id).label;
-    render();
-    restoreFocus(`[data-mine-area="${id}"]`);
-    announce(`${label} is ${state.areas[id] ? "on" : "off"} for new sets.`);
-    return;
-  }
-  if (event.target.closest("[data-mine-curveball]")) {
-    state.curveball = event.target.checked;
-    render();
-    restoreFocus("[data-mine-curveball]");
-    announce(`Curveball is ${state.curveball ? "on" : "off"} for new sets.`);
-  }
+  handleMineChange(event, mineCtx);
 });
 
 function openLookPicker() {
@@ -205,49 +129,6 @@ function finishLookPicker() {
   navigate(canAccess(target) ? target : "favorites");
 }
 
-// Every action re-renders the screen, which would drop keyboard focus to the page. Remember which
-// control had focus and put it back on the new copy (or on the page if that control is gone).
-function focusSelectorFor(el) {
-  const d = el?.dataset;
-  if (!d) return null;
-  if (d.feedbackItem && d.rating) return `[data-feedback-item="${d.feedbackItem}"][data-rating="${d.rating}"]`;
-  if (d.feedbackItem && d.feedbackDetail) return `[data-feedback-item="${d.feedbackItem}"][data-feedback-detail="${d.feedbackDetail}"]`;
-  if (d.feedbackItem && d.feedbackQuality) return `[data-feedback-item="${d.feedbackItem}"][data-feedback-quality="${d.feedbackQuality}"]`;
-  if (d.bookmarkItem && d.bookmarkAction) return `[data-bookmark-item="${d.bookmarkItem}"][data-bookmark-action="${d.bookmarkAction}"]`;
-  if (d.libraryItem && d.libraryAction) return `[data-library-item="${d.libraryItem}"][data-library-action="${d.libraryAction}"]`;
-  if (d.blindItem && d.blindAction) return `[data-blind-item="${d.blindItem}"][data-blind-action="${d.blindAction}"]${d.blindValue ? `[data-blind-value="${d.blindValue}"]` : ""}`;
-  if (d.mineItem && d.mineAction) return `[data-mine-item="${d.mineItem}"][data-mine-action="${d.mineAction}"]`;
-  if (d.mineBlindRemove) return `[data-mine-blind-remove="${d.mineBlindRemove}"]`;
-  if (d.mineReset) return `[data-mine-reset="${d.mineReset === "arm" ? "cancel" : "arm"}"]`;
-  if (d.statementPattern) return `[data-statement-pattern="${d.statementPattern}"][data-statement-field="${d.statementField}"][data-statement-value="${d.statementValue}"]`;
-  if (d.scopePattern) return `[data-scope-pattern="${d.scopePattern}"][data-scope-domain="${d.scopeDomain}"]`;
-  if (d.mineSaidRemove) return null;
-  if (d.profileView) return `[data-profile-view="${d.profileView}"]`;
-  if (d.mapPattern) return `[data-map-pattern="${d.mapPattern}"]`;
-  if (d.mapItem) return `[data-map-item="${d.mapItem}"]`;
-  if (d.favorite) return `[data-favorite="${d.favorite}"]`;
-  if (d.domainFilter && d.filterScope) return `[data-domain-filter="${d.domainFilter}"][data-filter-scope="${d.filterScope}"]`;
-  return null;
-}
-
-function restoreFocus(selector, fallback = app) {
-  const target = (selector && app.querySelector(selector)) || fallback;
-  target.focus({ preventScroll: true });
-}
-
-const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
-
-function announceReaction(itemId) {
-  const feedback = state.feedbackByRecommendation[itemId];
-  if (!feedback) return;
-  const saved = bookmarkedFeedback(state).length;
-  const bookmarkPart = isBookmarked(feedback) ? ` ${plural(saved, "thing", "things")} bookmarked.` : "";
-  const offer = isBlindSpotCandidate(feedback) && !blindSpotFor(state, itemId)
-    ? " Tastemake expected you to like this. There is an option below to tell it what it got wrong."
-    : "";
-  announce(`${feedback.item.title}: ${reactionLabel(feedback)}.${bookmarkPart}${offer}`);
-}
-
 function navigate(screen, { replace = false, scroll = true } = {}) {
   if (!canAccess(screen)) return;
   // Leaving the page a request was started from makes its answer irrelevant (#42).
@@ -260,130 +141,6 @@ function navigate(screen, { replace = false, scroll = true } = {}) {
 
   if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
   focusApp();
-}
-
-function saveQuickFeedback(itemId, rating) {
-  const item = activeRecommendations(state).find((rec) => rec.id === itemId);
-  if (!item) return false;
-
-  const existing = state.feedbackByRecommendation[itemId];
-  state.feedbackByRecommendation[itemId] = {
-    item,
-    rating,
-    detail: null,
-    // "Surprised me" only makes sense after Loved/Liked it before, which a fresh rating clears.
-    quality: existing?.quality === "surprised-me" ? null : existing?.quality || null
-  };
-
-  return true;
-}
-
-function saveFeedbackDetail(itemId, detail) {
-  const existing = state.feedbackByRecommendation[itemId];
-  if (!existing) return false;
-
-  existing.detail = existing.detail === detail ? null : detail;
-  if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
-  return true;
-}
-
-function saveFeedbackQuality(itemId, quality) {
-  const existing = state.feedbackByRecommendation[itemId];
-  if (!existing) return false;
-
-  existing.quality = existing.quality === quality ? null : quality;
-  return true;
-}
-
-const triedOutcomes = {
-  "tried-loved": ["more", "loved-before"],
-  "tried-liked": ["more", "liked-before"],
-  "tried-disliked": ["less", "tried-disliked"]
-};
-
-// Trying a bookmarked item turns it into a real reaction (and only then can it teach the model).
-// wasBookmarked keeps a record that it was saved first, so the pre-try bookmark can later be
-// compared with how it actually went.
-function saveBookmarkAction(itemId, action) {
-  const existing = state.feedbackByRecommendation[itemId];
-  if (!isBookmarked(existing)) return false;
-
-  if (action === "remove") {
-    existing.detail = null;
-    return true;
-  }
-
-  const outcome = triedOutcomes[action];
-  if (!outcome) return false;
-  const [rating, detail] = outcome;
-  state.feedbackByRecommendation[itemId] = { item: existing.item, rating, detail, quality: existing.quality, wasBookmarked: true };
-  return true;
-}
-
-// Library corrections change the underlying reaction, so the Library, Taste Profile and Bookmarks
-// can never disagree. Starring a Favorite is only possible while the pick is still "Loved it before".
-const libraryOutcomes = {
-  loved: ["more", "loved-before"],
-  liked: ["more", "liked-before"],
-  disliked: ["less", "tried-disliked"]
-};
-
-function saveLibraryAction(itemId, action) {
-  const existing = state.feedbackByRecommendation[itemId];
-  if (!existing) return false;
-
-  if (action === "favorite") {
-    if (!isStrongPositive(existing)) return false;
-    state.libraryFavorites.add(itemId);
-    return true;
-  }
-  if (action === "unfavorite") {
-    state.libraryFavorites.delete(itemId);
-    return true;
-  }
-
-  const outcome = libraryOutcomes[action];
-  if (!outcome) return false;
-  [existing.rating, existing.detail] = outcome;
-  if (!isStrongPositive(existing)) state.libraryFavorites.delete(itemId);
-  // "Surprised me" only makes sense after Loved / Liked it before.
-  if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
-  return true;
-}
-
-// Taste Blind Spot (#20) panel: a small, resumable two-question flow. Returns a sentence to announce.
-function saveBlindAction(itemId, action, value) {
-  const feedback = state.feedbackByRecommendation[itemId];
-  if (!feedback) return null;
-  const draft = state.blindSpotDrafts[itemId];
-  const title = feedback.item.title;
-  const toggle = (list, id) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
-
-  if (action === "start" || action === "edit") {
-    const saved = blindSpotFor(state, itemId);
-    state.blindSpotDrafts[itemId] = { step: 1, broken: [...(saved?.hypotheses ?? [])], none: Boolean(saved?.none), reasons: [...(saved?.reasons ?? [])] };
-    state.blindSpotDismissed.delete(itemId);
-    return "Question 1 of 2. Which of the reasons Tastemake picked this didn't hold up for you?";
-  }
-  if (action === "dismiss") { state.blindSpotDismissed.add(itemId); return `Okay. You can tell Tastemake what it got wrong about ${title} any time.`; }
-  if (action === "remove") { removeBlindSpot(state, itemId); return `${title} is no longer a blind spot.`; }
-  if (!draft) return null;
-
-  if (action === "toggle-pattern") {
-    if (value === "none") { draft.none = !draft.none; if (draft.none) draft.broken = []; }
-    else { draft.none = false; draft.broken = toggle(draft.broken, value); }
-    return null;
-  }
-  if (action === "toggle-reason") { draft.reasons = toggle(draft.reasons, value); return null; }
-  if (action === "next") {
-    if (draft.step === 1 && !draft.broken.length && !draft.none) return null;
-    draft.step = Math.min(3, draft.step + 1);
-    return draft.step === 2 ? "Question 2 of 2. What got in the way?" : "Does this sound right?";
-  }
-  if (action === "back") { draft.step = Math.max(1, draft.step - 1); return null; }
-  if (action === "save") { saveBlindSpot(state, itemId, draft); return `Noted. ${title} is now a blind spot Tastemake will learn from.`; }
-  if (action === "discard") { delete state.blindSpotDrafts[itemId]; return "Discarded."; }
-  return null;
 }
 
 function renderPreservingCardPosition(itemId, focusSelector = null) {
@@ -554,7 +311,7 @@ app.addEventListener("click", async (event) => {
       restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
       const left = bookmarkedFeedback(state).length;
       const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "bookmark removed" })[outcome];
-      announce(`${title}: ${what}. ${plural(left, "thing", "things")} left in Bookmarks.`);
+      announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Bookmarks.`);
     }
     return;
   }
@@ -564,7 +321,7 @@ app.addEventListener("click", async (event) => {
     const itemId = rating.dataset.feedbackItem;
     if (saveQuickFeedback(itemId, rating.dataset.rating)) {
       renderPreservingCardPosition(itemId, focusSelector);
-      announceReaction(itemId);
+      announceReaction(itemId, announce);
     }
     return;
   }
@@ -574,7 +331,7 @@ app.addEventListener("click", async (event) => {
     const itemId = detail.dataset.feedbackItem;
     if (saveFeedbackDetail(itemId, detail.dataset.feedbackDetail)) {
       renderPreservingCardPosition(itemId, focusSelector);
-      announceReaction(itemId);
+      announceReaction(itemId, announce);
     }
     return;
   }
@@ -596,50 +353,13 @@ app.addEventListener("click", async (event) => {
   if (action === "view-bookmarks") navigate("bookmarks");
 
   if (action === "keep-discovering" && canKeepDiscovering(state) && state.aiStatus !== AI_LOADING) {
-    const request = startRequest(state);
-    state.aiMessage = "Tastemake is checking what you have actually tried against the next eligible picks.";
-    render();
-    updateStepper();
-    announce("Tastemake is finding a new set.");
-
-    let picks = null;
-    let source = "deterministic";
-    let message = "The live service was unavailable, so Tastemake used its deterministic fallback.";
-    try {
-      const result = await requestRecommendations(state, { signal: request.controller?.signal });
-      if (!result.picks.length) throw new Error("no picks returned");
-      picks = result.picks;
-      source = result.source;
-      message = result.source === "model"
-        ? "Live AI chose and explained this set. Tastemake checked every pick and citation against its evidence rules before showing it."
-        : "Live AI was unavailable or its answer did not pass the rules, so Tastemake used its deterministic fallback.";
-    } catch { /* fall through to the deterministic picks below */ }
-
-    // An answer computed from evidence the user has since changed is not about their current state, so it
-    // is dropped whatever it says (#42). If they left the page entirely, nothing is shown at all.
-    const stale = staleReason(state, request);
-    if (stale === "you moved to another page while it was thinking" || (stale && request.cancelled)) {
-      cancelRequest(state, stale);
-      state.aiStatus = "idle";
-      return;
-    }
-    if (stale) {
-      picks = null;
-      source = "deterministic";
-      message = `Tastemake used its deterministic picks: ${stale}.`;
-    }
-
-    finishRequest(state, request, { source, message });
-    state.recommendationSets.push(picks ?? nextRecommendations(state));
-    state.recommendationFilter = "all";
-    navigate("recommendations", { replace: true });
-    announce(`New set: ${plural(activeRecommendations(state).length, "pick", "picks")}. ${state.aiSource === "model" ? "Live AI was used and validated." : "Deterministic fallback was used."}`);
+    await runKeepDiscovering({ render, updateStepper, announce, navigate });
   }
 });
 
 document.addEventListener("click", (event) => {
   if (event.target.closest("[data-open-look]")) { openLookPicker(); return; }
-  if (event.target.closest("[data-open-mine]")) { openMine(); return; }
+  if (event.target.closest("[data-open-mine]")) { openMine(navigate); return; }
   if (event.target.closest('[data-action="look-done"]')) { finishLookPicker(); return; }
   if (!event.target.closest(".editorial-why")) closeWhyPopovers();
 
