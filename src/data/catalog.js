@@ -10,7 +10,14 @@ export const favorites = [
   { id: "thefall", title: "The Fall", type: "movie", domains: ["watch"], note: "Distinctive visual identity", selected: true },
   { id: "buffy", title: "Buffy the Vampire Slayer", type: "tv", domains: ["watch"], note: "Genre mixing + character", selected: true },
   { id: "starwars", title: "Original Star Wars trilogy", type: "movie", displayLabel: "Film", domains: ["watch"], note: "Adventure + worldbuilding", selected: false },
-  { id: "breakingbad", title: "Breaking Bad", type: "tv", domains: ["watch"], note: "Moral messiness", selected: false }
+  { id: "breakingbad", title: "Breaking Bad", type: "tv", domains: ["watch"], note: "Moral messiness", selected: false },
+  // #60: a wider first-run pool so a new visitor can find 4 meaningful favorites without every strong
+  // choice already being pre-selected for them. Left unselected on purpose — see #59 on real first-run
+  // favorites starting from the user's own choices.
+  { id: "houseofleaves", title: "House of Leaves", type: "book", domains: ["read"], note: "Unreliable narrative, formal strangeness", selected: false },
+  { id: "obradinn", title: "Return of the Obra Dinn", type: "game", domains: ["play"], note: "Structured deduction, procedural mystery", selected: false },
+  { id: "annihilation", title: "Annihilation", type: "book", domains: ["read"], note: "Eerie, adult, formally strange", selected: false },
+  { id: "goodplace", title: "The Good Place", type: "tv", domains: ["watch"], note: "Philosophical comedy, twist-heavy structure", selected: false }
 ];
 
 export const hypotheses = [
@@ -187,5 +194,80 @@ export const followUpPool = [
     about: "A fast-moving fantasy adventure about a mismatched group of thieves trying to fix a very bad mistake.",
     hypotheses: ["H05", "H04"],
     reason: "Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional."
+  },
+  // #60: broader seed set so multiple "Keep discovering" rounds have real variety to draw from instead of
+  // exhausting quickly, with deliberate mix of narrow signal checks, cross-signal combinations, a likely
+  // strong fit, and one item that is the H01/H07 hypothesis's own known counter-example (a probable miss).
+  {
+    id: "piranesi",
+    title: "Piranesi",
+    type: "book",
+    domains: ["read"],
+    about: "A hushed, dreamlike novel about a man living inside an endless, flooding house of statues.",
+    hypotheses: ["H05"],
+    reason: "Tests adult-fantastical fit on its own, without comedy or moral messiness alongside it."
+  },
+  {
+    id: "severance",
+    title: "Severance",
+    type: "tv",
+    domains: ["watch"],
+    about: "A workplace thriller about employees who surgically split their memories between work and home.",
+    hypotheses: ["H01/H07", "H09"],
+    reason: "Heavily structured mystery plus tonal collision (corporate horror and dry comedy) tests both signals together."
+  },
+  {
+    id: "outerwilds",
+    title: "Outer Wilds",
+    type: "game",
+    domains: ["play"],
+    about: "An open, unguided space-exploration game where discovery comes from curiosity rather than a directed system.",
+    hypotheses: ["H01/H07"],
+    reason: "The conditional hypothesis's own counter-example: open-ended discovery without imposed structure. A deliberate likely miss."
+  },
+  {
+    id: "bettercallsaul",
+    title: "Better Call Saul",
+    type: "tv",
+    domains: ["watch"],
+    about: "A slow-burn character drama about a small-time lawyer's descent into compromise and rationalization.",
+    hypotheses: ["H03"],
+    reason: "Isolates moral messiness on its own, without comedy layered in."
+  },
+  {
+    id: "controlgame",
+    title: "Control",
+    type: "game",
+    domains: ["play"],
+    about: "A supernatural action game set in a shifting, bureaucratic government building full of unexplained phenomena.",
+    hypotheses: ["H01/H07", "H09"],
+    reason: "Structured mystery plus tonal collision tests the same combination as Alan Wake, in a different domain."
+  },
+  {
+    id: "spiderverse",
+    title: "Spider-Man: Across the Spider-Verse",
+    type: "movie",
+    domains: ["watch"],
+    about: "A visually inventive animated superhero sequel juggling multiple universes, tones, and a large ensemble.",
+    hypotheses: ["H09"],
+    reason: "A more mainstream pick that still tests tonal collision — a near-fit check against pickier, weirder titles."
+  },
+  {
+    id: "signalis",
+    title: "Signalis",
+    type: "game",
+    domains: ["play"],
+    about: "A survival-horror game with a deliberately opaque, dreamlike story told through fragments.",
+    hypotheses: ["H05", "H09"],
+    reason: "Adult, formally strange genre work plus tonal ambiguity, in a domain where that combination is less tested."
+  },
+  {
+    id: "the-menu",
+    title: "The Menu",
+    type: "movie",
+    domains: ["watch"],
+    about: "A dark satire about an exclusive dinner that turns into something much stranger and more dangerous.",
+    hypotheses: ["H03", "H04"],
+    reason: "Moral messiness and sharp, specific comedy together — a likely strong fit, useful as a confidence-check pick."
   }
 ];

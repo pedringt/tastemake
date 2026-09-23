@@ -40,7 +40,9 @@ export function renderFavorites() {
         <div>
           <p class="kicker">Build your starter mix</p>
           <h1>Pick the things that feel the most <span class="marker-word">you.</span></h1>
-          <p class="lede">No giant onboarding quiz. A handful of strong favorites is enough to start.</p>
+          <p class="lede">${state.onboarded
+            ? "No giant onboarding quiz. A handful of strong favorites is enough to start."
+            : "Pick a few strong favorites so Tastemake can make its first guess about what tends to click for you."}</p>
         </div>
         <div class="favorites-side-note" aria-hidden="true">
           <span>your taste,</span>
@@ -67,8 +69,8 @@ export function renderFavorites() {
           <span>selected<br /><small>4 is enough to start</small></span>
         </div>
         <div class="action-group">
-          <button class="button button-secondary" type="button" data-action="view-model" ${count < 4 ? "disabled" : ""}>Peek at my taste</button>
-          <button class="button button-primary" type="button" data-action="show-recs" ${count < 4 ? "disabled" : ""}>Show me what I might like <span aria-hidden="true">&rarr;</span></button>
+          ${state.onboarded ? `<button class="button button-secondary" type="button" data-action="view-model" ${count < 4 ? "disabled" : ""}>Peek at my taste</button>` : ""}
+          <button class="button button-primary" type="button" data-action="show-recs" ${count < 4 ? "disabled" : ""}>${state.onboarded ? "Show me what I might like" : "Show me my first picks"} <span aria-hidden="true">&rarr;</span></button>
         </div>
       </div>
     </section>`;

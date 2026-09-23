@@ -329,22 +329,24 @@
           ]
         },
         {
-          "itemId": "handmaiden",
+          "itemId": "signalis",
           "kind": "pick",
           "cites": [
+            "ev:eeaao",
             "ev:barry",
-            "ev:wwdits",
-            "ev:alanwake2"
-          ]
-        },
-        {
-          "itemId": "vita-nostra",
-          "kind": "curveball",
-          "cites": [
             "ev:wwdits",
             "ev:lotr",
             "ev:circe",
-            "ev:alanwake2"
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "the-menu",
+          "kind": "curveball",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits"
           ]
         }
       ]
@@ -357,7 +359,7 @@
           "kind": "quality",
           "name": "all proposals valid",
           "pass": true,
-          "detail": "3 hypotheses kept, 0 rejected; 2 picks kept, 0 rejected"
+          "detail": "3 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
         },
         {
           "kind": "rule",
@@ -387,7 +389,7 @@
           "kind": "quality",
           "name": "explanations are not repetitive",
           "pass": true,
-          "detail": "max phrase overlap between two reasons: 0%"
+          "detail": "max phrase overlap between two reasons: 9%"
         },
         {
           "kind": "quality",
@@ -429,7 +431,7 @@
       "rejected": [],
       "picks": [
         {
-          "itemId": "dnd",
+          "itemId": "piranesi",
           "kind": "pick",
           "cites": [
             "ev:lotr",
@@ -437,9 +439,34 @@
           ]
         },
         {
-          "itemId": "yellowjackets",
+          "itemId": "outerwilds",
           "kind": "pick",
           "cites": [
+            "ev:alanwake2"
+          ]
+        },
+        {
+          "itemId": "signalis",
+          "kind": "pick",
+          "cites": [
+            "ev:lotr",
+            "ev:circe",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "severance",
+          "kind": "pick",
+          "cites": [
+            "ev:alanwake2",
+            "ev:buffy"
+          ]
+        },
+        {
+          "itemId": "controlgame",
+          "kind": "curveball",
+          "cites": [
+            "ev:alanwake2",
             "ev:buffy"
           ]
         }
@@ -477,7 +504,7 @@
           "kind": "quality",
           "name": "explanations are not repetitive",
           "pass": true,
-          "detail": "max phrase overlap between two reasons: 0%"
+          "detail": "max phrase overlap between two reasons: 13%"
         },
         {
           "kind": "rule",
@@ -570,26 +597,32 @@
           ]
         },
         {
-          "itemId": "fargo",
+          "itemId": "severance",
           "kind": "pick",
           "cites": [
             "ev:eeaao",
-            "ev:barry"
+            "ev:barry",
+            "ev:alanwake2",
+            "ev:buffy"
           ]
         },
         {
-          "itemId": "handmaiden",
+          "itemId": "controlgame",
           "kind": "pick",
           "cites": [
+            "ev:eeaao",
             "ev:barry",
-            "ev:alanwake2"
+            "ev:alanwake2",
+            "ev:buffy"
           ]
         },
         {
-          "itemId": "golden-idol",
+          "itemId": "spiderverse",
           "kind": "curveball",
           "cites": [
-            "ev:alanwake2"
+            "ev:eeaao",
+            "ev:barry",
+            "ev:buffy"
           ]
         }
       ]
@@ -632,7 +665,7 @@
           "kind": "quality",
           "name": "explanations are not repetitive",
           "pass": true,
-          "detail": "max phrase overlap between two reasons: 0%"
+          "detail": "max phrase overlap between two reasons: 13%"
         },
         {
           "kind": "quality",
@@ -698,31 +731,32 @@
           ]
         },
         {
-          "itemId": "vita-nostra",
+          "itemId": "outerwilds",
           "kind": "pick",
           "cites": [
-            "ev:lotr",
-            "ev:circe",
             "ev:alanwake2"
           ]
         },
         {
-          "itemId": "lighthouse",
+          "itemId": "severance",
           "kind": "pick",
           "cites": [
             "ev:eeaao",
+            "ev:alanwake2",
             "ev:buffy"
           ]
         },
         {
-          "itemId": "handmaiden",
+          "itemId": "controlgame",
           "kind": "pick",
           "cites": [
-            "ev:alanwake2"
+            "ev:eeaao",
+            "ev:alanwake2",
+            "ev:buffy"
           ]
         },
         {
-          "itemId": "yellowjackets",
+          "itemId": "spiderverse",
           "kind": "curveball",
           "cites": [
             "ev:eeaao",
@@ -848,6 +882,14 @@
           ]
         },
         {
+          "itemId": "the-menu",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:disco"
+          ]
+        },
+        {
           "itemId": "yellowjackets",
           "kind": "pick",
           "cites": [
@@ -858,20 +900,12 @@
         },
         {
           "itemId": "dnd",
-          "kind": "pick",
+          "kind": "curveball",
           "cites": [
             "ev:eeaao",
             "ev:disco",
             "ev:lotr",
             "ev:circe"
-          ]
-        },
-        {
-          "itemId": "handmaiden",
-          "kind": "curveball",
-          "cites": [
-            "ev:disco",
-            "ev:alanwake2"
           ]
         }
       ]
@@ -979,6 +1013,18 @@
           ]
         },
         {
+          "itemId": "signalis",
+          "kind": "pick",
+          "cites": [
+            "ev:eeaao",
+            "ev:barry",
+            "ev:wwdits",
+            "ev:lotr",
+            "ev:circe",
+            "ev:buffy"
+          ]
+        },
+        {
           "itemId": "fargo",
           "kind": "pick",
           "cites": [
@@ -993,16 +1039,6 @@
           "cites": [
             "ev:barry",
             "ev:wwdits",
-            "ev:alanwake2"
-          ]
-        },
-        {
-          "itemId": "vita-nostra",
-          "kind": "curveball",
-          "cites": [
-            "ev:wwdits",
-            "ev:lotr",
-            "ev:circe",
             "ev:alanwake2"
           ]
         }
@@ -1153,6 +1189,22 @@
           ]
         },
         {
+          "itemId": "the-menu",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-2",
+            "ev:syn-5",
+            "ev:syn-13",
+            "ev:syn-18",
+            "ev:syn-26",
+            "ev:syn-31",
+            "ev:syn-34",
+            "ev:syn-36",
+            "ev:syn-41",
+            "ev:syn-47"
+          ]
+        },
+        {
           "itemId": "handmaiden",
           "kind": "pick",
           "cites": [
@@ -1188,37 +1240,22 @@
           ]
         },
         {
-          "itemId": "yellowjackets",
-          "kind": "pick",
+          "itemId": "severance",
+          "kind": "curveball",
           "cites": [
-            "ev:syn-5",
-            "ev:syn-13",
-            "ev:syn-18",
+            "ev:syn-0",
+            "ev:syn-4",
+            "ev:syn-15",
+            "ev:syn-23",
             "ev:syn-25",
-            "ev:syn-26",
             "ev:syn-28",
             "ev:syn-33",
             "ev:syn-39",
-            "ev:syn-47",
+            "ev:syn-44",
+            "ev:syn-46",
+            "ev:syn-49",
+            "ev:alanwake2",
             "ev:buffy"
-          ]
-        },
-        {
-          "itemId": "dnd",
-          "kind": "curveball",
-          "cites": [
-            "ev:syn-2",
-            "ev:syn-7",
-            "ev:syn-10",
-            "ev:syn-12",
-            "ev:syn-20",
-            "ev:syn-31",
-            "ev:syn-34",
-            "ev:syn-36",
-            "ev:syn-38",
-            "ev:syn-41",
-            "ev:lotr",
-            "ev:circe"
           ]
         }
       ]
@@ -1453,6 +1490,37 @@
           ]
         },
         {
+          "itemId": "the-menu",
+          "kind": "pick",
+          "cites": [
+            "ev:syn-2",
+            "ev:syn-4",
+            "ev:syn-7",
+            "ev:syn-15",
+            "ev:syn-20",
+            "ev:syn-25",
+            "ev:syn-31",
+            "ev:syn-36",
+            "ev:syn-38",
+            "ev:syn-44",
+            "ev:syn-46",
+            "ev:syn-47",
+            "ev:syn-54",
+            "ev:syn-57",
+            "ev:syn-59",
+            "ev:syn-67",
+            "ev:syn-70",
+            "ev:syn-72",
+            "ev:syn-73",
+            "ev:syn-75",
+            "ev:syn-78",
+            "ev:syn-81",
+            "ev:syn-83",
+            "ev:syn-88",
+            "ev:syn-89"
+          ]
+        },
+        {
           "itemId": "vita-nostra",
           "kind": "pick",
           "cites": [
@@ -1483,54 +1551,29 @@
           ]
         },
         {
-          "itemId": "handmaiden",
-          "kind": "pick",
-          "cites": [
-            "ev:syn-0",
-            "ev:syn-2",
-            "ev:syn-5",
-            "ev:syn-20",
-            "ev:syn-23",
-            "ev:syn-25",
-            "ev:syn-26",
-            "ev:syn-36",
-            "ev:syn-38",
-            "ev:syn-44",
-            "ev:syn-62",
-            "ev:syn-65",
-            "ev:syn-67",
-            "ev:syn-68",
-            "ev:syn-70",
-            "ev:syn-72",
-            "ev:syn-73",
-            "ev:syn-75",
-            "ev:syn-78",
-            "ev:syn-81",
-            "ev:syn-91",
-            "ev:alanwake2"
-          ]
-        },
-        {
-          "itemId": "lighthouse",
+          "itemId": "signalis",
           "kind": "curveball",
           "cites": [
-            "ev:syn-4",
-            "ev:syn-7",
+            "ev:syn-10",
+            "ev:syn-12",
             "ev:syn-13",
-            "ev:syn-15",
+            "ev:syn-18",
             "ev:syn-28",
-            "ev:syn-31",
             "ev:syn-33",
-            "ev:syn-46",
-            "ev:syn-47",
+            "ev:syn-34",
+            "ev:syn-39",
+            "ev:syn-41",
+            "ev:syn-49",
             "ev:syn-52",
-            "ev:syn-54",
-            "ev:syn-57",
-            "ev:syn-59",
-            "ev:syn-83",
+            "ev:syn-60",
+            "ev:syn-80",
             "ev:syn-86",
-            "ev:syn-88",
-            "ev:syn-89",
+            "ev:syn-93",
+            "ev:syn-94",
+            "ev:syn-96",
+            "ev:syn-99",
+            "ev:lotr",
+            "ev:circe",
             "ev:buffy"
           ]
         }

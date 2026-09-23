@@ -84,8 +84,8 @@ Picks and why:
 - The Lighthouse: Black comedy, surrealism, and tonal collision make this useful when those signals are holding up. [cites ev:eeaao, ev:barry, ev:wwdits, ev:buffy]
 - Yellowjackets: Messy characters, horror, and tonal shifts make this a broader cross-signal test. [cites ev:eeaao, ev:barry, ev:wwdits, ev:buffy]
 - Dungeons & Dragons: Honor Among Thieves: Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional. [cites ev:eeaao, ev:barry, ev:wwdits, ev:lotr, ev:circe]
-- The Handmaiden: Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum. [cites ev:barry, ev:wwdits, ev:alanwake2]
-- Vita Nostra (curveball): Adult fantastical material and demanding strangeness test two parts of the model at once. This is the less-obvious option for the next round. [cites ev:wwdits, ev:lotr, ev:circe, ev:alanwake2]
+- Signalis: Adult, formally strange genre work plus tonal ambiguity, in a domain where that combination is less tested. [cites ev:eeaao, ev:barry, ev:wwdits, ev:lotr, ev:circe, ev:buffy]
+- The Menu (curveball): Moral messiness and sharp, specific comedy together — a likely strong fit, useful as a confidence-check pick. This is the less-obvious option for the next round. [cites ev:eeaao, ev:barry, ev:wwdits]
 
 ## Lots of intent, little experience (`intent-heavy`)
 
@@ -93,12 +93,12 @@ Bookmarks, More/Less on untried picks and Not interested must never be used as t
 
 | Check | Result | Detail |
 |---|---|---|
-| all proposals valid (quality) | pass | 3 hypotheses kept, 0 rejected; 2 picks kept, 0 rejected |
+| all proposals valid (quality) | pass | 3 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected |
 | every citation is real, experienced evidence (rule) | pass | checked every ref against the evidence records |
 | intent never used as taste (rule) | pass | none tried to |
 | no claim above "emerging" (rule) | pass | ok |
 | calibrated (no overconfidence to correct) (quality) | pass | none needed lowering |
-| explanations are not repetitive (quality) | pass | max phrase overlap between two reasons: 0% |
+| explanations are not repetitive (quality) | pass | max phrase overlap between two reasons: 9% |
 | grounding coverage (quality) | · | 3 hypothesis(es) could cite this user's own evidence; fallback not needed |
 
 Hypotheses kept:
@@ -109,8 +109,11 @@ Hypotheses kept:
 
 Picks and why:
 
-- Dungeons & Dragons: Honor Among Thieves: Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional. [cites ev:lotr, ev:circe]
-- Yellowjackets: Messy characters, horror, and tonal shifts make this a broader cross-signal test. [cites ev:buffy]
+- Piranesi: Tests adult-fantastical fit on its own, without comedy or moral messiness alongside it. [cites ev:lotr, ev:circe]
+- Outer Wilds: The conditional hypothesis's own counter-example: open-ended discovery without imposed structure. A deliberate likely miss. [cites ev:alanwake2]
+- Signalis: Adult, formally strange genre work plus tonal ambiguity, in a domain where that combination is less tested. [cites ev:lotr, ev:circe, ev:buffy]
+- Severance: Heavily structured mystery plus tonal collision (corporate horror and dry comedy) tests both signals together. [cites ev:alanwake2, ev:buffy]
+- Control (curveball): Structured mystery plus tonal collision tests the same combination as Alan Wake, in a different domain. This is the less-obvious option for the next round. [cites ev:alanwake2, ev:buffy]
 
 ## One confident miss after support (`single-miss`)
 
@@ -122,7 +125,7 @@ One miss must not rewrite the profile or weaken a pattern.
 | every citation is real, experienced evidence (rule) | pass | checked every ref against the evidence records |
 | intent never used as taste (rule) | pass | none tried to |
 | calibrated (no overconfidence to correct) (quality) | pass | none needed lowering |
-| explanations are not repetitive (quality) | pass | max phrase overlap between two reasons: 0% |
+| explanations are not repetitive (quality) | pass | max phrase overlap between two reasons: 13% |
 | one miss does not rewrite the profile (rule) | pass | 5 of 5 hypotheses kept after the miss |
 | grounding coverage (quality) | · | 5 hypothesis(es) could cite this user's own evidence; fallback not needed |
 
@@ -138,9 +141,9 @@ Picks and why:
 
 - The Lighthouse: Black comedy, surrealism, and tonal collision make this useful when those signals are holding up. [cites ev:eeaao, ev:barry, ev:buffy]
 - Yellowjackets: Messy characters, horror, and tonal shifts make this a broader cross-signal test. [cites ev:eeaao, ev:barry, ev:buffy]
-- Fargo: Dark comedy and moral messiness give Tastemake two established signals to test together. [cites ev:eeaao, ev:barry]
-- The Handmaiden: Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum. [cites ev:barry, ev:alanwake2]
-- The Case of the Golden Idol (curveball): Highly structured deduction makes this a focused test of the discovery-needs-structure hypothesis. This is the less-obvious option for the next round. [cites ev:alanwake2]
+- Severance: Heavily structured mystery plus tonal collision (corporate horror and dry comedy) tests both signals together. [cites ev:eeaao, ev:barry, ev:alanwake2, ev:buffy]
+- Control: Structured mystery plus tonal collision tests the same combination as Alan Wake, in a different domain. [cites ev:eeaao, ev:barry, ev:alanwake2, ev:buffy]
+- Spider-Man: Across the Spider-Verse (curveball): A more mainstream pick that still tests tonal collision — a near-fit check against pickier, weirder titles. This is the less-obvious option for the next round. [cites ev:eeaao, ev:barry, ev:buffy]
 
 ## Two misses on the same pattern (`recurring-miss`)
 
@@ -153,7 +156,7 @@ Recurring misses may lower confidence; nothing may be claimed Strong.
 | intent never used as taste (rule) | pass | none tried to |
 | no claim above "supported" (rule) | pass | ok |
 | calibrated (no overconfidence to correct) (quality) | pass | none needed lowering |
-| explanations are not repetitive (quality) | pass | max phrase overlap between two reasons: 0% |
+| explanations are not repetitive (quality) | pass | max phrase overlap between two reasons: 13% |
 | grounding coverage (quality) | · | 4 hypothesis(es) could cite this user's own evidence; fallback not needed |
 
 Hypotheses kept:
@@ -166,10 +169,10 @@ Hypotheses kept:
 Picks and why:
 
 - The Case of the Golden Idol: Highly structured deduction makes this a focused test of the discovery-needs-structure hypothesis. [cites ev:alanwake2]
-- Vita Nostra: Adult fantastical material and demanding strangeness test two parts of the model at once. [cites ev:lotr, ev:circe, ev:alanwake2]
-- The Lighthouse: Black comedy, surrealism, and tonal collision make this useful when those signals are holding up. [cites ev:eeaao, ev:buffy]
-- The Handmaiden: Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum. [cites ev:alanwake2]
-- Yellowjackets (curveball): Messy characters, horror, and tonal shifts make this a broader cross-signal test. This is the less-obvious option for the next round. [cites ev:eeaao, ev:buffy]
+- Outer Wilds: The conditional hypothesis's own counter-example: open-ended discovery without imposed structure. A deliberate likely miss. [cites ev:alanwake2]
+- Severance: Heavily structured mystery plus tonal collision (corporate horror and dry comedy) tests both signals together. [cites ev:eeaao, ev:alanwake2, ev:buffy]
+- Control: Structured mystery plus tonal collision tests the same combination as Alan Wake, in a different domain. [cites ev:eeaao, ev:alanwake2, ev:buffy]
+- Spider-Man: Across the Spider-Verse (curveball): A more mainstream pick that still tests tonal collision — a near-fit check against pickier, weirder titles. This is the less-obvious option for the next round. [cites ev:eeaao, ev:buffy]
 
 ## Support in two areas (`cross-domain`)
 
@@ -197,9 +200,9 @@ Picks and why:
 
 - Fargo: Dark comedy and moral messiness give Tastemake two established signals to test together. [cites ev:eeaao, ev:disco]
 - The Lighthouse: Black comedy, surrealism, and tonal collision make this useful when those signals are holding up. [cites ev:eeaao, ev:disco, ev:buffy]
+- The Menu: Moral messiness and sharp, specific comedy together — a likely strong fit, useful as a confidence-check pick. [cites ev:eeaao, ev:disco]
 - Yellowjackets: Messy characters, horror, and tonal shifts make this a broader cross-signal test. [cites ev:eeaao, ev:disco, ev:buffy]
-- Dungeons & Dragons: Honor Among Thieves: Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional. [cites ev:eeaao, ev:disco, ev:lotr, ev:circe]
-- The Handmaiden (curveball): Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum. This is the less-obvious option for the next round. [cites ev:disco, ev:alanwake2]
+- Dungeons & Dragons: Honor Among Thieves (curveball): Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional. This is the less-obvious option for the next round. [cites ev:eeaao, ev:disco, ev:lotr, ev:circe]
 
 ## The user said a pattern is not them (`user-said-not-me`)
 
@@ -225,9 +228,9 @@ Hypotheses kept:
 Picks and why:
 
 - Yellowjackets: Messy characters, horror, and tonal shifts make this a broader cross-signal test. [cites ev:eeaao, ev:barry, ev:wwdits, ev:buffy]
+- Signalis: Adult, formally strange genre work plus tonal ambiguity, in a domain where that combination is less tested. [cites ev:eeaao, ev:barry, ev:wwdits, ev:lotr, ev:circe, ev:buffy]
 - Fargo: Dark comedy and moral messiness give Tastemake two established signals to test together. [cites ev:eeaao, ev:barry, ev:wwdits]
 - The Handmaiden: Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum. [cites ev:barry, ev:wwdits, ev:alanwake2]
-- Vita Nostra (curveball): Adult fantastical material and demanding strangeness test two parts of the model at once. This is the less-obvious option for the next round. [cites ev:wwdits, ev:lotr, ev:circe, ev:alanwake2]
 
 ## About fifty pieces of evidence (synthetic) (`scale-50`)
 
@@ -253,10 +256,10 @@ Hypotheses kept:
 Picks and why:
 
 - Fargo: Dark comedy and moral messiness give Tastemake two established signals to test together. [cites ev:syn-2, ev:syn-5, ev:syn-13, ev:syn-18, ev:syn-26, ev:syn-31, ev:syn-34, ev:syn-36, ev:syn-41, ev:syn-47]
+- The Menu: Moral messiness and sharp, specific comedy together — a likely strong fit, useful as a confidence-check pick. [cites ev:syn-2, ev:syn-5, ev:syn-13, ev:syn-18, ev:syn-26, ev:syn-31, ev:syn-34, ev:syn-36, ev:syn-41, ev:syn-47]
 - The Handmaiden: Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum. [cites ev:syn-0, ev:syn-4, ev:syn-5, ev:syn-13, ev:syn-15, ev:syn-18, ev:syn-23, ev:syn-26, ev:syn-44, ev:syn-46, ev:syn-47, ev:syn-49, ev:alanwake2]
 - The Lighthouse: Black comedy, surrealism, and tonal collision make this useful when those signals are holding up. [cites ev:syn-2, ev:syn-25, ev:syn-28, ev:syn-31, ev:syn-33, ev:syn-34, ev:syn-36, ev:syn-39, ev:syn-41, ev:buffy]
-- Yellowjackets: Messy characters, horror, and tonal shifts make this a broader cross-signal test. [cites ev:syn-5, ev:syn-13, ev:syn-18, ev:syn-25, ev:syn-26, ev:syn-28, ev:syn-33, ev:syn-39, ev:syn-47, ev:buffy]
-- Dungeons & Dragons: Honor Among Thieves (curveball): Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional. This is the less-obvious option for the next round. [cites ev:syn-2, ev:syn-7, ev:syn-10, ev:syn-12, ev:syn-20, ev:syn-31, ev:syn-34, ev:syn-36, ev:syn-38, ev:syn-41, ev:lotr, ev:circe]
+- Severance (curveball): Heavily structured mystery plus tonal collision (corporate horror and dry comedy) tests both signals together. This is the less-obvious option for the next round. [cites ev:syn-0, ev:syn-4, ev:syn-15, ev:syn-23, ev:syn-25, ev:syn-28, ev:syn-33, ev:syn-39, ev:syn-44, ev:syn-46, ev:syn-49, ev:alanwake2, ev:buffy]
 
 ## About a hundred pieces of evidence (synthetic) (`scale-100`)
 
@@ -283,9 +286,9 @@ Picks and why:
 
 - Dungeons & Dragons: Honor Among Thieves: Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional. [cites ev:syn-4, ev:syn-7, ev:syn-10, ev:syn-12, ev:syn-15, ev:syn-18, ev:syn-31, ev:syn-34, ev:syn-39, ev:syn-41, ev:syn-46, ev:syn-47, ev:syn-49, ev:syn-54, ev:syn-57, ev:syn-59, ev:syn-60, ev:syn-80, ev:syn-83, ev:syn-88, ev:syn-89, ev:syn-93, ev:syn-94, ev:syn-96, ev:syn-99, ev:lotr, ev:circe]
 - Fargo: Dark comedy and moral messiness give Tastemake two established signals to test together. [cites ev:syn-2, ev:syn-4, ev:syn-7, ev:syn-15, ev:syn-20, ev:syn-25, ev:syn-31, ev:syn-36, ev:syn-38, ev:syn-44, ev:syn-46, ev:syn-47, ev:syn-54, ev:syn-57, ev:syn-59, ev:syn-67, ev:syn-70, ev:syn-72, ev:syn-73, ev:syn-75, ev:syn-78, ev:syn-81, ev:syn-83, ev:syn-88, ev:syn-89]
+- The Menu: Moral messiness and sharp, specific comedy together — a likely strong fit, useful as a confidence-check pick. [cites ev:syn-2, ev:syn-4, ev:syn-7, ev:syn-15, ev:syn-20, ev:syn-25, ev:syn-31, ev:syn-36, ev:syn-38, ev:syn-44, ev:syn-46, ev:syn-47, ev:syn-54, ev:syn-57, ev:syn-59, ev:syn-67, ev:syn-70, ev:syn-72, ev:syn-73, ev:syn-75, ev:syn-78, ev:syn-81, ev:syn-83, ev:syn-88, ev:syn-89]
 - Vita Nostra: Adult fantastical material and demanding strangeness test two parts of the model at once. [cites ev:syn-0, ev:syn-5, ev:syn-10, ev:syn-12, ev:syn-18, ev:syn-23, ev:syn-26, ev:syn-34, ev:syn-39, ev:syn-41, ev:syn-49, ev:syn-60, ev:syn-62, ev:syn-65, ev:syn-68, ev:syn-80, ev:syn-91, ev:syn-93, ev:syn-94, ev:syn-96, ev:syn-99, ev:lotr, ev:circe, ev:alanwake2]
-- The Handmaiden: Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum. [cites ev:syn-0, ev:syn-2, ev:syn-5, ev:syn-20, ev:syn-23, ev:syn-25, ev:syn-26, ev:syn-36, ev:syn-38, ev:syn-44, ev:syn-62, ev:syn-65, ev:syn-67, ev:syn-68, ev:syn-70, ev:syn-72, ev:syn-73, ev:syn-75, ev:syn-78, ev:syn-81, ev:syn-91, ev:alanwake2]
-- The Lighthouse (curveball): Black comedy, surrealism, and tonal collision make this useful when those signals are holding up. This is the less-obvious option for the next round. [cites ev:syn-4, ev:syn-7, ev:syn-13, ev:syn-15, ev:syn-28, ev:syn-31, ev:syn-33, ev:syn-46, ev:syn-47, ev:syn-52, ev:syn-54, ev:syn-57, ev:syn-59, ev:syn-83, ev:syn-86, ev:syn-88, ev:syn-89, ev:buffy]
+- Signalis (curveball): Adult, formally strange genre work plus tonal ambiguity, in a domain where that combination is less tested. This is the less-obvious option for the next round. [cites ev:syn-10, ev:syn-12, ev:syn-13, ev:syn-18, ev:syn-28, ev:syn-33, ev:syn-34, ev:syn-39, ev:syn-41, ev:syn-49, ev:syn-52, ev:syn-60, ev:syn-80, ev:syn-86, ev:syn-93, ev:syn-94, ev:syn-96, ev:syn-99, ev:lotr, ev:circe, ev:buffy]
 
 ## Validator self-test (deliberately bad answers)
 

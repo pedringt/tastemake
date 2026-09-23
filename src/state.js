@@ -51,7 +51,12 @@ function fresh() {
     // nothing about what the user likes; the curveball setting only changes how new sets are put together.
     areas: Object.fromEntries(visibleDomains().map((domain) => [domain.id, true])),
     curveball: true,
-    resetArmed: false
+    resetArmed: false,
+    // #59: true once a first-time visitor has reached Recommendations at least once. Before that, Favorites
+    // shows one continuation CTA instead of two peer choices (Recommendations vs. Taste Profile aren't a
+    // meaningful fork yet). A returning visitor who deliberately reopens Favorites (e.g. "Change favorites")
+    // sees the full two-CTA choice again, since by then Taste Profile is a real destination.
+    onboarded: false
   };
 }
 
