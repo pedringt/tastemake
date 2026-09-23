@@ -1,39 +1,39 @@
 # Handoff: Tastemake live AI producer
 
-## Next chat: start here (updated Sept 22, 2026, end of session)
+## Next chat: start here (updated Sept 23, 2026, end of session)
 
 **North star:** Tastemake helps people understand the patterns in what they're drawn to across different parts of their life, without assuming they have one single aesthetic, then uses that understanding to find and test more things that might fit.
 
 **State**
-- `main` is production: https://tastemake.vercel.app. Everything below is merged and deployed. `live-producer-preview` points at the same commit.
-- **Live AI is ON in production and stays on** (Paige, Sept 22: "I'm ok with the gate, no one is using this but me"). `TASTEMAKE_AI_PRODUCTION_APPROVED=1`. Do not re-open this each session; do tell her if spend changes shape.
-- Live job so far: **choose and explain the next recommendation set** on "Keep discovering". Hypothesis inference is still deterministic.
-- Model `claude-sonnet-5`, about **$0.014 a call**. Session total so far: roughly **$0.35** (10-fixture eval $0.21, plus debugging and verification calls).
+- `main` = `live-producer-preview` = `dcbb389`, deployed to production: https://tastemake.vercel.app. Clean working tree, nothing pushed-but-not-deployed, nothing uncommitted.
+- **Live AI is ON in production and stays on** (Paige: "I'm ok with the gate, no one is using this but me" — settled, don't re-ask). Live job: choose and explain the next recommendation set on "Keep discovering". Hypothesis inference is still deterministic. Model `claude-sonnet-5`, ~$0.014/call.
+- **CI is real and required.** `npm test` runs on every push/PR via `.github/workflows/test.yml` (a clean, isolated container — see the local-Chrome note below). Root `package.json` has the scripts; see `docs/ai-evals.md` for the paid ones.
 
-**The five handoff questions**
-1. *What the model does:* picks the next set from product-chosen eligible candidates and writes each "why", citing evidence refs. Nothing else.
-2. *What stays deterministic:* what counts as evidence, intent vs experience, confidence thresholds, eligibility, user corrections, ranking, all state changes, and the fallback (`src/ai/baseline.js`).
-3. *Data structures:* domain registry (`src/data/domains.js`); items are `type` + `domains` + display label; evidence records with `ev:<id>` refs (`src/model/evidence.js`); interpretations with scope and cross-domain status (`src/model/interpretations.js`); user statements about patterns (`src/model/statements.js`); async request state (`src/ai/requests.js`).
-4. *How failures fall back:* `src/ai/validate.js` refuses bad answers and lowers overconfidence; `acceptOrFallback()` uses the deterministic picks on error, timeout or too little valid output; `requests.js` drops answers whose evidence changed, cancels on navigation, and aborts superseded requests. Every fallback says why in the UI.
-5. *How to run the checks:*
+**Closed this session:** #26 #27 #31 #32 #35 #38 #42 #41 #40 #34 (14 issues total across the whole live-AI push). Each has a comment on the GitHub issue saying exactly what shipped.
+
+**Local Chrome can get stuck — know this before you burn an hour on it.** Partway through this session, local headless Chrome on this machine hung repeatedly (its updater forked crash-handler processes on every launch, past the script's own timeout), most likely from other concurrent Claude Code sessions sharing this Mac. `headless.sh` now reuses a project-local profile (`$ROOT/.git/tm-chrome-profile`) plus updater-suppressing flags, which mostly fixed it — but if `scripts/qa/headless.sh` or `npm test` hangs/times out locally with no clear error, **do not spend more than one retry chasing it**. Instead: push the branch, open a **throwaway PR** to `main` (title it "diagnostic" or similar) so the `pull_request` trigger runs the suite in GitHub's clean container, read that result, then **close the PR without merging** and fast-forward `main` directly with `git push origin <branch>:main` (this repo's actual promotion path all session). Never `pkill` browsers or other processes broadly on this machine — ask first; another session may depend on them.
+
+**What's next, roughly in order:**
+1. **#33** — reframe "Why this one?" as a hypothesis test. Natural now that live picks actually cite evidence and name a pattern (see the sample reasons in the "First live AI run" section below). Content/UX only; no model or contract change.
+2. **#30** — framing copy (header tagline, Favorites/Recommendations/Taste Profile copy) toward taste self-understanding rather than "recommendations engine". Also content-only.
+3. **#37** and **#36** — hypothesis history/revisions and context/multi-aesthetic correction controls. Do these *before* letting the model generate hypotheses (not just pick items), since they define the shape that inference has to write into. `src/model/interpretations.js` and `src/model/statements.js` are the existing pieces to extend, not replace.
+4. **#39** — `app.js` refactor (it's grown large: routing, rendering, every screen's actions, the AI request lifecycle, all in one file). Do this once #36/#37 have added their own actions, not before, so the extraction boundaries are informed by the real shape rather than guessed.
+5. **#29** — needs real users; not actionable right now (Paige can't run this). Leave parked.
+6. **#28** — the eval suite (`docs/ai-evals.md`) already exercises specificity/repetition at synthetic 50/100-evidence scale; a fuller pass here means widening those fixtures, not new infrastructure.
+7. Small open nit carried from earlier: a few live reasons say "This is a curveball" in text while the `kind` field says `pick`. Cosmetic; fix the prompt in `api/recommendations.mjs`'s `buildPickPrompt` if you're in there anyway.
+8. Older backlog (#4, #6, #7, #8 phase 2, #9-11, #14, #15, #17-19, #25 taste-based skin) is all still open, lower priority, documented in the issues themselves.
+
+**Standing rules:** AI interprets, the product owns evidence and state; interest is not experience; user-confirmed outranks inference; cross-domain links start as hypotheses; model output must cite real evidence; evals alongside the model, not after; make future domains possible without shipping them; never loosen a scorer to make a run pass; state the call count and cost before any paid run; never touch `main` without it being the deliberate promotion step; never kill processes broadly without asking.
+
+**How to run everything:**
 
 ```
-node scripts/qa/api-tests.mjs          # endpoint, fake model (49)
-node scripts/qa/escaping-tests.mjs     # untrusted text never becomes markup (32)
-node scripts/qa/async-tests.mjs        # stale/cancelled answers (23)
-node scripts/evals/run.mjs             # deterministic eval baseline
-node scripts/evals/run.mjs --producer endpoint --yes   # PAID, ~$0.20: the live model through production
-scripts/qa/headless.sh model|flow|layout|a11y <widths>  # browser suites; LOOK=collage etc. for other looks
+npm test                                              # the required gate (free, no model)
+npm run test:full                                     # every look x every width (slower, manual)
+node scripts/evals/run.mjs                            # deterministic eval baseline (free)
+node scripts/evals/run.mjs --producer endpoint --yes   # PAID ~$0.20: live model through production
+scripts/qa/headless.sh model|flow|layout|a11y <widths> # browser suites; LOOK=collage etc. for other looks
 ```
-
-**What I would do next**
-1. **#41 one `npm test` and CI.** Six separate scripts today, all run by hand; a GitHub Action would have caught the red check I left behind mid-session. Careful: a root `package.json` changes what Vercel sees, so test it on the branch preview before `main`.
-2. **#40** centralize evidence predicates (cheap, protects the rules), **#34** the artwork collision on the first recommendation card (visible bug).
-3. **#33** reframe "Why this one?" now that the text is model-written, **#30** framing copy.
-4. **#37** hypothesis history and **#36** context/scope corrections: both needed before the model starts generating patterns rather than picks.
-5. Open nit: four live reasons said "This is a curveball" while `kind` was `pick`. Fix the prompt, then re-run the eval and compare.
-
-**Standing rules:** AI interprets, the product owns evidence and state; interest is not experience; user-confirmed outranks inference; cross-domain links start as hypotheses; model output must cite real evidence; evals alongside the model, not after; make future domains possible without shipping them; never loosen a scorer to make a run pass; say the call count and cost before any paid run.
 
 ## Fixes and tests added on `live-producer-preview` (Sept 22, after the rollout)
 
