@@ -1,4 +1,4 @@
-import { favorites, recommendations } from "./data/catalog.js";
+import { recommendations } from "./data/catalog.js";
 import { DEFAULT_LOOK, isLook } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 
@@ -6,7 +6,11 @@ import { visibleDomains } from "./data/domains.js";
 // (The look, and where the user is, are not part of this: starting over keeps your look.)
 function fresh() {
   return {
-    selectedFavorites: new Set(favorites.filter((item) => item.selected).map((item) => item.id)),
+    // #59: a real visitor starts with nothing selected — Favorites is where their first evidence comes
+    // from, not a pre-filled form. `selected: true` in src/data/catalog.js is a QA/demo fixture marker
+    // only now; product state never reads it. QA scripts that need a known starting set select their own
+    // favorites explicitly (see scripts/qa/*.js) instead of relying on this ever being pre-seeded.
+    selectedFavorites: new Set(),
     feedbackByRecommendation: {},
     // Each "Keep discovering" appends a set; the first is the hand-picked opening set.
     recommendationSets: [recommendations],
@@ -51,7 +55,12 @@ function fresh() {
     // nothing about what the user likes; the curveball setting only changes how new sets are put together.
     areas: Object.fromEntries(visibleDomains().map((domain) => [domain.id, true])),
     curveball: true,
-    resetArmed: false
+    resetArmed: false,
+    // #59: true once a first-time visitor has reached Recommendations at least once. Before that, Favorites
+    // shows one continuation CTA instead of two peer choices (Recommendations vs. Taste Profile aren't a
+    // meaningful fork yet). A returning visitor who deliberately reopens Favorites (e.g. "Change favorites")
+    // sees the full two-CTA choice again, since by then Taste Profile is a real destination.
+    onboarded: false
   };
 }
 

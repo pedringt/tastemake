@@ -391,10 +391,12 @@ export async function run() {
     eq("removing an item takes it off the ledger", MINE.toldItems(s).total, told.total - 1);
 
     // start over keeps the look and clears everything else
-    ST.state.look = "analog"; ST.state.feedbackByRecommendation.x = { rating: "more" }; ST.state.areas.play = false; ST.state.curveball = false; ST.state.selectedFavorites.clear();
+    ST.state.look = "analog"; ST.state.feedbackByRecommendation.x = { rating: "more" }; ST.state.areas.play = false; ST.state.curveball = false;
+    ST.state.selectedFavorites.add(favorites[0].id);
     ST.resetState();
     eq("start over clears reactions", Object.keys(ST.state.feedbackByRecommendation).length, 0);
-    eq("start over restores the starter favorites", ST.state.selectedFavorites.size, favorites.filter((f) => f.selected).length);
+    // #59: a real visitor starts with 0 favorites selected, not a pre-seeded set; Start Over goes back to that.
+    eq("start over clears favorites too (no seeded set to restore)", ST.state.selectedFavorites.size, 0);
     eq("start over restores areas and curveball", `${ST.state.areas.play},${ST.state.curveball}`, "true,true");
     eq("start over keeps your look", ST.state.look, "analog");
     ST.state.look = "editorial";

@@ -131,11 +131,17 @@ function finishLookPicker() {
   navigate(canAccess(target) ? target : "favorites");
 }
 
+// #59: reaching Recommendations at least once ends the guided first-run state (see state.js).
+function markOnboarded(screen) {
+  if (screen === "recommendations") state.onboarded = true;
+}
+
 function navigate(screen, { replace = false, scroll = true } = {}) {
   if (!canAccess(screen)) return;
   // Leaving the page a request was started from makes its answer irrelevant (#42).
   if (state.aiRequest && screen !== state.aiRequest.screen) cancelRequest(state, "you moved to another page while it was thinking");
 
+  markOnboarded(screen);
   state.screen = screen;
   writeRoute(screen, { replace });
   render();
@@ -422,6 +428,7 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("popstate", () => {
   const next = screenFromPath();
   state.screen = canAccess(next) ? next : "favorites";
+  markOnboarded(state.screen);
   if (state.screen !== next) writeRoute("favorites", { replace: true });
   render();
   updateStepper();
@@ -450,6 +457,7 @@ if (atRoot && !state.lookChosen) {
 } else {
   state.screen = canAccess(initialScreen) ? initialScreen : "favorites";
 }
+markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();
 updateStepper();

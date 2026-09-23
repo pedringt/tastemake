@@ -10,7 +10,14 @@ export const favorites = [
   { id: "thefall", title: "The Fall", type: "movie", domains: ["watch"], note: "Distinctive visual identity", selected: true },
   { id: "buffy", title: "Buffy the Vampire Slayer", type: "tv", domains: ["watch"], note: "Genre mixing + character", selected: true },
   { id: "starwars", title: "Original Star Wars trilogy", type: "movie", displayLabel: "Film", domains: ["watch"], note: "Adventure + worldbuilding", selected: false },
-  { id: "breakingbad", title: "Breaking Bad", type: "tv", domains: ["watch"], note: "Moral messiness", selected: false }
+  { id: "breakingbad", title: "Breaking Bad", type: "tv", domains: ["watch"], note: "Moral messiness", selected: false },
+  // #60: a wider first-run pool so a new visitor can find 4 meaningful favorites without every strong
+  // choice already being pre-selected for them. Left unselected on purpose — see #59 on real first-run
+  // favorites starting from the user's own choices.
+  { id: "houseofleaves", title: "House of Leaves", type: "book", domains: ["read"], note: "Unreliable narrative, formal strangeness", selected: false },
+  { id: "obradinn", title: "Return of the Obra Dinn", type: "game", domains: ["play"], note: "Structured deduction, procedural mystery", selected: false },
+  { id: "annihilation", title: "Annihilation", type: "book", domains: ["read"], note: "Eerie, adult, formally strange", selected: false },
+  { id: "goodplace", title: "The Good Place", type: "tv", domains: ["watch"], note: "Philosophical comedy, twist-heavy structure", selected: false }
 ];
 
 export const hypotheses = [
@@ -187,5 +194,5 @@ export const followUpPool = [
     about: "A fast-moving fantasy adventure about a mismatched group of thieves trying to fix a very bad mistake.",
     hypotheses: ["H05", "H04"],
     reason: "Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional."
-  }
+  },
 ];

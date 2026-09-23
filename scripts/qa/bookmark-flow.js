@@ -39,6 +39,14 @@ export async function run() {
   const rate = (id, rating) => act(`[data-feedback-item="${id}"][data-rating="${rating}"]`);
   const detail = (id, value) => act(`[data-feedback-item="${id}"][data-feedback-detail="${value}"]`);
 
+  // #59: a real visitor starts with 0 favorites selected (product state no longer pre-seeds them).
+  // This suite creates its own known starting set instead of relying on any product default.
+  const starterIds = catalog.favorites.slice(0, 4).map((f) => f.id);
+  check("a fresh page starts with no favorites selected", state.selectedFavorites.size === 0, state.selectedFavorites.size);
+  check("Recommendations is locked until 4 favorites are picked", Boolean($('[data-step-jump="recommendations"]')?.getAttribute("aria-disabled") === "true"));
+  for (const id of starterIds) await act(`[data-favorite="${id}"]`);
+  check("picking 4 favorites unlocks Recommendations", $('[data-step-jump="recommendations"]')?.getAttribute("aria-disabled") === "false");
+
   await act('[data-step-jump="recommendations"]');
   let ids = cardIds();
   check("opening set has 5 picks", ids.length === 5, ids.length);
@@ -173,13 +181,13 @@ export async function run() {
   check("Library tab is in the nav", Boolean($('[data-step-jump="library"]')) && !$('[data-step-jump="library"]').hidden);
   await act('[data-step-jump="library"]');
   const sections = $$(".library-section");
-  check("Library shows the 6 starter favorites", sections[0].querySelectorAll(".library-card").length === 6, sections[0].querySelectorAll(".library-card").length);
+  check("Library shows the 4 starter favorites", sections[0].querySelectorAll(".library-card").length === starterIds.length, sections[0].querySelectorAll(".library-card").length);
   const lovedCard = () => $(`[data-library-id="${ids[1]}"]`);
   check("a pick marked Loved it before is in the Library", Boolean(lovedCard()) && sections[1].contains(lovedCard()), lovedCard()?.textContent.slice(0, 60));
   check("a bookmark or plain More is NOT in the Library", !$(`[data-library-id="${ids[0]}"]`));
   check("'Tried it and disliked' is kept out, but listed to correct", Boolean($(".library-disliked")) && /Things you didn't like \(1\)/.test($(".library-disliked summary").textContent));
   await act(`[data-library-item="${ids[1]}"][data-library-action="favorite"]`);
-  check("'Add to Favorites' moves a loved pick into Favorites", $$(".library-section")[0].contains(lovedCard()) && $$(".library-section")[0].querySelectorAll(".library-card").length === 7);
+  check("'Add to Favorites' moves a loved pick into Favorites", $$(".library-section")[0].contains(lovedCard()) && $$(".library-section")[0].querySelectorAll(".library-card").length === starterIds.length + 1);
   check("...and announces it", /added to Favorites/.test(live()), live());
   check("focus is not lost after acting", document.activeElement?.classList.contains("library-action"), document.activeElement?.tagName + "." + document.activeElement?.className);
   await act(`[data-library-item="${ids[1]}"][data-library-action="liked"]`);
@@ -501,8 +509,13 @@ export async function run() {
   check("the Map legend uses the new meanings", /Emerging, Supported or Still learning/.test($(".map-key")?.textContent || document.body.textContent));
   await act('[data-profile-view="list"]');
 
-  // a brand-new visit: nothing you tried yet, so nothing may look validated
+  // a brand-new visit: nothing you tried yet, so nothing may look validated. #59: a fresh visit has 0
+  // favorites, so Taste Profile is locked until 4 are picked — pick the same known set first.
   const coldStart = await frameCheck("/?look=editorial", async (doc) => {
+    for (const id of starterIds) {
+      doc.querySelector(`[data-favorite="${id}"]`)?.click();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
     doc.querySelector('[data-action="peek"], [data-action="show-model"], [data-step-jump="model"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 400));
     return { chips: [...doc.querySelectorAll(".signal-status")].map((n) => n.textContent.trim()), lines: [...doc.querySelectorAll(".signal-provenance")].map((n) => n.textContent.trim()) };
@@ -544,7 +557,9 @@ export async function run() {
   await act('[data-mine-reset="confirm"]');
   check("Yes, clear everything empties reactions, bookmarks, custom items, blind spots and statements",
     Object.keys(state.feedbackByRecommendation).length === 0 && Object.keys(state.customItems).length === 0 && Object.keys(state.blindSpots).length === 0 && state.libraryFavorites.size === 0 && state.patternStatements.length === 0);
-  check("...restores the starter favorites and default settings", state.selectedFavorites.size === catalog.favorites.filter((f) => f.selected).length && state.areas.play === true && state.curveball === true);
+  // #59: nothing is pre-seeded any more, so "Start over" clears favorites too, back to the same
+  // blank slate a real first visit starts from.
+  check("...clears favorites too and restores default settings", state.selectedFavorites.size === 0 && state.areas.play === true && state.curveball === true);
   check("...keeps your look", state.look === lookKept && document.documentElement.dataset.look === lookKept);
   check("...goes back to Favorites and announces it", state.screen === "favorites" && /Started over/.test(live()), `${state.screen} / ${live()}`);
   check("...and the Bookmarks tab is hidden again", bookmarksStep().hidden);
