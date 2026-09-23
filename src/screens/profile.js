@@ -2,17 +2,38 @@ import { favorites, hypotheses } from "../data/catalog.js";
 import { state } from "../state.js";
 import { untriedReactionLean } from "../model/taste.js";
 import { confidenceOf } from "../model/tastemap.js";
-import { FIT, WEIGHT, statementFor } from "../model/statements.js";
+import { FIT, WEIGHT, excludedDomainsFor, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { renderTasteMap } from "./tastemap.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
-import { displayLabel } from "../data/domains.js";
+import { hypothesisRecord } from "../model/interpretations.js";
+import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
   return `<button type="button" class="button button-secondary signal-say-button" data-statement-pattern="${item.id}" data-statement-field="${field}" data-statement-value="${value}" aria-pressed="${pressed}">${label}</button>`;
+}
+
+// #36: a lighter correction than "Not really me" — scope a pattern out of one domain without
+// rejecting it everywhere. Only shown when the pattern has been backed in more than one domain,
+// since a single-domain pattern has nothing to scope down from.
+function domainScopeControls(item, record) {
+  const domains = [...new Set([...record.scope.supported, ...record.scope.excluded])];
+  if (domains.length < 2) return "";
+  const excluded = record.scope.excluded;
+  return `
+    <div class="signal-say signal-scope" role="group" aria-label="Where does “${esc(item.title)}” apply?">
+      <span class="signal-say-label">Where does this apply?</span>
+      <div class="detail-chip-row">
+        ${domains.map((domainId) => {
+          const label = domainById(domainId)?.label ?? domainId;
+          const isExcluded = excluded.includes(domainId);
+          return `<button type="button" class="detail-chip" data-scope-pattern="${item.id}" data-scope-domain="${domainId}" aria-pressed="${!isExcluded}">${isExcluded ? "Not in" : "In"} ${esc(label)}</button>`;
+        }).join("")}
+      </div>
+    </div>`;
 }
 
 // Pattern corrections: what the user says here is user-confirmed and outranks inference, but it is not taste
@@ -36,6 +57,7 @@ function sayControls(item, said) {
 function hypothesisCard(item, index) {
   const update = confidenceOf(state, item);
   const said = statementFor(state, item.id);
+  const record = hypothesisRecord(state, item);
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
     ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${esc(spot.item.title)}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
@@ -66,6 +88,7 @@ function hypothesisCard(item, index) {
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
         ${sayControls(item, said)}
+        ${said?.says === "not-me" ? "" : domainScopeControls(item, record)}
         ${leanLine}
         ${blindLine}
       </div>
@@ -157,7 +180,7 @@ export function renderProfile() {
       ${blindSpotSection()}
 
       <div class="profile-footer">
-        <span class="footer-note">useful if you are curious. invisible if you are not.</span>
+        <span class="footer-note">this is the point, not the bonus round. visit it whenever you're curious.</span>
         <div class="action-group">
           <button class="button button-secondary" type="button" data-action="back-favorites">Edit favorites</button>
           <button class="button button-primary" type="button" data-action="show-recs">Back to recommendations <span aria-hidden="true">&rarr;</span></button>

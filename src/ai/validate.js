@@ -79,6 +79,11 @@ export function validateHypotheses(response, ctx) {
     if (h.context && !(ctx.contexts ?? []).includes(h.context)) reasons.push("invents a context the user never gave");
     const statement = (ctx.statements ?? []).find((s) => s.says === "not-me" && (s.hypothesisId === h.id || (s.label && s.label.toLowerCase() === h.label.toLowerCase())));
     if (statement) reasons.push("the user said this pattern is not them (user-confirmed outranks inference)");
+    // #36: a narrower "not in {domain}" correction outranks inference the same way a full "not me" does,
+    // just scoped to that one domain rather than the whole pattern.
+    const scopedStatement = (ctx.statements ?? []).find((s) => (s.excludedDomains ?? []).length && (s.hypothesisId === h.id || (s.label && s.label.toLowerCase() === h.label.toLowerCase())));
+    const excludedDomainsClaimed = scopedStatement ? h.domains.filter((d) => scopedStatement.excludedDomains.includes(d)) : [];
+    if (excludedDomainsClaimed.length) reasons.push(`claims domains the user said this pattern is not them in: ${excludedDomainsClaimed.join(", ")}`);
     const key = h.label.trim().toLowerCase();
     if (seenLabels.has(key)) reasons.push("duplicate of another hypothesis in this response");
 

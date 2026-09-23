@@ -9,7 +9,7 @@ import { renderBookmarks } from "./screens/bookmarks.js";
 import { renderLibrary } from "./screens/library.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderMine } from "./screens/mine.js";
-import { clearStatement, setStatement } from "./model/statements.js";
+import { clearStatement, setStatement, toggleDomainExclusion } from "./model/statements.js";
 import { applySearchAction } from "./model/search.js";
 import { AREAS } from "./model/taste.js";
 import { isLook, lookLabel } from "./data/looks.js";
@@ -220,6 +220,7 @@ function focusSelectorFor(el) {
   if (d.mineBlindRemove) return `[data-mine-blind-remove="${d.mineBlindRemove}"]`;
   if (d.mineReset) return `[data-mine-reset="${d.mineReset === "arm" ? "cancel" : "arm"}"]`;
   if (d.statementPattern) return `[data-statement-pattern="${d.statementPattern}"][data-statement-field="${d.statementField}"][data-statement-value="${d.statementValue}"]`;
+  if (d.scopePattern) return `[data-scope-pattern="${d.scopePattern}"][data-scope-domain="${d.scopeDomain}"]`;
   if (d.mineSaidRemove) return null;
   if (d.profileView) return `[data-profile-view="${d.profileView}"]`;
   if (d.mapPattern) return `[data-map-pattern="${d.mapPattern}"]`;
@@ -455,6 +456,17 @@ app.addEventListener("click", async (event) => {
   if (sayButton) {
     const { statementPattern, statementField, statementValue } = sayButton.dataset;
     const message = setStatement(state, statementPattern, statementField, statementValue);
+    if (!message) return;
+    render();
+    restoreFocus(focusSelector);
+    announce(message);
+    return;
+  }
+
+  const scopeButton = event.target.closest("[data-scope-pattern]");
+  if (scopeButton) {
+    const { scopePattern, scopeDomain } = scopeButton.dataset;
+    const message = toggleDomainExclusion(state, scopePattern, scopeDomain);
     if (!message) return;
     render();
     restoreFocus(focusSelector);
