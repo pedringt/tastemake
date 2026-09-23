@@ -1,7 +1,7 @@
 import { hypotheses } from "../data/catalog.js";
 import { visibleDomains } from "../data/domains.js";
 import { patternConfidence, patternEvidence } from "./tastemap.js";
-import { excludedDomainsFor, statementFor } from "./statements.js";
+import { contextQualifiedFor, excludedDomainsFor, statementFor } from "./statements.js";
 
 // Interpretations (#35, #31): what Tastemake thinks the user's evidence may mean. They are working
 // hypotheses, never facts about the user, and they are kept apart from evidence (evidence.js).
@@ -19,7 +19,10 @@ import { excludedDomainsFor, statementFor } from "./statements.js";
 //   counter        refs that count against it
 //   heldUp         refs of misses the user said this pattern survived (Blind Spot)
 //   scope          { supported: [domain], contradicted: [domain], untested: [domain] }
-//   context        null until taste modes exist
+//   context        null until taste modes exist (a specific named context, not the boolean qualifier below)
+//   contextQualified  #36 v1: true when the user has said this pattern only applies in some contexts, not
+//                      always. Lighter than excluding a domain; caps the confidence level a model may
+//                      claim for it (validate.js) without pretending to know which context.
 //   crossDomain    "untested" | "tentative" | "supported"   (cross-domain links start as hypotheses)
 //   confidence     the computed level (Emerging / Supported / Strong / Still learning / Less certain)
 //   conditional    true when the pattern is known to hold only sometimes
@@ -74,6 +77,7 @@ export function hypothesisRecord(state, pattern) {
     heldUp: evidence.heldUp.map(refOf),
     scope,
     context: null,
+    contextQualified: contextQualifiedFor(state, pattern.id),
     crossDomain,
     confidence: patternConfidence(state, pattern).level,
     conditional: pattern.status === "conditional",

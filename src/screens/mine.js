@@ -3,7 +3,7 @@ import { hypotheses } from "../data/catalog.js";
 import { AREAS } from "../model/taste.js";
 import { toldItems } from "../model/mine.js";
 import { reasonLabel } from "../model/blindspots.js";
-import { FIT, WEIGHT, activeStatements } from "../model/statements.js";
+import { CONTEXT, FIT, WEIGHT, activeStatements } from "../model/statements.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 
@@ -97,7 +97,12 @@ function statementList() {
           <li class="mine-row" data-mine-said="${s.hypothesisId}">
             <div class="mine-row-main">
               <strong class="mine-title">${esc(s.label)}</strong>
-              <span class="mine-status">${[s.says ? FIT[s.says] : "", s.weight ? WEIGHT[s.weight] : ""].filter(Boolean).join(" \u00b7 ")}</span>
+              <span class="mine-status">${[
+                s.says ? FIT[s.says] : "",
+                s.weight ? WEIGHT[s.weight] : "",
+                s.context ? CONTEXT[s.context] : "",
+                s.excludedDomains?.length ? `Not in ${s.excludedDomains.join(", ")}` : ""
+              ].filter(Boolean).join(" \u00b7 ")}</span>
               <span class="mine-source">Said on the Taste Profile</span>
             </div>
             <div class="mine-actions"><button class="button button-secondary mine-action mine-remove" type="button" data-mine-said-remove="${s.hypothesisId}">Remove</button></div>
