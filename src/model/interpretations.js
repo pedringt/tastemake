@@ -1,7 +1,7 @@
 import { hypotheses } from "../data/catalog.js";
 import { visibleDomains } from "../data/domains.js";
 import { patternConfidence, patternEvidence } from "./tastemap.js";
-import { statementFor } from "./statements.js";
+import { excludedDomainsFor, statementFor } from "./statements.js";
 
 // Interpretations (#35, #31): what Tastemake thinks the user's evidence may mean. They are working
 // hypotheses, never facts about the user, and they are kept apart from evidence (evidence.js).
@@ -49,8 +49,16 @@ export function domainScope(evidence) {
 
 export function hypothesisRecord(state, pattern) {
   const evidence = patternEvidence(state, pattern);
-  const { scope, crossDomain } = domainScope(evidence);
+  const { scope: rawScope, crossDomain } = domainScope(evidence);
   const said = statementFor(state, pattern.id);
+  // #36: a user-confirmed "not in {domain}" correction removes that domain from the supported scope
+  // without touching the evidence it was computed from — the evidence stays inspectable, only the
+  // domain this pattern is allowed to claim narrows. A live model can never claim a domain the user
+  // has excluded here (see validate.js's "claims domains with no cited support" check).
+  const excludedDomains = excludedDomainsFor(state, pattern.id);
+  const scope = excludedDomains.length
+    ? { ...rawScope, supported: rawScope.supported.filter((d) => !excludedDomains.includes(d)), excluded: excludedDomains }
+    : { ...rawScope, excluded: [] };
   return {
     id: pattern.id,
     title: pattern.title,

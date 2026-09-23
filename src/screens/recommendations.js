@@ -1,11 +1,13 @@
 import { state } from "../state.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
 import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { hypotheses } from "../data/catalog.js";
+import { patternConfidence } from "../model/tastemap.js";
 
 export function ratingLabel(value) {
   return ({
@@ -123,6 +125,35 @@ function mediaArt(item, index) {
     </div>`;
 }
 
+// #33: the "Why this one?" popover should read as a testable hypothesis, not algorithmic fine print.
+// It names the pattern being tested (when there is one), is cautious when that pattern is still
+// Emerging, and calls out a curveball as a deliberate break from the pattern rather than a miss.
+function testedPattern(item) {
+  const id = item.ai?.tests ?? item.hypotheses?.[0];
+  if (!id) return null;
+  return hypotheses.find((p) => hypothesisMatches([p.id], id) || hypothesisMatches([id], p.id)) ?? null;
+}
+
+function whyKicker(item, pattern) {
+  const isCurveball = item.surprise || item.ai?.kind === "curveball";
+  if (isCurveball) return "Exploratory pick";
+  if (!pattern) return "Why this one";
+  const level = patternConfidence(state, pattern).level;
+  return level === "Emerging" ? "A first test" : "Testing a pattern";
+}
+
+function whyContent(item) {
+  const pattern = testedPattern(item);
+  const isCurveball = item.surprise || item.ai?.kind === "curveball";
+  const kicker = whyKicker(item, pattern);
+  const label = pattern ? `${kicker}: ${esc(pattern.title)}` : kicker;
+
+  return `
+    <span class="why-kicker">${label}</span>
+    <p>${esc(item.reason)}</p>
+    ${isCurveball ? `<p class="why-caveat">This one deliberately breaks from the pattern above, to see what that tells Tastemake.</p>` : ""}`;
+}
+
 function recommendationCard(item, index) {
   const saved = state.feedbackByRecommendation[item.id];
   const layoutClass = item.surprise ? "rec-surprise" : `rec-layout-${(index % 4) + 1}`;
@@ -155,7 +186,7 @@ function recommendationCard(item, index) {
             aria-controls="${whyId}"
           >Why this one?</button>
           <div class="why-popover" id="${whyId}" role="tooltip">
-            <p>${esc(item.reason)}</p>
+            ${whyContent(item)}
           </div>
         </div>
 
@@ -269,8 +300,8 @@ export function renderRecommendations() {
           <p class="kicker">${roundTwo ? "Fresh picks" : "For you right now"}</p>
           <h1>${roundTwo ? "Okay, that changed things." : "Things worth your time."}</h1>
           <p class="lede">${roundTwo
-            ? "A new set shaped by what you just told Tastemake."
-            : "Movies, shows, books, games, and the occasional curveball. React in one tap and keep moving."}</p>
+            ? "A new set shaped by what you just told Tastemake. Each pick is still a test, including the misses."
+            : "Movies, shows, books, games, and the occasional curveball — Tastemake's current best guesses at what fits, and a way to test them. React in one tap; a miss teaches it as much as a hit."}</p>
         </div>
 
         <div class="rec-progress-card">

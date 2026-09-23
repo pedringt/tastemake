@@ -1,27 +1,30 @@
 # Handoff: Tastemake live AI producer
 
-## Next chat: start here (updated Sept 23, 2026, end of session)
+## Next chat: start here (updated Sept 22, 2026, end of session)
 
 **North star:** Tastemake helps people understand the patterns in what they're drawn to across different parts of their life, without assuming they have one single aesthetic, then uses that understanding to find and test more things that might fit.
 
 **State**
-- `main` = `live-producer-preview` = `dcbb389`, deployed to production: https://tastemake.vercel.app. Clean working tree, nothing pushed-but-not-deployed, nothing uncommitted.
+- `main` = `dcbb389`, deployed to production: https://tastemake.vercel.app. `live-producer-preview` is **two commits ahead of main** (`c1d0ac0`, `dcd64ff` — see below); nothing has been promoted this session, deliberately, pending Paige's go-ahead.
 - **Live AI is ON in production and stays on** (Paige: "I'm ok with the gate, no one is using this but me" — settled, don't re-ask). Live job: choose and explain the next recommendation set on "Keep discovering". Hypothesis inference is still deterministic. Model `claude-sonnet-5`, ~$0.014/call.
 - **CI is real and required.** `npm test` runs on every push/PR via `.github/workflows/test.yml` (a clean, isolated container — see the local-Chrome note below). Root `package.json` has the scripts; see `docs/ai-evals.md` for the paid ones.
 
-**Closed this session:** #26 #27 #31 #32 #35 #38 #42 #41 #40 #34 (14 issues total across the whole live-AI push). Each has a comment on the GitHub issue saying exactly what shipped.
+**This session (not yet promoted to main, on `live-producer-preview`):**
+- **#33, #30** (`c1d0ac0`) — "Why this one?" now names the tested pattern and is cautious when it's Emerging; global copy (tagline, meta description, recommendations lede, Taste Profile footer) reframed around taste self-understanding rather than "recommendations that get better as you react."
+- **#37** (`c1d0ac0`) — `src/model/history.js`: minimal append-only revision log for hypotheses, wired to the one live mutation path (user pattern statements). Hypothesis *inference* still isn't live-wired, so no "model"-origin revisions exist yet — documented as the natural next call site.
+- **#36** (`c1d0ac0`) — Taste Profile gained "Where does this apply?" domain-scope chips (`excludedDomains` on a pattern statement); the live-AI validator now rejects a model hypothesis claiming a domain the user excluded. Scoped to domain-only, not the free-text context examples (work/personal, etc.) — those need a taxonomy the issue itself says not to hard-code yet.
+- **#39** (`dcd64ff`) — `app.js`'s feature logic extracted into `src/actions/` (recommendations, library, blindspot, mine, focus) + `src/lib/format.js`. `app.js` is down to routing/rendering/accessibility plumbing and DOM-event dispatch. No behavior change.
+- Each issue has a GitHub comment with what shipped and what was deliberately left out; none were closed — they're worth a read before calling them done, especially the copy (#30/#33) and the #36 UI concept.
+- Both commits verified via the clean-CI diagnostic-PR pattern below (local Chrome was stuck the whole session). `test` check: green on both (28s and 1m6s). No `npm run test:full`, no paid eval run this session.
 
-**Local Chrome can get stuck — know this before you burn an hour on it.** Partway through this session, local headless Chrome on this machine hung repeatedly (its updater forked crash-handler processes on every launch, past the script's own timeout), most likely from other concurrent Claude Code sessions sharing this Mac. `headless.sh` now reuses a project-local profile (`$ROOT/.git/tm-chrome-profile`) plus updater-suppressing flags, which mostly fixed it — but if `scripts/qa/headless.sh` or `npm test` hangs/times out locally with no clear error, **do not spend more than one retry chasing it**. Instead: push the branch, open a **throwaway PR** to `main` (title it "diagnostic" or similar) so the `pull_request` trigger runs the suite in GitHub's clean container, read that result, then **close the PR without merging** and fast-forward `main` directly with `git push origin <branch>:main` (this repo's actual promotion path all session). Never `pkill` browsers or other processes broadly on this machine — ask first; another session may depend on them.
+**Local Chrome can get stuck — know this before you burn an hour on it.** Local headless Chrome on this machine hung again this session (same updater/crash-handler churn as before), most likely from other concurrent Claude Code sessions sharing this Mac. If `scripts/qa/headless.sh` or `npm test` hangs/times out locally with no clear error, **do not spend more than one retry chasing it**. Instead: push the branch, open a **throwaway PR** to `main` (title it "diagnostic" or similar) so the `pull_request` trigger runs the suite in GitHub's clean container, read that result with `gh pr checks <n>`, then **close the PR without merging** (`gh pr close <n> --comment "..."`) — do not merge or fast-forward `main` without Paige's separate, explicit go-ahead each time. Never `pkill` browsers or other processes broadly on this machine — ask first; another session may depend on them.
 
 **What's next, roughly in order:**
-1. **#33** — reframe "Why this one?" as a hypothesis test. Natural now that live picks actually cite evidence and name a pattern (see the sample reasons in the "First live AI run" section below). Content/UX only; no model or contract change.
-2. **#30** — framing copy (header tagline, Favorites/Recommendations/Taste Profile copy) toward taste self-understanding rather than "recommendations engine". Also content-only.
-3. **#37** and **#36** — hypothesis history/revisions and context/multi-aesthetic correction controls. Do these *before* letting the model generate hypotheses (not just pick items), since they define the shape that inference has to write into. `src/model/interpretations.js` and `src/model/statements.js` are the existing pieces to extend, not replace.
-4. **#39** — `app.js` refactor (it's grown large: routing, rendering, every screen's actions, the AI request lifecycle, all in one file). Do this once #36/#37 have added their own actions, not before, so the extraction boundaries are informed by the real shape rather than guessed.
-5. **#29** — needs real users; not actionable right now (Paige can't run this). Leave parked.
-6. **#28** — the eval suite (`docs/ai-evals.md`) already exercises specificity/repetition at synthetic 50/100-evidence scale; a fuller pass here means widening those fixtures, not new infrastructure.
-7. Small open nit carried from earlier: a few live reasons say "This is a curveball" in text while the `kind` field says `pick`. Cosmetic; fix the prompt in `api/recommendations.mjs`'s `buildPickPrompt` if you're in there anyway.
-8. Older backlog (#4, #6, #7, #8 phase 2, #9-11, #14, #15, #17-19, #25 taste-based skin) is all still open, lower priority, documented in the issues themselves.
+1. Get Paige's read on this session's four issue comments and, if she's happy, her explicit go-ahead to promote `live-producer-preview` to `main` (two commits, `c1d0ac0` and `dcd64ff`).
+2. **#29** — needs real users; not actionable right now (Paige can't run this). Leave parked.
+3. **#28** — the eval suite (`docs/ai-evals.md`) already exercises specificity/repetition at synthetic 50/100-evidence scale; a fuller pass here means widening those fixtures, not new infrastructure.
+4. Small open nit carried from earlier: a few live reasons say "This is a curveball" in text while the `kind` field says `pick`. Cosmetic; fix the prompt in `api/recommendations.mjs`'s `buildPickPrompt` if you're in there anyway.
+5. Older backlog (#4, #6, #7, #8 phase 2, #9-11, #14, #15, #17-19, #25 taste-based skin) is all still open, lower priority, documented in the issues themselves.
 
 **Standing rules:** AI interprets, the product owns evidence and state; interest is not experience; user-confirmed outranks inference; cross-domain links start as hypotheses; model output must cite real evidence; evals alongside the model, not after; make future domains possible without shipping them; never loosen a scorer to make a run pass; state the call count and cost before any paid run; never touch `main` without it being the deliberate promotion step; never kill processes broadly without asking.
 
