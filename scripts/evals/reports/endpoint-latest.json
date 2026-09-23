@@ -73,36 +73,40 @@
           "itemId": "golden-idol",
           "kind": "pick",
           "cites": [
+            "ev:circe",
             "ev:portal2"
-          ]
-        },
-        {
-          "itemId": "vita-nostra",
-          "kind": "pick",
-          "cites": [
-            "ev:circe"
           ]
         },
         {
           "itemId": "handmaiden",
           "kind": "pick",
           "cites": [
-            "ev:lotr",
+            "ev:thefall",
             "ev:circe"
           ]
         },
         {
-          "itemId": "lighthouse",
+          "itemId": "vita-nostra",
           "kind": "pick",
           "cites": [
-            "ev:thefall"
+            "ev:circe",
+            "ev:lotr"
           ]
         },
         {
-          "itemId": "dnd",
+          "itemId": "fargo",
           "kind": "pick",
           "cites": [
+            "ev:thefall",
             "ev:lotr"
+          ]
+        },
+        {
+          "itemId": "lighthouse",
+          "kind": "curveball",
+          "cites": [
+            "ev:lotr",
+            "ev:thefall"
           ]
         }
       ]
@@ -151,7 +155,7 @@
           "kind": "quality",
           "name": "explanations are not repetitive",
           "pass": true,
-          "detail": "max phrase overlap between two reasons: 4%"
+          "detail": "max phrase overlap between two reasons: 2%"
         },
         {
           "kind": "quality",
@@ -193,11 +197,18 @@
       "rejected": [],
       "picks": [
         {
+          "itemId": "fargo",
+          "kind": "pick",
+          "cites": [
+            "ev:buffy"
+          ]
+        },
+        {
           "itemId": "handmaiden",
           "kind": "pick",
           "cites": [
-            "ev:thefall",
-            "ev:buffy"
+            "ev:circe",
+            "ev:thefall"
           ]
         },
         {
@@ -208,26 +219,18 @@
           ]
         },
         {
-          "itemId": "fargo",
-          "kind": "pick",
-          "cites": [
-            "ev:buffy",
-            "ev:thefall"
-          ]
-        },
-        {
-          "itemId": "lighthouse",
-          "kind": "pick",
-          "cites": [
-            "ev:alanwake2"
-          ]
-        },
-        {
-          "itemId": "dnd",
+          "itemId": "vita-nostra",
           "kind": "pick",
           "cites": [
             "ev:lotr",
             "ev:circe"
+          ]
+        },
+        {
+          "itemId": "lighthouse",
+          "kind": "curveball",
+          "cites": [
+            "ev:alanwake2"
           ]
         }
       ]
@@ -270,7 +273,7 @@
           "kind": "quality",
           "name": "explanations are not repetitive",
           "pass": true,
-          "detail": "max phrase overlap between two reasons: 7%"
+          "detail": "max phrase overlap between two reasons: 9%"
         },
         {
           "kind": "quality",
@@ -343,7 +346,8 @@
           "itemId": "handmaiden",
           "kind": "pick",
           "cites": [
-            "ev:thefall"
+            "ev:thefall",
+            "ev:circe"
           ]
         },
         {
@@ -361,18 +365,19 @@
           ]
         },
         {
-          "itemId": "lighthouse",
+          "itemId": "yellowjackets",
           "kind": "pick",
           "cites": [
+            "ev:barry",
             "ev:alanwake2"
           ]
         },
         {
-          "itemId": "yellowjackets",
-          "kind": "pick",
+          "itemId": "dnd",
+          "kind": "curveball",
           "cites": [
-            "ev:buffy",
-            "ev:barry"
+            "ev:thefall",
+            "ev:alanwake2"
           ]
         }
       ]
@@ -460,13 +465,13 @@
           "itemId": "yellowjackets",
           "kind": "pick",
           "cites": [
-            "ev:thefall",
-            "ev:buffy"
+            "ev:buffy",
+            "ev:thefall"
           ]
         },
         {
           "itemId": "dnd",
-          "kind": "pick",
+          "kind": "curveball",
           "cites": [
             "ev:lotr",
             "ev:circe"
@@ -482,7 +487,7 @@
           "kind": "quality",
           "name": "all proposals valid",
           "pass": true,
-          "detail": "5 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+          "detail": "5 hypotheses kept, 0 rejected; 0 picks kept, 0 rejected"
         },
         {
           "kind": "rule",
@@ -501,12 +506,6 @@
           "name": "calibrated (no overconfidence to correct)",
           "pass": true,
           "detail": "none needed lowering"
-        },
-        {
-          "kind": "quality",
-          "name": "explanations are not repetitive",
-          "pass": true,
-          "detail": "max phrase overlap between two reasons: 2%"
         },
         {
           "kind": "rule",
@@ -579,44 +578,7 @@
         }
       ],
       "rejected": [],
-      "picks": [
-        {
-          "itemId": "fargo",
-          "kind": "pick",
-          "cites": [
-            "ev:barry"
-          ]
-        },
-        {
-          "itemId": "handmaiden",
-          "kind": "pick",
-          "cites": [
-            "ev:thefall",
-            "ev:circe"
-          ]
-        },
-        {
-          "itemId": "golden-idol",
-          "kind": "pick",
-          "cites": [
-            "ev:portal2"
-          ]
-        },
-        {
-          "itemId": "lighthouse",
-          "kind": "pick",
-          "cites": [
-            "ev:alanwake2"
-          ]
-        },
-        {
-          "itemId": "dnd",
-          "kind": "pick",
-          "cites": [
-            "ev:wwdits"
-          ]
-        }
-      ]
+      "picks": []
     },
     {
       "id": "recurring-miss",
@@ -626,7 +588,7 @@
           "kind": "quality",
           "name": "all proposals valid",
           "pass": true,
-          "detail": "4 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+          "detail": "4 hypotheses kept, 0 rejected; 0 picks kept, 0 rejected"
         },
         {
           "kind": "rule",
@@ -651,12 +613,6 @@
           "name": "calibrated (no overconfidence to correct)",
           "pass": true,
           "detail": "none needed lowering"
-        },
-        {
-          "kind": "quality",
-          "name": "explanations are not repetitive",
-          "pass": true,
-          "detail": "max phrase overlap between two reasons: 4%"
         },
         {
           "kind": "quality",
@@ -713,45 +669,7 @@
         }
       ],
       "rejected": [],
-      "picks": [
-        {
-          "itemId": "golden-idol",
-          "kind": "pick",
-          "cites": [
-            "ev:portal2"
-          ]
-        },
-        {
-          "itemId": "handmaiden",
-          "kind": "pick",
-          "cites": [
-            "ev:circe",
-            "ev:thefall"
-          ]
-        },
-        {
-          "itemId": "vita-nostra",
-          "kind": "pick",
-          "cites": [
-            "ev:thefall"
-          ]
-        },
-        {
-          "itemId": "lighthouse",
-          "kind": "pick",
-          "cites": [
-            "ev:alanwake2"
-          ]
-        },
-        {
-          "itemId": "yellowjackets",
-          "kind": "pick",
-          "cites": [
-            "ev:buffy",
-            "ev:eeaao"
-          ]
-        }
-      ]
+      "picks": []
     },
     {
       "id": "cross-domain",
@@ -761,7 +679,7 @@
           "kind": "quality",
           "name": "all proposals valid",
           "pass": true,
-          "detail": "5 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+          "detail": "5 hypotheses kept, 0 rejected; 0 picks kept, 0 rejected"
         },
         {
           "kind": "rule",
@@ -786,12 +704,6 @@
           "name": "cross-domain no further than \"tentative\"",
           "pass": true,
           "detail": "ok"
-        },
-        {
-          "kind": "quality",
-          "name": "explanations are not repetitive",
-          "pass": true,
-          "detail": "max phrase overlap between two reasons: 2%"
         },
         {
           "kind": "quality",
@@ -851,45 +763,7 @@
         }
       ],
       "rejected": [],
-      "picks": [
-        {
-          "itemId": "handmaiden",
-          "kind": "pick",
-          "cites": [
-            "ev:thefall",
-            "ev:disco"
-          ]
-        },
-        {
-          "itemId": "golden-idol",
-          "kind": "pick",
-          "cites": [
-            "ev:disco"
-          ]
-        },
-        {
-          "itemId": "fargo",
-          "kind": "pick",
-          "cites": [
-            "ev:buffy",
-            "ev:eeaao"
-          ]
-        },
-        {
-          "itemId": "lighthouse",
-          "kind": "pick",
-          "cites": [
-            "ev:alanwake2"
-          ]
-        },
-        {
-          "itemId": "vita-nostra",
-          "kind": "pick",
-          "cites": [
-            "ev:circe"
-          ]
-        }
-      ]
+      "picks": []
     },
     {
       "id": "user-said-not-me",
@@ -899,7 +773,7 @@
           "kind": "quality",
           "name": "all proposals valid",
           "pass": true,
-          "detail": "4 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+          "detail": "4 hypotheses kept, 0 rejected; 0 picks kept, 0 rejected"
         },
         {
           "kind": "rule",
@@ -924,12 +798,6 @@
           "name": "respects what the user said (user-confirmed outranks inference)",
           "pass": true,
           "detail": "excluded pattern stayed out"
-        },
-        {
-          "kind": "quality",
-          "name": "explanations are not repetitive",
-          "pass": true,
-          "detail": "max phrase overlap between two reasons: 8%"
         },
         {
           "kind": "quality",
@@ -982,46 +850,7 @@
         }
       ],
       "rejected": [],
-      "picks": [
-        {
-          "itemId": "fargo",
-          "kind": "pick",
-          "cites": [
-            "ev:barry"
-          ]
-        },
-        {
-          "itemId": "handmaiden",
-          "kind": "pick",
-          "cites": [
-            "ev:thefall",
-            "ev:circe"
-          ]
-        },
-        {
-          "itemId": "golden-idol",
-          "kind": "pick",
-          "cites": [
-            "ev:portal2"
-          ]
-        },
-        {
-          "itemId": "vita-nostra",
-          "kind": "pick",
-          "cites": [
-            "ev:circe",
-            "ev:lotr"
-          ]
-        },
-        {
-          "itemId": "yellowjackets",
-          "kind": "pick",
-          "cites": [
-            "ev:buffy",
-            "ev:alanwake2"
-          ]
-        }
-      ]
+      "picks": []
     },
     {
       "id": "scale-50",
@@ -1031,7 +860,7 @@
           "kind": "quality",
           "name": "all proposals valid",
           "pass": true,
-          "detail": "5 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+          "detail": "5 hypotheses kept, 0 rejected; 0 picks kept, 0 rejected"
         },
         {
           "kind": "rule",
@@ -1050,12 +879,6 @@
           "name": "calibrated (no overconfidence to correct)",
           "pass": true,
           "detail": "none needed lowering"
-        },
-        {
-          "kind": "quality",
-          "name": "explanations are not repetitive",
-          "pass": true,
-          "detail": "max phrase overlap between two reasons: 5%"
         },
         {
           "kind": "quality",
@@ -1150,47 +973,7 @@
         }
       ],
       "rejected": [],
-      "picks": [
-        {
-          "itemId": "golden-idol",
-          "kind": "pick",
-          "cites": [
-            "ev:portal2",
-            "ev:syn-49"
-          ]
-        },
-        {
-          "itemId": "handmaiden",
-          "kind": "pick",
-          "cites": [
-            "ev:thefall",
-            "ev:syn-28"
-          ]
-        },
-        {
-          "itemId": "fargo",
-          "kind": "pick",
-          "cites": [
-            "ev:buffy",
-            "ev:syn-25"
-          ]
-        },
-        {
-          "itemId": "vita-nostra",
-          "kind": "pick",
-          "cites": [
-            "ev:circe",
-            "ev:syn-39"
-          ]
-        },
-        {
-          "itemId": "lighthouse",
-          "kind": "pick",
-          "cites": [
-            "ev:alanwake2"
-          ]
-        }
-      ]
+      "picks": []
     },
     {
       "id": "scale-100",
@@ -1200,7 +983,7 @@
           "kind": "quality",
           "name": "all proposals valid",
           "pass": true,
-          "detail": "5 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+          "detail": "5 hypotheses kept, 0 rejected; 0 picks kept, 0 rejected"
         },
         {
           "kind": "rule",
@@ -1219,12 +1002,6 @@
           "name": "calibrated (no overconfidence to correct)",
           "pass": true,
           "detail": "none needed lowering"
-        },
-        {
-          "kind": "quality",
-          "name": "explanations are not repetitive",
-          "pass": true,
-          "detail": "max phrase overlap between two reasons: 2%"
         },
         {
           "kind": "quality",
@@ -1356,43 +1133,7 @@
         }
       ],
       "rejected": [],
-      "picks": [
-        {
-          "itemId": "fargo",
-          "kind": "pick",
-          "cites": [
-            "ev:buffy"
-          ]
-        },
-        {
-          "itemId": "handmaiden",
-          "kind": "pick",
-          "cites": [
-            "ev:thefall"
-          ]
-        },
-        {
-          "itemId": "golden-idol",
-          "kind": "pick",
-          "cites": [
-            "ev:portal2"
-          ]
-        },
-        {
-          "itemId": "vita-nostra",
-          "kind": "pick",
-          "cites": [
-            "ev:circe"
-          ]
-        },
-        {
-          "itemId": "lighthouse",
-          "kind": "pick",
-          "cites": [
-            "ev:alanwake2"
-          ]
-        }
-      ]
+      "picks": []
     }
   ],
   "selfTest": [

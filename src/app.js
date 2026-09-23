@@ -54,6 +54,11 @@ function updateStepper() {
   const order = ["favorites", "recommendations", "model", "library", "bookmarks"];
   const activeIndex = order.indexOf(state.screen);
 
+  // #59 item 4: keep the guided first-run path (Favorites -> Recommendations) visually dominant by
+  // de-emphasizing secondary destinations until the first loop is done, instead of a separate onboarding
+  // shell. Nothing is hidden or disabled here beyond what canAccess() already gates — just quieter.
+  document.querySelector(".app-shell")?.classList.toggle("is-onboarding", !state.onboarded);
+
   document.querySelectorAll("[data-step-jump]").forEach((step) => {
     const screen = step.dataset.stepJump;
     const index = order.indexOf(screen);
@@ -97,7 +102,6 @@ function restoreFocus(selector, fallback = app) {
 function setLook(id) {
   if (!isLook(id)) return;
   state.look = id;
-  state.lookChosen = true;
   document.documentElement.dataset.look = id;
   document.querySelectorAll(".look-card").forEach((card) => card.classList.toggle("is-selected", card.dataset.lookChoice === id));
   const done = app.querySelector('[data-action="look-done"]');
@@ -119,16 +123,11 @@ app.addEventListener("change", (event) => {
 
 function openLookPicker() {
   if (state.screen !== "look") state.lookReturn = state.screen;
-  state.lookOnboarding = false;
   navigate("look");
 }
 
 function finishLookPicker() {
-  state.lookChosen = true;
-  const wasOnboarding = state.lookOnboarding;
-  state.lookOnboarding = false;
-  const target = wasOnboarding ? "favorites" : state.lookReturn;
-  navigate(canAccess(target) ? target : "favorites");
+  navigate(canAccess(state.lookReturn) ? state.lookReturn : "favorites");
 }
 
 // #59: reaching Recommendations at least once ends the guided first-run state (see state.js).
@@ -446,17 +445,12 @@ initSearch({
   goTo(screen) { navigate(screen); }
 });
 
-// First visit at the bare address shows "Choose a starting look" before Favorites. A deep link
-// (/library, ...) or a ?look=... link goes straight to the page, using that look.
-const atRoot = (window.location.pathname.replace(/\/$/, "") || "/") === "/";
-if (new URLSearchParams(window.location.search).has("look")) state.lookChosen = true;
+// #59 item 5: a new visitor starts directly in the default look (Editorial) rather than being asked to
+// customize the product before they know why they'd care. Look stays available any time from the header
+// button; a ?look=... link still goes straight to that look (applied by the inline script in index.html
+// before this module even runs).
 const initialScreen = screenFromPath();
-if (atRoot && !state.lookChosen) {
-  state.screen = "look";
-  state.lookOnboarding = true;
-} else {
-  state.screen = canAccess(initialScreen) ? initialScreen : "favorites";
-}
+state.screen = canAccess(initialScreen) ? initialScreen : "favorites";
 markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();
