@@ -511,7 +511,8 @@ export async function run() {
   const firstTitle = catalog.hypotheses[0].title;
   const levelBeforeSay = $(".signal-row .signal-status")?.textContent.trim();
   const sayNotMe = `[data-statement-pattern="${firstId}"][data-statement-field="says"][data-statement-value="not-me"]`;
-  check("each pattern card asks 'Is this you?' and 'How much does it matter?'", $$(".signal-say").length === catalog.hypotheses.length && $$(".signal-say-group[role=group]").length === catalog.hypotheses.length * 2);
+  // #36 v1: a third group, "Does this hold everywhere?", joined "Is this you?" and "How much does it matter?".
+  check("each pattern card asks 'Is this you?', 'How much does it matter?' and 'Does this hold everywhere?'", $$(".signal-say").length === catalog.hypotheses.length && $$(".signal-say-group[role=group]").length === catalog.hypotheses.length * 3);
   await act(sayNotMe);
   check("'Not really me' is saved, pressed, keeps focus and is announced", state.patternStatements.some((s) => s.hypothesisId === firstId && s.says === "not-me") &&
     $(sayNotMe)?.getAttribute("aria-pressed") === "true" && document.activeElement === $(sayNotMe) && live().includes(firstTitle), live());
