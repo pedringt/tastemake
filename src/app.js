@@ -16,7 +16,7 @@ import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback } from "./actions/recommendations.js";
+import { announceReaction, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback, toggleExpandedFeedback } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 
@@ -359,6 +359,13 @@ app.addEventListener("click", async (event) => {
   if (quality) {
     const itemId = quality.dataset.feedbackItem;
     if (saveFeedbackQuality(itemId, quality.dataset.feedbackQuality)) renderPreservingCardPosition(itemId, focusSelector);
+    return;
+  }
+
+  const feedbackToggle = event.target.closest("[data-toggle-feedback]");
+  if (feedbackToggle) {
+    toggleExpandedFeedback(feedbackToggle.dataset.toggleFeedback);
+    renderPreservingCardPosition(feedbackToggle.dataset.toggleFeedback, focusSelector);
     return;
   }
 

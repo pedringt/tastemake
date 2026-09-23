@@ -6,6 +6,15 @@ import { requestRecommendations } from "../ai/live-client.js";
 import { cancelRequest, finishRequest, staleReason, startRequest } from "../ai/requests.js";
 import { plural } from "../lib/format.js";
 
+// #52: the discovery-quality note defaults to open once answered, closed otherwise (see qualityExpanded
+// in screens/recommendations.js); an explicit toggle always overrides that default, in either direction —
+// a display preference, never taste evidence.
+export function toggleExpandedFeedback(itemId) {
+  const feedback = state.feedbackByRecommendation[itemId];
+  const current = state.expandedFeedback[itemId] ?? Boolean(feedback?.quality);
+  state.expandedFeedback[itemId] = !current;
+}
+
 export function saveQuickFeedback(itemId, rating) {
   const item = activeRecommendations(state).find((rec) => rec.id === itemId);
   if (!item) return false;

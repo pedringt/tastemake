@@ -58,9 +58,15 @@ function detailOptionsFor(feedback) {
   return [["bookmarked", "Bookmark it"]];
 }
 
-function feedbackDetails(itemId, feedback) {
-  if (!feedback) return "";
+// #52/#53: three layers, not one block. Primary (More/Less/Not tried) is always visible. Secondary — which
+// specific thing happened — appears the moment a primary reaction exists, because it's still answering the
+// same question ("did this fit?"). Tertiary — discovery-quality feedback — is about the *recommendation
+// strategy*, not taste, and stays collapsed by default behind "More feedback" so it never reads as competing
+// with More/Less. It auto-expands once there's already an answer in it, so nothing already told to Tastemake
+// is hidden. The Blind Spot panel (#20) is left alone: it already manages its own offer/quiet/draft/saved
+// progression, which is its own, already-designed, form of progressive disclosure.
 
+function detailChips(itemId, feedback) {
   const options = detailOptionsFor(feedback);
   const prompt = feedback.rating === "not-tried"
     ? "Want to save it for later? Optional. Bookmarks don't change your taste profile."
@@ -82,28 +88,57 @@ function feedbackDetails(itemId, feedback) {
           >${label}</button>
         `).join("")}
       </div>
-      <div class="recommendation-quality-note">
-        <span class="feedback-detail-prompt">Discovery note. Optional.</span>
-        <div class="quality-note-row">
-          <button
-            class="detail-chip quality-chip"
-            type="button"
-            data-feedback-item="${itemId}"
-            data-feedback-quality="too-obvious"
-            aria-pressed="${feedback.quality === "too-obvious"}"
-          >Too predictable</button>
-          ${isPositiveExperience(feedback) ? `
-          <button
-            class="detail-chip quality-chip"
-            type="button"
-            data-feedback-item="${itemId}"
-            data-feedback-quality="surprised-me"
-            aria-pressed="${feedback.quality === "surprised-me"}"
-          >Surprised me</button>` : ""}
-          <span class="quality-note-help">This can still be a great taste match. It only tells Tastemake to make future picks less obvious.</span>
-        </div>
+    </div>`;
+}
+
+// Discovery quality is about whether the pick was a good use of a recommendation slot, never about
+// whether it fits the user's taste — kept visually and conceptually apart from More/Less/detail chips so
+// the two don't read as competing negative reactions (#53).
+function qualityNote(itemId, feedback) {
+  return `
+    <div class="recommendation-quality-note">
+      <span class="feedback-detail-prompt">Discovery feedback. Optional.</span>
+      <div class="quality-note-row">
+        <button
+          class="detail-chip quality-chip"
+          type="button"
+          data-feedback-item="${itemId}"
+          data-feedback-quality="too-obvious"
+          aria-pressed="${feedback.quality === "too-obvious"}"
+        >Good fit, but too obvious?</button>
+        ${isPositiveExperience(feedback) ? `
+        <button
+          class="detail-chip quality-chip"
+          type="button"
+          data-feedback-item="${itemId}"
+          data-feedback-quality="surprised-me"
+          aria-pressed="${feedback.quality === "surprised-me"}"
+        >Surprised me</button>` : ""}
+        <span class="quality-note-help">This changes how adventurous future picks are, not what Tastemake thinks you like.</span>
       </div>
     </div>`;
+}
+
+function hasQualityNote(feedback) {
+  return Boolean(feedback) && (feedback.rating === "more" || feedback.rating === "less");
+}
+
+// Defaults to open once there is an answer in it, closed otherwise; an explicit toggle click always
+// overrides that default (see toggleExpandedFeedback in actions/recommendations.js).
+function qualityExpanded(itemId, feedback) {
+  const override = state.expandedFeedback[itemId];
+  return override !== undefined ? override : Boolean(feedback?.quality);
+}
+
+function moreFeedbackToggle(itemId, expanded, panelId) {
+  return `
+    <button
+      class="detail-chip more-feedback-toggle"
+      type="button"
+      data-toggle-feedback="${itemId}"
+      aria-expanded="${expanded}"
+      aria-controls="${panelId}"
+    >${expanded ? "Less feedback" : "More feedback"}</button>`;
 }
 
 function mediaArt(item, index) {
@@ -158,6 +193,9 @@ function recommendationCard(item, index) {
   const saved = state.feedbackByRecommendation[item.id];
   const layoutClass = item.surprise ? "rec-surprise" : `rec-layout-${(index % 4) + 1}`;
   const whyId = `why-${item.id}`;
+  const qualityId = `quality-${item.id}`;
+  const showQuality = hasQualityNote(saved);
+  const expanded = showQuality && qualityExpanded(item.id, saved);
 
   return `
     <article class="editorial-rec ${layoutClass} ${saved ? "is-rated" : ""}" data-rec-id="${item.id}">
@@ -196,7 +234,14 @@ function recommendationCard(item, index) {
           ${ratingButton(item.id, "not-tried", "Not tried", "o", saved)}
         </div>
 
-        ${feedbackDetails(item.id, saved)}
+        ${saved ? detailChips(item.id, saved) : ""}
+        ${showQuality ? `
+          <div class="tertiary-feedback-toggle">
+            ${moreFeedbackToggle(item.id, expanded, qualityId)}
+          </div>
+          <div class="tertiary-feedback" id="${qualityId}" ${expanded ? "" : "hidden"}>
+            ${qualityNote(item.id, saved)}
+          </div>` : ""}
         ${renderBlindSpotPanel(item.id)}
       </div>
     </article>`;
@@ -243,7 +288,10 @@ function renderNextSteps() {
           <span class="refresh-kicker">Nice. That is enough signal.</span>
           <strong>Want a fresh set?</strong>
           <p>Your reactions can now reshape what Tastemake shows next.</p>
-          <p class="quality-note-help">When live AI is enabled, Tastemake sends this visit\'s typed taste evidence and eligible picks to Anthropic to choose and explain the next set. No name or contact details are included.</p>
+          <details class="ai-disclosure">
+            <summary>How this set is made</summary>
+            <p class="quality-note-help">When live AI is enabled, Tastemake sends this visit's typed taste evidence and eligible picks to Anthropic to choose and explain the next set. No name or contact details are included. If the live model is unavailable or its answer doesn't pass Tastemake's checks, the deterministic version takes over instead — that's always shown above, not only here.</p>
+          </details>
           ${bookmarkNote(bookmarks)}
         </div>
         <div class="action-group recommendation-footer-actions">
