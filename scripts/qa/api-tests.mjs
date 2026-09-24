@@ -8,7 +8,7 @@
 // model answers that pass and answers that must be refused, transport failures, and the HTTP handler.
 
 import handler, { liveConfig, produceRecommendations } from "../../api/recommendations.mjs";
-import { favorites, recommendations, followUpPool } from "../../src/data/catalog.js";
+import { favorites, recommendations, followUpPool } from "./fixtures/catalog.js";
 import { nextRecommendations } from "../../src/model/taste.js";
 import { buildContext } from "../../src/ai/context.js";
 
