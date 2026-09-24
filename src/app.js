@@ -7,9 +7,11 @@ import { renderRecommendations } from "./screens/recommendations.js";
 import { renderBookmarks } from "./screens/bookmarks.js";
 import { renderLibrary } from "./screens/library.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
+import { renderSetup } from "./screens/setup.js";
 import { renderMine } from "./screens/mine.js";
 import { setStatement, toggleDomainExclusion } from "./model/statements.js";
 import { isLook, lookLabel } from "./data/looks.js";
+import { visibleDomains } from "./data/domains.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
@@ -33,6 +35,7 @@ const views = {
   library: renderLibrary,
   bookmarks: renderBookmarks,
   look: renderLook,
+  setup: renderSetup,
   mine: renderMine
 };
 
@@ -43,7 +46,7 @@ function hasEnoughFavorites() {
 function canAccess(screen) {
   // #29/#68: Bookmarks is a real destination even with nothing saved yet — the empty state explains how
   // to get there instead of the tab just disappearing until you happen to bookmark something.
-  if (screen === "look" || screen === "mine" || screen === "bookmarks") return true;
+  if (screen === "look" || screen === "setup" || screen === "mine" || screen === "bookmarks") return true;
   return screen === "favorites" || hasEnoughFavorites();
 }
 
@@ -64,13 +67,6 @@ function updateStepper() {
     const screen = step.dataset.stepJump;
     const index = order.indexOf(screen);
     const unlocked = canAccess(screen);
-
-    // #29/#68: Bookmarks stays visible even with nothing saved (a discoverable destination, not one
-    // that appears only after you happen to use it); the count badge itself still only shows when >0.
-    if (screen === "bookmarks") {
-      const count = bookmarkedFeedback(state).length;
-      step.querySelector("[data-bookmark-count]").textContent = count ? String(count) : "";
-    }
 
     step.classList.toggle("is-active", screen === state.screen);
     step.classList.toggle("is-complete", index >= 0 && index < activeIndex);
@@ -134,6 +130,32 @@ app.addEventListener("click", (event) => {
 });
 
 app.addEventListener("change", (event) => {
+  if (state.screen === "setup") {
+    const area = event.target.closest("[data-setup-area]");
+    if (area) {
+      const id = area.dataset.setupArea;
+      if (id === "all") {
+        if (area.checked) state.setupAreas = new Set(["all"]);
+        else if (state.setupAreas.size === 1) state.setupAreas = new Set(["all"]);
+      } else {
+        const next = new Set(state.setupAreas);
+        next.delete("all");
+        if (area.checked) next.add(id);
+        else next.delete(id);
+        state.setupAreas = next.size ? next : new Set(["all"]);
+      }
+      render();
+      restoreFocus(`[data-setup-area="${id}"]`);
+      return;
+    }
+    const style = event.target.closest("[data-setup-style]");
+    if (style) {
+      state.recommendationStyle = style.value;
+      render();
+      restoreFocus(`[data-setup-style][value="${style.value}"]`);
+      return;
+    }
+  }
   if (state.screen !== "mine") return;
   handleMineChange(event, mineCtx);
 });
@@ -144,7 +166,33 @@ function openLookPicker() {
 }
 
 function finishLookPicker() {
+  if (!state.setupComplete) {
+    state.setupReturn = "favorites";
+    navigate("setup");
+    return;
+  }
   navigate(canAccess(state.lookReturn) ? state.lookReturn : "favorites");
+}
+
+function applySetupPreferences() {
+  const all = state.setupAreas.has("all");
+  for (const domain of visibleDomains()) state.areas[domain.id] = all || state.setupAreas.has(domain.id);
+  state.curveball = state.recommendationStyle !== "safe";
+}
+
+function finishSetup() {
+  const name = state.displayName.trim();
+  if (!name) {
+    announce("Add your name to continue.");
+    app.querySelector("[data-setup-name]")?.focus();
+    return;
+  }
+  state.displayName = name;
+  applySetupPreferences();
+  state.setupComplete = true;
+  const target = canAccess(state.setupReturn) ? state.setupReturn : "favorites";
+  state.setupReturn = "favorites";
+  navigate(target);
 }
 
 // #59: reaching Recommendations at least once ends the guided first-run state (see state.js).
@@ -391,9 +439,33 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const starterRemove = event.target.closest("[data-starter-remove]");
+  if (starterRemove) {
+    const id = starterRemove.dataset.starterRemove;
+    state.selectedFavorites.delete(id);
+    if (state.starterReplaceId === id) state.starterReplaceId = null;
+    render();
+    updateStepper();
+    announce("Removed from your starter mix.");
+    return;
+  }
+
+  const starterReplace = event.target.closest("[data-starter-replace]");
+  if (starterReplace) {
+    state.starterReplaceId = starterReplace.dataset.starterReplace;
+    document.querySelector("#open-search")?.click();
+    return;
+  }
+
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
 
+  if (action === "open-search") document.querySelector("#open-search")?.click();
+  if (action === "edit-setup") {
+    state.setupReturn = state.screen;
+    navigate("setup");
+  }
+  if (action === "setup-done") finishSetup();
   if (action === "back-favorites") navigate("favorites");
   if (action === "view-model") navigate("model");
   if (action === "show-recs") navigate("recommendations");
@@ -429,6 +501,13 @@ document.addEventListener("change", (event) => {
 // Written straight to the draft with no render, so typing never loses the cursor or scroll position.
 // Saved (and shown back) only when the Tastebreak panel's Save button is pressed.
 app.addEventListener("input", (event) => {
+  const setupName = event.target.closest("[data-setup-name]");
+  if (setupName) {
+    state.displayName = setupName.value;
+    const next = app.querySelector('[data-action="setup-done"]');
+    if (next) next.disabled = !setupName.value.trim();
+    return;
+  }
   const note = event.target.closest("[data-tastebreak-note]");
   if (note) setTastebreakNote(state, note.dataset.tastebreakItem, note.value);
 });
@@ -462,12 +541,10 @@ initSearch({
   goTo(screen) { navigate(screen); }
 });
 
-// #59 item 5: a new visitor starts directly in the default look (Editorial) rather than being asked to
-// customize the product before they know why they'd care. Look stays available any time from the header
-// button; a ?look=... link still goes straight to that look (applied by the inline script in index.html
-// before this module even runs).
+// First visit is deliberately short: choose a look -> basic setup -> build a starter mix.
+// Direct links still open their requested screen when accessible.
 const initialScreen = screenFromPath();
-state.screen = canAccess(initialScreen) ? initialScreen : "favorites";
+state.screen = canAccess(initialScreen) ? initialScreen : "look";
 markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();
