@@ -38,7 +38,7 @@ export function renderBookmarks() {
       <div class="bookmarks-masthead">
         <p class="kicker">Saved for later</p>
         <h1>Your bookmarks.</h1>
-        <p class="lede">Things you haven't tried yet but want to. Bookmarks don't change your taste profile. Only what you actually try does, so come back and tell Tastemake how it went.</p>
+        <p class="lede">Save things you want to try later — no plan, no order, no pressure. Bookmarks don't change your taste profile. Only what you actually try does, so come back and tell Tastemake how it went.</p>
       </div>
 
       <h2 class="visually-hidden">Saved to try</h2>
