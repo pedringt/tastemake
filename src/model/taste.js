@@ -166,7 +166,9 @@ export function nextRecommendations(state) {
   if (scored.length < 5) return scored.map(asPick);
   if (state.curveball === false) return scored.slice(0, 5).map(asPick);
 
-  const surpriseSource = scored[4];
+  const surpriseIndex = state.recommendationStyle === "adventurous" ? Math.min(6, scored.length - 1) : 4;
+  const surpriseSource = scored[surpriseIndex];
+  const strongFits = scored.filter((_, index) => index !== surpriseIndex).slice(0, 4);
   const surprise = {
     ...surpriseSource,
     rank: null,
@@ -176,7 +178,7 @@ export function nextRecommendations(state) {
     reason: `${surpriseSource.reason} This is the less-obvious option for the next round.`
   };
 
-  return [...scored.slice(0, 4).map(asPick), surprise];
+  return [...strongFits.map(asPick), surprise];
 }
 
 export function activeRecommendations(state) {
