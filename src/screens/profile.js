@@ -1,11 +1,9 @@
 import { state } from "../state.js";
-import { canKeepDiscovering, untriedReactionLean } from "../model/taste.js";
-import { confidenceOf } from "../model/tastemap.js";
+import { canKeepDiscovering } from "../model/taste.js";
 import { CONTEXT, FIT, WEIGHT, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
-import { hypothesisRecord } from "../model/interpretations.js";
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { starterItems } from "../model/starters.js";
@@ -58,24 +56,12 @@ function sayControls(item, said) {
 }
 
 function hypothesisCard(item, index) {
-  const update = item.aiGenerated
-    ? { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." }
-    : confidenceOf(state, item);
+  const update = { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." };
   const said = statementFor(state, item.id);
-  const record = item.aiGenerated
-    ? { scope: { supported: item.domains ?? [], excluded: said?.excludedDomains ?? [] } }
-    : hypothesisRecord(state, item);
+  const record = { scope: { supported: item.domains ?? [], excluded: said?.excludedDomains ?? [] } };
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
     ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${esc(spot.item.title)}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
-    : "";
-  const lean = untriedReactionLean(state, item);
-  const leanLine = lean.direction
-    ? `<div class="signal-lean is-${lean.direction}" title="Not counted as taste until you have tried them.">
-          <span aria-hidden="true">${lean.direction === "toward" ? "&nearr;" : "&searr;"}</span>
-          Your reactions lean ${lean.direction === "toward" ? "toward" : "away from"} this
-          <em>(from ${lean.count} ${lean.count === 1 ? "pick" : "picks"} you haven't tried)</em>
-        </div>`
     : "";
   return `
     <article class="signal-row signal-row-${index + 1}${said?.says === "not-me" ? " is-excluded" : ""}">
@@ -97,7 +83,6 @@ function hypothesisCard(item, index) {
         ${said?.context === "some" ? `<div class="signal-said">${CONTEXT.some}. Tastemake can't claim this is Strong until it's specific about which context.</div>` : ""}
         ${sayControls(item, said)}
         ${said?.says === "not-me" ? "" : domainScopeControls(item, record)}
-        ${leanLine}
         ${blindLine}
       </div>
     </article>`;
