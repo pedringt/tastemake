@@ -6,10 +6,10 @@ import { evidenceRecords } from "../model/evidence.js";
 // The model gets typed evidence and a list of eligible candidates; it never gets the power to decide
 // what counts as evidence, what was already seen, or which areas are on.
 
-export function eligibleCandidates(state) {
+export function eligibleCandidates(state, extraCandidates = []) {
   const shown = new Set(state.recommendationSets.flat().map((item) => item.id));
   const reacted = new Set(Object.keys(state.feedbackByRecommendation));
-  const pool = [...recommendations, ...followUpPool];
+  const pool = [...recommendations, ...followUpPool, ...extraCandidates];
   const seen = new Set();
   return pool.filter((item) => {
     if (seen.has(item.id)) return false;
@@ -18,10 +18,10 @@ export function eligibleCandidates(state) {
   });
 }
 
-export function buildContext(state) {
+export function buildContext(state, extraCandidates = []) {
   return {
     evidence: evidenceRecords(state),
-    candidates: eligibleCandidates(state),
+    candidates: eligibleCandidates(state, extraCandidates),
     curveball: state.curveball !== false,
     statements: state.patternStatements ?? [],   // user-confirmed statements (pattern corrections; not built yet)
     contexts: []                                  // contexts the user gave (taste modes; not collected yet)
