@@ -6,6 +6,7 @@ import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { renderTastebreakPanel } from "../components/tastebreak.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { renderArtwork } from "../components/artwork.js";
 
 // Library: things the user has actually tried and liked, plus their Favorites.
 // Everything here is derived (see model/library.js); the buttons just correct the underlying reaction.
@@ -44,7 +45,8 @@ function libraryCard(entry) {
       </div>`;
 
   return `
-    <article class="library-card ${entry.isFavorite ? "is-favorite" : ""}" data-library-id="${id}">
+    <article class="library-card ${entry.isFavorite ? "is-favorite" : ""} ${item.artwork ? "has-artwork" : ""}" data-library-id="${id}">
+      ${item.artwork ? renderArtwork(item, "library-artwork") : ""}
       <span class="library-tape" aria-hidden="true"></span>
       <div class="library-meta">
         <span class="library-medium">${esc(displayLabel(item))}</span>
