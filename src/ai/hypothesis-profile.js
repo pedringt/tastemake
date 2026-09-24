@@ -74,7 +74,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
   } catch {
     state.hypothesisAiStatus = "ready";
     state.hypothesisAiKey = key;
-    state.hypothesisAiMessage = "The live profile interpreter was unavailable, so Tastemake kept the deterministic profile.";
+    state.hypothesisAiMessage = "The live profile interpreter was unavailable, so Tastemake left the profile empty rather than showing demo patterns.";
   }
   onUpdate();
 }
