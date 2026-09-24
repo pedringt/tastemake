@@ -14,6 +14,7 @@ import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
+import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
@@ -202,6 +203,14 @@ function markOnboarded(screen) {
   if (screen === "recommendations") state.onboarded = true;
 }
 
+function maybeRefreshProfile() {
+  if (state.screen !== "model") return;
+  void refreshProfileHypotheses(state, {
+    onUpdate() { render(); updateStepper(); },
+    announce
+  });
+}
+
 function navigate(screen, { replace = false, scroll = true } = {}) {
   if (!canAccess(screen)) return;
   // Leaving the page a request was started from makes its answer irrelevant (#42).
@@ -215,6 +224,7 @@ function navigate(screen, { replace = false, scroll = true } = {}) {
 
   if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
   focusApp();
+  maybeRefreshProfile();
 }
 
 function renderPreservingPosition(selector, focusSelector = null) {
@@ -557,3 +567,4 @@ markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();
 updateStepper();
+maybeRefreshProfile();
