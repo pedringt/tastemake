@@ -10,7 +10,7 @@
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { state } = await import("../../src/state.js");
-const { recommendations, hypotheses } = await import("../../src/data/catalog.js");
+const { recommendations, hypotheses } = await import("./fixtures/catalog.js");
 const { makeCustomItem, applySearchAction } = await import("../../src/model/search.js");
 const { setStatement } = await import("../../src/model/statements.js");
 const { saveBlindSpot, patternsFor } = await import("../../src/model/blindspots.js");
