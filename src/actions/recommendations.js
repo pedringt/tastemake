@@ -53,7 +53,7 @@ export function announceReaction(itemId, announce) {
   if (!feedback) return;
   const saved = bookmarkedFeedback(state).length;
   const bookmarkPart = isBookmarked(feedback) ? ` ${plural(saved, "thing", "things")} in Try Next.` : "";
-  const offer = isBlindSpotCandidate(feedback) && !blindSpotFor(state, itemId)
+  const offer = isBlindSpotCandidate(feedback, state) && !blindSpotFor(state, itemId)
     ? " Tastemake expected you to like this. There is an option below to tell it what it got wrong."
     : "";
   announce(`${feedback.item.title}: ${reactionLabel(feedback)}.${bookmarkPart}${offer}`);
