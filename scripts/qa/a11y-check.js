@@ -125,7 +125,7 @@ export function checkNow(scope) {
 export async function runAll() {
   const { state } = await import("/src/state.js");
   const search = await import("/src/model/search.js");
-  const catalog = await import("/src/data/catalog.js");
+  const catalog = await import("/scripts/qa/fixtures/catalog.js");
   const all = [...catalog.recommendations, ...catalog.followUpPool];
   // #59: a real visitor starts with 0 favorites; Recommendations/Taste Profile/Library are locked until
   // 4 are picked, so this suite picks its own known set rather than relying on any product default.
