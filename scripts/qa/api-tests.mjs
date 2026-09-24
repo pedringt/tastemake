@@ -85,6 +85,16 @@ eq("...and reports the paid call", out.meta.paidCallMade, true);
 check("...and every pick carries its citations", out.picks.every((p) => p.ai?.cites?.length), JSON.stringify(out.picks[0]?.ai));
 check("...and the reason text comes from the model", out.picks.every((p) => /Tests whether/.test(p.reason)), out.picks[0]?.reason);
 
+// #28: the model sometimes prefixes its answer with prose despite the "JSON only" instruction (this was
+// the actual cause behind ~60% of live requests falling back). parseModelJson must recover the JSON
+// object rather than discarding a good answer just because something came before or after it.
+const prosePrefixed = { content: [{ type: "text", text: `Looking at your evidence, here is the set:\n\n${JSON.stringify({ picks: goodPicks() })}` }], usage: { input_tokens: 10, output_tokens: 20 }, model: "claude-test" };
+out = await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: fakeFetch(prosePrefixed) });
+eq("a JSON object prefixed with prose is still recovered, not discarded", out.source, "model");
+const proseSuffixed = { content: [{ type: "text", text: `${JSON.stringify({ picks: goodPicks() })}\n\nLet me know if you'd like a different set!` }], usage: { input_tokens: 10, output_tokens: 20 }, model: "claude-test" };
+out = await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: fakeFetch(proseSuffixed) });
+eq("...same for trailing commentary after the JSON", out.source, "model");
+
 // ---- model answers that must be refused -------------------------------------------------------------
 const cases = [
   ["invented itemId", goodPicks().map((p, i) => (i === 0 ? { ...p, itemId: "not-a-real-item" } : p))],

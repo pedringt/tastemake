@@ -78,14 +78,25 @@ export function buildPickPrompt(ctx, count) {
     "The product, not you, decides what is evidence, which candidates are eligible, and what state may change.",
     `Choose exactly ${count} items from candidates and return JSON only in this shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."],"tests":null,"kind":"pick"}]}.`,
     "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; interest/bookmarks/untried reactions are not taste evidence; tests must be null or one of that candidate's hypothesis ids; never use a tests pattern the user marked not-me; never contradict a user-confirmed pattern statement; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; at most one curveball, and none when curveball is false; explain what the pick tests in specific plain English; call a pick a curveball, in kind or in why, only for that one exploratory pick, and set kind to \"curveball\" whenever why calls it one — every other pick keeps kind \"pick\" and its why should not describe itself as a curveball.",
-    "Do not return markdown fences or commentary outside the JSON.",
+    "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON.",
     `CONTEXT\n${JSON.stringify(safeContext)}`
   ].join("\n\n");
 }
 
+// #28: about 60% of live calls were falling back to deterministic not because the model's answer was
+// bad, but because it prefixed the JSON with prose ("Looking at your evidence...") despite the prompt's
+// instruction, and this only stripped markdown fences. Tightened the prompt above; this also extracts
+// the first {...} object as a fallback, so a model that still adds stray text isn't discarded outright.
 function parseModelJson(text) {
   const cleaned = String(text || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch (error) {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) throw error;
+    return JSON.parse(cleaned.slice(start, end + 1));
+  }
 }
 
 export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch }) {
