@@ -62,10 +62,11 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
 
   const rows = await Promise.all(evidenceItems.map(async (item) => {
     try {
-      if (item.provider === "tmdb") return await tmdbRelated(item, env, fetchImpl);
-      if (item.provider === "openlibrary") return await openLibraryRelated(item, env, fetchImpl);
-      if (item.provider === "igdb") return await igdbRelated(item, env, fetchImpl);
-      return [];
+      let related = [];
+      if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl);
+      else if (item.provider === "openlibrary") related = await openLibraryRelated(item, env, fetchImpl);
+      else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl);
+      return related.map((candidate) => ({ ...candidate, relatedTo: item.title, relatedToId: item.id }));
     } catch {
       return [];
     }
