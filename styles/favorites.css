@@ -218,3 +218,5 @@
   .starter-grid { grid-template-columns:1fr; }
   .starter-card,.starter-placeholder { min-height:180px; }
 }
+
+.starter-remove { min-height:44px; padding:8px 4px; }
