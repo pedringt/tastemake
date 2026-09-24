@@ -55,6 +55,13 @@ function fresh() {
     // nothing about what the user likes; the curveball setting only changes how new sets are put together.
     areas: Object.fromEntries(visibleDomains().map((domain) => [domain.id, true])),
     curveball: true,
+    // First-run setup: configuration only, never taste evidence.
+    displayName: "",
+    setupAreas: new Set(["all"]),
+    recommendationStyle: "balanced",
+    setupComplete: false,
+    setupReturn: "favorites",
+    starterReplaceId: null,
     resetArmed: false,
     // #59: true once a first-time visitor has reached Recommendations at least once. Before that, Favorites
     // shows one continuation CTA instead of two peer choices (Recommendations vs. Taste Profile aren't a
