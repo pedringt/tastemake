@@ -248,7 +248,7 @@ function recommendationCard(item, index) {
 }
 
 function bookmarkNote(count) {
-  return count ? `<p class="bookmark-note">${count} ${count === 1 ? "thing" : "things"} bookmarked.</p>` : "";
+  return count ? `<p class="bookmark-note">${count} ${count === 1 ? "thing" : "things"} saved.</p>` : "";
 }
 
 function renderAiStatus() {
@@ -277,7 +277,7 @@ function renderNextSteps() {
   if (!currentRoundComplete(state)) return "";
   const bookmarks = bookmarkedFeedback(state).length;
   const viewBookmarks = bookmarks
-    ? `<button class="button button-secondary" type="button" data-action="view-bookmarks">View Bookmarks</button>`
+    ? `<button class="button button-secondary" type="button" data-action="view-bookmarks">Try Next</button>`
     : "";
 
   if (!outOfPicks(state)) {
@@ -378,15 +378,10 @@ export function renderRecommendations() {
           : `<div class="filter-empty recommendation-empty">No picks in this category in the current set. Try All.</div>`}
       </div>
 
-      <div class="recommendation-footer">
+      <div class="recommendation-footer page-actions">
+        <div class="page-actions-left"><button class="button button-quiet" type="button" data-action="back-favorites">&larr; Change favorites</button></div>
         <span class="footer-note">discover. react. repeat.</span>
-        <div class="action-group recommendation-footer-actions">
-          ${canKeepDiscovering(state) && !currentRoundComplete(state)
-            ? `<button class="button button-primary" type="button" data-action="keep-discovering">Keep discovering &rarr;</button>`
-            : ""}
-          <button class="button button-secondary" type="button" data-action="view-model">See my Taste Profile</button>
-          <button class="button button-quiet" type="button" data-action="back-favorites">Change favorites</button>
-        </div>
+        <div class="page-actions-right"><button class="button button-primary" type="button" data-action="view-model">See profile &rarr;</button></div>
       </div>
     </section>`;
 }
