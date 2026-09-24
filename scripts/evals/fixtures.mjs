@@ -3,7 +3,7 @@
 //
 // Each fixture: { id, title, purpose, build() -> state, expect: {...} }. `expect` holds rules the scorers check.
 
-import { favorites, followUpPool, hypotheses, recommendations } from "../../src/data/catalog.js";
+import { favorites, followUpPool, hypotheses, recommendations } from "../qa/fixtures/catalog.js";
 import { typeById, visibleDomains } from "../../src/data/domains.js";
 
 const catalogItems = [...recommendations, ...followUpPool];
