@@ -418,7 +418,7 @@ app.addEventListener("click", async (event) => {
       restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
       const left = bookmarkedFeedback(state).length;
       const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "removed from Try Next" })[outcome];
-      announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Bookmarks.`);
+      announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Try Next.`);
     }
     return;
   }
