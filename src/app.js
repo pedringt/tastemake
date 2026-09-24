@@ -41,8 +41,9 @@ function hasEnoughFavorites() {
 }
 
 function canAccess(screen) {
-  if (screen === "look" || screen === "mine") return true;
-  if (screen === "bookmarks") return bookmarkedFeedback(state).length > 0;
+  // #29/#68: Bookmarks is a real destination even with nothing saved yet — the empty state explains how
+  // to get there instead of the tab just disappearing until you happen to bookmark something.
+  if (screen === "look" || screen === "mine" || screen === "bookmarks") return true;
   return screen === "favorites" || hasEnoughFavorites();
 }
 
@@ -64,10 +65,10 @@ function updateStepper() {
     const index = order.indexOf(screen);
     const unlocked = canAccess(screen);
 
-    // Bookmarks only shows up once there is something saved (or while the user is on that page).
+    // #29/#68: Bookmarks stays visible even with nothing saved (a discoverable destination, not one
+    // that appears only after you happen to use it); the count badge itself still only shows when >0.
     if (screen === "bookmarks") {
       const count = bookmarkedFeedback(state).length;
-      step.hidden = count === 0 && state.screen !== "bookmarks";
       step.querySelector("[data-bookmark-count]").textContent = count ? String(count) : "";
     }
 

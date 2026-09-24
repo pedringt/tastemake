@@ -50,7 +50,9 @@ export async function run() {
   await act('[data-step-jump="recommendations"]');
   let ids = cardIds();
   check("opening set has 5 picks", ids.length === 5, ids.length);
-  check("Bookmarks tab hidden before anything is saved", bookmarksStep().hidden);
+  // #29/#68: Bookmarks is a visible destination even with nothing saved yet, not one that appears
+  // only after you happen to use it — the count badge is what's empty, not the tab.
+  check("Bookmarks tab is visible even before anything is saved, with no count badge", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "");
 
   // #34: the decorative artwork title must never be obscured by the shapes behind it, for every
   // title in the catalog, and for one deliberately very long one (a title-length regression is
@@ -331,7 +333,7 @@ export async function run() {
   check("...and is announced", /bookmark removed\. 0 things left in Bookmarks\./.test(live()), live());
   check("removed bookmark stays untried, no evidence", state.feedbackByRecommendation[lastId].rating === "not-tried" && taste.tasteDelta(state.feedbackByRecommendation[lastId]) === 0);
   await act('[data-action="show-recs"]');
-  check("Bookmarks tab hides again when nothing is saved", bookmarksStep().hidden);
+  check("Bookmarks tab stays visible with the badge cleared when nothing is saved", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "");
 
 
 
@@ -562,7 +564,7 @@ export async function run() {
   check("...clears favorites too and restores default settings", state.selectedFavorites.size === 0 && state.areas.play === true && state.curveball === true);
   check("...keeps your look", state.look === lookKept && document.documentElement.dataset.look === lookKept);
   check("...goes back to Favorites and announces it", state.screen === "favorites" && /Started over/.test(live()), `${state.screen} / ${live()}`);
-  check("...and the Bookmarks tab is hidden again", bookmarksStep().hidden);
+  check("...and the Bookmarks tab stays visible with the badge cleared", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "");
 
   const failed = results.filter((r) => !r.ok);
   return { passed: results.length - failed.length, failed: failed.length, results: failed.length ? failed : undefined, total: results.length };
