@@ -67,7 +67,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
       state.hypothesisAiMessage = "Live AI refreshed these working patterns. Product rules checked every evidence citation.";
       announce("Taste Profile refreshed from your current evidence.");
     } else {
-      state.hypothesisAiMessage = payload.reason || "The live profile interpreter is not enabled, so Tastemake is showing its deterministic starting patterns.";
+      state.hypothesisAiMessage = payload.reason || "The live profile interpreter is not enabled, so Tastemake is not showing generated patterns.";
     }
     state.hypothesisAiKey = key;
     state.hypothesisAiStatus = "ready";
