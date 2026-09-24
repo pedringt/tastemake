@@ -213,3 +213,15 @@
   font-size:13px;
   line-height:1.45;
 }
+
+
+.profile-empty {
+  margin:18px 0 4px;
+  padding:28px;
+  border:2px dashed var(--line);
+  border-radius:16px;
+  background:rgb(255 255 255 / .72);
+  color:var(--text2,#3f4774);
+}
+.profile-empty strong { display:block; margin-bottom:6px; color:var(--navy); font-size:20px; }
+.profile-empty p { max-width:68ch; margin:0; line-height:1.5; }
