@@ -1,4 +1,3 @@
-import { hypotheses } from "../data/catalog.js";
 import { isExperienced, isExperiencedPositive } from "./evidence.js";
 import { patternsFor } from "./blindspots.js";
 import { recordRevision } from "./history.js";
@@ -13,8 +12,8 @@ import { recordRevision } from "./history.js";
 // revision (#37) so it is visible and traceable, but does not (yet) change ranking or confidence — see
 // "Later possibilities" in #19 for where that could go once this is proven useful.
 
-export function isTastebreakCandidate(feedback) {
-  return Boolean(feedback) && isExperienced(feedback) && patternsFor(feedback.item).length > 0;
+export function isTastebreakCandidate(feedback, state) {
+  return Boolean(feedback) && isExperienced(feedback) && patternsFor(feedback.item, state).length > 0;
 }
 
 export function tastebreakFor(state, itemId) {
@@ -25,7 +24,7 @@ export function tastebreakFor(state, itemId) {
 // eligible (nothing tagged to break down, or no reaction yet).
 export function startTastebreak(state, itemId) {
   const feedback = state.feedbackByRecommendation[itemId];
-  if (!isTastebreakCandidate(feedback)) return null;
+  if (!isTastebreakCandidate(feedback, state)) return null;
   const saved = tastebreakFor(state, itemId);
   state.tastebreakDrafts[itemId] = { confirmed: [...(saved?.confirmed ?? [])], rejected: [...(saved?.rejected ?? [])], note: saved?.note ?? "" };
   return "Which of these feel like part of why it landed? Pick any that fit, or skip.";
@@ -63,7 +62,7 @@ export function saveTastebreak(state, itemId) {
 
   const verb = positive ? "part of why it landed" : "part of why it didn't land";
   entry.confirmed.forEach((patternId) => {
-    const pattern = hypotheses.find((p) => p.id === patternId);
+    const pattern = (state.modelHypotheses ?? []).find((p) => p.id === patternId);
     if (!pattern) return;
     recordRevision(state, {
       hypothesisId: pattern.id,
