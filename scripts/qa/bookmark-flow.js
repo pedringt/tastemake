@@ -24,6 +24,7 @@ export async function run() {
   const results = [];
   const check = (name, ok, detail = "") => results.push({ name, ok: Boolean(ok), detail: String(detail) });
   const tick = () => new Promise((resolve) => setTimeout(resolve, 100));
+  const catalogTick = () => new Promise((resolve) => setTimeout(resolve, 380));
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const cardIds = () => $$(".editorial-rec").map((card) => card.dataset.recId);
@@ -80,7 +81,7 @@ export async function run() {
     const input = $("#search-input");
     input.value = item.title;
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    await tick();
+    await catalogTick();
     await act(`[data-search-pick="${item.id}"]`);
     await act('[data-search-starter="add"]');
   }
@@ -245,7 +246,7 @@ export async function run() {
 
   // ---- Search / add something (#13): searching is not evidence, only explicit actions are ----
   const dlg = $("#search-dialog");
-  const typeInto = async (selector, value) => { const el = $(selector); el.value = value; el.dispatchEvent(new Event("input", { bubbles: true })); await tick(); };
+  const typeInto = async (selector, value) => { const el = $(selector); el.value = value; el.dispatchEvent(new Event("input", { bubbles: true })); await catalogTick(); };
   const snapshot = () => JSON.stringify([Object.keys(state.feedbackByRecommendation).sort(), [...state.libraryFavorites], Object.keys(state.customItems)]);
   const before = snapshot();
   check("a Search button is in the header", Boolean($("#open-search")));
@@ -619,7 +620,7 @@ export async function run() {
       const input = doc.querySelector("#search-input");
       input.value = item.title;
       input.dispatchEvent(new Event("input", { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      await new Promise((resolve) => setTimeout(resolve, 380));
       doc.querySelector(`[data-search-pick="${item.id}"]`)?.click();
       await new Promise((resolve) => setTimeout(resolve, 80));
       doc.querySelector('[data-search-starter="add"]')?.click();
