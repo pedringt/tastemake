@@ -1,11 +1,9 @@
-import { hypotheses } from "../data/catalog.js";
 import { state } from "../state.js";
 import { canKeepDiscovering, untriedReactionLean } from "../model/taste.js";
 import { confidenceOf } from "../model/tastemap.js";
 import { CONTEXT, FIT, WEIGHT, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
-import { renderTasteMap } from "./tastemap.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
 import { hypothesisRecord } from "../model/interpretations.js";
 import { displayLabel, domainById } from "../data/domains.js";
@@ -133,8 +131,8 @@ function blindSpotSection() {
 
 export function renderProfile() {
   const selectedTitles = starterItems(state).map((item) => item.title);
-  const workingHypotheses = state.modelHypotheses?.length ? state.modelHypotheses : hypotheses;
-  const liveProfile = Boolean(state.modelHypotheses?.length);
+  const workingHypotheses = state.modelHypotheses ?? [];
+  const liveProfile = workingHypotheses.length > 0;
 
   return `
     <section class="profile-screen">
@@ -144,7 +142,7 @@ export function renderProfile() {
           <p class="kicker">Taste Profile</p>
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
-          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they show up below as a lean, not as taste. When live profile AI is enabled, these working hypotheses can be revised from your experienced evidence. If it is unavailable, Tastemake keeps the deterministic starting profile.</p>
+          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they are not taste evidence. Taste Profile patterns appear only when live AI has proposed them and Tastemake has validated every evidence citation.</p>
           ${state.hypothesisAiMessage ? `<p class="profile-ai-status" role="status">${esc(state.hypothesisAiMessage)}</p>` : ""}
           <details class="profile-legend">
             <summary>What do the confidence labels mean?</summary>
@@ -157,10 +155,6 @@ export function renderProfile() {
             </ul>
             <p>Reactions to things you haven't tried never count here. They show up as a separate "lean".</p>
           </details>
-          ${liveProfile ? "" : `<div class="profile-view-toggle" role="group" aria-label="How to see your Taste Profile">
-            <button type="button" class="button button-secondary profile-view-button" data-profile-view="list" aria-pressed="${state.profileView !== "map"}">List</button>
-            <button type="button" class="button button-secondary profile-view-button" data-profile-view="map" aria-pressed="${state.profileView === "map"}">Map</button>
-          </div>`}
         </div>
         <div class="profile-stamp" aria-hidden="true">
           <strong>WORKING</strong>
