@@ -509,6 +509,10 @@ document.addEventListener("click", (event) => {
   if (!isPlainLeftClick) return;
 
   event.preventDefault();
+  if (jump.dataset.stepJump === "recommendations" && !state.recommendationSets.length && state.aiStatus !== AI_LOADING) {
+    void runInitialRecommendations({ render, updateStepper, announce, navigate });
+    return;
+  }
   navigate(jump.dataset.stepJump);
 });
 
