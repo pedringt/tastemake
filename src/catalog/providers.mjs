@@ -39,6 +39,7 @@ async function searchTmdb(query, env, fetchImpl) {
     fetchImpl(`https://api.themoviedb.org/3/search/tv?query=${q}&include_adult=false&language=en-US&page=1`, { headers })
   ]);
   const out = [];
+  if (!movies.ok && !tv.ok) throw new Error(`tmdb ${movies.status || ""}/${tv.status || ""}`);
   if (movies.ok) out.push(...((await movies.json()).results ?? []).slice(0, 6).map((x) => tmdbItem(x, "movie")));
   if (tv.ok) out.push(...((await tv.json()).results ?? []).slice(0, 6).map((x) => tmdbItem(x, "tv")));
   return out;
@@ -67,7 +68,7 @@ async function searchOpenLibrary(query, env, fetchImpl) {
   const response = await fetchImpl(`${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error(`openlibrary ${response.status}`);
   return ((await response.json()).docs ?? []).slice(0, 8).map(openLibraryItem);
 }
 
@@ -75,7 +76,7 @@ async function igdbToken(env, fetchImpl) {
   if (!env.IGDB_CLIENT_ID || !env.IGDB_CLIENT_SECRET) return null;
   const url = `${TWITCH_TOKEN}?client_id=${encodeURIComponent(env.IGDB_CLIENT_ID)}&client_secret=${encodeURIComponent(env.IGDB_CLIENT_SECRET)}&grant_type=client_credentials`;
   const response = await fetchImpl(url, { method: "POST" });
-  if (!response.ok) return null;
+  if (!response.ok) throw new Error(`twitch ${response.status}`);
   return (await response.json()).access_token ?? null;
 }
 
@@ -109,27 +110,43 @@ async function searchIgdb(query, env, fetchImpl) {
     },
     body: `search "${String(query).replace(/"/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name; limit 8;`
   });
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error(`igdb ${response.status}`);
   return (await response.json()).map(igdbItem);
 }
 
 export async function searchCatalog(query, { domain = "all", env = process.env, fetchImpl = fetch } = {}) {
   const q = clean(query, 100);
-  if (q.length < 2) return { items: [], providers: {} };
-  const tasks = [];
-  if (domainAllows(domain, "watch")) tasks.push(["tmdb", searchTmdb(q, env, fetchImpl)]);
-  if (domainAllows(domain, "read")) tasks.push(["openlibrary", searchOpenLibrary(q, env, fetchImpl)]);
-  if (domainAllows(domain, "play")) tasks.push(["igdb", searchIgdb(q, env, fetchImpl)]);
-  const settled = await Promise.all(tasks.map(async ([name, p]) => {
-    try { return [name, await p, null]; } catch (error) { return [name, [], error?.message || "unavailable"]; }
+  if (q.length < 2) return { items: [], providers: {}, degraded: false };
+
+  const specs = [];
+  if (domainAllows(domain, "watch")) specs.push(["tmdb", Boolean(env.TASTEMAKE_TMDB_TOKEN), () => searchTmdb(q, env, fetchImpl)]);
+  if (domainAllows(domain, "read")) specs.push(["openlibrary", true, () => searchOpenLibrary(q, env, fetchImpl)]);
+  if (domainAllows(domain, "play")) specs.push(["igdb", Boolean(env.IGDB_CLIENT_ID && env.IGDB_CLIENT_SECRET), () => searchIgdb(q, env, fetchImpl)]);
+
+  const settled = await Promise.all(specs.map(async ([name, configured, run]) => {
+    if (!configured) return [name, [], null, false, false];
+    try { return [name, await run(), null, true, true]; }
+    catch (error) { return [name, [], error?.message || "unavailable", true, false]; }
   }));
+
   const providers = {};
-  const items = [];
-  for (const [name, rows, error] of settled) {
-    providers[name] = { available: !error && rows.length >= 0, configured: name === "openlibrary" || (name === "tmdb" ? Boolean(env.TASTEMAKE_TMDB_TOKEN) : Boolean(env.IGDB_CLIENT_ID && env.IGDB_CLIENT_SECRET)), error };
-    items.push(...rows);
+  const buckets = [];
+  for (const [name, rows, error, configured, available] of settled) {
+    providers[name] = { available, configured, error };
+    if (available) buckets.push(rows);
   }
-  return { items: uniq(items).slice(0, 24), providers };
+
+  // Interleave provider results so "All" really shows Watch + Read + Play instead of
+  // filling the first page with the providers that happened to be concatenated first.
+  const interleaved = [];
+  const depth = Math.max(0, ...buckets.map((rows) => rows.length));
+  for (let i = 0; i < depth; i += 1) {
+    for (const rows of buckets) if (rows[i]) interleaved.push(rows[i]);
+  }
+
+  const configured = settled.filter(([, , , isConfigured]) => isConfigured);
+  const degraded = configured.length === 0 || configured.every(([, , , , available]) => !available);
+  return { items: uniq(interleaved).slice(0, 24), providers, degraded };
 }
 
 export { igdbToken, igdbItem, openLibraryItem, tmdbItem };
