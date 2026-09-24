@@ -3,6 +3,7 @@ import { MEDIA, applySearchAction, findExisting, itemStatus, makeCustomItem, sea
 import { displayLabel, domainFilterOptions } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { searchExternalCatalog } from "../catalog/client.js";
+import { renderArtwork } from "./artwork.js";
 
 // Search dialog (#13). It lives outside #app, so re-rendering a screen never closes it.
 // Nothing here changes state except applySearchAction, called from an explicit button.
@@ -49,7 +50,7 @@ export function initSearch({ onChange, announce, goTo }) {
           ${hits.map((item) => `
             <li>
               <button type="button" class="search-result" data-search-pick="${item.id}">
-                <span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(displayLabel(item))}${item.by ? ` · ${esc(item.by)}` : ""}</span></span>
+                ${renderArtwork(item, "search-artwork")}<span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(displayLabel(item))}${item.by ? ` · ${esc(item.by)}` : ""}</span></span>
                 ${statusChip(item)}
               </button>
             </li>`).join("")}
