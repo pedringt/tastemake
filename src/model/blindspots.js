@@ -1,4 +1,3 @@
-import { hypotheses } from "../data/catalog.js";
 import { hypothesisMatches } from "./taste.js";
 import { isExperiencedNegative } from "./evidence.js";
 
@@ -28,13 +27,17 @@ const isDisliked = isExperiencedNegative;
 
 // A blind spot needs a real mismatch: tried and disliked something Tastemake was confident about.
 // (An untried pick can't be a prediction failure, and "Worth testing" picks were never confident.)
-export function isBlindSpotCandidate(feedback) {
-  return isDisliked(feedback) && /^Likely/.test(feedback.item.prediction ?? "") && patternsFor(feedback.item).length > 0;
+export function isBlindSpotCandidate(feedback, state) {
+  return isDisliked(feedback)
+    && /^Likely/.test(feedback.item.prediction ?? "")
+    && patternsFor(feedback.item, state).length > 0;
 }
 
-// The patterns (Taste Profile cards) that a pick leaned on.
-export function patternsFor(item) {
-  return hypotheses.filter((pattern) => hypothesisMatches(item.hypotheses ?? [], pattern.id));
+// A blind spot may only reference a validated live profile pattern explicitly named by the pick.
+export function patternsFor(item, state) {
+  const id = item?.ai?.tests ?? null;
+  if (!id || !state) return [];
+  return (state.modelHypotheses ?? []).filter((pattern) => hypothesisMatches([pattern.id], id) || hypothesisMatches([id], pattern.id));
 }
 
 // A saved blind spot only counts while the reaction it is about still stands.
@@ -52,7 +55,7 @@ export function activeBlindSpots(state) {
 
 export function saveBlindSpot(state, itemId, { broken = [], reasons = [], none = false }) {
   const feedback = state.feedbackByRecommendation[itemId];
-  if (!isBlindSpotCandidate(feedback)) return null;
+  if (!isBlindSpotCandidate(feedback, state)) return null;
   const previous = state.blindSpots[itemId];
   state.blindSpots[itemId] = {
     // which patterns the user says did not hold up; empty + none = "something else, not these"
@@ -85,7 +88,7 @@ export function recurringThemes(state) {
     return [...seen].filter(([, n]) => n >= 2);
   };
   return {
-    patterns: count((spot) => spot.hypotheses).map(([id, n]) => ({ id, n, title: hypotheses.find((pattern) => pattern.id === id)?.title ?? id })),
+    patterns: count((spot) => spot.hypotheses).map(([id, n]) => ({ id, n, title: (state.modelHypotheses ?? []).find((pattern) => pattern.id === id)?.title ?? id })),
     reasons: count((spot) => spot.reasons.filter((id) => !VAGUE_REASONS.has(id))).map(([id, n]) => ({ id, n, label: reasonLabel(id) }))
   };
 }
