@@ -55,7 +55,7 @@ function render() {
 }
 
 function updateStepper() {
-  const order = ["favorites", "recommendations", "model", "library", "bookmarks"];
+  const order = ["favorites", "recommendations", "model", "bookmarks", "library"];
   const activeIndex = order.indexOf(state.screen);
 
   // #59 item 4: keep the guided first-run path (Favorites -> Recommendations) visually dominant by
@@ -454,7 +454,7 @@ app.addEventListener("click", async (event) => {
     if (state.starterReplaceId === id) state.starterReplaceId = null;
     render();
     updateStepper();
-    announce("Removed from your starter mix.");
+    announce("Removed from Favorites.");
     return;
   }
 
@@ -549,7 +549,7 @@ initSearch({
   goTo(screen) { navigate(screen); }
 });
 
-// First visit is deliberately short: choose a look -> basic setup -> build a starter mix.
+// First visit is deliberately short: choose a look -> basic setup -> choose Favorites.
 // Direct links still open their requested screen when accessible.
 const initialScreen = screenFromPath();
 state.screen = canAccess(initialScreen) ? initialScreen : "look";
