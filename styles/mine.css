@@ -100,3 +100,5 @@
 .mine-setup-list dd { margin:0; color:var(--navy); font-size:13px; font-weight:700; text-align:right; }
 .mine-setup-edit { min-height:36px; min-width:0; padding:6px 11px; font-size:12px; box-shadow:none; }
 .mine-setup .mine-blurb { margin-top:10px; margin-bottom:0; }
+
+.mine-chips button { min-height:44px; padding:8px 4px; }
