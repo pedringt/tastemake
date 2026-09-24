@@ -269,5 +269,42 @@ export const followUpPool = [
     about: "A dark satire about an exclusive dinner that turns into something much stranger and more dangerous.",
     hypotheses: ["H03", "H04"],
     reason: "Moral messiness and sharp, specific comedy together — a likely strong fit, useful as a confidence-check pick."
+  },
+  // #60: balance the expanded pool so Read and Play are real test surfaces too, not token filters.
+  {
+    id: "spear-cuts-water",
+    title: "The Spear Cuts Through Water",
+    type: "book",
+    domains: ["read"],
+    about: "A mythic fantasy told through an unusually layered structure, following two warriors carrying a dying god across a violent land.",
+    hypotheses: ["H05", "H09"],
+    reason: "Adult mythic fantasy plus formal experimentation tests whether the fantasy signal still holds when the storytelling itself is unconventional."
+  },
+  {
+    id: "library-mount-char",
+    title: "The Library at Mount Char",
+    type: "book",
+    domains: ["read"],
+    about: "A dark contemporary fantasy about damaged adopted siblings competing over the impossible library of their missing father.",
+    hypotheses: ["H03", "H05", "H09"],
+    reason: "Morally messy characters, adult fantasy, and abrupt tonal shifts make this a dense cross-signal test rather than a genre-only match."
+  },
+  {
+    id: "secret-history",
+    title: "The Secret History",
+    type: "book",
+    domains: ["read"],
+    about: "A literary crime novel about an insular group of students whose intellectual obsession curdles into murder and complicity.",
+    hypotheses: ["H03"],
+    reason: "Isolates the moral-messiness signal in a non-fantasy book, which helps test whether that preference travels beyond genre."
+  },
+  {
+    id: "forgotten-city",
+    title: "The Forgotten City",
+    type: "game",
+    domains: ["play"],
+    about: "A time-loop mystery built around investigation, explicit goals, dialogue, and the consequences of a community-wide moral rule.",
+    hypotheses: ["H01/H07", "H03"],
+    reason: "Structured investigation and moral compromise test whether mystery works better when exploration has clear goals and human stakes."
   }
 ];
