@@ -134,6 +134,7 @@ function blindSpotSection() {
 export function renderProfile() {
   const selectedTitles = starterItems(state).map((item) => item.title);
   const workingHypotheses = state.modelHypotheses?.length ? state.modelHypotheses : hypotheses;
+  const liveProfile = Boolean(state.modelHypotheses?.length);
 
   return `
     <section class="profile-screen">
@@ -156,10 +157,10 @@ export function renderProfile() {
             </ul>
             <p>Reactions to things you haven't tried never count here. They show up as a separate "lean".</p>
           </details>
-          <div class="profile-view-toggle" role="group" aria-label="How to see your Taste Profile">
+          ${liveProfile ? "" : `<div class="profile-view-toggle" role="group" aria-label="How to see your Taste Profile">
             <button type="button" class="button button-secondary profile-view-button" data-profile-view="list" aria-pressed="${state.profileView !== "map"}">List</button>
             <button type="button" class="button button-secondary profile-view-button" data-profile-view="map" aria-pressed="${state.profileView === "map"}">Map</button>
-          </div>
+          </div>`}
         </div>
         <div class="profile-stamp" aria-hidden="true">
           <strong>WORKING</strong>
@@ -167,7 +168,7 @@ export function renderProfile() {
         </div>
       </div>
 
-      ${state.profileView === "map" ? renderTasteMap() : `
+      ${state.profileView === "map" && !liveProfile ? renderTasteMap() : `
       <div class="profile-evidence-strip">
         <span class="profile-evidence-label">Your favorites</span>
         <div class="profile-evidence-track">
