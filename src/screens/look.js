@@ -33,15 +33,20 @@ function preview(id) {
 // #59 item 5: the picker is never a forced first step any more (a new visitor starts straight in the
 // default look), so this is always reached as a deliberate "change my look" visit.
 export function lookContinueLabel() {
-  return "Done";
+  return state.setupComplete ? "Done" : "Next";
 }
 
 export function renderLook() {
   return `
     <section class="look-screen">
-      <p class="look-eyebrow">Look</p>
-      <h1>Choose a look.</h1>
-      <p class="look-lede">The same Tastemake, four ways to see it. Nothing else changes, and you can switch any time from the Look button at the top.</p>
+      <header class="look-head">
+        <div>
+          <p class="look-eyebrow">Look</p>
+          <h1>Choose a look.</h1>
+          <p class="look-lede">The same Tastemake, four ways to see it. Nothing else changes, and you can switch any time from the Look button at the top.</p>
+        </div>
+        <button class="button button-primary look-top-action" type="button" data-action="look-done">${lookContinueLabel()}</button>
+      </header>
       <fieldset class="look-picker">
         <legend class="visually-hidden">Look</legend>
         ${LOOKS.map((look) => `
@@ -53,8 +58,5 @@ export function renderLook() {
           </label>`).join("")}
       </fieldset>
       <p class="look-note">Choosing a look doesn't tell Tastemake anything about your taste.</p>
-      <div class="look-actions">
-        <button class="button button-primary" type="button" data-action="look-done">${lookContinueLabel()}</button>
-      </div>
     </section>`;
 }
