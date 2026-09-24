@@ -142,6 +142,16 @@ function moreFeedbackToggle(itemId, expanded, panelId) {
 }
 
 function mediaArt(item, index) {
+  if (item.artwork) {
+    return `
+      <div class="editorial-art editorial-art-real art-layout-${(index % 4) + 1}" aria-hidden="true">
+        <img src="${esc(item.artwork)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+        <span class="art-kicker">${esc(displayLabel(item))}</span>
+        <span class="art-title">${item.surprise ? "SURPRISE ME" : esc(item.title)}</span>
+        <span class="art-corner">TM/${String(index + 1).padStart(2, "0")}</span>
+      </div>`;
+  }
+
   const shortTitle = item.title
     .replace(/\b(the|a|an|of|in|and|at|to)\b/gi, "")
     .trim()
