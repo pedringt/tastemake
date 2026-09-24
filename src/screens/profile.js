@@ -1,6 +1,6 @@
 import { favorites, hypotheses } from "../data/catalog.js";
 import { state } from "../state.js";
-import { untriedReactionLean } from "../model/taste.js";
+import { canKeepDiscovering, untriedReactionLean } from "../model/taste.js";
 import { confidenceOf } from "../model/tastemap.js";
 import { CONTEXT, FIT, WEIGHT, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
@@ -162,7 +162,7 @@ export function renderProfile() {
 
       ${state.profileView === "map" ? renderTasteMap() : `
       <div class="profile-evidence-strip">
-        <span class="profile-evidence-label">Your starting favorites</span>
+        <span class="profile-evidence-label">Your favorites</span>
         <div class="profile-evidence-track">
           ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}
         </div>
@@ -184,11 +184,11 @@ export function renderProfile() {
 
       ${blindSpotSection()}
 
-      <div class="profile-footer">
-        <span class="footer-note">this is the point, not the bonus round. visit it whenever you're curious.</span>
-        <div class="action-group">
-          <button class="button button-secondary" type="button" data-action="back-favorites">Edit favorites</button>
-          <button class="button button-primary" type="button" data-action="show-recs">Back to recommendations <span aria-hidden="true">&rarr;</span></button>
+      <div class="profile-footer page-actions">
+        <div class="page-actions-left"><button class="button button-quiet" type="button" data-action="show-recs">&larr; Recommendations</button></div>
+        <span class="footer-note">working patterns, not a fixed identity.</span>
+        <div class="page-actions-right">
+          ${canKeepDiscovering(state) ? `<button class="button button-primary" type="button" data-action="keep-discovering">Keep discovering &rarr;</button>` : `<button class="button button-primary" type="button" data-action="show-recs">Recommendations &rarr;</button>`}
         </div>
       </div>
     </section>`;
