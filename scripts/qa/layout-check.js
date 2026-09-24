@@ -232,7 +232,7 @@ export async function runAll() {
   // #59: a real visitor starts with 0 favorites; Recommendations/Taste Profile/Library are locked until
   // 4 are picked, so this suite picks its own known set rather than relying on any product default.
   const { state } = await import("/src/state.js");
-  const { favorites } = await import("/src/data/catalog.js");
+  const { favorites } = await import("/scripts/qa/fixtures/catalog.js");
   favorites.slice(0, 4).forEach((f) => state.selectedFavorites.add(f.id));
 
   const pages = { favorites: "favorites", recommendations: "recommendations", profile: "model", library: "library" };
