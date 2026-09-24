@@ -8,7 +8,7 @@
 
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
-const { favorites, recommendations, hypotheses } = await import("../../src/data/catalog.js");
+const { favorites, recommendations, hypotheses } = await import("./fixtures/catalog.js");
 const { applySearchAction } = await import("../../src/model/search.js");
 const { setStatement } = await import("../../src/model/statements.js");
 const R = await import("../../src/ai/requests.js");
