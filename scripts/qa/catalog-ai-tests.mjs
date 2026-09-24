@@ -4,6 +4,7 @@
 
 import { searchCatalog } from "../../src/catalog/providers.mjs";
 import { produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
+import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
 import { favorites } from "../../src/data/catalog.js";
 
@@ -32,6 +33,29 @@ check("external ids are provider-stable and unique", new Set(catalog.items.map((
 check("every provider item keeps source provenance", catalog.items.every((x) => x.provider && x.providerId));
 check("available artwork is normalized to a URL", catalog.items.every((x) => x.artwork?.startsWith("http")));
 eq("domain filtering can request books only", (await searchCatalog("test", { domain: "read", env, fetchImpl: providerFetch })).items.map((x) => x.type).join(), "book");
+
+
+const relatedState = {
+  selectedFavorites: new Set(["tmdb-movie-10"]),
+  feedbackByRecommendation: {},
+  recommendationSets: [],
+  customItems: {
+    "tmdb-movie-10": {
+      id: "tmdb-movie-10", provider: "tmdb", providerId: "10", title: "Seed Movie",
+      type: "movie", domains: ["watch"], genres: ["18"], providerMeta: { genreIds: [18] }
+    }
+  },
+  areas: { watch: true, read: true, play: true }
+};
+const relatedFetch = async (url) => {
+  if (String(url).includes("/movie/10/recommendations")) {
+    return { ok: true, json: async () => ({ results: [{ id: 22, title: "Grounded Candidate", overview: "A related film.", release_date: "2024-03-03", poster_path: "/related.jpg", genre_ids: [18] }] }) };
+  }
+  throw new Error(`unexpected related URL: ${url}`);
+};
+const related = await retrieveCatalogCandidates(relatedState, { env, fetchImpl: relatedFetch });
+eq("grounded retrieval returns a real provider candidate", related[0]?.id, "tmdb-movie-22");
+check("grounded retrieval excludes the evidence item itself", !related.some((x) => x.id === "tmdb-movie-10"));
 
 const OFF = hypothesisConfig({});
 check("live hypotheses are fail-closed by default", !OFF.enabled && OFF.reasons.includes("hypotheses-off-switch"));
