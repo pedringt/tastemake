@@ -372,7 +372,7 @@
   color:#f7f0df;
   box-shadow:0 12px 34px rgb(0 0 0 / .24);
 }
-:root[data-look="analog"] .topbar :is(.brand,.brand-word,.step,.topbar-note) { color:#f7f0df; }
+:root[data-look="analog"] .topbar :is(.brand,.brand-word,.brand-tagline,.step,.topbar-note) { color:#f7f0df; }
 :root[data-look="analog"] .topbar .step span { color:#b8ad94; }
 :root[data-look="analog"] .topbar .step.is-active { background:#2a2630; }
 :root[data-look="analog"] .topbar .prototype-label { border-color:#61583f; background:#182235; color:#d8caa7; }
