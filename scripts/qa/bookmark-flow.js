@@ -39,6 +39,30 @@ export async function run() {
   const rate = (id, rating) => act(`[data-feedback-item="${id}"][data-rating="${rating}"]`);
   const detail = (id, value) => act(`[data-feedback-item="${id}"][data-feedback-detail="${value}"]`);
 
+  // #89: browser flow tests use a deterministic fake of the external catalog. Production search
+  // no longer falls back to the hand-built seed inventory, so QA should exercise that same path
+  // without making network requests.
+  const catalogFixtures = [...catalog.favorites, ...catalog.recommendations, ...catalog.followUpPool];
+  const fixtureResults = (query) => {
+    const q = String(query ?? "").trim().toLowerCase();
+    if (q === "fagro") return catalogFixtures.filter((item) => item.id === "fargo");
+    if (q === "lotr") return catalogFixtures.filter((item) => item.id === "lotr");
+    return catalogFixtures.filter((item) => item.title.toLowerCase() === q);
+  };
+  const installCatalogStub = (win) => {
+    const passthrough = win.fetch.bind(win);
+    win.fetch = async (input, init) => {
+      const url = new URL(String(input), win.location.href);
+      if (url.pathname !== "/api/catalog") return passthrough(input, init);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ items: fixtureResults(url.searchParams.get("q")), providers: { qa: true } })
+      };
+    };
+  };
+  installCatalogStub(window);
+
   // First-run starter mix: the screen begins empty and points to search instead of asking the user
   // to choose from the author's favorites. The full root-path onboarding (Look -> setup -> Favorites)
   // is checked separately below; this harness page itself resolves to /favorites.
@@ -578,7 +602,8 @@ export async function run() {
 
   // a brand-new visit: nothing you tried yet, so nothing may look validated. #59: a fresh visit has 0
   // favorites, so Taste Profile is locked until 4 are picked — pick the same known set first.
-  const coldStart = await frameCheck("/?look=editorial", async (doc) => {
+  const coldStart = await frameCheck("/?look=editorial", async (doc, win) => {
+    installCatalogStub(win);
     doc.querySelector('[data-action="look-done"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 150));
     const setupName = doc.querySelector("[data-setup-name]");
