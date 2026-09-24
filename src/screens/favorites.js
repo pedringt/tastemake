@@ -3,11 +3,13 @@ import { starterItems } from "../model/starters.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { renderStickerField } from "../components/stickers.js";
+import { renderArtwork } from "../components/artwork.js";
 
 function starterCard(item, index) {
   const blurb = item.about ?? item.note ?? "One of the things you love.";
   return `
-    <article class="starter-card" data-starter-id="${item.id}">
+    <article class="starter-card ${item.artwork ? "has-artwork" : ""}" data-starter-id="${item.id}">
+      ${item.artwork ? renderArtwork(item, "starter-artwork") : ""}
       <span class="starter-index">0${index + 1}</span>
       <span class="starter-medium">${esc(displayLabel(item))}</span>
       <h3>${esc(item.title)}</h3>
