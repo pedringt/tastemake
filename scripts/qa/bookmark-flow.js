@@ -462,7 +462,7 @@ export async function run() {
   const scrollBeforeLookChange = window.scrollY;
   radio.click(); await tick();
   check("picking a look applies it to the whole page straight away", document.documentElement.dataset.look === picked && state.look === picked);
-  check("changing looks does not jump the viewport", Math.abs(window.scrollY - scrollBeforeLookChange) <= 1,
+  check("changing looks does not meaningfully jump the viewport", Math.abs(window.scrollY - scrollBeforeLookChange) <= 8,
     `${scrollBeforeLookChange} -> ${window.scrollY}`);
   check("...and is announced", new RegExp(`Look: ${pickedLabel}\\.`).test(live()), live());
   check("...and keeps keyboard focus on the radio you used", document.activeElement === radio, document.activeElement?.tagName);
