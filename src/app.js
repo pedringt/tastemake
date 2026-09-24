@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
-import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
+import { bookmarkedFeedback, canKeepDiscovering, openingRecommendations } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
@@ -187,8 +187,10 @@ function finishSetup() {
     app.querySelector("[data-setup-name]")?.focus();
     return;
   }
+  const firstSetup = !state.setupComplete;
   state.displayName = name;
   applySetupPreferences();
+  if (firstSetup) state.recommendationSets = [openingRecommendations(state)];
   state.setupComplete = true;
   const target = canAccess(state.setupReturn) ? state.setupReturn : "favorites";
   state.setupReturn = "favorites";
