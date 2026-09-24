@@ -66,8 +66,9 @@ export function handleMineClick(event, { render, updateStepper, restoreFocus, an
     if (step === "confirm") {
       resetState();
       state.resetArmed = false;
-      navigate("favorites");
-      announce("Started over. Everything you told Tastemake in this visit is cleared.");
+      state.setupReturn = "favorites";
+      navigate("setup");
+      announce("Started over. Your taste data and setup were cleared. Your look stayed the same.");
       return;
     }
     state.resetArmed = step === "arm";
