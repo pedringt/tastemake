@@ -443,9 +443,12 @@ export async function run() {
 
   await act("#open-look");
   check("the Look button opens the picker", Boolean($(".look-screen")) && state.screen === "look");
-  check("the picker shows all four looks as visual previews", $$(".look-card .look-preview").length === 4 && $$('input[name="look"]').length === 4,
-    `${$$(".look-card .look-preview").length} previews`);
-  check("each preview is drawn in its own look", $$(".look-preview").map((p) => p.dataset.look).join(",") === looksData.LOOKS.map((l) => l.id).join(","));
+  check("the picker shows all four looks as visual previews", $(".look-card .look-preview").length === 4 && $('input[name="look"]').length === 4,
+    `${$(".look-card .look-preview").length} previews`);
+  check("look choices use one native radio group (keyboard/screen-reader semantics)",
+    $('input[name="look"]').every((input) => input.type === "radio" && Boolean(input.closest("label"))) &&
+    new Set($('input[name="look"]').map((input) => input.name)).size === 1);
+  check("each preview is drawn in its own look", $(".look-preview").map((p) => p.dataset.look).join(",") === looksData.LOOKS.map((l) => l.id).join(","));
   check("previews are hidden from screen readers; the labels carry the meaning", $$(".look-preview").every((p) => p.getAttribute("aria-hidden") === "true") &&
     $$(".look-card-name").every((n) => n.textContent.trim().length > 3));
   check("the current look is the checked one", $(`input[name="look"]:checked`)?.value === startLook, $(`input[name="look"]:checked`)?.value);
@@ -453,8 +456,13 @@ export async function run() {
   const picked = startLook === "graphic" ? "analog" : "graphic";
   const pickedLabel = looksData.LOOKS.find((l) => l.id === picked).label;
   const radio = $(`input[name="look"][value="${picked}"]`);
+  const maxScroll = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+  if (maxScroll > 0) window.scrollTo(0, Math.min(120, maxScroll));
+  const scrollBeforeLookChange = window.scrollY;
   radio.focus(); radio.click(); await tick();
   check("picking a look applies it to the whole page straight away", document.documentElement.dataset.look === picked && state.look === picked);
+  check("changing looks does not jump the viewport", Math.abs(window.scrollY - scrollBeforeLookChange) <= 1,
+    `${scrollBeforeLookChange} -> ${window.scrollY}`);
   check("...and is announced", new RegExp(`Look: ${pickedLabel}\\.`).test(live()), live());
   check("...and keeps keyboard focus on the radio you used", document.activeElement === radio, document.activeElement?.tagName);
   check("...and moves the selected marker", $(".look-card.is-selected")?.dataset.lookChoice === picked && $$(".look-card.is-selected").length === 1);
