@@ -107,6 +107,12 @@ button { color: inherit; }
 .app-shell.is-onboarding .me-open:hover,
 .app-shell.is-onboarding .look-open:hover { opacity:.85; }
 .step span { font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--faint,#6670a6); }
+.step-secondary { opacity:.68; font-weight:600; }
+.step-secondary:hover,.step-secondary.is-active { opacity:1; }
+.page-actions { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; }
+.page-actions .action-group { flex:0 1 auto; }
+.page-actions-left,.page-actions-right { display:flex; gap:10px; flex-wrap:wrap; }
+.page-actions .button { min-width:0; }
 .step[hidden] { display:none; }
 .step .step-count {
   min-width:20px;
