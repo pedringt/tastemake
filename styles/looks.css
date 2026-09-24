@@ -427,3 +427,164 @@
   transform:none;
 }
 .look-preview[data-look="analog"] .pv-deco-c { display:none; }
+
+
+/* ==========================================================================================
+   Sep 24 final look replacements. These intentionally override the retired Studio Cutouts and
+   Night Ledger rules above while keeping their internal ids stable.
+   ========================================================================================== */
+
+/* Soft Circuit: cool, rounded, airy UI. Distinct from Clean Editorial's warm paper/type feel. */
+:root[data-look="collage"], .look-preview[data-look="collage"] {
+  --bg:#eaf1f8; --paper:#f9fcff; --navy:#17304f; --ink:#203550; --muted:#586b82; --line:#c7d6e6;
+  --pink:#ff6b7f; --pink-soft:#ffe2e8; --cyan:#3f78ff; --cyan-soft:#dce8ff; --lime:#b8efda;
+  --violet:#7459db; --violet-soft:#e9e4ff; --coral:#ee7664; --yellow:#f6d978;
+  --display:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --heading:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --hand:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --tilt:0; --hard:.08;
+  --shadow-ink:rgb(31 70 112 / .12); --ink-rgb:23 48 79; --accent-rgb:63 120 255;
+  --text2:#405a75; --note-ink:#315fc9; --tint-lime:#dff7ee; --tint-warm:#f3f0ff; --tint-cool:#e2edff;
+  --tint-hover:#edf5fc; --tint-pink:#ffe6ec; --tint-red:#ffe0de; --tint-lilac:#ebe8ff; --on-lime:#245843;
+  --accent-text:#315fc9; --faint:#586b82; --on-pink:#923248; --warn:#a34343;
+  --tone-1:#ffe5eb; --tone-2:#dcecff; --tone-3:#ece7ff; --tone-4:#def7ec; --tone-5:#fff0cb; --tone-6:#e0e9f6; --tone-7:#ffe2dd; --tone-8:#e1f2ea;
+  --pv-surface:#e8f1fa; --pv-card:#f9fcff; --pv-border:1px; --pv-radius:18px;
+}
+:root[data-look="collage"] body {
+  background:
+    linear-gradient(rgb(49 95 201 / .045) 1px,transparent 1px),
+    linear-gradient(90deg,rgb(49 95 201 / .045) 1px,transparent 1px),
+    #eaf1f8;
+  background-size:32px 32px;
+}
+:root[data-look="collage"] .topbar {
+  border:1px solid #c7d6e6;
+  border-radius:20px;
+  background:rgb(249 252 255 / .9);
+  box-shadow:0 10px 30px rgb(31 70 112 / .08);
+}
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.mine-screen,.setup-screen,.look-screen) {
+  --gutter:clamp(22px,3vw,44px);
+  --band:clamp(24px,3vw,42px);
+  border:1px solid #c7d6e6;
+  border-radius:28px;
+  background:rgb(249 252 255 / .94);
+  box-shadow:0 18px 50px rgb(31 70 112 / .10);
+}
+:root[data-look="collage"] :is(.sticker-field,.favorite-tape,.bookmark-tape,.library-tape) { display:none; }
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen)::before,
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen)::after { display:none; content:none; }
+:root[data-look="collage"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card,.starter-placeholder,.favorite-tile,.rec-progress-card,.refresh-banner,.setup-card,.profile-map-aside) {
+  border:1px solid #bfd0e2;
+  border-radius:20px;
+  background:#fbfdff;
+  box-shadow:0 8px 22px rgb(31 70 112 / .08);
+  filter:none;
+  transform:none;
+}
+:root[data-look="collage"] :is(.button,.domain-filter-button,.setup-field input,.setup-choice span,.setup-style > span) { border-radius:999px; box-shadow:none; }
+:root[data-look="collage"] :is(h1,h2,h3,.brand-word) { letter-spacing:-.035em; }
+:root[data-look="collage"] .marker-word::after { height:.18em; background:#79a3ff; opacity:.55; transform:none; }
+.look-preview[data-look="collage"] {
+  background:
+    linear-gradient(rgb(49 95 201 / .08) 1px,transparent 1px),
+    linear-gradient(90deg,rgb(49 95 201 / .08) 1px,transparent 1px),
+    #eaf1f8;
+  background-size:18px 18px;
+}
+.look-preview[data-look="collage"] .pv-card { box-shadow:0 5px 14px rgb(31 70 112 / .12); }
+.look-preview[data-look="collage"] .pv-chip { background:#dce8ff; color:#315fc9; }
+.look-preview[data-look="collage"] .pv-deco-a { display:block; left:7%; bottom:7%; top:auto; width:22%; height:7%; border-radius:999px; background:#b8efda; transform:none; }
+.look-preview[data-look="collage"] .pv-deco-b { display:block; right:7%; top:10%; width:12%; aspect-ratio:1; border-radius:50%; background:#ff6b7f; clip-path:none; }
+.look-preview[data-look="collage"] .pv-deco-c { display:none; }
+
+/* Electric Night: deep indigo shell with bright floating panels. */
+:root[data-look="analog"], .look-preview[data-look="analog"] {
+  --bg:#111225; --paper:#f4f2ff; --navy:#19192d; --ink:#22213a; --muted:#5c5a73; --line:#bdb9d8;
+  --pink:#ff668f; --pink-soft:#ffdce7; --cyan:#55dce0; --cyan-soft:#d8f6f6; --lime:#b9ef70;
+  --violet:#7367ff; --violet-soft:#e1dfff; --coral:#ff836a; --yellow:#f5dd67;
+  --display:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --heading:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --hand:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --tilt:0; --hard:.22;
+  --shadow-ink:rgb(2 3 14 / .34); --ink-rgb:25 25 45; --accent-rgb:255 102 143;
+  --text2:#46445f; --note-ink:#4f46c7; --tint-lime:#e6f8ce; --tint-warm:#eeeaff; --tint-cool:#dcf6f7;
+  --tint-hover:#e9e7fb; --tint-pink:#ffe0e8; --tint-red:#ffdcd7; --tint-lilac:#e5e2ff; --on-lime:#314e16;
+  --accent-text:#c93564; --faint:#5c5a73; --on-pink:#8f2446; --warn:#a33c4d;
+  --tone-1:#f9dce6; --tone-2:#d7f1f2; --tone-3:#e0ddff; --tone-4:#e2f3c5; --tone-5:#f8e7bf; --tone-6:#dbdff3; --tone-7:#f6d9d3; --tone-8:#d9ebe2;
+  --pv-surface:#15172c; --pv-card:#f4f2ff; --pv-border:1px; --pv-radius:10px;
+}
+:root[data-look="analog"] body {
+  background:
+    radial-gradient(circle at 18% 0%,rgb(115 103 255 / .22),transparent 28rem),
+    radial-gradient(circle at 90% 18%,rgb(85 220 224 / .12),transparent 24rem),
+    #111225;
+}
+:root[data-look="analog"] .topbar {
+  margin-top:8px;
+  padding:13px 18px;
+  border:1px solid #393858;
+  border-radius:14px;
+  background:#17182d;
+  color:#f6f4ff;
+  box-shadow:0 12px 36px rgb(0 0 0 / .28);
+}
+:root[data-look="analog"] .topbar :is(.brand,.brand-word,.brand-tagline,.step,.topbar-note) { color:#f6f4ff; }
+:root[data-look="analog"] .topbar .step span { color:#aaa7ca; }
+:root[data-look="analog"] .topbar .step.is-active { background:#2a2948; }
+:root[data-look="analog"] .topbar .prototype-label { border-color:#555275; background:#22233d; color:#d8d4ff; }
+:root[data-look="analog"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.mine-screen,.setup-screen,.look-screen) {
+  border:1px solid #494761;
+  border-radius:16px;
+  background:#f4f2ff;
+  background-image:none;
+  box-shadow:0 26px 70px rgb(0 0 0 / .34);
+}
+:root[data-look="analog"] :is(.sticker-field,.favorite-tape,.bookmark-tape,.library-tape) { display:none; }
+:root[data-look="analog"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card,.starter-placeholder,.favorite-tile,.rec-progress-card,.refresh-banner,.setup-card,.profile-map-aside) {
+  border:1px solid #aaa6c8;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 6px 18px rgb(25 25 45 / .10);
+  filter:none;
+  transform:none;
+}
+:root[data-look="analog"] :is(.button,.domain-filter-button,.setup-field input,.setup-choice span,.setup-style > span) { border-radius:8px; box-shadow:none; }
+:root[data-look="analog"] .button-primary { background:#7367ff; border-color:#19192d; color:#fff; }
+:root[data-look="analog"] .kicker { color:#b52f59; letter-spacing:.14em; }
+:root[data-look="analog"] .marker-word::after { height:.13em; background:#55dce0; opacity:.72; transform:none; }
+:root[data-look="analog"] :is(h1,h2,h3,.brand-word) { letter-spacing:-.035em; }
+.look-preview[data-look="analog"] {
+  background:
+    radial-gradient(circle at 12% 8%,rgb(115 103 255 / .55),transparent 32%),
+    #15172c;
+}
+.look-preview[data-look="analog"] .pv-card { box-shadow:0 7px 18px rgb(0 0 0 / .32); }
+.look-preview[data-look="analog"] .pv-chip { background:#d8f6f6; color:#243b52; }
+.look-preview[data-look="analog"] .pv-deco-a { display:block; left:6%; top:13%; width:18%; height:4%; border-radius:999px; background:#55dce0; transform:none; }
+.look-preview[data-look="analog"] .pv-deco-b { display:block; right:6%; top:9%; width:11%; aspect-ratio:1; border-radius:4px; border:0; background:#ff668f; transform:rotate(8deg); }
+.look-preview[data-look="analog"] .pv-deco-c { display:none; }
+
+/* Bold Graphic stays. Fix the favorite-card proportions instead of redesigning the skin. */
+:root[data-look="graphic"] .starter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+:root[data-look="graphic"] .starter-card { min-height:280px; padding:20px; }
+:root[data-look="graphic"] .starter-card.has-artwork {
+  grid-template-columns:minmax(110px,30%) minmax(0,1fr);
+  column-gap:22px;
+  align-items:start;
+}
+:root[data-look="graphic"] .starter-artwork { width:100%; max-width:150px; justify-self:start; }
+:root[data-look="graphic"] .starter-card h3 { margin-top:8px; font-size:clamp(22px,2.25vw,34px); line-height:1.02; overflow-wrap:anywhere; }
+:root[data-look="graphic"] .starter-card p {
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:6;
+  overflow:hidden;
+  font-size:14px;
+  line-height:1.45;
+}
+:root[data-look="graphic"] .starter-actions { grid-column:1 / -1 !important; width:100%; margin-top:10px; }
+@media (max-width:700px) {
+  :root[data-look="graphic"] .starter-grid { grid-template-columns:1fr; }
+  :root[data-look="graphic"] .starter-card.has-artwork { grid-template-columns:96px minmax(0,1fr); column-gap:16px; }
+}
