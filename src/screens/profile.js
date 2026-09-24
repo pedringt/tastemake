@@ -1,13 +1,9 @@
-import { hypotheses } from "../data/catalog.js";
 import { state } from "../state.js";
-import { canKeepDiscovering, untriedReactionLean } from "../model/taste.js";
-import { confidenceOf } from "../model/tastemap.js";
+import { canKeepDiscovering } from "../model/taste.js";
 import { CONTEXT, FIT, WEIGHT, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
-import { renderTasteMap } from "./tastemap.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
-import { hypothesisRecord } from "../model/interpretations.js";
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { starterItems } from "../model/starters.js";
@@ -60,24 +56,12 @@ function sayControls(item, said) {
 }
 
 function hypothesisCard(item, index) {
-  const update = item.aiGenerated
-    ? { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." }
-    : confidenceOf(state, item);
+  const update = { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." };
   const said = statementFor(state, item.id);
-  const record = item.aiGenerated
-    ? { scope: { supported: item.domains ?? [], excluded: said?.excludedDomains ?? [] } }
-    : hypothesisRecord(state, item);
+  const record = { scope: { supported: item.domains ?? [], excluded: said?.excludedDomains ?? [] } };
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
     ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${esc(spot.item.title)}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
-    : "";
-  const lean = untriedReactionLean(state, item);
-  const leanLine = lean.direction
-    ? `<div class="signal-lean is-${lean.direction}" title="Not counted as taste until you have tried them.">
-          <span aria-hidden="true">${lean.direction === "toward" ? "&nearr;" : "&searr;"}</span>
-          Your reactions lean ${lean.direction === "toward" ? "toward" : "away from"} this
-          <em>(from ${lean.count} ${lean.count === 1 ? "pick" : "picks"} you haven't tried)</em>
-        </div>`
     : "";
   return `
     <article class="signal-row signal-row-${index + 1}${said?.says === "not-me" ? " is-excluded" : ""}">
@@ -92,14 +76,13 @@ function hypothesisCard(item, index) {
           </span>
         </div>
         <p class="signal-claim">${esc(item.claim)}</p>
-        <div class="signal-evidence"><span>starting evidence</span> ${esc(item.evidence)}</div>
+        <div class="signal-evidence"><span>cited evidence</span> ${esc(item.evidence)}</div>
         <div class="signal-provenance">${esc(update.provenance)}</div>
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
         ${said?.context === "some" ? `<div class="signal-said">${CONTEXT.some}. Tastemake can't claim this is Strong until it's specific about which context.</div>` : ""}
         ${sayControls(item, said)}
         ${said?.says === "not-me" ? "" : domainScopeControls(item, record)}
-        ${leanLine}
         ${blindLine}
       </div>
     </article>`;
@@ -133,8 +116,8 @@ function blindSpotSection() {
 
 export function renderProfile() {
   const selectedTitles = starterItems(state).map((item) => item.title);
-  const workingHypotheses = state.modelHypotheses?.length ? state.modelHypotheses : hypotheses;
-  const liveProfile = Boolean(state.modelHypotheses?.length);
+  const workingHypotheses = state.modelHypotheses ?? [];
+  const liveProfile = workingHypotheses.length > 0;
 
   return `
     <section class="profile-screen">
@@ -144,23 +127,9 @@ export function renderProfile() {
           <p class="kicker">Taste Profile</p>
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
-          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they show up below as a lean, not as taste. When live profile AI is enabled, these working hypotheses can be revised from your experienced evidence. If it is unavailable, Tastemake keeps the deterministic starting profile.</p>
+          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they are not taste evidence. Taste Profile patterns appear only when live AI has proposed them and Tastemake has validated every evidence citation.</p>
           ${state.hypothesisAiMessage ? `<p class="profile-ai-status" role="status">${esc(state.hypothesisAiMessage)}</p>` : ""}
-          <details class="profile-legend">
-            <summary>What do the confidence labels mean?</summary>
-            <ul>
-              <li><strong>Emerging:</strong> a starting pattern. Nothing you've tried has tested it yet.</li>
-              <li><strong>Supported:</strong> at least one thing you've tried backs it, and more back it than count against it.</li>
-              <li><strong>Strong:</strong> three or more things you've tried back it, and misses don't outweigh them.</li>
-              <li><strong>Still learning:</strong> something you tried didn't land. One miss never weakens a pattern.</li>
-              <li><strong>Less certain:</strong> more than one thing you tried didn't land.</li>
-            </ul>
-            <p>Reactions to things you haven't tried never count here. They show up as a separate "lean".</p>
-          </details>
-          ${liveProfile ? "" : `<div class="profile-view-toggle" role="group" aria-label="How to see your Taste Profile">
-            <button type="button" class="button button-secondary profile-view-button" data-profile-view="list" aria-pressed="${state.profileView !== "map"}">List</button>
-            <button type="button" class="button button-secondary profile-view-button" data-profile-view="map" aria-pressed="${state.profileView === "map"}">Map</button>
-          </div>`}
+          ${liveProfile ? `<details class="profile-legend">\n            <summary>What do the confidence labels mean?</summary>\n            <ul>\n              <li><strong>Emerging:</strong> an early pattern with limited support.</li>\n              <li><strong>Supported:</strong> experienced evidence backs it.</li>\n              <li><strong>Strong:</strong> several experienced items back it without stronger counterevidence.</li>\n              <li><strong>Still learning:</strong> the evidence is mixed.</li>\n              <li><strong>Less certain:</strong> repeated misses outweigh the support.</li>\n            </ul>\n          </details>` : ""}
         </div>
         <div class="profile-stamp" aria-hidden="true">
           <strong>WORKING</strong>
@@ -168,27 +137,7 @@ export function renderProfile() {
         </div>
       </div>
 
-      ${state.profileView === "map" && !liveProfile ? renderTasteMap() : `
-      <div class="profile-evidence-strip">
-        <span class="profile-evidence-label">Your favorites</span>
-        <div class="profile-evidence-track">
-          ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}
-        </div>
-      </div>
-
-      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>
-      <div class="profile-map">
-        <aside class="profile-map-aside">
-          <span class="profile-aside-number">${workingHypotheses.length}</span>
-          <p>patterns currently shaping your recommendations</p>
-          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>
-        </aside>
-
-        <div class="signal-stack">
-          ${workingHypotheses.map(hypothesisCard).join("")}
-        </div>
-      </div>
-      `}
+      <div class="profile-evidence-strip">\n        <span class="profile-evidence-label">Your favorites</span>\n        <div class="profile-evidence-track">\n          ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}\n        </div>\n      </div>\n\n      ${liveProfile ? `\n      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>\n      <div class="profile-map">\n        <aside class="profile-map-aside">\n          <span class="profile-aside-number">${workingHypotheses.length}</span>\n          <p>validated AI patterns currently shaping your profile</p>\n          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>\n        </aside>\n        <div class="signal-stack">${workingHypotheses.map(hypothesisCard).join("")}</div>\n      </div>` : `\n      <div class="profile-empty" role="status">\n        <strong>No generated patterns yet.</strong>\n        <p>Tastemake is not filling this page with demo hypotheses. When live profile AI is available, it will build patterns only from your real experienced evidence.</p>\n      </div>`}
 
       ${blindSpotSection()}
 

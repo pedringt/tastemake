@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { MEDIA, applySearchAction, findExisting, itemStatus, makeCustomItem, searchItems, searchableItems } from "../model/search.js";
+import { MEDIA, applySearchAction, findExisting, itemStatus, makeCustomItem, searchableItems } from "../model/search.js";
 import { displayLabel, domainFilterOptions } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { searchExternalCatalog } from "../catalog/client.js";
@@ -30,11 +30,28 @@ export function initSearch({ onChange, announce, goTo }) {
 
   const itemById = (id) => (ui.pending?.id === id ? ui.pending : [...searchableItems(state), ...ui.external].find((item) => item.id === id));
 
-  const combinedHits = (query) => {
-    const local = query ? searchItems(state, query, ui.filter) : [];
-    const seen = new Set(local.map((item) => item.id));
-    const external = ui.external.filter((item) => !seen.has(item.id));
-    return [...local, ...external].slice(0, 16);
+  // User-facing search is the real external catalog. The old seeded title inventory is gone;
+  // only items the user has actually acted on remain in local product state (#89).
+  const existingEvidenceItem = (item) => {
+    const existing = findExisting(state, item.title);
+    if (!existing) return item;
+    const isKnown = state.selectedFavorites.has(existing.id)
+      || Boolean(state.feedbackByRecommendation[existing.id])
+      || Boolean(state.customItems[existing.id]);
+    return isKnown ? existing : item;
+  };
+
+  const externalHits = () => {
+    const seen = new Set();
+    return ui.external
+      .map(existingEvidenceItem)
+      .filter((item) => {
+        if (state.selectedFavorites.has(item.id)) return false;
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      })
+      .slice(0, 16);
   };
 
   function statusChip(item) {
@@ -44,9 +61,26 @@ export function initSearch({ onChange, announce, goTo }) {
 
   function resultsHTML() {
     const query = ui.query.trim();
-    const hits = query ? combinedHits(query) : [];
-    const list = hits.length
-      ? `<ul class="search-results" aria-label="Results">
+    const readyToSearch = query.length >= 2;
+    const hits = readyToSearch && !ui.catalogLoading && !ui.catalogError ? externalHits() : [];
+
+    let list = "";
+    if (!query) {
+      list = '<p class="search-hint">Search movies, shows, books, and games. Looking something up never teaches Tastemake anything.</p>';
+    } else if (!readyToSearch) {
+      list = '<p class="search-hint">Keep typing to search the catalog.</p>';
+    } else if (ui.catalogLoading) {
+      list = `<div class="search-loading" role="status" aria-live="polite">
+          <span class="search-spinner" aria-hidden="true"></span>
+          <span><strong>Searching the catalog…</strong><small>Checking movies, shows, books, and games.</small></span>
+        </div>
+        <div class="search-skeleton" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>`;
+    } else if (ui.catalogError) {
+      list = '<p class="search-hint search-hint-error" role="status">The catalog is unavailable right now. You can still add this title yourself below.</p>';
+    } else if (hits.length) {
+      list = `<ul class="search-results" aria-label="Results">
           ${hits.map((item) => `
             <li>
               <button type="button" class="search-result" data-search-pick="${item.id}">
@@ -54,14 +88,17 @@ export function initSearch({ onChange, announce, goTo }) {
                 ${statusChip(item)}
               </button>
             </li>`).join("")}
-        </ul>`
-      : query
-        ? `<p class="search-hint" role="status">Nothing matches \u201c${esc(query)}\u201d. Try a different spelling, or add it yourself below.</p>`
-        : `<p class="search-hint">Type a title to find it. Tastemake only knows a small hand-picked catalog for now, so you can also add anything it doesn't know.</p>`;
-    // Only echo the query when nothing matched; next to a real result it would read like a typo to add.
-    const addLabel = query.length >= 2 && !hits.length ? `Can't find it? Add \u201c${esc(query)}\u201d yourself` : hits.length ? "Not it? Add something Tastemake doesn't know" : "Add something Tastemake doesn't know";
-    const catalogState = ui.catalogLoading ? '<p class="search-hint" role="status">Searching the wider catalog…</p>' : ui.catalogError ? '<p class="search-hint">The wider catalog is unavailable right now. Local search still works.</p>' : '';
-    return `${list}${catalogState}<p class="search-add-row"><button type="button" class="button button-quiet" data-search-add>${addLabel}</button></p>`;
+        </ul>`;
+    } else {
+      list = `<p class="search-hint" role="status">Nothing matches “${esc(query)}”. Try a different spelling, or add it yourself below.</p>`;
+    }
+
+    const addLabel = readyToSearch && !ui.catalogLoading && !hits.length
+      ? `Can't find it? Add “${esc(query)}” yourself`
+      : hits.length
+        ? "Not it? Add something Tastemake doesn't know"
+        : "Add something Tastemake doesn't know";
+    return `${list}<p class="search-add-row"><button type="button" class="button button-quiet" data-search-add>${addLabel}</button></p>`;
   }
 
   function actionButton(item, action, label, pressed) {
@@ -190,6 +227,7 @@ export function initSearch({ onChange, announce, goTo }) {
       const payload = await searchExternalCatalog(query, ui.filter, { signal: catalogController.signal });
       if (seq !== catalogSeq) return;
       ui.external = payload.items;
+      ui.catalogError = payload.degraded ? "unavailable" : "";
     } catch (error) {
       if (error?.name === "AbortError" || seq !== catalogSeq) return;
       ui.external = [];
@@ -204,6 +242,20 @@ export function initSearch({ onChange, announce, goTo }) {
 
   function queueExternal() {
     clearTimeout(catalogTimer);
+    // Invalidate the previous request immediately, not after the debounce. Otherwise a slow
+    // response for the old query can land during the 260ms window and briefly overwrite the
+    // current search (#89).
+    catalogController?.abort();
+    catalogController = null;
+    catalogSeq += 1;
+
+    const query = ui.query.trim();
+    ui.external = [];
+    ui.catalogError = "";
+    ui.catalogLoading = query.length >= 2;
+    render();
+
+    if (query.length < 2) return;
     catalogTimer = setTimeout(refreshExternal, 260);
   }
 
@@ -221,7 +273,6 @@ export function initSearch({ onChange, announce, goTo }) {
   input.addEventListener("input", () => {
     ui.query = input.value;
     ui.mode = "results";
-    render();
     queueExternal();
   });
   input.addEventListener("keydown", (event) => {
@@ -237,7 +288,6 @@ export function initSearch({ onChange, announce, goTo }) {
       ui.filter = filter.dataset.searchFilter;
       ui.mode = "results";
       syncFilters();
-      render();
       queueExternal();
       return;
     }
@@ -348,7 +398,12 @@ export function initSearch({ onChange, announce, goTo }) {
     }
     // Never create a second record for something already here (duplicate evidence): open the existing one.
     const existing = findExisting(state, title);
-    if (existing) {
+    const knownExisting = existing && (
+      state.selectedFavorites.has(existing.id)
+      || Boolean(state.feedbackByRecommendation[existing.id])
+      || Boolean(state.customItems[existing.id])
+    );
+    if (knownExisting) {
       ui.pending = null;
       ui.itemId = existing.id;
       ui.mode = "sheet";

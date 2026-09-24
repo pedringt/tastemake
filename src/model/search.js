@@ -1,4 +1,3 @@
-import { favorites, followUpPool, recommendations } from "../data/catalog.js";
 import { isBookmarked, isPositiveExperience } from "./taste.js";
 import { isDeclined, isExperiencedNegative, isExperiencedPositive, isStrongPositive } from "./evidence.js";
 import { addableTypes, displayLabel } from "../data/domains.js";
@@ -51,16 +50,10 @@ function editDistance(a, b) {
   return d[a.length][b.length];
 }
 
-// Everything the user can search: the hand-written catalog plus anything they added themselves.
+// Persistent items Tastemake already knows because the user acted on them. Public search comes from
+// the real catalog providers; there is no built-in title inventory in product state.
 export function searchableItems(state) {
-  const seen = new Set();
-  const out = [];
-  for (const item of [...favorites, ...recommendations, ...followUpPool, ...Object.values(state?.customItems ?? {})]) {
-    if (seen.has(item.id)) continue;
-    seen.add(item.id);
-    out.push(item);
-  }
-  return out;
+  return Object.values(state?.customItems ?? {});
 }
 
 function scoreItem(item, query) {

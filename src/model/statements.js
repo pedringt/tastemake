@@ -1,4 +1,3 @@
-import { hypotheses } from "../data/catalog.js";
 import { hypothesisMatches } from "./taste.js";
 import { recordRevision } from "./history.js";
 
@@ -37,7 +36,7 @@ const MESSAGE = {
 
 // Toggle one answer. Returns a sentence for the live region.
 export function setStatement(state, hypothesisId, field, value) {
-  const pattern = hypotheses.find((p) => p.id === hypothesisId);
+  const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
   if (!pattern || !["says", "weight", "context"].includes(field)) return null;
   state.patternStatements ??= [];
   let entry = statementFor(state, hypothesisId);
@@ -68,7 +67,7 @@ export function contextQualifiedFor(state, hypothesisId) {
 }
 
 export function toggleDomainExclusion(state, hypothesisId, domainId) {
-  const pattern = hypotheses.find((p) => p.id === hypothesisId);
+  const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
   if (!pattern) return null;
   state.patternStatements ??= [];
   let entry = statementFor(state, hypothesisId);
@@ -95,7 +94,7 @@ export function clearStatement(state, hypothesisId) {
   const entry = statementFor(state, hypothesisId);
   if (!entry) return null;
   state.patternStatements = state.patternStatements.filter((s) => s !== entry);
-  const pattern = hypotheses.find((p) => p.id === entry.hypothesisId);
+  const pattern = (state.modelHypotheses ?? []).find((p) => p.id === entry.hypothesisId);
   const message = `${entry.label}: what you said was removed.`;
   recordRevision(state, { hypothesisId: entry.hypothesisId, claim: pattern?.claim, origin: "user-confirmed", reason: message });
   return message;

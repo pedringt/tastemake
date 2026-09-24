@@ -1,4 +1,3 @@
-import { recommendations } from "./data/catalog.js";
 import { DEFAULT_LOOK, isLook } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 
@@ -6,14 +5,13 @@ import { visibleDomains } from "./data/domains.js";
 // (The look, and where the user is, are not part of this: starting over keeps your look.)
 function fresh() {
   return {
-    // #59: a real visitor starts with nothing selected — Favorites is where their first evidence comes
-    // from, not a pre-filled form. `selected: true` in src/data/catalog.js is a QA/demo fixture marker
-    // only now; product state never reads it. QA scripts that need a known starting set select their own
-    // favorites explicitly (see scripts/qa/*.js) instead of relying on this ever being pre-seeded.
+    // A real visitor starts with nothing selected. Favorites are persisted only after the user
+    // chooses real catalog items (or explicitly adds one by hand).
     selectedFavorites: new Set(),
     feedbackByRecommendation: {},
-    // Each "Keep discovering" appends a set; the first is the hand-picked opening set.
-    recommendationSets: [recommendations],
+    // Recommendation sets are populated only from the real catalog pipeline.
+    recommendationSets: [],
+    recommendationExhausted: false,
     // Loved picks the user starred as Favorites. Only meaningful while the pick is still "Loved it before".
     libraryFavorites: new Set(),
     // Items the user typed in themselves (search > "Add something"), keyed by id. Registered on first action.

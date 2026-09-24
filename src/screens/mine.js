@@ -1,5 +1,4 @@
 import { state } from "../state.js";
-import { hypotheses } from "../data/catalog.js";
 import { AREAS } from "../model/taste.js";
 import { toldItems } from "../model/mine.js";
 import { reasonLabel } from "../model/blindspots.js";
@@ -128,7 +127,7 @@ function tastebreakList() {
       <p class="mine-blurb">What you said actually pulled you in, or pushed you away, when you broke something down.</p>
       <ul class="mine-list">
         ${entries.map(({ itemId, entry, item }) => {
-          const names = hypotheses.filter((p) => entry.confirmed.includes(p.id)).map((p) => p.title);
+          const names = (state.modelHypotheses ?? []).filter((p) => entry.confirmed.includes(p.id)).map((p) => p.title);
           return `
           <li class="mine-row" data-mine-id="tastebreak-${itemId}">
             <div class="mine-row-main">

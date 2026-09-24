@@ -5,5 +5,5 @@ export async function searchExternalCatalog(query, domain = "all", { signal } = 
   const response = await fetch(url, { signal, headers: { accept: "application/json" } });
   if (!response.ok) throw new Error(`catalog search failed: ${response.status}`);
   const payload = await response.json();
-  return { items: Array.isArray(payload.items) ? payload.items : [], providers: payload.providers ?? {} };
+  return { items: Array.isArray(payload.items) ? payload.items : [], providers: payload.providers ?? {}, degraded: Boolean(payload.degraded) };
 }

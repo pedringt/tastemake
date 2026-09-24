@@ -1,6 +1,5 @@
 import { state } from "../state.js";
 import { LOOKS } from "../data/looks.js";
-import { recommendations } from "../data/catalog.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 
@@ -8,10 +7,9 @@ import { esc } from "../lib/html.js";
 // (see styles/look.css), so people choose by seeing, not by reading a label. Picking one also
 // applies it to the whole page straight away, so the page behind is a live preview too.
 
-// Every preview renders the SAME real, recognizable Tastemake content (one fixed catalog item), so the
-// only variable a person is comparing is the skin itself, not the example — including a "Why this one?"
-// pill, since that's one of the product's own more recognizable elements.
-const sample = recommendations[0];
+// Every preview renders the same neutral sample so the only variable is the skin. This is presentation
+// copy only, not product catalog data and never enters evidence or recommendations.
+const sample = { title: "A sample pick", type: "movie", domains: ["watch"] };
 
 function preview(id) {
   return `

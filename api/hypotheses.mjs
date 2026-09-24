@@ -50,12 +50,12 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
   const state = hydrateState(rawState);
   const ctx = buildContext(state);
   const config = hypothesisConfig(env);
-  if (!config.enabled) return { source: "deterministic", reason: "live profile AI is not enabled", hypotheses: [], meta: { paidCallMade: false } };
+  if (!config.enabled) return { source: "unavailable", reason: "live profile AI is not enabled", hypotheses: [], meta: { paidCallMade: false } };
 
   const model = await callAnthropic({ prompt: buildHypothesisPrompt(ctx, state.modelHypotheses), env, fetchImpl });
   const validated = validateHypotheses(model.json, ctx);
   if (!validated.accepted.length) {
-    return { source: "deterministic", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage } };
+    return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage } };
   }
   return {
     source: "model",
@@ -79,6 +79,6 @@ export default async function handler(req, res) {
     return res.status(200).json(payload);
   } catch (error) {
     console.error("[tastemake-profile-ai]", error?.status ?? "", error?.anthropicType ?? "", error?.message ?? "");
-    return res.status(200).json({ source: "deterministic", reason: "live profile AI unavailable", hypotheses: [], meta: { paidCallMade: false } });
+    return res.status(200).json({ source: "unavailable", reason: "live profile AI unavailable", hypotheses: [], meta: { paidCallMade: false } });
   }
 }

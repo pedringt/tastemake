@@ -125,7 +125,7 @@ export function checkCurrentScreen() {
   const texts = [];
   const walker = document.createTreeWalker(screen, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement)) continue;
+    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement) || node.parentElement?.closest?.('.editorial-art[aria-hidden="true"]')) continue;
     const range = document.createRange();
     range.selectNodeContents(node);
     for (const r of range.getClientRects()) {
@@ -165,13 +165,16 @@ export function checkCurrentScreen() {
   const textUnderControls = [];
   const textWalker = document.createTreeWalker(screen, NodeFilter.SHOW_TEXT);
   for (let node = textWalker.nextNode(); node; node = textWalker.nextNode()) {
-    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement)) continue;
+    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement) || node.parentElement?.closest?.('.editorial-art[aria-hidden="true"]')) continue;
     const range = document.createRange();
     range.selectNodeContents(node);
     for (const r of range.getClientRects()) {
       if (r.width < 2 || r.height < 2) continue;
       const clash = controls.find((c) => !c.contains(node) && overlapArea(r, c.getBoundingClientRect()) > 12);
-      if (clash) { textUnderControls.push(`"${node.textContent.trim().slice(0, 28)}" under ${describe(clash)}`); break; }
+      if (clash) {
+        textUnderControls.push(`"${node.textContent.trim().slice(0, 28)}" under ${describe(clash)}`);
+        break;
+      }
     }
   }
 
@@ -229,18 +232,41 @@ export function checkCurrentScreen() {
 }
 
 export async function runAll() {
-  // #59: a real visitor starts with 0 favorites; Recommendations/Taste Profile/Library are locked until
-  // 4 are picked, so this suite picks its own known set rather than relying on any product default.
   const { state } = await import("/src/state.js");
-  const { favorites } = await import("/src/data/catalog.js");
-  favorites.slice(0, 4).forEach((f) => state.selectedFavorites.add(f.id));
+  const favorites = [
+    {id:"tmdb-movie-801",provider:"tmdb",providerId:"801",title:"A Very Long Favorite Film Title for Layout Testing",type:"movie",domains:["watch"],about:"A deliberately long but readable summary that checks card proportions in every look.",artwork:null},
+    {id:"openlibrary-book-802",provider:"openlibrary",providerId:"802",title:"Favorite Book",type:"book",domains:["read"],about:"Book.",artwork:null},
+    {id:"igdb-game-803",provider:"igdb",providerId:"803",title:"Favorite Game",type:"game",domains:["play"],about:"Game.",artwork:null},
+    {id:"tmdb-tv-804",provider:"tmdb",providerId:"804",title:"Favorite Show",type:"tv",domains:["watch"],about:"Show.",artwork:null}
+  ];
+  state.customItems=Object.fromEntries(favorites.map(item=>[item.id,item]));
+  state.selectedFavorites=new Set(favorites.map(item=>item.id));
+  state.setupComplete=true;
+  state.displayName="QA";
+  const picks=Array.from({length:5},(_,i)=>({
+    id:`tmdb-movie-${820+i}`,provider:"tmdb",providerId:String(820+i),title:`Catalog Recommendation ${i+1}`,
+    type:"movie",domains:["watch"],about:"A real-catalog-style recommendation with enough copy to exercise the card layout.",
+    prediction:"Worth testing",fit:i===4?"Exploratory fit":"Catalog match",rank:i===4?null:i+1,surprise:i===4,
+    reason:"Related to a favorite in the external catalog.",artwork:null,ai:null
+  }));
+  state.recommendationSets=[picks];
+  state.feedbackByRecommendation={
+    [picks[0].id]:{item:picks[0],rating:"more",detail:"loved-before"},
+    [picks[1].id]:{item:picks[1],rating:"not-tried",detail:"bookmarked"}
+  };
+  state.modelHypotheses=[{
+    id:"ai-layout-one",title:"Structure supports experimentation",claim:"Unusual ideas seem stronger when a clear structure keeps them moving.",
+    evidence:"Favorite Film, Catalog Recommendation 1",supports:[`ev:${favorites[0].id}`,`ev:${picks[0].id}`],counters:[],
+    domains:["watch"],strength:"Supported",status:"supported",crossDomain:"untested",provenance:"Live AI interpretation, validated against experienced evidence."
+  }];
+  state.hypothesisAiStatus="loading";
 
-  const pages = { favorites: "favorites", recommendations: "recommendations", profile: "model", library: "library" };
-  const results = {};
-  for (const [name, jump] of Object.entries(pages)) {
-    document.querySelector(`.step[data-step-jump="${jump}"]`).click();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    results[name] = checkCurrentScreen();
+  const pages={favorites:"favorites",recommendations:"recommendations",profile:"model",library:"library"};
+  const results={};
+  for(const [name,jump] of Object.entries(pages)){
+    document.querySelector(`.step[data-step-jump="${jump}"]`)?.click();
+    await new Promise(resolve=>setTimeout(resolve,220));
+    results[name]=checkCurrentScreen();
   }
   return results;
 }

@@ -1,4 +1,3 @@
-import { followUpPool, recommendations } from "../data/catalog.js";
 import { areaOn } from "../model/taste.js";
 import { evidenceRecords } from "../model/evidence.js";
 
@@ -9,7 +8,7 @@ import { evidenceRecords } from "../model/evidence.js";
 export function eligibleCandidates(state, extraCandidates = []) {
   const shown = new Set(state.recommendationSets.flat().map((item) => item.id));
   const reacted = new Set(Object.keys(state.feedbackByRecommendation));
-  const pool = [...recommendations, ...followUpPool, ...extraCandidates];
+  const pool = [...extraCandidates];
   const seen = new Set();
   return pool.filter((item) => {
     if (seen.has(item.id)) return false;

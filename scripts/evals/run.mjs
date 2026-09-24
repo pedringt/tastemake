@@ -25,7 +25,7 @@ import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
 import { CONTRACT_VERSION } from "../../src/ai/contract.js";
 import * as baseline from "../../src/ai/baseline.js";
 import { buildPickPrompt, callAnthropic } from "../../api/recommendations.mjs";
-import { nextRecommendations } from "../../src/model/taste.js";
+import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -37,6 +37,7 @@ const endpointUrl = (args.includes("--url") ? args[args.indexOf("--url") + 1] : 
 const pauseMs = Number(args.includes("--pause") ? args[args.indexOf("--pause") + 1] : 11_000);   // the endpoint rate-limits a burst
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const endpointRuns = [];
+const EVAL_CANDIDATES = [...qaRecommendations, ...qaFollowUps];
 
 // Rough per-million-token prices, only for the estimate printed before a paid run. Override with
 // TASTEMAKE_AI_PRICE_IN / TASTEMAKE_AI_PRICE_OUT if the model's pricing differs.
@@ -58,8 +59,8 @@ const PRODUCERS = {
     label: `Deployed endpoint (PAID, live AI where enabled): ${endpointUrl}`,
     infer: async (state) => baseline.inferHypotheses(state),
     pick: async (state, ctx) => {
-      if (!nextRecommendations(state).length) return { picks: [] };
-      if (dryRun) { dryRunPlan.push({ fixture: ctx.__fixture, count: nextRecommendations(state).length, promptChars: 0, estIn: 0, prompt: `(POST ${endpointUrl}/api/recommendations)` }); return { picks: [] }; }
+      if (!ctx.candidates.length) return { picks: [] };
+      if (dryRun) { dryRunPlan.push({ fixture: ctx.__fixture, count: Math.min(5, ctx.candidates.length), promptChars: 0, estIn: 0, prompt: `(POST ${endpointUrl}/api/recommendations)` }); return { picks: [] }; }
       if (!confirmed) throw new Error("this spends money on the deployed endpoint: re-run with --yes");
       for (let attempt = 1; ; attempt += 1) {
         const response = await fetch(`${endpointUrl}/api/recommendations`, {
@@ -89,7 +90,7 @@ const PRODUCERS = {
     // still shows the profile side, and say so.
     infer: async (state) => baseline.inferHypotheses(state),
     pick: async (state, ctx) => {
-      const count = nextRecommendations(state).length;
+      const count = Math.min(5, ctx.candidates.length);
       if (!count) return { picks: [] };
       const prompt = buildPickPrompt(ctx, count);
       if (dryRun) {
@@ -112,12 +113,12 @@ if (!producer) { console.error(`unknown producer "${producerName}"`); process.ex
 
 async function runOne(fixture) {
   const state = fixture.build();
-  const ctx = buildContext(state);
+  const ctx = buildContext(state, EVAL_CANDIDATES);
   ctx.__fixture = fixture.id;
   const hyp = validateHypotheses(await producer.infer(state, ctx), ctx);
   const picks = validatePicks(await producer.pick(state, ctx), ctx);
   let before = null;
-  if (fixture.before) { const s = fixture.before(); before = validateHypotheses(await producer.infer(s, buildContext(s)), buildContext(s)); }
+  if (fixture.before) { const s = fixture.before(); const beforeCtx = buildContext(s, EVAL_CANDIDATES); before = validateHypotheses(await producer.infer(s, beforeCtx), beforeCtx); }
   return { state, ctx, hyp, picks, before };
 }
 
@@ -135,7 +136,7 @@ for (const fixture of FIXTURES) {
 const selfTest = [];
 for (const id of ["about-10", "intent-heavy", "single-miss"]) {
   const fixture = FIXTURES.find((f) => f.id === id);
-  const ctx = buildContext(fixture.build());
+  const ctx = buildContext(fixture.build(), EVAL_CANDIDATES);
   const bad = badResponses(ctx);
   for (const c of bad.hypotheses) {
     const v = validateHypotheses({ hypotheses: [c.h], insufficientEvidence: false }, ctx);

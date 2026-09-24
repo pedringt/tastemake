@@ -1,7 +1,6 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
-import { nextRecommendations } from "../src/model/taste.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 
 const MAX_BODY_BYTES = 160_000;
@@ -152,21 +151,41 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
 }
 
 function clientPicks(validated) {
-  return validated.map((pick) => ({
+  return validated.map((pick, index) => ({
     ...pick.item,
+    rank: pick.kind === "curveball" ? null : index + 1,
+    fit: pick.kind === "curveball" ? "Exploratory fit" : "Promising fit",
+    prediction: "Worth testing",
+    surprise: pick.kind === "curveball",
     reason: pick.why,
     ai: { cites: pick.cites, tests: pick.tests, kind: pick.kind, contract: pick.contract }
   }));
 }
 
-// The fallback is exactly what the app would show on its own. The grounding rules in validate.js exist to
-// judge MODEL output; running the product's own picks through them could drop a legitimate pick (for example
-// one whose pattern cannot cite anything this user has tried yet), so the fallback must not be filtered.
-function fallbackPayload(deterministicPicks, reason, meta = {}) {
+// When live AI is unavailable or its output fails validation, fall back to the same real catalog
+// candidates. There is no hand-written recommendation inventory in the product.
+function catalogPicks(candidates, state) {
+  const chosen = candidates.slice(0, 5);
+  return chosen.map((item, index) => {
+    const curveball = state.curveball !== false && chosen.length >= 5 && index === chosen.length - 1;
+    const basis = item.relatedTo ? `Related in the catalog to ${item.relatedTo}.` : "Related to things you told Tastemake you love.";
+    return {
+      ...item,
+      rank: curveball ? null : index + 1,
+      fit: curveball ? "Exploratory fit" : "Catalog match",
+      prediction: "Worth testing",
+      surprise: curveball,
+      reason: `${basis} Live AI did not rank this fallback set.`,
+      ai: null
+    };
+  });
+}
+
+function fallbackPayload(candidates, state, reason, meta = {}) {
   return {
-    source: "deterministic",
+    source: "catalog",
     reason,
-    picks: deterministicPicks,
+    picks: catalogPicks(candidates, state),
     meta: { ...meta, paidCallMade: meta.paidCallMade ?? false }
   };
 }
@@ -175,25 +194,24 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   const state = hydrateState(rawState);
   const retrieved = await retrieveCatalogCandidates(state, { env, fetchImpl });
   const ctx = buildContext(state, retrieved);
-  const deterministic = nextRecommendations(state);
-  const eligibleIds = new Set(ctx.candidates.map((item) => item.id));
-  const groundedFallback = [...deterministic, ...retrieved]
-    .filter((item, index, all) => eligibleIds.has(item.id) && all.findIndex((other) => other.id === item.id) === index)
-    .slice(0, Math.min(5, ctx.candidates.length));
-  if (!groundedFallback.length) return fallbackPayload([], "no eligible catalog picks remain");
+  const candidates = ctx.candidates.slice(0, 5);
+  if (!candidates.length) {
+    return { source: "catalog", reason: "no eligible catalog picks remain", picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length } };
+  }
 
   const config = liveConfig(env);
-  if (!config.enabled) return fallbackPayload(groundedFallback, "live AI is not enabled", { catalogCandidates: retrieved.length });
+  if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length });
 
   try {
-    const model = await callAnthropic({ prompt: buildPickPrompt(ctx, groundedFallback.length), env, fetchImpl });
+    const model = await callAnthropic({ prompt: buildPickPrompt(ctx, candidates.length), env, fetchImpl });
     const validated = validatePicks(model.json, ctx);
-    const result = acceptOrFallback(validated, groundedFallback, { minAccepted: groundedFallback.length });
+    const result = acceptOrFallback(validated, candidates, { minAccepted: candidates.length });
     if (result.source !== "model") {
-      return fallbackPayload(groundedFallback, result.reason || "model output did not pass validation", {
+      return fallbackPayload(candidates, state, result.reason || "model output did not pass validation", {
         model: model.model,
         usage: model.usage,
-        paidCallMade: true
+        paidCallMade: true,
+        catalogCandidates: retrieved.length
       });
     }
     return {
@@ -205,13 +223,12 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   } catch (error) {
     const timedOut = error?.name === "AbortError";
     const reason = timedOut ? "model request timed out" : "model unavailable";
-    // Visible in the Vercel logs for debugging; no key, no prompt, no response body.
     console.error("[tastemake-ai]", reason, error?.status ?? "", error?.anthropicType ?? "", error?.anthropicDetail ?? error?.message ?? "");
-    return fallbackPayload(groundedFallback, reason, {
-      // A refused call (bad key, unknown model) is not charged, so only count an attempt that got past the API's checks.
+    return fallbackPayload(candidates, state, reason, {
       paidCallMade: !timedOut && !error?.status,
       errorStatus: error?.status ?? null,
-      errorType: error?.anthropicType ?? (timedOut ? "timeout" : "transport")
+      errorType: error?.anthropicType ?? (timedOut ? "timeout" : "transport"),
+      catalogCandidates: retrieved.length
     });
   }
 }

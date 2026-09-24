@@ -1,6 +1,4 @@
-// Filter chips come from the domain registry (src/data/domains.js).
-import { domainFilterOptions } from "./domains.js";
-export const domainFilters = domainFilterOptions();
+// QA-only synthetic/demo fixtures. Production code must never import this file.
 
 export const favorites = [
   { id: "lotr", title: "The Lord of the Rings", type: "book", displayLabel: "Book + film", domains: ["read", "watch"], note: "All-time favorite", selected: true },

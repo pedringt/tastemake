@@ -16,7 +16,7 @@ function control(itemId, action, label, className = "button button-secondary", d
 const heading = (itemId, text) => `<p class="blind-title" tabindex="-1" data-blind-focus="${itemId}">${text}</p>`;
 
 function summaryText(item, draft) {
-  const patterns = patternsFor(item);
+  const patterns = patternsFor(item, state);
   const named = patterns.filter((pattern) => draft.broken.includes(pattern.id)).map((pattern) => `\u201c${esc(pattern.title)}\u201d`);
   const why = draft.reasons.length ? ` It got in the way mostly because of ${draft.reasons.map((id) => esc(reasonLabel(id).toLowerCase())).join(", ")}.` : "";
   const which = draft.none
@@ -27,13 +27,13 @@ function summaryText(item, draft) {
 
 export function renderBlindSpotPanel(itemId) {
   const feedback = state.feedbackByRecommendation[itemId];
-  if (!isBlindSpotCandidate(feedback)) return "";
+  if (!isBlindSpotCandidate(feedback, state)) return "";
   const { item } = feedback;
   const draft = state.blindSpotDrafts[itemId];
   const saved = blindSpotFor(state, itemId);
 
   if (draft) {
-    const patterns = patternsFor(item);
+    const patterns = patternsFor(item, state);
     const head = `<div class="blind-panel" data-blind-panel="${itemId}" role="group" aria-label="What did Tastemake get wrong about ${esc(item.title)}?">`;
     if (draft.step === 1) {
       return `${head}

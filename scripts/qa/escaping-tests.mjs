@@ -10,7 +10,7 @@
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { state } = await import("../../src/state.js");
-const { recommendations, hypotheses } = await import("../../src/data/catalog.js");
+const { recommendations, hypotheses } = await import("./fixtures/catalog.js");
 const { makeCustomItem, applySearchAction } = await import("../../src/model/search.js");
 const { setStatement } = await import("../../src/model/statements.js");
 const { saveBlindSpot, patternsFor } = await import("../../src/model/blindspots.js");
@@ -36,6 +36,7 @@ nasty.about = `${PAYLOAD} about`;
 nasty.note = `${PAYLOAD} note`;
 applySearchAction(state, nasty, "loved");
 
+state.modelHypotheses = hypotheses;
 const [first, second, third] = recommendations;
 // a model wrote these: the pick reason and, later, hypothesis text
 state.recommendationSets = [[{ ...first, reason: `${PAYLOAD} why`, about: `${PAYLOAD} about`, title: `${PAYLOAD} pick` }, second, third]];
@@ -45,7 +46,7 @@ saveBlindSpot(state, third.id, { broken: [hypotheses[0].id], reasons: ["tone"] }
 setStatement(state, hypotheses[0].id, "says", "not-me");
 // a Tastebreak note (#19), the newest untrusted free-text slot: shown on the Library card and in My Tastemake
 startTastebreak(state, third.id);
-const taggedPattern = patternsFor(third)[0];
+const taggedPattern = patternsFor(third, state)[0];
 if (taggedPattern) toggleTastebreakPattern(state, third.id, taggedPattern.id);
 setTastebreakNote(state, third.id, `${PAYLOAD} tastebreak note`);
 saveTastebreak(state, third.id);
@@ -72,10 +73,10 @@ for (const [name, render] of Object.entries(screens)) {
   check(`${name}: ordinary copy still renders`, html.length > 200);
 }
 
-// the map view too (it renders through the profile screen)
+// profile remains safe when its presentation state changes
 state.profileView = "map";
-const mapHtml = screens.profile();
-check("taste map: no raw payload", !mapHtml.includes(PAYLOAD));
+const profileAgain = screens.profile();
+check("profile alternate state: no raw payload", !profileAgain.includes(PAYLOAD));
 state.profileView = "list";
 
 console.log(`escaping tests: ${passed} passed, ${failures.length} failed`);

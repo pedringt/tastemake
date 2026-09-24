@@ -276,3 +276,315 @@
 :root[data-look="analog"] .footer-note { font-style:italic; }
 
 :root[data-look="analog"] .library-inline-remove { color:var(--ink); }
+
+
+/* #82 refinement: Studio Cutouts is editorial/tactile, not a sticker sheet. */
+:root[data-look="collage"] { --tilt:.12; --hard:.28; }
+:root[data-look="collage"] body {
+  background:
+    linear-gradient(90deg, rgb(47 102 216 / .045) 0 1px, transparent 1px),
+    linear-gradient(rgb(240 107 63 / .035) 0 1px, transparent 1px),
+    #f4f0e8;
+  background-size:28px 28px;
+}
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen) {
+  --gutter:clamp(24px,3.2vw,48px);
+  --band:clamp(28px,3.4vw,48px);
+  border:1px solid #d2cec6;
+  border-radius:18px 7px 18px 7px;
+  background:#fffdf8;
+  box-shadow:0 14px 34px rgb(20 34 74 / .075);
+}
+:root[data-look="collage"] .sticker-field,
+:root[data-look="collage"] :is(.favorite-tape,.bookmark-tape,.library-tape) { display:none; }
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen)::before {
+  content:"";
+  position:absolute;
+  z-index:1;
+  top:14px;
+  left:clamp(18px,2.2vw,34px);
+  width:clamp(54px,7vw,92px);
+  height:7px;
+  border-radius:999px;
+  background:#2f66d8;
+  transform:rotate(-1.5deg);
+  pointer-events:none;
+}
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen)::after {
+  content:"";
+  position:absolute;
+  z-index:1;
+  right:clamp(18px,2.2vw,34px);
+  bottom:14px;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:#f06b3f;
+  pointer-events:none;
+}
+:root[data-look="collage"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card,.favorite-tile) {
+  border-radius:14px;
+  box-shadow:0 5px 14px rgb(20 34 74 / .07);
+  filter:none;
+}
+:root[data-look="collage"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card):nth-child(n) { border-radius:14px; }
+:root[data-look="collage"] .editorial-rec::before { display:none; }
+:root[data-look="collage"] .favorite-tile { transform:none; }
+:root[data-look="collage"] .favorite-tile:hover { transform:translate(-1px,-1px); }
+:root[data-look="collage"] :is(.button,.domain-filter-button) { border-radius:10px; }
+
+.look-preview[data-look="collage"] {
+  background:#f4f0e8;
+  background-image:linear-gradient(90deg, rgb(47 102 216 / .06) 0 1px, transparent 1px);
+  background-size:18px 18px;
+}
+.look-preview[data-look="collage"] .pv-deco-a {
+  display:block;
+  left:8%;
+  top:17%;
+  width:22%;
+  height:4%;
+  border-radius:999px;
+  background:#2f66d8;
+  transform:rotate(-2deg);
+}
+.look-preview[data-look="collage"] :is(.pv-deco-b,.pv-deco-c) { display:none; }
+
+/* #82 refinement: Night Ledger is a dark, restrained cinema/record ledger. */
+:root[data-look="analog"] {
+  --bg:#0d1420; --paper:#f7f0df; --navy:#172235; --ink:#202839; --muted:#646056; --line:#c8b994;
+  --pink:#9b3d3f; --pink-soft:#ead6cf; --cyan:#536e77; --cyan-soft:#dce5e4; --lime:#b89c4d;
+  --violet:#625b72; --violet-soft:#e1dce6; --coral:#a85643; --yellow:#c6a952;
+  --tilt:0; --hard:.12;
+  --shadow-ink:rgb(2 7 15 / .26); --accent-text:#853235; --faint:#666158;
+}
+:root[data-look="analog"] body {
+  background:
+    radial-gradient(circle at 50% -10%, rgb(194 161 83 / .11), transparent 34rem),
+    linear-gradient(180deg,#0d1420,#121b2a 68%,#0b111b);
+}
+:root[data-look="analog"] .topbar {
+  margin-top:10px;
+  padding:14px 18px;
+  border:1px solid #61583f;
+  border-radius:3px;
+  background:#111a29;
+  color:#f7f0df;
+  box-shadow:0 12px 34px rgb(0 0 0 / .24);
+}
+:root[data-look="analog"] .topbar :is(.brand,.brand-word,.brand-tagline,.step,.topbar-note) { color:#f7f0df; }
+:root[data-look="analog"] .topbar .step span { color:#b8ad94; }
+:root[data-look="analog"] .topbar .step.is-active { background:#2a2630; }
+:root[data-look="analog"] .topbar .prototype-label { border-color:#61583f; background:#182235; color:#d8caa7; }
+:root[data-look="analog"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.mine-screen,.setup-screen,.look-screen) {
+  border:1px solid #887954;
+  border-radius:3px;
+  background:
+    linear-gradient(90deg, transparent 0 52px, rgb(155 61 63 / .12) 52px 53px, transparent 53px),
+    repeating-linear-gradient(0deg, transparent 0 39px, rgb(23 34 53 / .045) 39px 40px),
+    #f7f0df;
+  box-shadow:0 24px 60px rgb(0 0 0 / .34);
+}
+:root[data-look="analog"] :is(.sticker-field,.favorite-tape,.bookmark-tape,.library-tape) { display:none; }
+:root[data-look="analog"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card,.favorite-tile,.rec-progress-card,.refresh-banner,.setup-card) {
+  border-width:1px;
+  border-color:#9f906b;
+  border-radius:2px;
+  background:#fffaf0;
+  box-shadow:0 4px 12px rgb(23 34 53 / .07);
+  filter:none;
+}
+:root[data-look="analog"] :is(.button,.domain-filter-button,.setup-field input,.setup-choice span,.setup-style > span) { border-radius:2px; }
+:root[data-look="analog"] .button { box-shadow:none; }
+:root[data-look="analog"] .kicker { color:#853235; letter-spacing:.19em; }
+:root[data-look="analog"] :is(h1,h2,h3,.brand-word) { letter-spacing:-.025em; }
+:root[data-look="analog"] .marker-word::after { height:.1em; background:#c6a952; opacity:.75; transform:none; }
+:root[data-look="analog"] .editorial-rec::before { display:none; }
+
+.look-preview[data-look="analog"] {
+  background:
+    linear-gradient(90deg, transparent 0 18%, rgb(155 61 63 / .18) 18% 18.5%, transparent 18.5%),
+    #111a29;
+}
+.look-preview[data-look="analog"] .pv-deco-a {
+  display:block;
+  left:8%;
+  top:12%;
+  width:24%;
+  height:3%;
+  background:#c6a952;
+  transform:none;
+}
+.look-preview[data-look="analog"] .pv-deco-b {
+  display:block;
+  right:8%;
+  top:10%;
+  width:10%;
+  height:10%;
+  border:1px solid #c6a952;
+  border-radius:50%;
+  background:transparent;
+  transform:none;
+}
+.look-preview[data-look="analog"] .pv-deco-c { display:none; }
+
+
+/* ==========================================================================================
+   Sep 24 final look replacements. These intentionally override the retired Studio Cutouts and
+   Night Ledger rules above while keeping their internal ids stable.
+   ========================================================================================== */
+
+/* Soft Circuit: cool, rounded, airy UI. Distinct from Clean Editorial's warm paper/type feel. */
+:root[data-look="collage"], .look-preview[data-look="collage"] {
+  --bg:#eaf1f8; --paper:#f9fcff; --navy:#17304f; --ink:#203550; --muted:#586b82; --line:#c7d6e6;
+  --pink:#ff6b7f; --pink-soft:#ffe2e8; --cyan:#3f78ff; --cyan-soft:#dce8ff; --lime:#b8efda;
+  --violet:#7459db; --violet-soft:#e9e4ff; --coral:#ee7664; --yellow:#f6d978;
+  --display:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --heading:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --hand:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --tilt:0; --hard:.08;
+  --shadow-ink:rgb(31 70 112 / .12); --ink-rgb:23 48 79; --accent-rgb:63 120 255;
+  --text2:#405a75; --note-ink:#315fc9; --tint-lime:#dff7ee; --tint-warm:#f3f0ff; --tint-cool:#e2edff;
+  --tint-hover:#edf5fc; --tint-pink:#ffe6ec; --tint-red:#ffe0de; --tint-lilac:#ebe8ff; --on-lime:#245843;
+  --accent-text:#315fc9; --faint:#586b82; --on-pink:#923248; --warn:#a34343;
+  --tone-1:#ffe5eb; --tone-2:#dcecff; --tone-3:#ece7ff; --tone-4:#def7ec; --tone-5:#fff0cb; --tone-6:#e0e9f6; --tone-7:#ffe2dd; --tone-8:#e1f2ea;
+  --pv-surface:#e8f1fa; --pv-card:#f9fcff; --pv-border:1px; --pv-radius:18px;
+}
+:root[data-look="collage"] body {
+  background:
+    linear-gradient(rgb(49 95 201 / .045) 1px,transparent 1px),
+    linear-gradient(90deg,rgb(49 95 201 / .045) 1px,transparent 1px),
+    #eaf1f8;
+  background-size:32px 32px;
+}
+:root[data-look="collage"] .topbar {
+  border:1px solid #c7d6e6;
+  border-radius:20px;
+  background:rgb(249 252 255 / .9);
+  box-shadow:0 10px 30px rgb(31 70 112 / .08);
+}
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.mine-screen,.setup-screen,.look-screen) {
+  --gutter:clamp(22px,3vw,44px);
+  --band:clamp(24px,3vw,42px);
+  border:1px solid #c7d6e6;
+  border-radius:28px;
+  background:rgb(249 252 255 / .94);
+  box-shadow:0 18px 50px rgb(31 70 112 / .10);
+}
+:root[data-look="collage"] :is(.sticker-field,.favorite-tape,.bookmark-tape,.library-tape) { display:none; }
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen)::before,
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen)::after { display:none; content:none; }
+:root[data-look="collage"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card,.starter-placeholder,.favorite-tile,.rec-progress-card,.refresh-banner,.setup-card,.profile-map-aside) {
+  border:1px solid #bfd0e2;
+  border-radius:20px;
+  background:#fbfdff;
+  box-shadow:0 8px 22px rgb(31 70 112 / .08);
+  filter:none;
+  transform:none;
+}
+:root[data-look="collage"] :is(.button,.domain-filter-button,.setup-field input,.setup-choice span,.setup-style > span) { border-radius:999px; box-shadow:none; }
+:root[data-look="collage"] :is(h1,h2,h3,.brand-word) { letter-spacing:-.035em; }
+:root[data-look="collage"] .marker-word::after { height:.18em; background:#79a3ff; opacity:.55; transform:none; }
+.look-preview[data-look="collage"] {
+  background:
+    linear-gradient(rgb(49 95 201 / .08) 1px,transparent 1px),
+    linear-gradient(90deg,rgb(49 95 201 / .08) 1px,transparent 1px),
+    #eaf1f8;
+  background-size:18px 18px;
+}
+.look-preview[data-look="collage"] .pv-card { box-shadow:0 5px 14px rgb(31 70 112 / .12); }
+.look-preview[data-look="collage"] .pv-chip { background:#dce8ff; color:#315fc9; }
+.look-preview[data-look="collage"] .pv-deco-a { display:block; left:7%; bottom:7%; top:auto; width:22%; height:7%; border-radius:999px; background:#b8efda; transform:none; }
+.look-preview[data-look="collage"] .pv-deco-b { display:block; right:7%; top:10%; width:12%; aspect-ratio:1; border-radius:50%; background:#ff6b7f; clip-path:none; }
+.look-preview[data-look="collage"] .pv-deco-c { display:none; }
+
+/* Electric Night: deep indigo shell with bright floating panels. */
+:root[data-look="analog"], .look-preview[data-look="analog"] {
+  --bg:#111225; --paper:#f4f2ff; --navy:#19192d; --ink:#22213a; --muted:#5c5a73; --line:#bdb9d8;
+  --pink:#ff668f; --pink-soft:#ffdce7; --cyan:#55dce0; --cyan-soft:#d8f6f6; --lime:#b9ef70;
+  --violet:#7367ff; --violet-soft:#e1dfff; --coral:#ff836a; --yellow:#f5dd67;
+  --display:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --heading:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --hand:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --tilt:0; --hard:.22;
+  --shadow-ink:rgb(2 3 14 / .34); --ink-rgb:25 25 45; --accent-rgb:255 102 143;
+  --text2:#46445f; --note-ink:#4f46c7; --tint-lime:#e6f8ce; --tint-warm:#eeeaff; --tint-cool:#dcf6f7;
+  --tint-hover:#e9e7fb; --tint-pink:#ffe0e8; --tint-red:#ffdcd7; --tint-lilac:#e5e2ff; --on-lime:#314e16;
+  --accent-text:#c93564; --faint:#5c5a73; --on-pink:#8f2446; --warn:#a33c4d;
+  --tone-1:#f9dce6; --tone-2:#d7f1f2; --tone-3:#e0ddff; --tone-4:#e2f3c5; --tone-5:#f8e7bf; --tone-6:#dbdff3; --tone-7:#f6d9d3; --tone-8:#d9ebe2;
+  --pv-surface:#15172c; --pv-card:#f4f2ff; --pv-border:1px; --pv-radius:10px;
+}
+:root[data-look="analog"] body {
+  background:
+    radial-gradient(circle at 18% 0%,rgb(115 103 255 / .22),transparent 28rem),
+    radial-gradient(circle at 90% 18%,rgb(85 220 224 / .12),transparent 24rem),
+    #111225;
+}
+:root[data-look="analog"] .topbar {
+  margin-top:8px;
+  padding:13px 18px;
+  border:1px solid #393858;
+  border-radius:14px;
+  background:#17182d;
+  color:#f6f4ff;
+  box-shadow:0 12px 36px rgb(0 0 0 / .28);
+}
+:root[data-look="analog"] .topbar :is(.brand,.brand-word,.brand-tagline,.step,.topbar-note) { color:#f6f4ff; }
+:root[data-look="analog"] .topbar .step span { color:#aaa7ca; }
+:root[data-look="analog"] .topbar .step.is-active { background:#2a2948; }
+:root[data-look="analog"] .topbar .prototype-label { border-color:#555275; background:#22233d; color:#d8d4ff; }
+:root[data-look="analog"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.mine-screen,.setup-screen,.look-screen) {
+  border:1px solid #494761;
+  border-radius:16px;
+  background:#f4f2ff;
+  background-image:none;
+  box-shadow:0 26px 70px rgb(0 0 0 / .34);
+}
+:root[data-look="analog"] :is(.sticker-field,.favorite-tape,.bookmark-tape,.library-tape) { display:none; }
+:root[data-look="analog"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card,.starter-placeholder,.favorite-tile,.rec-progress-card,.refresh-banner,.setup-card,.profile-map-aside) {
+  border:1px solid #aaa6c8;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 6px 18px rgb(25 25 45 / .10);
+  filter:none;
+  transform:none;
+}
+:root[data-look="analog"] :is(.button,.domain-filter-button,.setup-field input,.setup-choice span,.setup-style > span) { border-radius:8px; box-shadow:none; }
+:root[data-look="analog"] .button-primary { background:#7367ff; border-color:#19192d; color:#fff; }
+:root[data-look="analog"] .kicker { color:#b52f59; letter-spacing:.14em; }
+:root[data-look="analog"] .marker-word::after { height:.13em; background:#55dce0; opacity:.72; transform:none; }
+:root[data-look="analog"] :is(h1,h2,h3,.brand-word) { letter-spacing:-.035em; }
+.look-preview[data-look="analog"] {
+  background:
+    radial-gradient(circle at 12% 8%,rgb(115 103 255 / .55),transparent 32%),
+    #15172c;
+}
+.look-preview[data-look="analog"] .pv-card { box-shadow:0 7px 18px rgb(0 0 0 / .32); }
+.look-preview[data-look="analog"] .pv-chip { background:#d8f6f6; color:#243b52; }
+.look-preview[data-look="analog"] .pv-deco-a { display:block; left:6%; top:13%; width:18%; height:4%; border-radius:999px; background:#55dce0; transform:none; }
+.look-preview[data-look="analog"] .pv-deco-b { display:block; right:6%; top:9%; width:11%; aspect-ratio:1; border-radius:4px; border:0; background:#ff668f; transform:rotate(8deg); }
+.look-preview[data-look="analog"] .pv-deco-c { display:none; }
+
+/* Bold Graphic stays. Fix the favorite-card proportions instead of redesigning the skin. */
+:root[data-look="graphic"] .starter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+:root[data-look="graphic"] .starter-card { min-height:280px; padding:20px; }
+:root[data-look="graphic"] .starter-card.has-artwork {
+  grid-template-columns:minmax(110px,30%) minmax(0,1fr);
+  column-gap:22px;
+  align-items:start;
+}
+:root[data-look="graphic"] .starter-artwork { width:100%; max-width:150px; justify-self:start; }
+:root[data-look="graphic"] .starter-card h3 { margin-top:8px; font-size:clamp(22px,2.25vw,34px); line-height:1.02; overflow-wrap:anywhere; }
+:root[data-look="graphic"] .starter-card p {
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:6;
+  overflow:hidden;
+  font-size:14px;
+  line-height:1.45;
+}
+:root[data-look="graphic"] .starter-actions { grid-column:1 / -1 !important; width:100%; margin-top:10px; }
+@media (max-width:700px) {
+  :root[data-look="graphic"] .starter-grid { grid-template-columns:1fr; }
+  :root[data-look="graphic"] .starter-card.has-artwork { grid-template-columns:96px minmax(0,1fr); column-gap:16px; }
+}

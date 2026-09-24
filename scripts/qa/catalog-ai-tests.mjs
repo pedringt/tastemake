@@ -6,7 +6,6 @@ import { searchCatalog } from "../../src/catalog/providers.mjs";
 import { produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
-import { favorites } from "../../src/data/catalog.js";
 
 let passed = 0;
 const failures = [];
@@ -32,6 +31,7 @@ eq("external catalog returns movie, show, book and game", catalog.items.length, 
 check("external ids are provider-stable and unique", new Set(catalog.items.map((x) => x.id)).size === 4 && catalog.items.every((x) => /^(tmdb|openlibrary|igdb)-/.test(x.id)));
 check("every provider item keeps source provenance", catalog.items.every((x) => x.provider && x.providerId));
 check("available artwork is normalized to a URL", catalog.items.every((x) => x.artwork?.startsWith("http")));
+check("All interleaves domains so games are present without choosing Play", catalog.items.some((x) => x.type === "game"));
 eq("domain filtering can request books only", (await searchCatalog("test", { domain: "read", env, fetchImpl: providerFetch })).items.map((x) => x.type).join(), "book");
 
 
@@ -69,12 +69,16 @@ const AI_ENV = {
   TASTEMAKE_AI_HYPOTHESES_ENABLED: "1",
   VERCEL_ENV: "preview"
 };
+const profileFavorite = {
+  id: "openlibrary-book-OL123W", provider: "openlibrary", providerId: "OL123W",
+  title: "Favorite Book", type: "book", domains: ["read"], about: "A real catalog favorite."
+};
 const rawState = {
-  selectedFavorites: favorites.slice(0, 4).map((x) => x.id),
+  selectedFavorites: [profileFavorite.id],
   feedbackByRecommendation: {},
   recommendationSets: [],
   libraryFavorites: [],
-  customItems: {},
+  customItems: { [profileFavorite.id]: profileFavorite },
   blindSpots: {},
   blindSpotDismissed: [],
   patternStatements: [],
@@ -87,7 +91,7 @@ const proposal = {
     id: "ai-mythic-seriousness",
     label: "Mythic material works when it stays serious",
     claim: "Mythic material seems strongest when the treatment stays adult, character-driven, and emotionally serious.",
-    evidence: ["ev:circe"],
+    evidence: ["ev:openlibrary-book-OL123W"],
     counter: [],
     domains: ["read"],
     crossDomain: "untested",

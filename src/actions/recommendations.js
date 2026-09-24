@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience, nextRecommendations } from "../model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
@@ -53,54 +53,80 @@ export function announceReaction(itemId, announce) {
   if (!feedback) return;
   const saved = bookmarkedFeedback(state).length;
   const bookmarkPart = isBookmarked(feedback) ? ` ${plural(saved, "thing", "things")} in Try Next.` : "";
-  const offer = isBlindSpotCandidate(feedback) && !blindSpotFor(state, itemId)
+  const offer = isBlindSpotCandidate(feedback, state) && !blindSpotFor(state, itemId)
     ? " Tastemake expected you to like this. There is an option below to tell it what it got wrong."
     : "";
   announce(`${feedback.item.title}: ${reactionLabel(feedback)}.${bookmarkPart}${offer}`);
 }
 
-// Live-AI request orchestration for "Keep discovering" (#42): ask the live endpoint, fall back to
-// deterministic picks on any failure, and drop a stale answer if the evidence it was computed from
-// has since changed. app.js supplies render/updateStepper/announce/navigate so this module never
-// needs to know about the DOM; #31 (validation) and #42 (staleness) both live below live-client.js,
-// this is only the sequencing between them and the screen.
-export async function runKeepDiscovering({ render, updateStepper, announce, navigate }) {
+// Recommendation request orchestration. Both the first set and later sets now come from the
+// real catalog pipeline; there is no local hand-written fallback.
+async function runRecommendationRequest({ render, updateStepper, announce, navigate, initial = false }) {
   const request = startRequest(state);
-  state.aiMessage = "Tastemake is checking what you have actually tried against the next eligible picks.";
+  state.aiMessage = initial
+    ? "Tastemake is finding real catalog matches from the favorites you chose."
+    : "Tastemake is checking what you have actually tried against the next real catalog matches.";
+  state.recommendationExhausted = false;
   render();
   updateStepper();
-  announce("Tastemake is finding a new set.");
+  announce(initial ? "Tastemake is finding your first recommendations." : "Tastemake is finding a new set.");
 
-  let picks = null;
-  let source = "deterministic";
-  let message = "The live service was unavailable, so Tastemake used its deterministic fallback.";
   try {
     const result = await requestRecommendations(state, { signal: request.controller?.signal });
-    if (!result.picks.length) throw new Error("no picks returned");
-    picks = result.picks;
-    source = result.source;
-    message = result.source === "model"
-      ? "Live AI chose and explained this set. Tastemake checked every pick and citation against its evidence rules before showing it."
-      : "Live AI was unavailable or its answer did not pass the rules, so Tastemake used its deterministic fallback.";
-  } catch { /* fall through to the deterministic picks below */ }
+    const stale = staleReason(state, request);
+    if (stale === "you moved to another page while it was thinking" || (stale && request.cancelled)) {
+      cancelRequest(state, stale);
+      state.aiStatus = "idle";
+      return;
+    }
+    if (stale) {
+      cancelRequest(state, stale);
+      state.aiStatus = "idle";
+      state.aiMessage = `That request was discarded because ${stale}. Try again.`;
+      render();
+      updateStepper();
+      return;
+    }
 
-  // An answer computed from evidence the user has since changed is not about their current state, so it
-  // is dropped whatever it says (#42). If they left the page entirely, nothing is shown at all.
-  const stale = staleReason(state, request);
-  if (stale === "you moved to another page while it was thinking" || (stale && request.cancelled)) {
-    cancelRequest(state, stale);
-    state.aiStatus = "idle";
-    return;
-  }
-  if (stale) {
-    picks = null;
-    source = "deterministic";
-    message = `Tastemake used its deterministic picks: ${stale}.`;
-  }
+    const picks = result.picks ?? [];
+    const source = result.source ?? "catalog";
+    const exhausted = Boolean(result.meta?.exhausted) || picks.length === 0;
+    const message = source === "model"
+      ? "Live AI ranked and explained real catalog candidates. Tastemake checked every pick and citation before showing it."
+      : exhausted
+        ? "Tastemake could not find another eligible catalog match from your current evidence."
+        : "These are real catalog matches. Live AI is off or its answer did not pass validation, so Tastemake kept the catalog-ranked set.";
 
-  finishRequest(state, request, { source, message });
-  state.recommendationSets.push(picks ?? nextRecommendations(state));
-  state.recommendationFilter = "all";
-  navigate("recommendations", { replace: true });
-  announce(`New set: ${plural(activeRecommendations(state).length, "pick", "picks")}. ${state.aiSource === "model" ? "Live AI was used and validated." : "Deterministic fallback was used."}`);
+    finishRequest(state, request, { source, message });
+    state.recommendationExhausted = exhausted;
+    state.recommendationFilter = "all";
+
+    if (picks.length) state.recommendationSets.push(picks);
+    navigate("recommendations", { replace: true });
+    announce(picks.length
+      ? `New set: ${plural(picks.length, "pick", "picks")}. ${source === "model" ? "Live AI was used and validated." : "Real catalog fallback was used."}`
+      : "No more eligible catalog picks were found.");
+  } catch {
+    const stale = staleReason(state, request);
+    if (stale) {
+      cancelRequest(state, stale);
+      state.aiStatus = "idle";
+      return;
+    }
+    finishRequest(state, request, {
+      source: "error",
+      message: "Recommendations are temporarily unavailable. Tastemake did not substitute seeded demo picks."
+    });
+    state.recommendationExhausted = false;
+    navigate("recommendations", { replace: true });
+    announce("Recommendations are temporarily unavailable.");
+  }
+}
+
+export async function runInitialRecommendations(ctx) {
+  return runRecommendationRequest({ ...ctx, initial: true });
+}
+
+export async function runKeepDiscovering(ctx) {
+  return runRecommendationRequest({ ...ctx, initial: false });
 }

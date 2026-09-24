@@ -7,7 +7,7 @@
 
 import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses } from "../../src/ai/validate.js";
-import { hypotheses, recommendations, followUpPool } from "../../src/data/catalog.js";
+import { hypotheses, recommendations, followUpPool } from "./fixtures/catalog.js";
 import { emptyState, react } from "../evals/fixtures.mjs";
 
 let passed = 0;
