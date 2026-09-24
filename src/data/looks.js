@@ -5,8 +5,8 @@ export const DEFAULT_LOOK = "editorial";
 
 export const LOOKS = [
   { id: "editorial", label: "Clean editorial", blurb: "Warm, polished and type-first. Quiet decoration." },
-  { id: "collage", label: "Studio cutouts", blurb: "Layered paper shapes, bright tabs and editorial energy." },
-  { id: "analog", label: "Night ledger", blurb: "Ink-dark framing, cream paper and restrained cinema-club details." },
+  { id: "collage", label: "Soft circuit", blurb: "Cool, rounded and airy with a quiet interface-grid feel." },
+  { id: "analog", label: "Electric night", blurb: "Deep indigo surfaces, luminous accents and crisp floating panels." },
   { id: "graphic", label: "Bold graphic", blurb: "High contrast, big type and flat blocks of color." }
 ];
 
