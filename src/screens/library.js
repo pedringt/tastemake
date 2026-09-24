@@ -23,18 +23,24 @@ function libraryCard(entry) {
 
   const controls = tried
     ? `
-      <div class="library-actions" role="group" aria-label="How did ${esc(item.title)} go?">
-        <span class="library-actions-label">How did it go?</span>
-        ${reactionButton(id, "loved", "Loved it", source === "loved")}
-        ${reactionButton(id, "liked", "Liked it", source === "liked")}
-        ${reactionButton(id, "disliked", "Didn't like it", false)}
-        ${source === "loved"
-          ? `<button class="button ${entry.isFavorite ? "button-quiet" : "button-primary"} library-action" type="button" data-library-item="${id}" data-library-action="${entry.isFavorite ? "unfavorite" : "favorite"}">${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}</button>`
-          : ""}
-      </div>`
+      <div class="library-reaction-summary">
+        <span>Your reaction <strong>${source === "loved" ? "Loved it" : "Liked it"}</strong></span>
+        <details class="library-reaction-edit">
+          <summary>Change</summary>
+          <div class="library-reaction-options" role="group" aria-label="Change your reaction to ${esc(item.title)}">
+            ${reactionButton(id, "loved", "Loved it", source === "loved")}
+            ${reactionButton(id, "liked", "Liked it", source === "liked")}
+            ${reactionButton(id, "disliked", "Didn't like it", false)}
+          </div>
+        </details>
+      </div>
+      ${source === "loved"
+        ? `<div class="library-secondary"><button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="${entry.isFavorite ? "unfavorite" : "favorite"}">${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}</button></div>`
+        : ""}`
     : `
-      <div class="library-actions">
-        <button class="button button-quiet" type="button" data-action="back-favorites">Change on the Favorites page</button>
+      <div class="library-starter-actions">
+        <button class="button button-quiet" type="button" data-starter-replace="${id}">Replace</button>
+        <button class="library-inline-remove" type="button" data-starter-remove="${id}">Remove</button>
       </div>`;
 
   return `
