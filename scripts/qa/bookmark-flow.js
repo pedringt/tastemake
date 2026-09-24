@@ -576,7 +576,16 @@ export async function run() {
 
   // a brand-new visit: nothing you tried yet, so nothing may look validated. #59: a fresh visit has 0
   // favorites, so Taste Profile is locked until 4 are picked — pick the same known set first.
-  const coldStart = await frameCheck("/favorites?look=editorial", async (doc) => {
+  const coldStart = await frameCheck("/?look=editorial", async (doc) => {
+    doc.querySelector('[data-action="look-done"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const setupName = doc.querySelector("[data-setup-name]");
+    if (setupName) {
+      setupName.value = "Cold start";
+      setupName.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    doc.querySelector('[data-action="setup-done"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 150));
     doc.querySelector('[data-action="open-search"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 100));
     for (const item of starterSeed) {
