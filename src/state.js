@@ -31,6 +31,11 @@ function fresh() {
     tastebreakDrafts: {},
     // Append-only revision history for taste hypotheses (#37). See src/model/history.js.
     hypothesisHistory: [],
+    // #86: validated live interpretations for the Taste Profile. These are inferred state, never evidence.
+    modelHypotheses: [],
+    hypothesisAiStatus: "idle",
+    hypothesisAiKey: null,
+    hypothesisAiMessage: null,
     // Transient live-AI UI state (#42). None of this is taste evidence and none of it is persisted.
     // aiRequest is the in-flight request: its id, the evidence fingerprint it was computed from, and its
     // AbortController, so a stale or cancelled answer is never shown.
