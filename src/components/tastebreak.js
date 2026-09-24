@@ -19,7 +19,7 @@ function patternChip(itemId, pattern, status) {
 
 export function renderTastebreakPanel(itemId) {
   const feedback = state.feedbackByRecommendation[itemId];
-  if (!isTastebreakCandidate(feedback)) return "";
+  if (!isTastebreakCandidate(feedback, state)) return "";
   const { item } = feedback;
   const positive = isExperiencedPositive(feedback);
   const verb = positive ? "landed" : "didn't land";
