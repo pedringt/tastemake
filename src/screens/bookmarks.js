@@ -3,6 +3,7 @@ import { bookmarkedFeedback } from "../model/taste.js";
 import { renderStickerField } from "../components/stickers.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { renderArtwork } from "../components/artwork.js";
 
 // Try Next contains untried things the user saved to act on. They are not taste evidence; only what
 // the user actually tries (and reacts to) teaches Tastemake about their taste.
@@ -13,7 +14,8 @@ function bookmarkCard(feedback) {
     <button class="${className} bookmark-action" type="button" data-bookmark-item="${item.id}" data-bookmark-action="${name}">${label}</button>`;
 
   return `
-    <article class="bookmark-card" data-bookmark-id="${item.id}">
+    <article class="bookmark-card ${item.artwork ? "has-artwork" : ""}" data-bookmark-id="${item.id}">
+      ${item.artwork ? renderArtwork(item, "bookmark-artwork") : ""}
       <span class="bookmark-tape" aria-hidden="true"></span>
       <span class="bookmark-medium">${esc(displayLabel(item))}</span>
       <h3>${esc(item.title)}</h3>
