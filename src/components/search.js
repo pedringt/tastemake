@@ -30,9 +30,8 @@ export function initSearch({ onChange, announce, goTo }) {
 
   const itemById = (id) => (ui.pending?.id === id ? ui.pending : [...searchableItems(state), ...ui.external].find((item) => item.id === id));
 
-  // User-facing search is the real external catalog. Seed data remains available to
-  // deterministic product logic and to resolve items the user has already acted on, but it
-  // never appears as temporary search inventory while providers are loading (#89).
+  // User-facing search is the real external catalog. The old seeded title inventory is gone;
+  // only items the user has actually acted on remain in local product state (#89).
   const existingEvidenceItem = (item) => {
     const existing = findExisting(state, item.title);
     if (!existing) return item;
