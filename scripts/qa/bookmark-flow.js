@@ -443,12 +443,12 @@ export async function run() {
 
   await act("#open-look");
   check("the Look button opens the picker", Boolean($(".look-screen")) && state.screen === "look");
-  check("the picker shows all four looks as visual previews", $(".look-card .look-preview").length === 4 && $('input[name="look"]').length === 4,
-    `${$(".look-card .look-preview").length} previews`);
+  check("the picker shows all four looks as visual previews", $$(".look-card .look-preview").length === 4 && $$('input[name="look"]').length === 4,
+    `${$$(".look-card .look-preview").length} previews`);
   check("look choices use one native radio group (keyboard/screen-reader semantics)",
-    $('input[name="look"]').every((input) => input.type === "radio" && Boolean(input.closest("label"))) &&
-    new Set($('input[name="look"]').map((input) => input.name)).size === 1);
-  check("each preview is drawn in its own look", $(".look-preview").map((p) => p.dataset.look).join(",") === looksData.LOOKS.map((l) => l.id).join(","));
+    $$('input[name="look"]').every((input) => input.type === "radio" && Boolean(input.closest("label"))) &&
+    new Set($$('input[name="look"]').map((input) => input.name)).size === 1);
+  check("each preview is drawn in its own look", $$(".look-preview").map((p) => p.dataset.look).join(",") === looksData.LOOKS.map((l) => l.id).join(","));
   check("previews are hidden from screen readers; the labels carry the meaning", $$(".look-preview").every((p) => p.getAttribute("aria-hidden") === "true") &&
     $$(".look-card-name").every((n) => n.textContent.trim().length > 3));
   check("the current look is the checked one", $(`input[name="look"]:checked`)?.value === startLook, $(`input[name="look"]:checked`)?.value);
