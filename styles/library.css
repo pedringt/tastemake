@@ -124,3 +124,5 @@
   text-underline-offset:3px;
 }
 .library-card .tastebreak-panel.is-offer { margin-top:6px; }
+
+.library-inline-remove { min-height:44px; padding:8px 4px; }
