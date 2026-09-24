@@ -90,7 +90,7 @@ const proposal = {
     evidence: ["ev:circe"],
     counter: [],
     domains: ["read"],
-    crossDomain: "none",
+    crossDomain: "untested",
     level: "supported",
     conditional: false,
     context: null
@@ -118,7 +118,7 @@ recordRevisionIfChanged(historyState, { ...entry, reason: "same interpretation, 
 eq("identical model interpretation does not create duplicate history", historyState.hypothesisHistory.length, 1);
 recordRevisionIfChanged(historyState, { ...entry, claim: "A materially revised working claim", reason: "new evidence" });
 eq("material model revision is appended", historyState.hypothesisHistory.length, 2);
-eq("new revision supersedes the prior revision", historyState.hypothesisHistory[1].supersedes, historyState.hypothesisHistory[0].revisionId);
+eq("new revision supersedes the prior revision", historyState.hypothesisHistory[1].supersedes, historyState.hypothesisHistory[0].id);
 
 console.log(`catalog/AI tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
