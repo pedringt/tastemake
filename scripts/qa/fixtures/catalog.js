@@ -1,4 +1,6 @@
-// QA-only synthetic/demo fixtures. Production code must never import this file.\n\nexport const favorites = [
+// QA-only synthetic/demo fixtures. Production code must never import this file.
+
+export const favorites = [
   { id: "lotr", title: "The Lord of the Rings", type: "book", displayLabel: "Book + film", domains: ["read", "watch"], note: "All-time favorite", selected: true },
   { id: "circe", title: "Circe", type: "book", domains: ["read"], note: "Mythic, adult, character-driven", selected: true },
   { id: "portal2", title: "Portal 2", type: "game", domains: ["play"], note: "Puzzle systems + specific humor", selected: true },
