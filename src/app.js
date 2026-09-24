@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
-import { bookmarkedFeedback, canKeepDiscovering, openingRecommendations } from "./model/taste.js";
+import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
@@ -19,7 +19,7 @@ import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback, toggleExpandedFeedback } from "./actions/recommendations.js";
+import { announceReaction, runInitialRecommendations, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback, toggleExpandedFeedback } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 
@@ -188,10 +188,8 @@ function finishSetup() {
     app.querySelector("[data-setup-name]")?.focus();
     return;
   }
-  const firstSetup = !state.setupComplete;
   state.displayName = name;
   applySetupPreferences();
-  if (firstSetup) state.recommendationSets = [openingRecommendations(state)];
   state.setupComplete = true;
   const target = canAccess(state.setupReturn) ? state.setupReturn : "favorites";
   state.setupReturn = "favorites";
@@ -486,7 +484,10 @@ app.addEventListener("click", async (event) => {
   if (action === "setup-done") finishSetup();
   if (action === "back-favorites") navigate("favorites");
   if (action === "view-model") navigate("model");
-  if (action === "show-recs") navigate("recommendations");
+  if (action === "show-recs") {
+    if (state.recommendationSets.length) navigate("recommendations");
+    else if (state.aiStatus !== AI_LOADING) await runInitialRecommendations({ render, updateStepper, announce, navigate });
+  }
 
   if (action === "view-bookmarks") navigate("bookmarks");
 
