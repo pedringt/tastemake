@@ -291,21 +291,16 @@ function renderNextSteps() {
     : "";
 
   if (!outOfPicks(state)) {
-    const loading = state.aiStatus === "loading";
     return `
       <div class="refresh-banner">
         <div>
           <span class="refresh-kicker">Nice. That is enough signal.</span>
-          <strong>Want a fresh set?</strong>
-          <p>Your reactions can now reshape what Tastemake shows next.</p>
-          <details class="ai-disclosure">
-            <summary>How this set is made</summary>
-            <p class="quality-note-help">When live AI is enabled, Tastemake sends this visit's typed taste evidence and eligible picks to Anthropic to choose and explain the next set. No name or contact details are included. If the live model is unavailable or its answer doesn't pass Tastemake's checks, the deterministic version takes over instead — that's always shown above, not only here.</p>
-          </details>
+          <strong>See what Tastemake learned.</strong>
+          <p>Check the working profile, then use it to keep discovering.</p>
           ${bookmarkNote(bookmarks)}
         </div>
         <div class="action-group recommendation-footer-actions">
-          <button class="button button-primary" type="button" data-action="keep-discovering" ${loading ? "disabled aria-busy=\"true\"" : ""}>${loading ? "Finding a set…" : "Keep discovering &rarr;"}</button>
+          <button class="button button-primary" type="button" data-action="view-model">See profile &rarr;</button>
           ${viewBookmarks}
         </div>
       </div>`;
