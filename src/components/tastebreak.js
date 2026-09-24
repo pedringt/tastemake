@@ -23,7 +23,7 @@ export function renderTastebreakPanel(itemId) {
   const { item } = feedback;
   const positive = isExperiencedPositive(feedback);
   const verb = positive ? "landed" : "didn't land";
-  const patterns = patternsFor(item);
+  const patterns = patternsFor(item, state);
   const draft = state.tastebreakDrafts[itemId];
   const saved = tastebreakFor(state, itemId);
 
