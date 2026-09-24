@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { nextRecommendations } from "../src/model/taste.js";
+import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 
 const MAX_BODY_BYTES = 160_000;
 const MAX_OUTPUT_TOKENS = 2000;   // the cap has to cover any thinking tokens as well as the JSON itself
@@ -68,7 +69,7 @@ export function liveConfig(env = process.env) {
 export function buildPickPrompt(ctx, count) {
   const safeContext = {
     evidence: ctx.evidence,
-    candidates: ctx.candidates.map(({ id, title, type, domains, about, hypotheses }) => ({ id, title, type, domains, about, hypotheses })),
+    candidates: ctx.candidates.map(({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres }) => ({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres })),
     curveball: ctx.curveball,
     statements: ctx.statements,
     contexts: ctx.contexts
@@ -172,19 +173,24 @@ function fallbackPayload(deterministicPicks, reason, meta = {}) {
 
 export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch } = {}) {
   const state = hydrateState(rawState);
-  const ctx = buildContext(state);
+  const retrieved = await retrieveCatalogCandidates(state, { env, fetchImpl });
+  const ctx = buildContext(state, retrieved);
   const deterministic = nextRecommendations(state);
-  if (!deterministic.length) return fallbackPayload(deterministic, "no eligible deterministic picks remain");
+  const eligibleIds = new Set(ctx.candidates.map((item) => item.id));
+  const groundedFallback = [...deterministic, ...retrieved]
+    .filter((item, index, all) => eligibleIds.has(item.id) && all.findIndex((other) => other.id === item.id) === index)
+    .slice(0, Math.min(5, ctx.candidates.length));
+  if (!groundedFallback.length) return fallbackPayload([], "no eligible catalog picks remain");
 
   const config = liveConfig(env);
-  if (!config.enabled) return fallbackPayload(deterministic, "live AI is not enabled");
+  if (!config.enabled) return fallbackPayload(groundedFallback, "live AI is not enabled", { catalogCandidates: retrieved.length });
 
   try {
-    const model = await callAnthropic({ prompt: buildPickPrompt(ctx, deterministic.length), env, fetchImpl });
+    const model = await callAnthropic({ prompt: buildPickPrompt(ctx, groundedFallback.length), env, fetchImpl });
     const validated = validatePicks(model.json, ctx);
-    const result = acceptOrFallback(validated, deterministic, { minAccepted: deterministic.length });
+    const result = acceptOrFallback(validated, groundedFallback, { minAccepted: groundedFallback.length });
     if (result.source !== "model") {
-      return fallbackPayload(deterministic, result.reason || "model output did not pass validation", {
+      return fallbackPayload(groundedFallback, result.reason || "model output did not pass validation", {
         model: model.model,
         usage: model.usage,
         paidCallMade: true
@@ -194,14 +200,14 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       source: "model",
       reason: null,
       picks: clientPicks(result.items),
-      meta: { model: model.model, usage: model.usage, rejected: result.rejected ?? 0, paidCallMade: true }
+      meta: { model: model.model, usage: model.usage, rejected: result.rejected ?? 0, paidCallMade: true, catalogCandidates: retrieved.length }
     };
   } catch (error) {
     const timedOut = error?.name === "AbortError";
     const reason = timedOut ? "model request timed out" : "model unavailable";
     // Visible in the Vercel logs for debugging; no key, no prompt, no response body.
     console.error("[tastemake-ai]", reason, error?.status ?? "", error?.anthropicType ?? "", error?.anthropicDetail ?? error?.message ?? "");
-    return fallbackPayload(deterministic, reason, {
+    return fallbackPayload(groundedFallback, reason, {
       // A refused call (bad key, unknown model) is not charged, so only count an attempt that got past the API's checks.
       paidCallMade: !timedOut && !error?.status,
       errorStatus: error?.status ?? null,
