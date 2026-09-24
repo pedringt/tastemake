@@ -1,4 +1,6 @@
-import { domainFilters } from "../data/catalog.js";
+import { domainFilterOptions } from "../data/domains.js";
+
+const domainFilters = domainFilterOptions();
 
 export function itemMatchesDomain(item, filter) {
   return filter === "all" || item.domains?.includes(filter);
