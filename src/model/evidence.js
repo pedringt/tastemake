@@ -17,7 +17,7 @@ export const EVIDENCE_KINDS = {
   "experienced-strong-positive": { class: "experienced", polarity: 1, taste: 2 },
   "experienced-positive": { class: "experienced", polarity: 1, taste: 1.25 },
   "experienced-negative": { class: "experienced", polarity: -1, taste: -2 },
-  "starter-favorite": { class: "experienced", polarity: 1, taste: 0 },   // told it; never validates a pattern by itself
+  "starter-favorite": { class: "experienced", polarity: 1, taste: 2 },   // choosing a Favorite means the user already tried and loved it
   "intent-positive": { class: "intent", polarity: 1, taste: 0 },
   "intent-negative": { class: "intent", polarity: -1, taste: 0 },
   "intent-declined": { class: "intent", polarity: -1, taste: 0 },          // "Not interested": not a dislike
@@ -84,7 +84,7 @@ function sourceOf(feedback) {
 // and what its citations must point at: `ref` is the stable id to cite.
 export function evidenceRecords(state) {
   const starters = starterItems(state)
-    .map((item) => record(item, "starter-favorite", { source: "starter-mix" }));
+    .map((item) => record(item, "starter-favorite", { source: "favorites" }));
   const reactions = Object.values(state.feedbackByRecommendation)
     .filter((feedback) => !state.selectedFavorites.has(feedback.item.id))
     .map((feedback) => record(feedback.item, evidenceKind(feedback), {
@@ -108,7 +108,7 @@ function record(item, kind, extra) {
     class: info.class,
     polarity: info.polarity,
     countsAsTaste: info.class === "experienced",   // taste evidence (starter favorites included)
-    weight: info.taste,                           // how much it moves a pattern (starters: 0)
+    weight: info.taste,                           // how much it moves a pattern
     authority: "user",          // evidence is always something the user did or said
     context: null,              // e.g. "family movie night"; not collected yet (#8 taste modes)
     ...extra
