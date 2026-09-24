@@ -106,13 +106,23 @@ function setLook(id) {
   // Treat this as a presentation-only change: keep the user's viewport exactly where it was.
   const scrollX = window.scrollX;
   const scrollY = window.scrollY;
+  const root = document.documentElement;
+  const previousOverflowAnchor = root.style.overflowAnchor;
+  root.style.overflowAnchor = "none";
   state.look = id;
-  document.documentElement.dataset.look = id;
+  root.dataset.look = id;
   document.querySelectorAll(".look-card").forEach((card) => card.classList.toggle("is-selected", card.dataset.lookChoice === id));
   const done = app.querySelector('[data-action="look-done"]');
   if (done) done.textContent = lookContinueLabel();
-  window.scrollTo(scrollX, scrollY);
-  requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+  const restoreViewport = () => window.scrollTo(scrollX, scrollY);
+  restoreViewport();
+  requestAnimationFrame(() => {
+    restoreViewport();
+    requestAnimationFrame(() => {
+      restoreViewport();
+      root.style.overflowAnchor = previousOverflowAnchor;
+    });
+  });
   announce(`Look: ${lookLabel(id)}.`);
 }
 
