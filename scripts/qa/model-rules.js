@@ -379,9 +379,9 @@ export async function run() {
     eq("total is everything told", told.total, told.counts.length + told.steers.length);
     eq("provenance: told through search", told.counts.find((e) => e.id === item.id).source, "Told through search");
     eq("provenance: added by you", told.counts.find((e) => e.id === custom.id).source, "Added by you in search");
-    eq("status wording for a bookmark", told.steers.find((e) => e.id === other.id).status, "Bookmarked (haven't tried)");
+    eq("status wording for Try Next", told.steers.find((e) => e.id === other.id).status, "Try Next (haven't tried)");
     const bookmarked = mk(); S.applySearchAction(bookmarked, other, "bookmark"); S.applySearchAction(bookmarked, other, "loved");
-    eq("provenance: bookmarked, then tried", MINE.toldItems(bookmarked).counts.find((e) => e.id === other.id).source, "Bookmarked, then tried");
+    eq("provenance: Try Next, then tried", MINE.toldItems(bookmarked).counts.find((e) => e.id === other.id).source, "Try Next, then tried");
     const listedTwice = mk(); listedTwice.selectedFavorites.add(item.id); S.applySearchAction(listedTwice, item, "loved");
     eq("a starter favorite is never listed twice", [...MINE.toldItems(listedTwice).counts, ...MINE.toldItems(listedTwice).steers].filter((e) => e.id === item.id).length <= 1, true);
     eq("the ledger agrees with the Library", LIB.libraryItems(s).library.map((e) => e.id).sort().join(), told.counts.filter((e) => !e.starter && e.positive).map((e) => e.id).sort().join());
@@ -510,7 +510,7 @@ export async function run() {
     eq("one record per thing told (starters + reactions)", recs.length, st.selectedFavorites.size + 4);
     eq("refs are unique and stable (ev:<itemId>)", new Set(recs.map((r) => r.ref)).size === recs.length && recs.every((r) => r.ref === `ev:${r.itemId}`), true);
     eq("every record's authority is the user", recs.every((r) => r.authority === "user"), true);
-    eq("starter favorites are experienced evidence with zero weight", recs.filter((r) => r.kind === "starter-favorite").every((r) => r.countsAsTaste && r.weight === 0), true);
+    eq("Favorites are experienced strong-positive evidence", recs.filter((r) => r.kind === "starter-favorite").every((r) => r.countsAsTaste && r.weight === 2 && r.polarity === 1), true);
     eq("a bookmark record does not count as taste", recs.find((r) => r.itemId === r1.id).countsAsTaste, false);
     eq("a Loved record counts, with its weight", `${recs.find((r) => r.itemId === r0.id).countsAsTaste}|${recs.find((r) => r.itemId === r0.id).weight}`, "true|2");
     eq("provenance: search / added", `${recs.find((r) => r.itemId === r0.id).source}|${recs.find((r) => r.itemId === added.id).source}`, "search|added");
