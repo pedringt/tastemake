@@ -88,6 +88,8 @@ export function handleMineChange(event, { render, restoreFocus, announce }) {
     const id = area.dataset.mineArea;
     state.areas[id] = area.checked;
     if (!AREAS.some((a) => state.areas[a.id] !== false)) state.areas[id] = true;   // never all off
+    const enabled = AREAS.filter((a) => state.areas[a.id] !== false).map((a) => a.id);
+    state.setupAreas = enabled.length === AREAS.length ? new Set(["all"]) : new Set(enabled);
     const label = AREAS.find((a) => a.id === id).label;
     render();
     restoreFocus(`[data-mine-area="${id}"]`);
@@ -96,6 +98,7 @@ export function handleMineChange(event, { render, restoreFocus, announce }) {
   }
   if (event.target.closest("[data-mine-curveball]")) {
     state.curveball = event.target.checked;
+    state.recommendationStyle = state.curveball ? "balanced" : "safe";
     render();
     restoreFocus("[data-mine-curveball]");
     announce(`Curveball is ${state.curveball ? "on" : "off"} for new sets.`);
