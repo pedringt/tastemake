@@ -5,11 +5,13 @@ export const routes = {
   library: "/library",
   bookmarks: "/bookmarks",
   look: "/look",
+  setup: "/setup",
   mine: "/my-tastemake"
 };
 
 export function screenFromPath(pathname = window.location.pathname) {
   const normalized = pathname.replace(/\/$/, "") || "/";
+  if (normalized === "/") return "look";
   const entry = Object.entries(routes).find(([, path]) => path === normalized);
   return entry ? entry[0] : "favorites";
 }
