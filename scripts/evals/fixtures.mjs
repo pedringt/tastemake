@@ -10,9 +10,14 @@ const catalogItems = [...recommendations, ...followUpPool];
 const byId = (id) => catalogItems.find((item) => item.id === id);
 
 export function emptyState(starterIds = favorites.filter((f) => f.selected).map((f) => f.id)) {
+  const starterItems = favorites.filter((item) => starterIds.includes(item.id));
   return {
     selectedFavorites: new Set(starterIds), feedbackByRecommendation: {}, recommendationSets: [recommendations],
-    libraryFavorites: new Set(), customItems: {}, blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(),
+    libraryFavorites: new Set(),
+    // Production favorites are real catalog/customItems now. Keep deterministic fixture titles only inside
+    // the eval harness, but store them in the same state shape the product uses so evidenceRecords sees them.
+    customItems: Object.fromEntries(starterItems.map((item) => [item.id, item])),
+    blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(),
     areas: Object.fromEntries(visibleDomains().map((d) => [d.id, true])), curveball: true, patternStatements: []
   };
 }
