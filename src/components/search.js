@@ -171,6 +171,7 @@ export function initSearch({ onChange, announce, goTo }) {
   }
 
   async function refreshExternal() {
+    if (ui.mode !== "results") return;
     const query = ui.query.trim();
     if (query.length < 2) {
       ui.external = [];
@@ -245,6 +246,7 @@ export function initSearch({ onChange, announce, goTo }) {
 
     const pick = event.target.closest("[data-search-pick]");
     if (pick) {
+      clearTimeout(catalogTimer);
       catalogController?.abort();
       catalogSeq += 1;
       ui.catalogLoading = false;
@@ -264,6 +266,7 @@ export function initSearch({ onChange, announce, goTo }) {
     }
 
     if (event.target.closest("[data-search-add]")) {
+      clearTimeout(catalogTimer);
       catalogController?.abort();
       catalogSeq += 1;
       ui.catalogLoading = false;
