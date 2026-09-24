@@ -16,7 +16,7 @@
 export async function run() {
   const { state } = await import("/src/state.js");
   const taste = await import("/src/model/taste.js");
-  const catalog = await import("/src/data/catalog.js");
+  const catalog = await import("/scripts/qa/fixtures/catalog.js");
   const blind = await import("/src/model/blindspots.js");
   const mapModel = await import("/src/model/tastemap.js");
   const layout = await import("/scripts/qa/layout-check.js");
