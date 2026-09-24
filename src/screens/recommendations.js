@@ -6,8 +6,6 @@ import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
-import { hypotheses } from "../data/catalog.js";
-import { patternConfidence } from "../model/tastemap.js";
 
 export function ratingLabel(value) {
   return ({
@@ -174,16 +172,16 @@ function mediaArt(item, index) {
 // It names the pattern being tested (when there is one), is cautious when that pattern is still
 // Emerging, and calls out a curveball as a deliberate break from the pattern rather than a miss.
 function testedPattern(item) {
-  const id = item.ai?.tests ?? item.hypotheses?.[0];
+  const id = item.ai?.tests ?? null;
   if (!id) return null;
-  return hypotheses.find((p) => hypothesisMatches([p.id], id) || hypothesisMatches([id], p.id)) ?? null;
+  return (state.modelHypotheses ?? []).find((p) => hypothesisMatches([p.id], id) || hypothesisMatches([id], p.id)) ?? null;
 }
 
 function whyKicker(item, pattern) {
   const isCurveball = item.surprise || item.ai?.kind === "curveball";
   if (isCurveball) return "Exploratory pick";
   if (!pattern) return "Why this one";
-  const level = patternConfidence(state, pattern).level;
+  const level = String(pattern.strength ?? "Emerging");
   return level === "Emerging" ? "A first test" : "Testing a pattern";
 }
 
@@ -273,11 +271,14 @@ function renderAiStatus() {
       </div>`;
   }
   if (!state.aiMessage) return "";
+  const cls = state.aiSource === "model" ? "is-live" : "is-fallback";
+  const kicker = state.aiSource === "model" ? "Live AI + product rules" : state.aiSource === "catalog" ? "Real catalog fallback" : "Unavailable";
+  const strong = state.aiSource === "model" ? "This set passed Tastemake's checks." : state.aiSource === "catalog" ? "These picks came from the real catalog." : "Tastemake did not substitute demo picks.";
   return `
-    <div class="refresh-banner ${state.aiSource === "deterministic" ? "is-fallback" : "is-live"}">
+    <div class="refresh-banner ${cls}">
       <div>
-        <span class="refresh-kicker">${state.aiSource === "model" ? "Live AI + product rules" : "Safe fallback"}</span>
-        <strong>${state.aiSource === "model" ? "This set passed Tastemake's checks." : "The deterministic version took over."}</strong>
+        <span class="refresh-kicker">${kicker}</span>
+        <strong>${strong}</strong>
         <p>${state.aiMessage}</p>
       </div>
     </div>`;
@@ -326,8 +327,8 @@ function renderNextSteps() {
     <div class="refresh-banner is-finished">
       <div>
         <span class="refresh-kicker">Prototype checkpoint</span>
-        <strong>That is every pick this demo has.</strong>
-        <p>Tastemake has reached the end of the currently available candidate set. Your reactions are still saved as evidence for the next set.</p>
+        <strong>No more eligible catalog matches right now.</strong>
+        <p>Tastemake did not fall back to a seeded demo list. Change your favorites or areas to give it a different starting point.</p>
         ${bookmarkNote(bookmarks)}
       </div>
       <div class="action-group recommendation-footer-actions">
@@ -380,7 +381,7 @@ export function renderRecommendations() {
       <div class="editorial-grid">
         ${visible.length
           ? visible.map(recommendationCard).join("")
-          : `<div class="filter-empty recommendation-empty">No picks in this category in the current set. Try All.</div>`}
+          : `<div class="filter-empty recommendation-empty">${items.length ? "No picks in this category in the current set. Try All." : "No real catalog recommendations are available yet. Change your favorites or try again."}</div>`}
       </div>
 
       <div class="recommendation-footer page-actions">
