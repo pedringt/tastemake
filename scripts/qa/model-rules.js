@@ -6,7 +6,7 @@
 // Returns { passed, failed, total, failures }. A clean run has failed === 0.
 
 export async function run() {
-  const catalog = await import("/src/data/catalog.js");
+  const catalog = await import("/scripts/qa/fixtures/catalog.js");
   const T = await import("/src/model/taste.js");
   const LIB = await import("/src/model/library.js");
   const S = await import("/src/model/search.js");
