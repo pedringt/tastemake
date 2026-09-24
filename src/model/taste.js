@@ -1,4 +1,3 @@
-import { followUpPool, recommendations } from "../data/catalog.js";
 import { domainById, visibleDomains } from "../data/domains.js";
 import { isExperienced, isExperiencedPositive, isSaved, tasteWeight } from "./evidence.js";
 
@@ -64,15 +63,6 @@ function statementFactor(state, hypothesisId) {
   return s.weight === "lot" ? 1.5 : s.weight === "little" ? 0.5 : 1;
 }
 
-function hypothesisSignal(state, hypothesisId, feedbacks = Object.values(state.feedbackByRecommendation)) {
-  const signal = feedbacks.reduce((sum, feedback) => {
-    if (!hypothesisMatches(feedback.item.hypotheses, hypothesisId) || exonerated(state, feedback, hypothesisId)) return sum;
-    return sum + recommendationDelta(feedback);
-  }, 0);
-  const factor = statementFactor(state, hypothesisId);
-  return factor === 1 ? signal : signal * factor;
-}
-
 // The user said they actually tried it (the only reactions that count as taste evidence).
 // Reactions to picks the user has NOT tried (plain More/Less, Not interested, bookmarks). They steer
 // what comes next but are not taste evidence, so the Taste Profile shows them as a separate "lean"
@@ -113,101 +103,26 @@ export function modelUpdateFor(state, hypothesis) {
 }
 
 function shownRecommendations(state) {
-  return state.recommendationSets.flat();
+  return (state.recommendationSets ?? []).flat();
 }
 
-// Feedback in the order the items were shown. Order matters: scores are floating-point sums,
-// and this keeps round two identical to the original two-round behavior.
-function feedbackInShownOrder(state) {
-  return shownRecommendations(state).map((item) => state.feedbackByRecommendation[item.id]).filter(Boolean);
-}
-
-// The next set comes from the follow-up pool minus anything already shown, ranked by everything
-// reacted to so far. With five or more left it is four picks plus one exploratory pick; with fewer,
-// the remainder is shown as ordinary picks. An empty list means this demo has run out of picks.
-// Areas (#8) are a setting, not taste: an item is offered while at least one of its areas is on.
-// The area toggles are the visible domains in the registry (src/data/domains.js).
+// Areas are settings, not taste evidence. The server-side catalog pipeline uses the same rule.
 export const AREAS = visibleDomains().map(({ id, label, about }) => ({ id, label, about }));
-// Only domains the product shows can be offered (future domains in the registry are never recommended).
 export function areaOn(state, item) {
   const areas = state.areas;
   if (!item.domains?.length) return true;
   return item.domains.some((domain) => domainById(domain)?.visible && areas?.[domain] !== false);
 }
 
-// True when picks are left but the areas turned off are hiding all of them.
-export function picksHiddenByAreas(state) {
-  return nextRecommendations(state).length === 0 && nextRecommendations({ ...state, areas: undefined }).length > 0;
-}
-
-export function openingRecommendations(state) {
-  const pool = [...recommendations, ...followUpPool].filter((item) => areaOn(state, item));
-  const asOpening = (item, index, surprise = false) => ({
-    ...item,
-    rank: surprise ? null : index + 1,
-    fit: item.fit ?? (surprise ? "Exploratory fit" : "Promising fit"),
-    prediction: item.prediction ?? "Worth testing",
-    surprise,
-    reason: surprise && !item.surprise
-      ? `${item.reason} This is the less-obvious option for your opening set.`
-      : item.reason
-  });
-
-  if (pool.length <= 5) return pool.map((item, index) => asOpening(item, index, false));
-
-  if (state.recommendationStyle === "safe") {
-    return pool.slice(0, 5).map((item, index) => asOpening(item, index, false));
-  }
-
-  const surpriseIndex = state.recommendationStyle === "adventurous" ? Math.min(6, pool.length - 1) : 4;
-  const surpriseSource = pool[surpriseIndex];
-  const fits = pool.filter((_, index) => index !== surpriseIndex).slice(0, 4);
-  return [...fits.map((item, index) => asOpening(item, index, false)), asOpening(surpriseSource, 4, true)];
-}
-
-export function nextRecommendations(state) {
-  const shownIds = new Set(shownRecommendations(state).map((item) => item.id));
-  // Anything the user already told us about (for example through search) is never recommended again,
-  // and explicit reactions to items outside the shown sets still steer what comes next.
-  const reactedIds = new Set(Object.keys(state.feedbackByRecommendation));
-  const feedbacks = [
-    ...feedbackInShownOrder(state),
-    ...Object.values(state.feedbackByRecommendation).filter((feedback) => !shownIds.has(feedback.item.id))
-  ];
-  const scored = followUpPool.filter((item) => !shownIds.has(item.id) && !reactedIds.has(item.id) && areaOn(state, item)).map((item) => {
-    const score = item.hypotheses.reduce((sum, id) => sum + hypothesisSignal(state, id, feedbacks), 0);
-    return { ...item, score };
-  }).sort((a, b) => b.score - a.score);
-
-  const asPick = (item, index) => ({
-    ...item,
-    rank: index + 1,
-    fit: item.score > 1 ? "Stronger after feedback" : item.score < 0 ? "Cautious fit" : "Promising fit",
-    prediction: item.score > 1 ? "Likely to fit" : "Worth testing",
-    surprise: false
-  });
-
-  // With the curveball setting off (#8), a new set is just the five best picks, none of them the exploratory one.
-  if (scored.length < 5) return scored.map(asPick);
-  if (state.curveball === false) return scored.slice(0, 5).map(asPick);
-
-  const surpriseIndex = state.recommendationStyle === "adventurous" ? Math.min(6, scored.length - 1) : 4;
-  const surpriseSource = scored[surpriseIndex];
-  const strongFits = scored.filter((_, index) => index !== surpriseIndex).slice(0, 4);
-  const surprise = {
-    ...surpriseSource,
-    rank: null,
-    fit: "Exploratory fit",
-    prediction: "Worth testing",
-    surprise: true,
-    reason: `${surpriseSource.reason} This is the less-obvious option for the next round.`
-  };
-
-  return [...strongFits.map(asPick), surprise];
+// With a live catalog there is no hidden hand-written pool to inspect locally. Exhaustion is learned
+// only when the recommendation endpoint cannot find another eligible catalog candidate.
+export function picksHiddenByAreas() {
+  return false;
 }
 
 export function activeRecommendations(state) {
-  return state.recommendationSets[state.recommendationSets.length - 1];
+  const sets = state.recommendationSets ?? [];
+  return sets.length ? sets[sets.length - 1] : [];
 }
 
 export function currentRoundRatedCount(state) {
@@ -215,16 +130,20 @@ export function currentRoundRatedCount(state) {
 }
 
 export function currentRoundComplete(state) {
-  return currentRoundRatedCount(state) === activeRecommendations(state).length;
+  const active = activeRecommendations(state);
+  return active.length > 0 && currentRoundRatedCount(state) === active.length;
 }
 
-// Keep discovering needs some signal from the current set (not every card) and something left to show.
+// One explicit reaction is enough to ask the real catalog for another set. The endpoint is responsible
+// for deciding whether more eligible candidates exist.
 export function canKeepDiscovering(state) {
-  return currentRoundRatedCount(state) > 0 && nextRecommendations(state).length > 0;
+  return activeRecommendations(state).length > 0
+    && currentRoundRatedCount(state) > 0
+    && state.recommendationExhausted !== true;
 }
 
 export function outOfPicks(state) {
-  return nextRecommendations(state).length === 0;
+  return state.recommendationExhausted === true;
 }
 
 // Bookmarks are untried items the user saved. They are intent, not taste evidence.
