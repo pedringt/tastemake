@@ -1,4 +1,4 @@
-import { followUpPool } from "../data/catalog.js";
+import { followUpPool, recommendations } from "../data/catalog.js";
 import { domainById, visibleDomains } from "../data/domains.js";
 import { isExperienced, isExperiencedPositive, isSaved, tasteWeight } from "./evidence.js";
 
@@ -138,6 +138,31 @@ export function areaOn(state, item) {
 // True when picks are left but the areas turned off are hiding all of them.
 export function picksHiddenByAreas(state) {
   return nextRecommendations(state).length === 0 && nextRecommendations({ ...state, areas: undefined }).length > 0;
+}
+
+export function openingRecommendations(state) {
+  const pool = [...recommendations, ...followUpPool].filter((item) => areaOn(state, item));
+  const asOpening = (item, index, surprise = false) => ({
+    ...item,
+    rank: surprise ? null : index + 1,
+    fit: item.fit ?? (surprise ? "Exploratory fit" : "Promising fit"),
+    prediction: item.prediction ?? "Worth testing",
+    surprise,
+    reason: surprise && !item.surprise
+      ? `${item.reason} This is the less-obvious option for your opening set.`
+      : item.reason
+  });
+
+  if (pool.length <= 5) return pool.map((item, index) => asOpening(item, index, false));
+
+  if (state.recommendationStyle === "safe") {
+    return pool.slice(0, 5).map((item, index) => asOpening(item, index, false));
+  }
+
+  const surpriseIndex = state.recommendationStyle === "adventurous" ? Math.min(6, pool.length - 1) : 4;
+  const surpriseSource = pool[surpriseIndex];
+  const fits = pool.filter((_, index) => index !== surpriseIndex).slice(0, 4);
+  return [...fits.map((item, index) => asOpening(item, index, false)), asOpening(surpriseSource, 4, true)];
 }
 
 export function nextRecommendations(state) {
