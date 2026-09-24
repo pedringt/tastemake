@@ -3,11 +3,13 @@ import { starterItems } from "../model/starters.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { renderStickerField } from "../components/stickers.js";
+import { renderArtwork } from "../components/artwork.js";
 
 function starterCard(item, index) {
   const blurb = item.about ?? item.note ?? "One of the things you love.";
   return `
-    <article class="starter-card" data-starter-id="${item.id}">
+    <article class="starter-card ${item.artwork ? "has-artwork" : ""}" data-starter-id="${item.id}">
+      ${item.artwork ? renderArtwork(item, "starter-artwork") : ""}
       <span class="starter-index">0${index + 1}</span>
       <span class="starter-medium">${esc(displayLabel(item))}</span>
       <h3>${esc(item.title)}</h3>
@@ -41,9 +43,9 @@ export function renderFavorites() {
       ${renderStickerField("favorites")}
       <div class="favorites-hero starter-hero">
         <div>
-          <p class="kicker">Build your starter mix</p>
+          <p class="kicker">Choose your favorites</p>
           <h1>Start with something you <span class="marker-word">love.</span></h1>
-          <p class="lede">Search for books, movies, shows, or games that feel especially you. Four strong examples are enough for Tastemake to make its first guesses.</p>
+          <p class="lede">Pick books, movies, shows, or games you've already tried and loved. Four favorites are enough for Tastemake to make its first guesses.</p>
           <button class="button button-primary starter-search" type="button" data-action="open-search">Search for something you love</button>
         </div>
         <div class="favorites-side-note" aria-hidden="true">
@@ -58,19 +60,19 @@ export function renderFavorites() {
         <span>${count >= 4 ? "Enough to start." : "Add a few favorites to teach Tastemake where to begin."}</span>
       </div>
 
-      <h2 class="visually-hidden">Your starter mix</h2>
-      <div class="starter-grid" aria-label="Your starter mix">
+      <h2 class="visually-hidden">Your favorites</h2>
+      <div class="starter-grid" aria-label="Your favorites">
         ${slots.join("")}
       </div>
 
       <div class="favorites-footer">
         <div class="selection-counter">
           <span class="selection-number">${count}</span>
-          <span>in your starter mix<br /><small>4 is enough to start</small></span>
+          <span>favorites<br /><small>4 is enough to start</small></span>
         </div>
         <div class="action-group">
-          ${state.onboarded ? `<button class="button button-secondary" type="button" data-action="view-model" ${count < 4 ? "disabled" : ""}>Peek at my taste</button>` : ""}
-          <button class="button button-primary" type="button" data-action="show-recs" ${count < 4 ? "disabled" : ""}>${state.onboarded ? "Show me what I might like" : "Show me my first picks"} <span aria-hidden="true">&rarr;</span></button>
+          ${state.onboarded ? `<button class="button button-secondary" type="button" data-action="view-model" ${count < 4 ? "disabled" : ""}>See profile</button>` : ""}
+          <button class="button button-primary" type="button" data-action="show-recs" ${count < 4 ? "disabled" : ""}>See recommendations <span aria-hidden="true">&rarr;</span></button>
         </div>
       </div>
     </section>`;

@@ -62,3 +62,23 @@ export function recordRevision(state, entry) {
 export function allRevisions(state) {
   return state.hypothesisHistory ?? [];
 }
+
+
+function stableRevisionShape(entry) {
+  return JSON.stringify({
+    claim: entry?.claim ?? null,
+    supports: [...(entry?.supports ?? [])].sort(),
+    counters: [...(entry?.counters ?? [])].sort(),
+    domains: [...(entry?.domains ?? [])].sort(),
+    level: entry?.level ?? null,
+    origin: entry?.origin ?? null
+  });
+}
+
+// #86: model refreshes may return the same interpretation with slightly different transport metadata.
+// Do not turn those no-op refreshes into fake history. User-confirmed and model origins stay distinct.
+export function recordRevisionIfChanged(state, entry) {
+  const previous = latestRevision(state, entry.hypothesisId);
+  if (previous && stableRevisionShape(previous) === stableRevisionShape(entry)) return previous;
+  return recordRevision(state, entry);
+}

@@ -123,10 +123,10 @@ export function makeCustomItem(title, mediumKey) {
 
 // Where this item stands in Tastemake right now (shown in results and in the action sheet).
 export function itemStatus(state, item) {
-  if (state.selectedFavorites.has(item.id)) return { key: "starter", label: "One of your starter favorites" };
+  if (state.selectedFavorites.has(item.id)) return { key: "starter", label: "Favorite" };
   const feedback = state.feedbackByRecommendation[item.id];
   if (!feedback) return { key: "none", label: "Not in your Tastemake yet" };
-  if (isBookmarked(feedback)) return { key: "bookmarked", label: "Bookmarked" };
+  if (isBookmarked(feedback)) return { key: "bookmarked", label: "Try Next" };
   if (isStrongPositive(feedback)) return { key: "loved", label: state.libraryFavorites.has(item.id) ? "Loved it (a Favorite)" : "Loved it" };
   if (isExperiencedPositive(feedback)) return { key: "liked", label: "Liked it" };
   if (isExperiencedNegative(feedback)) return { key: "disliked", label: "Didn't like it" };
@@ -138,13 +138,13 @@ const OUTCOMES = {
   loved: { rating: "more", detail: "loved-before", said: "marked Loved it before" },
   liked: { rating: "more", detail: "liked-before", said: "marked Liked it before" },
   disliked: { rating: "less", detail: "tried-disliked", said: "marked Tried it and disliked it" },
-  bookmark: { rating: "not-tried", detail: "bookmarked", said: "bookmarked" },
+  bookmark: { rating: "not-tried", detail: "bookmarked", said: "saved to Try Next" },
   "not-interested": { rating: "less", detail: "not-interested", said: "marked Not interested" }
 };
 
 // The only way search changes anything. Returns a sentence for the live region, or null if nothing changed.
 export function applySearchAction(state, item, action) {
-  if (state.selectedFavorites.has(item.id)) return null;   // starter favorites are managed on the Favorites page
+  if (state.selectedFavorites.has(item.id)) return null;   // Favorites are managed on the Favorites page
   const existing = state.feedbackByRecommendation[item.id];
 
   if (action === "remove") {
@@ -169,7 +169,7 @@ export function applySearchAction(state, item, action) {
   const outcome = OUTCOMES[action];
   if (!outcome) return null;
 
-  if (item.custom) state.customItems[item.id] = item;   // an added item only exists once the user acts on it
+  if (item.custom || item.provider) state.customItems[item.id] = item;   // an added item only exists once the user acts on it
   const entry = {
     item,
     rating: outcome.rating,

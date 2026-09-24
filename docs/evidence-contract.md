@@ -28,7 +28,7 @@ Every action falls into exactly one class:
 | experienced-strong-positive | experienced | +2 | Loved it before |
 | experienced-positive | experienced | +1.25 | Liked it before |
 | experienced-negative | experienced | −2 | Tried it and disliked it |
-| starter-favorite | experienced | 0 | Picked on Favorites (never validates a pattern alone) |
+| starter-favorite | experienced | +2 | Picked on Favorites (experienced + loved by definition) |
 | intent-positive | intent | 0 | More (untried) |
 | intent-negative | intent | 0 | Less (untried) |
 | intent-declined | intent | 0 | Not interested |
@@ -43,15 +43,15 @@ Weights are the current values in code. "Taste" is `tasteDelta`; "Steer" is `rec
 
 | Action | Class | Taste | Steer | Notes |
 |---|---|---:|---:|---|
-| Starter favorite picked | Experienced | counts | n/a | Listed as things the user told it; never confirms a pattern by itself (see Confidence) |
+| **Favorite picked** | Experienced | **+2** | n/a | Favorites are explicitly things the user already tried and loved |
 | **Loved it before** | Experienced | **+2** | +1.75 | Only offered after "More" |
 | **Liked it before** | Experienced | **+1.25** | +1.45 | Only offered after "More" |
 | **Tried it and disliked it** | Experienced | **−2** | −1.75 | Only offered after "Less". One never weakens a pattern; two do |
 | More (untried) | Intent | 0 | +1 | Reaction to a pitch, not an experience |
 | Less (untried) | Intent | 0 | −1 | Means "less like this in what you show me". It does **not** mean "I dislike this kind of thing" |
 | Not interested | Intent | 0 | −1.5 | Stronger negative steer than plain Less; still not taste, and not a dislike |
-| Bookmark | Intent | 0 | +0.35 | Save marker on an untried item. Leaves Bookmarks once the user tries it |
-| Not tried (no bookmark) | Neutral | 0 | 0 | |
+| Try Next save | Intent | 0 | +0.35 | Save marker on an untried item. Leaves Try Next once the user tries it |
+| Not tried (not saved) | Neutral | 0 | 0 | |
 | Too predictable | Discovery note | 0 | 0 | Says the pick was low-novelty; must never weaken taste |
 | Surprised me | Discovery note | 0 | 0 | Only after Loved/Liked it before; adds no weight of its own |
 | Search, typing, opening a result | Lookup | 0 | 0 | Only the explicit action buttons write anything |
@@ -65,13 +65,13 @@ Anything reacted to (even through search) is never recommended again.
 ### Decisions this table records
 - **Less** is a steering preference, not a dislike. (#27)
 - **Not interested** only steers ranking; it creates no negative lean in the Taste Profile. (#27)
-- **Bookmarks** are intent only, with their own page, and are never taste. (#12, #24)
+- **Try Next saves** are intent only, with their own page, and are never taste. (#12, #24)
 - A **repeated intent signal** does not become taste no matter how many there are. Untried reactions are shown on the Taste Profile only as a separate, labeled **lean** ("from N picks you haven't tried"), and only when the net signal is clear.
 - One experienced dislike never weakens a pattern; it takes two. (Sept 20)
 
 ## What patterns are, and how sure Tastemake is (#26)
 
-In this prototype the taste **patterns are a fixed, pre-written starting set**. They do not change with the user's favorites. What changes is *how much the user's own reactions back each one*:
+The deterministic fallback uses a **fixed, pre-written starting set**. When live profile AI is explicitly enabled, Tastemake may propose and revise working hypotheses from experienced evidence, subject to the same validation and user-correction rules:
 
 | Level | Meaning |
 |---|---|
@@ -81,7 +81,7 @@ In this prototype the taste **patterns are a fixed, pre-written starting set**. 
 | **Still learning** | Something the user tried didn't land, and it isn't clearly backed. One miss never weakens a pattern |
 | **Less certain** | Two or more misses that outweigh the support |
 
-Two different ideas are kept apart: a pattern can be **plausible as a starting point** (inferred) while being **weakly validated** (not yet confirmed by anything the user tried). Only experienced reactions can move a pattern up; starter favorites alone never make anything Supported or Strong. A Blind Spot that says a pattern *held up* removes that miss from the count against it.
+Two different ideas are kept apart: a pattern can be **plausible as a starting point** (inferred) while being **weakly validated** (not yet confirmed by anything the user tried). Favorites are experienced strong-positive evidence. In a live profile they may support a working hypothesis when that hypothesis explicitly cites them; deterministic legacy patterns still rely on tagged reaction evidence because the original Favorites catalog has no pattern tags. A Blind Spot that says a pattern *held up* removes that miss from the count against it.
 
 ## What a live model must be given and must obey
 
@@ -96,6 +96,6 @@ If a model ever chooses recommendations, writes explanations or proposes pattern
 7. **Decided (Sept 22):** a user's explicit statement about a pattern ("not really me", "matters a lot", "accurate") is its own authority, **user-confirmed**, which outranks model inference. It is not taste evidence (it is not an experience of anything) and never raises a confidence level. A model must treat it as a hard constraint. Built (Sept 22): `src/model/statements.js`. "Not really me" sets that pattern's ranking weight to 0 and excludes it from what a model may use; "matters a lot / a little" is x1.5 / x0.5; "accurate" marks it user-confirmed. None of them changes evidence or confidence.
 
 ## Open
-- Whether a fixed starting set of patterns stays once a model can infer them from a real user's favorites.
+- How often live hypotheses should refresh once the feature has enough real-user evidence.
 - How "Less" repeated across an area should be surfaced (as a lean only, today).
 - Taste modes / contexts (#8): the same person, different tastes in different situations.

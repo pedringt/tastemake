@@ -32,10 +32,10 @@ function checkShape(obj, fields) {
 }
 
 // The strongest level the cited evidence allows (mirrors patternConfidence in tastemap.js):
-//   starter favorites alone never go above "emerging"; "strong" needs 3+ tried things backing it,
+//   Favorites are explicit experienced/loved evidence. "strong" needs 3+ experienced things backing it,
 //   two clear of what counts against it.
 export function allowedLevel(supportRecords, counterRecords) {
-  const tried = supportRecords.filter((r) => r.kind !== "starter-favorite").length;
+  const tried = supportRecords.length;
   const against = counterRecords.length;
   if (tried >= 3 && tried - against >= 2) return "strong";
   if (tried >= 1 && tried > against) return "supported";

@@ -6,11 +6,12 @@ import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { renderTastebreakPanel } from "../components/tastebreak.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { renderArtwork } from "../components/artwork.js";
 
-// Library: things the user has actually tried and liked, plus their starter favorites.
+// Library: things the user has actually tried and liked, plus their Favorites.
 // Everything here is derived (see model/library.js); the buttons just correct the underlying reaction.
 
-const SOURCE_LABEL = { starter: "Starter pick", loved: "Loved it", liked: "Liked it" };
+const SOURCE_LABEL = { starter: "Favorite", loved: "Loved it", liked: "Liked it" };
 
 function reactionButton(itemId, action, label, pressed) {
   return `
@@ -44,7 +45,8 @@ function libraryCard(entry) {
       </div>`;
 
   return `
-    <article class="library-card ${entry.isFavorite ? "is-favorite" : ""}" data-library-id="${id}">
+    <article class="library-card ${entry.isFavorite ? "is-favorite" : ""} ${item.artwork ? "has-artwork" : ""}" data-library-id="${id}">
+      ${item.artwork ? renderArtwork(item, "library-artwork") : ""}
       <span class="library-tape" aria-hidden="true"></span>
       <div class="library-meta">
         <span class="library-medium">${esc(displayLabel(item))}</span>
@@ -104,7 +106,7 @@ export function renderLibrary() {
       <div class="library-masthead">
         <p class="kicker">Tried and liked</p>
         <h1>Your library.</h1>
-        <p class="lede">Things you've actually tried and liked, plus your starter favorites. It fills up as you tell Tastemake how things went. Saved-for-later picks you haven't tried live in Bookmarks instead.</p>
+        <p class="lede">Things you've actually tried and liked, plus your Favorites. It fills up as you tell Tastemake how things went. Things you have not tried yet live in Try Next.</p>
       </div>
 
       <div class="filter-band library-filter-band">
@@ -112,17 +114,14 @@ export function renderLibrary() {
         ${renderDomainFilter({ selected: state.libraryFilter, scope: "library", label: "Filter your library by type" })}
       </div>
 
-      ${section("Favorites", "Your starter picks, plus anything you loved and starred.", shown(favoriteEntries), "No favorites in this category. Try All.")}
+      ${section("Favorites", "Things you love, including the Favorites you started with.", shown(favoriteEntries), "No favorites in this category. Try All.")}
       ${section("Library", "Everything else you've tried and liked or loved.", shown(libraryEntries),
         "Nothing here yet. When you tell Tastemake you loved or liked something you've tried, it lands here.")}
       ${dislikedBlock(disliked)}
 
-      <div class="recommendation-footer">
+      <div class="recommendation-footer page-actions">
+        <div class="page-actions-left"><button class="button button-quiet" type="button" data-action="show-recs">&larr; Recommendations</button></div>
         <span class="footer-note">tried it. told you. kept it.</span>
-        <div class="action-group recommendation-footer-actions">
-          <button class="button button-primary" type="button" data-action="show-recs">Back to discovering</button>
-          <button class="button button-quiet" type="button" data-action="view-model">See my Taste Profile</button>
-        </div>
       </div>
     </section>`;
 }

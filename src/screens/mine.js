@@ -8,7 +8,7 @@ import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 
 // My Tastemake (#8, phase 1): what you've told Tastemake, which areas it may use, how picks are put together,
-// and a way to start over. It is the deeper management layer behind Library, Bookmarks and the Taste Profile.
+// and a way to start over. It is the deeper management layer behind Library, Try Next and the Taste Profile.
 // Settings here are configuration, not taste evidence; the page says so.
 
 const mediumOf = (item) => displayLabel(item);
@@ -20,7 +20,7 @@ function actionButton(id, action, label, pressed = false, extra = "") {
 function row(entry) {
   const { id, item } = entry;
   const controls = entry.starter
-    ? `<div class="mine-actions"><button class="button button-quiet mine-action" type="button" data-action="back-favorites">Change on the Favorites page</button></div>`
+    ? `<div class="mine-actions"><button class="button button-quiet mine-action" type="button" data-action="back-favorites">Edit favorites</button></div>`
     : `<div class="mine-actions" role="group" aria-label="Change what you told Tastemake about ${esc(item.title)}">
         ${actionButton(id, "loved", "Loved it", Boolean(entry.loved))}
         ${actionButton(id, "liked", "Liked it", Boolean(entry.liked))}
@@ -39,13 +39,13 @@ function row(entry) {
     </li>`;
 }
 
-// The starter favorites are one compact card, so they don't bury the things you told it since.
+// Favorites are one compact card, so they don't bury the things you told it since.
 function startersRow(starters) {
   if (!starters.length) return "";
   return `
     <li class="mine-row mine-starters">
       <div class="mine-row-main">
-        <strong class="mine-title">Starter favorites <span class="mine-count">${starters.length}</span></strong>
+        <strong class="mine-title">Favorites <span class="mine-count">${starters.length}</span></strong>
         <span class="mine-source">The known loves Tastemake started from</span>
         <ul class="mine-chips">${starters.map((entry) => `
           <li>
@@ -151,7 +151,7 @@ const CONCEPTS = [
   ["Recommendations", "Tastemake's current best guesses at what fits, and a way to test them."],
   ["Taste Profile", "What Tastemake thinks the patterns in your reactions add up to, and how sure it is."],
   ["Library", "Things you've actually tried and reacted to."],
-  ["Bookmarks", "Things you want to try. Saved, not evidence yet."],
+  ["Try Next", "Things you want to try. Saved, not evidence yet."],
   ["My Tastemake (here)", "Everything you've told it, including the things that count against a pattern, kept in the background rather than a big visible list."]
 ];
 
@@ -220,7 +220,7 @@ function resetBlock() {
   return `
     <section class="mine-block" aria-labelledby="mine-reset">
       <h2 id="mine-reset">Start over</h2>
-      <p class="mine-blurb">Clears everything you told Tastemake in this visit: favorites, reactions, bookmarks, things you added, corrections and these settings. Your look stays.</p>
+      <p class="mine-blurb">Clears everything you told Tastemake in this visit: favorites, reactions, Try Next saves, things you added, corrections and these settings. Your look stays.</p>
       ${state.resetArmed
         ? `<div class="mine-actions"><button class="button button-primary" type="button" data-mine-reset="confirm">Yes, clear everything</button><button class="button button-quiet" type="button" data-mine-reset="cancel">Cancel</button></div>`
         : `<div class="mine-actions"><button class="button button-secondary" type="button" data-mine-reset="arm">Start over</button></div>`}
@@ -233,14 +233,14 @@ export function renderMine() {
     <section class="mine-screen">
       <p class="mine-eyebrow">My Tastemake</p>
       <h1>What you've told Tastemake.</h1>
-      <p class="mine-lede">Everything here comes from something you did. Nothing was guessed. The lists below are the same items you see in the Library, Bookmarks and Taste Profile, so a change here changes them too.</p>
+      <p class="mine-lede">Everything here comes from something you did. Nothing was guessed. The lists below are the same items you see in the Library, Try Next and Taste Profile, so a change here changes them too.</p>
 
       <div class="mine-columns">
         <div class="mine-main">
           <h2>Your evidence</h2>
           ${told.total === 0 ? `<p class="mine-empty">Nothing yet. As you pick favorites and react to things, they show up here.</p>` : ""}
-          ${group("Counts as taste", "Starter favorites and things you have tried. These shape the Taste Profile.", told.counts, "Nothing here yet.")}
-          ${group("Only steers what comes next", "Reactions to things you haven't tried, and bookmarks. These nudge which picks appear, but they are not taste.", told.steers, "Nothing here yet.")}
+          ${group("Counts as taste", "Favorites and things you have tried. These shape the Taste Profile.", told.counts, "Nothing here yet.")}
+          ${group("Only steers what comes next", "Reactions to things you haven't tried, including Try Next saves. These nudge which picks appear, but they are not taste.", told.steers, "Nothing here yet.")}
           ${blindSpotList(told.blindSpots)}
           ${statementList()}
           ${tastebreakList()}

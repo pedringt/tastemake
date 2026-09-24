@@ -1,6 +1,6 @@
-import { favorites, hypotheses } from "../data/catalog.js";
+import { hypotheses } from "../data/catalog.js";
 import { state } from "../state.js";
-import { untriedReactionLean } from "../model/taste.js";
+import { canKeepDiscovering, untriedReactionLean } from "../model/taste.js";
 import { confidenceOf } from "../model/tastemap.js";
 import { CONTEXT, FIT, WEIGHT, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
@@ -10,6 +10,7 @@ import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from ".
 import { hypothesisRecord } from "../model/interpretations.js";
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { starterItems } from "../model/starters.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -59,9 +60,13 @@ function sayControls(item, said) {
 }
 
 function hypothesisCard(item, index) {
-  const update = confidenceOf(state, item);
+  const update = item.aiGenerated
+    ? { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." }
+    : confidenceOf(state, item);
   const said = statementFor(state, item.id);
-  const record = hypothesisRecord(state, item);
+  const record = item.aiGenerated
+    ? { scope: { supported: item.domains ?? [], excluded: said?.excludedDomains ?? [] } }
+    : hypothesisRecord(state, item);
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
     ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${esc(spot.item.title)}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
@@ -127,7 +132,9 @@ function blindSpotSection() {
 }
 
 export function renderProfile() {
-  const selectedTitles = favorites.filter((item) => state.selectedFavorites.has(item.id)).map((item) => item.title);
+  const selectedTitles = starterItems(state).map((item) => item.title);
+  const workingHypotheses = state.modelHypotheses?.length ? state.modelHypotheses : hypotheses;
+  const liveProfile = Boolean(state.modelHypotheses?.length);
 
   return `
     <section class="profile-screen">
@@ -137,7 +144,8 @@ export function renderProfile() {
           <p class="kicker">Taste Profile</p>
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
-          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they show up below as a lean, not as taste. The patterns themselves are a fixed starting set in this prototype (they do not change with your favorites); what changes is how much your own reactions back each one.</p>
+          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they show up below as a lean, not as taste. When live profile AI is enabled, these working hypotheses can be revised from your experienced evidence. If it is unavailable, Tastemake keeps the deterministic starting profile.</p>
+          ${state.hypothesisAiMessage ? `<p class="profile-ai-status" role="status">${esc(state.hypothesisAiMessage)}</p>` : ""}
           <details class="profile-legend">
             <summary>What do the confidence labels mean?</summary>
             <ul>
@@ -149,10 +157,10 @@ export function renderProfile() {
             </ul>
             <p>Reactions to things you haven't tried never count here. They show up as a separate "lean".</p>
           </details>
-          <div class="profile-view-toggle" role="group" aria-label="How to see your Taste Profile">
+          ${liveProfile ? "" : `<div class="profile-view-toggle" role="group" aria-label="How to see your Taste Profile">
             <button type="button" class="button button-secondary profile-view-button" data-profile-view="list" aria-pressed="${state.profileView !== "map"}">List</button>
             <button type="button" class="button button-secondary profile-view-button" data-profile-view="map" aria-pressed="${state.profileView === "map"}">Map</button>
-          </div>
+          </div>`}
         </div>
         <div class="profile-stamp" aria-hidden="true">
           <strong>WORKING</strong>
@@ -160,9 +168,9 @@ export function renderProfile() {
         </div>
       </div>
 
-      ${state.profileView === "map" ? renderTasteMap() : `
+      ${state.profileView === "map" && !liveProfile ? renderTasteMap() : `
       <div class="profile-evidence-strip">
-        <span class="profile-evidence-label">Your starting favorites</span>
+        <span class="profile-evidence-label">Your favorites</span>
         <div class="profile-evidence-track">
           ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}
         </div>
@@ -171,24 +179,24 @@ export function renderProfile() {
       <h2 class="visually-hidden">Patterns Tastemake is working with</h2>
       <div class="profile-map">
         <aside class="profile-map-aside">
-          <span class="profile-aside-number">${hypotheses.length}</span>
+          <span class="profile-aside-number">${workingHypotheses.length}</span>
           <p>patterns currently shaping your recommendations</p>
           <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>
         </aside>
 
         <div class="signal-stack">
-          ${hypotheses.map(hypothesisCard).join("")}
+          ${workingHypotheses.map(hypothesisCard).join("")}
         </div>
       </div>
       `}
 
       ${blindSpotSection()}
 
-      <div class="profile-footer">
-        <span class="footer-note">this is the point, not the bonus round. visit it whenever you're curious.</span>
-        <div class="action-group">
-          <button class="button button-secondary" type="button" data-action="back-favorites">Edit favorites</button>
-          <button class="button button-primary" type="button" data-action="show-recs">Back to recommendations <span aria-hidden="true">&rarr;</span></button>
+      <div class="profile-footer page-actions">
+        <div class="page-actions-left"><button class="button button-quiet" type="button" data-action="show-recs">&larr; Recommendations</button></div>
+        <span class="footer-note">working patterns, not a fixed identity.</span>
+        <div class="page-actions-right">
+          ${canKeepDiscovering(state) ? `<button class="button button-primary" type="button" data-action="keep-discovering">Keep discovering &rarr;</button>` : `<button class="button button-primary" type="button" data-action="show-recs">Recommendations &rarr;</button>`}
         </div>
       </div>
     </section>`;

@@ -14,6 +14,7 @@ import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
+import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
@@ -55,7 +56,7 @@ function render() {
 }
 
 function updateStepper() {
-  const order = ["favorites", "recommendations", "model", "library", "bookmarks"];
+  const order = ["favorites", "recommendations", "model", "bookmarks", "library"];
   const activeIndex = order.indexOf(state.screen);
 
   // #59 item 4: keep the guided first-run path (Favorites -> Recommendations) visually dominant by
@@ -202,6 +203,14 @@ function markOnboarded(screen) {
   if (screen === "recommendations") state.onboarded = true;
 }
 
+function maybeRefreshProfile() {
+  if (state.screen !== "model") return;
+  void refreshProfileHypotheses(state, {
+    onUpdate() { render(); updateStepper(); },
+    announce
+  });
+}
+
 function navigate(screen, { replace = false, scroll = true } = {}) {
   if (!canAccess(screen)) return;
   // Leaving the page a request was started from makes its answer irrelevant (#42).
@@ -215,6 +224,7 @@ function navigate(screen, { replace = false, scroll = true } = {}) {
 
   if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
   focusApp();
+  maybeRefreshProfile();
 }
 
 function renderPreservingPosition(selector, focusSelector = null) {
@@ -407,8 +417,8 @@ app.addEventListener("click", async (event) => {
       // The card usually leaves the list; land on the next card's first action, or on the page if none is left.
       restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
       const left = bookmarkedFeedback(state).length;
-      const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "bookmark removed" })[outcome];
-      announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Bookmarks.`);
+      const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "removed from Try Next" })[outcome];
+      announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Try Next.`);
     }
     return;
   }
@@ -454,7 +464,7 @@ app.addEventListener("click", async (event) => {
     if (state.starterReplaceId === id) state.starterReplaceId = null;
     render();
     updateStepper();
-    announce("Removed from your starter mix.");
+    announce("Removed from Favorites.");
     return;
   }
 
@@ -536,6 +546,7 @@ window.addEventListener("popstate", () => {
   render();
   updateStepper();
   focusApp();
+  maybeRefreshProfile();
 });
 
 initSearch({
@@ -549,7 +560,7 @@ initSearch({
   goTo(screen) { navigate(screen); }
 });
 
-// First visit is deliberately short: choose a look -> basic setup -> build a starter mix.
+// First visit is deliberately short: choose a look -> basic setup -> choose Favorites.
 // Direct links still open their requested screen when accessible.
 const initialScreen = screenFromPath();
 state.screen = canAccess(initialScreen) ? initialScreen : "look";
@@ -557,3 +568,4 @@ markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();
 updateStepper();
+maybeRefreshProfile();

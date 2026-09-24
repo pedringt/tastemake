@@ -201,3 +201,15 @@
   padding:0 10px;
 }
 .footer-note { color:#4254b7; font-size:20px; transform:rotate(calc(-1deg * var(--tilt))); }
+
+.profile-ai-status {
+  width:fit-content;
+  max-width:720px;
+  margin:12px 0 0;
+  padding:8px 11px;
+  border-left:3px solid var(--cyan);
+  background:var(--tint-cool,#eef8fa);
+  color:var(--text2,#3f4774);
+  font-size:13px;
+  line-height:1.45;
+}

@@ -14,21 +14,21 @@
            --heading  display face for headings;  --hand  the "handwritten note" face
            --tone-1..8  the eight Favorites tile colors,  --tint-*  small highlight fills */
 
-/* ---- Collage: the original look. These values are the built-in defaults. -------------------- */
+/* ---- Studio cutouts: playful editorial paper shapes, not a corkboard. ---------------------- */
 :root[data-look="collage"], .look-preview[data-look="collage"] {
-  --bg:#f8f5ff; --paper:#fffefe; --navy:#111a4b; --ink:#1a2256; --muted:#646a8a; --line:#dcdcf0;
-  --pink:#ff2fb3; --pink-soft:#ffe3f6; --cyan:#20d9e8; --cyan-soft:#dcfbfd; --lime:#c8f52a;
-  --violet:#8870ff; --violet-soft:#ece8ff; --coral:#ff776e; --yellow:#ffe36e;
+  --bg:#f5f1e8; --paper:#fffdf8; --navy:#14224a; --ink:#1d294f; --muted:#66708d; --line:#d8d5ce;
+  --pink:#f06b3f; --pink-soft:#ffe4d7; --cyan:#2f66d8; --cyan-soft:#dfe9ff; --lime:#e8db58;
+  --violet:#8167c8; --violet-soft:#e9e3f8; --coral:#ef7c58; --yellow:#f5d95e;
   --display:"Space Grotesk", ui-rounded, system-ui, sans-serif;
-  --heading:"Space Grotesk", ui-rounded, system-ui, sans-serif;
+  --heading:"Fraunces", "Iowan Old Style", Georgia, serif;
   --hand:"Patrick Hand", "Comic Sans MS", cursive;
-  --tilt:1; --hard:1;
-  --shadow-ink:initial; --ink-rgb:initial; --accent-rgb:initial;
-  --text2:initial; --note-ink:initial; --tint-lime:initial; --tint-warm:initial; --tint-cool:initial;
-  --tint-hover:initial; --tint-pink:initial; --tint-red:initial; --tint-lilac:initial; --on-lime:initial;
-  --accent-text:initial; --faint:initial; --on-pink:initial; --warn:initial;
-  --tone-1:initial; --tone-2:initial; --tone-3:initial; --tone-4:initial; --tone-5:initial; --tone-6:initial; --tone-7:initial; --tone-8:initial;
-  --pv-surface:#d8aa76; --pv-card:#fff; --pv-border:2px; --pv-radius:10px;
+  --tilt:.38; --hard:.7;
+  --shadow-ink:rgb(20 34 74 / .16); --ink-rgb:20 34 74; --accent-rgb:240 107 63;
+  --text2:#4a5578; --note-ink:#2759bc; --tint-lime:#f3edb7; --tint-warm:#fff0d8; --tint-cool:#e8efff;
+  --tint-hover:#f7efe1; --tint-pink:#ffe5dc; --tint-red:#ffd9cf; --tint-lilac:#eee9fb; --on-lime:#524b11;
+  --accent-text:#c94f2b; --faint:#66708d; --on-pink:#8e3219; --warn:#a94534;
+  --tone-1:#ffd8ca; --tone-2:#dbe7ff; --tone-3:#ebe1fb; --tone-4:#f4edaa; --tone-5:#ffe3b7; --tone-6:#d9e3f4; --tone-7:#f7d1c4; --tone-8:#e5ebcf;
+  --pv-surface:#f1eadb; --pv-card:#fffdf8; --pv-border:1.5px; --pv-radius:14px;
 }
 
 /* ---- Clean editorial: warm, polished, type-first. The starting point. ----------------------- */
@@ -48,21 +48,21 @@
   --pv-surface:#faf7f2; --pv-card:#fff; --pv-border:1px; --pv-radius:8px;
 }
 
-/* ---- Warm analog: softer paper, archive tabs, hand-written labels. -------------------------- */
+/* ---- Night ledger: dark frame, cream paper, restrained cinema-club details. ---------------- */
 :root[data-look="analog"], .look-preview[data-look="analog"] {
-  --bg:#efe7d6; --paper:#fbf6ea; --navy:#3a2f27; --ink:#42362d; --muted:#6c5d48; --line:#d8ccb3;
-  --pink:#a8483a; --pink-soft:#f0dcd0; --cyan:#5b7c74; --cyan-soft:#dde7df; --lime:#dccb8b;
-  --violet:#816b8a; --violet-soft:#e7dfe8; --coral:#c46f55; --yellow:#e9d28f;
+  --bg:#141b2a; --paper:#fbf5e8; --navy:#18233a; --ink:#202a3c; --muted:#5d5952; --line:#cfc4ad;
+  --pink:#8d3034; --pink-soft:#f1d9d5; --cyan:#506b78; --cyan-soft:#dce7e9; --lime:#c1ad66;
+  --violet:#665a78; --violet-soft:#e4dfea; --coral:#a44d3f; --yellow:#d6bc6a;
   --display:"Space Grotesk", ui-rounded, system-ui, sans-serif;
-  --heading:"Fraunces", "Iowan Old Style", Georgia, serif;
-  --hand:"Patrick Hand", "Comic Sans MS", cursive;
-  --tilt:.45; --hard:.55;
-  --shadow-ink:rgb(70 45 25 / .2); --ink-rgb:58 47 39; --accent-rgb:168 72 58;
-  --text2:#5a4c3f; --note-ink:#7a4d3a; --tint-lime:#efe6bd; --tint-warm:#f6ecd3; --tint-cool:#e9efe9;
-  --tint-hover:#f6f0e1; --tint-pink:#f5e2d8; --tint-red:#f0d3c8; --tint-lilac:#e9e2e3; --on-lime:#5d5320;
-  --accent-text:#a8483a; --faint:#66573f; --on-pink:#7d3327; --warn:#9a4034;
-  --tone-1:#efd9cf; --tone-2:#dfe8e0; --tone-3:#e6dde6; --tone-4:#ece6c4; --tone-5:#f0e0c0; --tone-6:#dde3e8; --tone-7:#ecd0c8; --tone-8:#dfe9d2;
-  --pv-surface:#e9dcc2; --pv-card:#fbf6ea; --pv-border:1.5px; --pv-radius:5px;
+  --heading:"Newsreader", "Iowan Old Style", Georgia, serif;
+  --hand:"Newsreader", "Iowan Old Style", Georgia, serif;
+  --tilt:0; --hard:.25;
+  --shadow-ink:rgb(7 12 24 / .2); --ink-rgb:24 35 58; --accent-rgb:141 48 52;
+  --text2:#4f5661; --note-ink:#7f3436; --tint-lime:#ebe2bf; --tint-warm:#f5ead2; --tint-cool:#e2eaeb;
+  --tint-hover:#f5ecdc; --tint-pink:#efddd6; --tint-red:#e9cbc2; --tint-lilac:#e6e1e8; --on-lime:#514721;
+  --accent-text:#8d3034; --faint:#5d5952; --on-pink:#6d2529; --warn:#8d3034;
+  --tone-1:#ebd9d1; --tone-2:#dde5e2; --tone-3:#e4dfe8; --tone-4:#e9e0bd; --tone-5:#eee0c4; --tone-6:#dce1e8; --tone-7:#e7d0c8; --tone-8:#dfe4d0;
+  --pv-surface:#172033; --pv-card:#fbf5e8; --pv-border:1px; --pv-radius:5px;
 }
 
 /* ---- Bold graphic: high contrast, big type, flat blocks of color. --------------------------- */
@@ -222,3 +222,57 @@
 /* ---- Readability fixes found by the every-look contrast sweep (scripts/qa/layout-check.js) ---- */
 /* white on the vermilion accent is 3.6:1; black on it is 5.8:1 */
 :root[data-look="graphic"] .rating-button[aria-pressed="true"][data-rating="more"] { color:#0b0b0b; }
+
+
+/* #82 replacement skin surfaces */
+:root[data-look="collage"] body {
+  background:
+    linear-gradient(135deg, rgb(47 102 216 / .06) 0 18%, transparent 18% 100%),
+    radial-gradient(circle at 88% 12%, rgb(240 107 63 / .13), transparent 22rem),
+    #f5f1e8;
+}
+:root[data-look="collage"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen) {
+  border:1px solid #d8d5ce;
+  border-radius:22px 8px 20px 10px;
+  background:#fffdf8;
+  box-shadow:0 18px 40px rgb(20 34 74 / .09);
+}
+:root[data-look="collage"] .sticker { filter:saturate(.82) drop-shadow(0 2px 1px rgb(20 34 74 / .14)); }
+:root[data-look="collage"] :is(.st-cherry,.st-rainbow,.st-flower,.st-cloud,.st-heart,.st-squiggle) { display:none; }
+:root[data-look="collage"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card):nth-child(3n+1) { border-radius:18px 5px 14px 7px; }
+:root[data-look="collage"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card):nth-child(3n+2) { border-radius:6px 20px 8px 14px; }
+:root[data-look="collage"] :is(.button,.domain-filter-button) { border-radius:999px; }
+
+:root[data-look="analog"] body {
+  background:
+    radial-gradient(circle at 18% 5%, rgb(214 188 106 / .08), transparent 26rem),
+    #141b2a;
+}
+:root[data-look="analog"] .topbar {
+  margin-top:4px;
+  padding:12px 18px;
+  border:1px solid #cdbf9f;
+  border-radius:8px;
+  background:#fbf5e8;
+  box-shadow:0 10px 30px rgb(4 8 18 / .24);
+}
+:root[data-look="analog"] :is(.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.mine-screen,.setup-screen,.look-screen) {
+  border:1px solid #bba975;
+  border-radius:6px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 31px, rgb(24 35 58 / .035) 31px 32px),
+    #fbf5e8;
+  box-shadow:0 20px 50px rgb(4 8 18 / .28);
+}
+:root[data-look="analog"] :is(.sticker-field,.favorite-tape,.bookmark-tape,.library-tape) { display:none; }
+:root[data-look="analog"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card,.rec-progress-card,.refresh-banner) {
+  border-width:1px;
+  border-color:#9f8f67;
+  border-radius:4px;
+  box-shadow:0 4px 12px rgb(24 35 58 / .08);
+}
+:root[data-look="analog"] .button { border-radius:4px; box-shadow:none; }
+:root[data-look="analog"] .kicker { letter-spacing:.18em; }
+:root[data-look="analog"] .footer-note { font-style:italic; }
+
+:root[data-look="analog"] .library-inline-remove { color:var(--ink); }
