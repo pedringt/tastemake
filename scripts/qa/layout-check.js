@@ -171,7 +171,7 @@ export function checkCurrentScreen() {
     for (const r of range.getClientRects()) {
       if (r.width < 2 || r.height < 2) continue;
       const clash = controls.find((c) => !c.contains(node) && overlapArea(r, c.getBoundingClientRect()) > 12);
-      if (clash) { textUnderControls.push(`"${node.textContent.trim().slice(0, 28)}" under ${describe(clash)}`); break; }
+      if (clash) {\n        const textCard = node.parentElement?.closest?.("[data-rec-id]")?.getAttribute("data-rec-id") ?? "no-card";\n        const controlCard = clash.closest?.("[data-rec-id]")?.getAttribute("data-rec-id") ?? "no-card";\n        textUnderControls.push(`"${node.textContent.trim().slice(0, 28)}" under ${describe(clash)} [text:${textCard} control:${controlCard}]`);\n        break;\n      }
     }
   }
 
