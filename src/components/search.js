@@ -62,14 +62,24 @@ export function initSearch({ onChange, announce, goTo }) {
       <h3 id="search-sheet-title" tabindex="-1">${esc(item.title)}</h3>
       <p class="search-sheet-meta">${esc(displayLabel(item))} &middot; ${status.label}</p>`;
 
+    const starterSelected = state.selectedFavorites.has(item.id);
+    const starterLabel = state.starterReplaceId
+      ? `Replace with ${esc(item.title)}`
+      : starterSelected ? "Remove from starter mix" : "Add to starter mix";
+    const starterBlock = `
+      <div class="search-starter">
+        <span><strong>Starter mix</strong><small>Known loves are the first evidence Tastemake starts from.</small></span>
+        <button type="button" class="button ${starterSelected ? "button-quiet" : "button-primary"}" data-search-starter="${starterSelected ? "remove" : "add"}">${starterLabel}</button>
+      </div>`;
+
     if (status.key === "starter") {
-      return `${head}
-        <p class="search-note">This is one of your starter favorites, so it's already in your Library. Change it on the Favorites page.</p>
-        <p><button type="button" class="button button-secondary" data-search-goto="favorites">Go to Favorites</button></p>`;
+      return `${head}${starterBlock}
+        <p class="search-note">This is already one of the things Tastemake starts from. You can remove or replace it here without leaving search.</p>
+        <p><button type="button" class="button button-primary" data-search-close>Done</button></p>`;
     }
 
     const on = (key) => status.key === key;
-    return `${head}
+    return `${head}${starterBlock}
       <div class="search-groups">
         <div class="search-group" role="group" aria-label="I've tried it">
           <span class="search-group-label">I've tried it</span>
@@ -108,7 +118,7 @@ export function initSearch({ onChange, announce, goTo }) {
           </div>
         </fieldset>
         <p class="search-error" role="alert" ${ui.addError ? "" : "hidden"}>${esc(ui.addError)}</p>
-        <p class="search-note">Added items don't teach Tastemake about patterns yet (there's nothing to tag them with), but they fill your Library and Bookmarks.</p>
+        <p class="search-note">After you add it, you can put it in your starter mix, Library, or Bookmarks. Searching and typing alone never teach Tastemake anything.</p>
         <p><button type="submit" class="button button-primary">Continue</button></p>
       </form>`;
   }
@@ -148,6 +158,7 @@ export function initSearch({ onChange, announce, goTo }) {
   }
 
   opener.addEventListener("click", open);
+  dialog.addEventListener("close", () => { state.starterReplaceId = null; });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey || dialog.open) return;
     const target = event.target;
@@ -209,6 +220,36 @@ export function initSearch({ onChange, announce, goTo }) {
 
     const goto = event.target.closest("[data-search-goto]");
     if (goto) { dialog.close(); goTo(goto.dataset.searchGoto); return; }
+
+    const starterButton = event.target.closest("[data-search-starter]");
+    if (starterButton) {
+      const item = itemById(ui.itemId);
+      if (!item) return;
+      const action = starterButton.dataset.searchStarter;
+      if (action === "remove") {
+        state.selectedFavorites.delete(item.id);
+        if (state.starterReplaceId === item.id) state.starterReplaceId = null;
+        onChange(`${item.title} removed from your starter mix.`);
+        render();
+        focus("#search-sheet-title");
+        return;
+      }
+
+      if (item.custom) state.customItems[item.id] = item;
+      const replacing = state.starterReplaceId;
+      if (replacing && replacing !== item.id) state.selectedFavorites.delete(replacing);
+      state.selectedFavorites.add(item.id);
+      state.starterReplaceId = null;
+      ui.pending = null;
+      ui.mode = "results";
+      ui.itemId = null;
+      ui.query = "";
+      input.value = "";
+      onChange(`${item.title} added to your starter mix. ${state.selectedFavorites.size} of 4 selected.`);
+      render();
+      input.focus();
+      return;
+    }
 
     const actionButton = event.target.closest("[data-search-action]");
     if (actionButton) {
