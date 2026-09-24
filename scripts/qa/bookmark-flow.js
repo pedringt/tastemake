@@ -48,7 +48,7 @@ export async function run() {
   state.setupComplete = true;
   check("a fresh Favorites page starts with no favorites selected", state.selectedFavorites.size === 0, state.selectedFavorites.size);
   check("the empty starter mix has four designed placeholders and a search-first CTA",
-    $(".starter-placeholder").length === 4 && Boolean($('[data-action="open-search"]')));
+    $$(".starter-placeholder").length === 4 && Boolean($('[data-action="open-search"]')));
   check("Recommendations is locked until 4 favorites are picked", Boolean($('[data-step-jump="recommendations"]')?.getAttribute("aria-disabled") === "true"));
 
   await act('[data-action="open-search"]');
@@ -61,7 +61,7 @@ export async function run() {
     await act('[data-search-starter="add"]');
   }
   $("#search-dialog").close(); await tick();
-  check("search can build the starter mix without a seeded picker", state.selectedFavorites.size === 4 && $(".starter-card").length === 4);
+  check("search can build the starter mix without a seeded picker", state.selectedFavorites.size === 4 && $$(".starter-card").length === 4);
   check("picking 4 favorites unlocks Recommendations", $('[data-step-jump="recommendations"]')?.getAttribute("aria-disabled") === "false");
 
   await act('[data-step-jump="recommendations"]');
@@ -365,7 +365,7 @@ export async function run() {
   check("'Loved it' becomes a real reaction", loved.rating === "more" && loved.detail === "loved-before", `${loved.rating}/${loved.detail}`);
   check("...that now counts as taste evidence", taste.tasteDelta(loved) === 2, taste.tasteDelta(loved));
   check("...and remembers it was bookmarked first", loved.wasBookmarked === true);
-  check("card leaves Bookmarks without changing nav chrome", $(".bookmark-card").length === 1 && !bookmarksStep().querySelector("[data-bookmark-count]"));
+  check("card leaves Bookmarks without changing nav chrome", $$(".bookmark-card").length === 1 && !bookmarksStep().querySelector("[data-bookmark-count]"));
 
   const lastId = $$(".bookmark-card")[0].dataset.bookmarkId;
   await act(`[data-bookmark-item="${lastId}"][data-bookmark-action="remove"]`);
