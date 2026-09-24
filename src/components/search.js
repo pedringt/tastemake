@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { MEDIA, applySearchAction, findExisting, itemStatus, makeCustomItem, searchItems, searchableItems } from "../model/search.js";
 import { displayLabel, domainFilterOptions } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { searchExternalCatalog } from "../catalog/client.js";
 
 // Search dialog (#13). It lives outside #app, so re-rendering a screen never closes it.
 // Nothing here changes state except applySearchAction, called from an explicit button.
@@ -21,9 +22,19 @@ export function initSearch({ onChange, announce, goTo }) {
   const opener = document.querySelector("#open-search");
   if (!dialog || !input || !view || !opener || typeof dialog.showModal !== "function") return;
 
-  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addMedium: "movie", addError: "" };
+  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" };
+  let catalogTimer = null;
+  let catalogController = null;
+  let catalogSeq = 0;
 
-  const itemById = (id) => (ui.pending?.id === id ? ui.pending : searchableItems(state).find((item) => item.id === id));
+  const itemById = (id) => (ui.pending?.id === id ? ui.pending : [...searchableItems(state), ...ui.external].find((item) => item.id === id));
+
+  const combinedHits = (query) => {
+    const local = query ? searchItems(state, query, ui.filter) : [];
+    const seen = new Set(local.map((item) => item.id));
+    const external = ui.external.filter((item) => !seen.has(item.id));
+    return [...local, ...external].slice(0, 16);
+  };
 
   function statusChip(item) {
     const status = itemStatus(state, item);
@@ -32,7 +43,7 @@ export function initSearch({ onChange, announce, goTo }) {
 
   function resultsHTML() {
     const query = ui.query.trim();
-    const hits = query ? searchItems(state, query, ui.filter) : [];
+    const hits = query ? combinedHits(query) : [];
     const list = hits.length
       ? `<ul class="search-results" aria-label="Results">
           ${hits.map((item) => `
@@ -48,7 +59,8 @@ export function initSearch({ onChange, announce, goTo }) {
         : `<p class="search-hint">Type a title to find it. Tastemake only knows a small hand-picked catalog for now, so you can also add anything it doesn't know.</p>`;
     // Only echo the query when nothing matched; next to a real result it would read like a typo to add.
     const addLabel = query.length >= 2 && !hits.length ? `Can't find it? Add \u201c${esc(query)}\u201d yourself` : hits.length ? "Not it? Add something Tastemake doesn't know" : "Add something Tastemake doesn't know";
-    return `${list}<p class="search-add-row"><button type="button" class="button button-quiet" data-search-add>${addLabel}</button></p>`;
+    const catalogState = ui.catalogLoading ? '<p class="search-hint" role="status">Searching the wider catalog…</p>' : ui.catalogError ? '<p class="search-hint">The wider catalog is unavailable right now. Local search still works.</p>' : '';
+    return `${list}${catalogState}<p class="search-add-row"><button type="button" class="button button-quiet" data-search-add>${addLabel}</button></p>`;
   }
 
   function actionButton(item, action, label, pressed) {
@@ -149,12 +161,48 @@ export function initSearch({ onChange, announce, goTo }) {
   }
 
   function open() {
-    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addMedium: "movie", addError: "" });
+    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" });
     input.value = "";
     syncFilters();
     render();
     dialog.showModal();
     input.focus();
+  }
+
+  async function refreshExternal() {
+    const query = ui.query.trim();
+    if (query.length < 2) {
+      ui.external = [];
+      ui.catalogLoading = false;
+      ui.catalogError = "";
+      render();
+      return;
+    }
+    catalogController?.abort();
+    catalogController = new AbortController();
+    const seq = ++catalogSeq;
+    ui.catalogLoading = true;
+    ui.catalogError = "";
+    render();
+    try {
+      const payload = await searchExternalCatalog(query, ui.filter, { signal: catalogController.signal });
+      if (seq !== catalogSeq) return;
+      ui.external = payload.items;
+    } catch (error) {
+      if (error?.name === "AbortError" || seq !== catalogSeq) return;
+      ui.external = [];
+      ui.catalogError = "unavailable";
+    } finally {
+      if (seq === catalogSeq) {
+        ui.catalogLoading = false;
+        render();
+      }
+    }
+  }
+
+  function queueExternal() {
+    clearTimeout(catalogTimer);
+    catalogTimer = setTimeout(refreshExternal, 260);
   }
 
   opener.addEventListener("click", open);
@@ -172,6 +220,7 @@ export function initSearch({ onChange, announce, goTo }) {
     ui.query = input.value;
     ui.mode = "results";
     render();
+    queueExternal();
   });
   input.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
@@ -187,6 +236,7 @@ export function initSearch({ onChange, announce, goTo }) {
       ui.mode = "results";
       syncFilters();
       render();
+      queueExternal();
       return;
     }
 
@@ -235,7 +285,7 @@ export function initSearch({ onChange, announce, goTo }) {
         return;
       }
 
-      if (item.custom) state.customItems[item.id] = item;
+      if (item.custom || item.provider) state.customItems[item.id] = item;
       const replacing = state.starterReplaceId;
       if (replacing && replacing !== item.id) state.selectedFavorites.delete(replacing);
       state.selectedFavorites.add(item.id);
