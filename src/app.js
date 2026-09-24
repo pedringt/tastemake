@@ -375,8 +375,14 @@ app.addEventListener("click", async (event) => {
     if (saveLibraryAction(itemId, outcome)) {
       render();
       updateStepper();
-      // A card can leave the list (e.g. Didn't like it); land on the next action, or on the page if none is left.
-      restoreFocus(focusSelector, app.querySelector(".library-action") || app);
+      // Favorite/Unfavorite changes the button's data-action, so target its replacement explicitly.
+      // Other reactions may move the card; in that case land on the next usable Library control.
+      const libraryFocus = outcome === "favorite"
+        ? `[data-library-item="${itemId}"][data-library-action="unfavorite"]`
+        : outcome === "unfavorite"
+          ? `[data-library-item="${itemId}"][data-library-action="favorite"]`
+          : focusSelector;
+      restoreFocus(libraryFocus, app.querySelector(".library-reaction-edit summary") || app.querySelector(".library-action") || app);
       announce(({
         favorite: `${title} added to Favorites.`,
         unfavorite: `${title} removed from Favorites. It stays in your Library.`,
