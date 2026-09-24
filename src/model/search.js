@@ -169,7 +169,7 @@ export function applySearchAction(state, item, action) {
   const outcome = OUTCOMES[action];
   if (!outcome) return null;
 
-  if (item.custom) state.customItems[item.id] = item;   // an added item only exists once the user acts on it
+  if (item.custom || item.provider) state.customItems[item.id] = item;   // an added item only exists once the user acts on it
   const entry = {
     item,
     rating: outcome.rating,
