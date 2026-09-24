@@ -27,7 +27,7 @@ export function renderSetup() {
           <h1>${editing ? "Your Tastemake setup." : "A couple basics, then the fun part."}</h1>
           <p class="lede">These settings tell Tastemake how to serve you. They do not count as taste evidence.</p>
         </div>
-        <button class="button button-primary setup-next" type="button" data-action="setup-done">${editing ? "Save" : "Next"}</button>
+        <button class="button button-primary setup-next" type="button" data-action="setup-done" ${state.displayName.trim() ? "" : "disabled"}>${editing ? "Save" : "Next"}</button>
       </header>
 
       <div class="setup-grid">
