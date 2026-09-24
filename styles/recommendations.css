@@ -126,11 +126,17 @@
   text-transform:uppercase;
   letter-spacing:.08em;
 }
-.editorial-title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-top:12px; }
-.editorial-title-row h3 { margin:0; font-size:clamp(24px,2.4vw,36px); }
+/* #67: without min-width:0 + overflow-wrap on the title, a long or heavy-font title (Bold Graphic's
+   Archivo Black) can't shrink below its own content width, so the flex row grows past the card and the
+   reaction stamp — the last child — gets pushed out over the neighboring card. flex-wrap is a second
+   safety net: if the two still don't fit on one line, the stamp drops to its own line instead of
+   overflowing sideways. */
+.editorial-title-row { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:8px 12px; margin-top:12px; }
+.editorial-title-row h3 { flex:1 1 auto; min-width:0; overflow-wrap:break-word; margin:0; font-size:clamp(24px,2.4vw,36px); }
 .rec-layout-1 .editorial-title-row h3,.rec-surprise .editorial-title-row h3 { font-size:clamp(32px,3.4vw,50px); line-height:.94; }
 .reaction-stamp {
   flex:0 0 auto;
+  max-width:100%;
   padding:6px 9px;
   border:2px solid var(--navy);
   background:var(--yellow);

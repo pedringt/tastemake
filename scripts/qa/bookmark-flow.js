@@ -50,7 +50,9 @@ export async function run() {
   await act('[data-step-jump="recommendations"]');
   let ids = cardIds();
   check("opening set has 5 picks", ids.length === 5, ids.length);
-  check("Bookmarks tab hidden before anything is saved", bookmarksStep().hidden);
+  // #29/#68: Bookmarks is a visible destination even with nothing saved yet, not one that appears
+  // only after you happen to use it — the count badge is what's empty, not the tab.
+  check("Bookmarks tab is visible even before anything is saved, with no count badge", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "");
 
   // #34: the decorative artwork title must never be obscured by the shapes behind it, for every
   // title in the catalog, and for one deliberately very long one (a title-length regression is
@@ -331,7 +333,7 @@ export async function run() {
   check("...and is announced", /bookmark removed\. 0 things left in Bookmarks\./.test(live()), live());
   check("removed bookmark stays untried, no evidence", state.feedbackByRecommendation[lastId].rating === "not-tried" && taste.tasteDelta(state.feedbackByRecommendation[lastId]) === 0);
   await act('[data-action="show-recs"]');
-  check("Bookmarks tab hides again when nothing is saved", bookmarksStep().hidden);
+  check("Bookmarks tab stays visible with the badge cleared when nothing is saved", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "");
 
 
 
@@ -465,7 +467,10 @@ export async function run() {
   await act('[data-profile-view="list"]');
   state.look = startLook; document.documentElement.dataset.look = startLook;
 
-  // first visit: the bare address shows "Choose a starting look" before Favorites; a ?look= link goes straight in
+  // #59 item 5: first visit goes straight to Favorites in the default look (Editorial), not the Look
+  // picker — customizing the product before you know why you'd care was the thing this removed. Look
+  // is still reached any time from the header button (tested above); a ?look= link still goes straight
+  // to that look.
   const frameCheck = (src, work) => new Promise((resolve) => {
     const frame = document.createElement("iframe");
     frame.style.cssText = "position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0";
@@ -473,18 +478,15 @@ export async function run() {
     frame.src = src;
     document.body.appendChild(frame);
   });
-  const firstVisit = await frameCheck("/", async (doc) => {
-    const out = { picker: Boolean(doc.querySelector(".look-screen")), look: doc.documentElement.dataset.look, button: doc.querySelector('[data-action="look-done"]')?.textContent.trim() };
-    doc.querySelector('[data-action="look-done"]').click();
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    out.afterContinue = Boolean(doc.querySelector(".favorites-screen")) && !doc.querySelector(".look-screen");
-    return out;
-  });
-  check("first visit shows the look picker before Favorites", firstVisit.picker === true && firstVisit.look === "editorial", JSON.stringify(firstVisit));
-  check("...starting on Clean editorial, with a 'Continue with' button", /^Continue with Clean editorial$/.test(firstVisit.button || ""), firstVisit.button);
-  check("...and Continue goes on to Favorites", firstVisit.afterContinue === true, JSON.stringify(firstVisit));
+  const firstVisit = await frameCheck("/", async (doc) => ({
+    picker: Boolean(doc.querySelector(".look-screen")),
+    look: doc.documentElement.dataset.look,
+    favorites: Boolean(doc.querySelector(".favorites-screen"))
+  }));
+  check("first visit skips the look picker and starts in editorial", firstVisit.picker === false && firstVisit.look === "editorial", JSON.stringify(firstVisit));
+  check("...going straight to Favorites", firstVisit.favorites === true, JSON.stringify(firstVisit));
   const linked = await frameCheck("/?look=collage", async (doc) => ({ picker: Boolean(doc.querySelector(".look-screen")), look: doc.documentElement.dataset.look, favorites: Boolean(doc.querySelector(".favorites-screen")) }));
-  check("a ?look= link skips the picker and uses that look", linked.picker === false && linked.look === "collage" && linked.favorites === true, JSON.stringify(linked));
+  check("a ?look= link uses that look and also goes straight to Favorites", linked.picker === false && linked.look === "collage" && linked.favorites === true, JSON.stringify(linked));
   const bogus = await frameCheck("/?look=nonsense", async (doc) => ({ look: doc.documentElement.dataset.look }));
   check("an unknown ?look= value is ignored", bogus.look === "editorial", JSON.stringify(bogus));
 
@@ -562,7 +564,7 @@ export async function run() {
   check("...clears favorites too and restores default settings", state.selectedFavorites.size === 0 && state.areas.play === true && state.curveball === true);
   check("...keeps your look", state.look === lookKept && document.documentElement.dataset.look === lookKept);
   check("...goes back to Favorites and announces it", state.screen === "favorites" && /Started over/.test(live()), `${state.screen} / ${live()}`);
-  check("...and the Bookmarks tab is hidden again", bookmarksStep().hidden);
+  check("...and the Bookmarks tab stays visible with the badge cleared", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "");
 
   const failed = results.filter((r) => !r.ok);
   return { passed: results.length - failed.length, failed: failed.length, results: failed.length ? failed : undefined, total: results.length };

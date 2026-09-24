@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { LOOKS, lookLabel } from "../data/looks.js";
+import { LOOKS } from "../data/looks.js";
 import { recommendations } from "../data/catalog.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
@@ -30,15 +30,17 @@ function preview(id) {
     </span>`;
 }
 
+// #59 item 5: the picker is never a forced first step any more (a new visitor starts straight in the
+// default look), so this is always reached as a deliberate "change my look" visit.
 export function lookContinueLabel() {
-  return state.lookOnboarding ? `Continue with ${lookLabel(state.look)}` : "Done";
+  return "Done";
 }
 
 export function renderLook() {
   return `
     <section class="look-screen">
-      <p class="look-eyebrow">Before we start</p>
-      <h1>Choose a starting look.</h1>
+      <p class="look-eyebrow">Look</p>
+      <h1>Choose a look.</h1>
       <p class="look-lede">The same Tastemake, four ways to see it. Nothing else changes, and you can switch any time from the Look button at the top.</p>
       <fieldset class="look-picker">
         <legend class="visually-hidden">Look</legend>
@@ -46,7 +48,7 @@ export function renderLook() {
           <label class="look-card ${look.id === state.look ? "is-selected" : ""}" data-look-choice="${look.id}">
             <input class="visually-hidden" type="radio" name="look" value="${look.id}" ${look.id === state.look ? "checked" : ""} />
             ${preview(look.id)}
-            <span class="look-card-name">${esc(look.label)}${look.id === "editorial" ? '<span class="look-default"> (starting point)</span>' : ""}</span>
+            <span class="look-card-name">${esc(look.label)}${look.id === "editorial" ? '<span class="look-default"> (default)</span>' : ""}</span>
             <span class="look-card-blurb">${esc(look.blurb)}</span>
           </label>`).join("")}
       </fieldset>

@@ -92,6 +92,20 @@ button { color: inherit; }
 }
 .step:hover { background:rgba(236,232,255,.75); }
 .step.is-disabled { opacity:.35; cursor:not-allowed; }
+/* #59 item 4: before the first loop is done, keep Favorites/Recommendations dominant and quiet down the
+   destinations that aren't meaningful yet — still fully usable, just visually secondary. */
+.app-shell.is-onboarding .step[data-step-jump="model"],
+.app-shell.is-onboarding .step[data-step-jump="library"],
+.app-shell.is-onboarding .step[data-step-jump="bookmarks"],
+.app-shell.is-onboarding .search-open,
+.app-shell.is-onboarding .me-open,
+.app-shell.is-onboarding .look-open { opacity:.55; }
+.app-shell.is-onboarding .step[data-step-jump="model"]:hover,
+.app-shell.is-onboarding .step[data-step-jump="library"]:hover,
+.app-shell.is-onboarding .step[data-step-jump="bookmarks"]:hover,
+.app-shell.is-onboarding .search-open:hover,
+.app-shell.is-onboarding .me-open:hover,
+.app-shell.is-onboarding .look-open:hover { opacity:.85; }
 .step span { font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--faint,#6670a6); }
 .step[hidden] { display:none; }
 .step .step-count {
