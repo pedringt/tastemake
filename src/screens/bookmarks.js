@@ -4,7 +4,7 @@ import { renderStickerField } from "../components/stickers.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 
-// Bookmarks are untried things the user saved to act on. They are not taste evidence; only what
+// Try Next contains untried things the user saved to act on. They are not taste evidence; only what
 // the user actually tries (and reacts to) teaches Tastemake about their taste.
 
 function bookmarkCard(feedback) {
@@ -24,7 +24,7 @@ function bookmarkCard(feedback) {
         ${action("tried-loved", "Loved it")}
         ${action("tried-liked", "Liked it")}
         ${action("tried-disliked", "Didn't like it")}
-        ${action("remove", "Remove bookmark", "button button-quiet")}
+        ${action("remove", "Remove", "button button-quiet")}
       </div>
     </article>`;
 }
@@ -37,23 +37,20 @@ export function renderBookmarks() {
       ${renderStickerField("bookmarks")}
       <div class="bookmarks-masthead">
         <p class="kicker">Saved for later</p>
-        <h1>Your bookmarks.</h1>
-        <p class="lede">Save things you want to try later — no plan, no order, no pressure. Bookmarks don't change your taste profile. Only what you actually try does, so come back and tell Tastemake how it went.</p>
+        <h1>Try Next.</h1>
+        <p class="lede">Things you might want to watch, read, or play next. Saving something here does not change your Taste Profile. Only what you actually try does.</p>
       </div>
 
       <h2 class="visually-hidden">Saved to try</h2>
       <div class="bookmark-grid">
         ${bookmarks.length
           ? bookmarks.map(bookmarkCard).join("")
-          : `<div class="filter-empty bookmark-empty">Nothing bookmarked right now. On a recommendation you haven't tried, choose Not tried, then Bookmark it.</div>`}
+          : `<div class="filter-empty bookmark-empty">Nothing here yet. Save an untried recommendation when you want to come back to it.</div>`}
       </div>
 
-      <div class="recommendation-footer">
+      <div class="recommendation-footer page-actions">
+        <div class="page-actions-left"><button class="button button-quiet" type="button" data-action="show-recs">&larr; Recommendations</button></div>
         <span class="footer-note">save it. try it. tell me.</span>
-        <div class="action-group recommendation-footer-actions">
-          <button class="button button-primary" type="button" data-action="show-recs">Back to discovering</button>
-          <button class="button button-quiet" type="button" data-action="view-model">See my Taste Profile</button>
-        </div>
       </div>
     </section>`;
 }
