@@ -238,7 +238,7 @@
   box-shadow:0 18px 40px rgb(20 34 74 / .09);
 }
 :root[data-look="collage"] .sticker { filter:saturate(.82) drop-shadow(0 2px 1px rgb(20 34 74 / .14)); }
-:root[data-look="collage"] :is(.st-cherry,.st-rainbow,.st-flower,.st-cloud,.st-heart) { display:none; }
+:root[data-look="collage"] :is(.st-cherry,.st-rainbow,.st-flower,.st-cloud,.st-heart,.st-squiggle) { display:none; }
 :root[data-look="collage"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card):nth-child(3n+1) { border-radius:18px 5px 14px 7px; }
 :root[data-look="collage"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card):nth-child(3n+2) { border-radius:6px 20px 8px 14px; }
 :root[data-look="collage"] :is(.button,.domain-filter-button) { border-radius:999px; }
