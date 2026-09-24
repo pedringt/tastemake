@@ -1,0 +1,82 @@
+import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
+
+const uniq = (items) => {
+  const seen = new Set();
+  return items.filter((item) => item?.id && !seen.has(item.id) && seen.add(item.id));
+};
+
+const areaAllowed = (state, item) => !item.domains?.length || item.domains.some((domain) => state.areas?.[domain] !== false);
+
+function externalEvidenceItems(state) {
+  const ids = new Set([
+    ...(state.selectedFavorites ?? []),
+    ...Object.keys(state.feedbackByRecommendation ?? {})
+  ]);
+  return Object.values(state.customItems ?? {}).filter((item) => item?.provider && ids.has(item.id));
+}
+
+async function tmdbRelated(item, env, fetchImpl) {
+  if (!env.TASTEMAKE_TMDB_TOKEN || item.provider !== "tmdb") return [];
+  const kind = item.type === "tv" ? "tv" : "movie";
+  const response = await fetchImpl(`https://api.themoviedb.org/3/${kind}/${item.providerId}/recommendations?language=en-US&page=1`, {
+    headers: { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" }
+  });
+  if (!response.ok) return [];
+  return ((await response.json()).results ?? []).slice(0, 12).map((row) => tmdbItem(row, kind));
+}
+
+async function openLibraryRelated(item, env, fetchImpl) {
+  if (item.provider !== "openlibrary") return [];
+  const subject = item.genres?.find(Boolean);
+  if (!subject) return [];
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject";
+  const response = await fetchImpl(`https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
+    headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
+  });
+  if (!response.ok) return [];
+  return ((await response.json()).docs ?? []).slice(0, 12).map(openLibraryItem);
+}
+
+async function igdbRelated(item, env, fetchImpl) {
+  if (item.provider !== "igdb") return [];
+  const genreIds = item.providerMeta?.genreIds ?? [];
+  if (!genreIds.length) return [];
+  const token = await igdbToken(env, fetchImpl);
+  if (!token) return [];
+  const response = await fetchImpl("https://api.igdb.com/v4/games", {
+    method: "POST",
+    headers: {
+      "client-id": env.IGDB_CLIENT_ID,
+      authorization: `Bearer ${token}`,
+      "content-type": "text/plain"
+    },
+    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name; where genres = (${genreIds.slice(0, 3).join(",")}) & id != ${Number(item.providerId) || 0}; sort total_rating_count desc; limit 12;`
+  });
+  if (!response.ok) return [];
+  return (await response.json()).map(igdbItem);
+}
+
+export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30 } = {}) {
+  const evidenceItems = externalEvidenceItems(state).slice(0, 6);
+  if (!evidenceItems.length) return [];
+
+  const rows = await Promise.all(evidenceItems.map(async (item) => {
+    try {
+      if (item.provider === "tmdb") return await tmdbRelated(item, env, fetchImpl);
+      if (item.provider === "openlibrary") return await openLibraryRelated(item, env, fetchImpl);
+      if (item.provider === "igdb") return await igdbRelated(item, env, fetchImpl);
+      return [];
+    } catch {
+      return [];
+    }
+  }));
+
+  const blocked = new Set([
+    ...evidenceItems.map((item) => item.id),
+    ...Object.keys(state.feedbackByRecommendation ?? {}),
+    ...(state.recommendationSets ?? []).flat().map((item) => item.id)
+  ]);
+  return uniq(rows.flat())
+    .filter((item) => !blocked.has(item.id) && areaAllowed(state, item))
+    .slice(0, limit);
+}
