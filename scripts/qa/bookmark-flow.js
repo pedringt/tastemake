@@ -458,8 +458,9 @@ export async function run() {
   const radio = $(`input[name="look"][value="${picked}"]`);
   const maxScroll = Math.max(0, document.documentElement.scrollHeight - innerHeight);
   if (maxScroll > 0) window.scrollTo(0, Math.min(120, maxScroll));
+  radio.focus();
   const scrollBeforeLookChange = window.scrollY;
-  radio.focus(); radio.click(); await tick();
+  radio.click(); await tick();
   check("picking a look applies it to the whole page straight away", document.documentElement.dataset.look === picked && state.look === picked);
   check("changing looks does not jump the viewport", Math.abs(window.scrollY - scrollBeforeLookChange) <= 1,
     `${scrollBeforeLookChange} -> ${window.scrollY}`);
