@@ -84,7 +84,6 @@ export async function run() {
     check(`search finds ${item.title}`,Boolean(`[data-search-pick="${item.id}"]`)&&Boolean($(`[data-search-pick="${item.id}"]`)));
     await act(`[data-search-pick="${item.id}"]`);
     await act('[data-search-starter="add"]');
-    await act("[data-search-back]");
   }
   check("four real favorites selected",state.selectedFavorites.size===4,[...state.selectedFavorites].join(","));
   check("selected favorites are persisted provider items",[...state.selectedFavorites].every(id=>state.customItems[id]?.provider));
@@ -123,10 +122,9 @@ export async function run() {
   check("correction stored on generated pattern",state.patternStatements.some(s=>s.hypothesisId==="ai-structured-weirdness"&&s.says==="not-me"));
 
   // Keep discovering also stays on the real-catalog endpoint.
-  await act('[data-action="show-recs"]');
-  await act(`[data-feedback-item="${firstId}"][data-rating="more"]`);
   if($('[data-action="keep-discovering"]')) await act('[data-action="keep-discovering"]',300);
-  check("second request never uses a seeded local pool",state.recommendationSets.flat().every(x=>/^tmdb-movie-7/.test(x.id)),state.recommendationSets.flat().map(x=>x.id).join(","));
+  check("Keep discovering makes a second catalog request",recCalls===2,recCalls);
+  check("second request never uses a seeded local pool",state.recommendationSets.length===2&&state.recommendationSets.flat().every(x=>/^tmdb-movie-7/.test(x.id)),state.recommendationSets.flat().map(x=>x.id).join(","));
 
   // Look picker reflects the two replacement concepts and retained skins.
   document.querySelector("[data-open-look]")?.click();
