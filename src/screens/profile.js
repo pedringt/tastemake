@@ -162,27 +162,7 @@ export function renderProfile() {
         </div>
       </div>
 
-      ${state.profileView === "map" && !liveProfile ? renderTasteMap() : `
-      <div class="profile-evidence-strip">
-        <span class="profile-evidence-label">Your favorites</span>
-        <div class="profile-evidence-track">
-          ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}
-        </div>
-      </div>
-
-      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>
-      <div class="profile-map">
-        <aside class="profile-map-aside">
-          <span class="profile-aside-number">${workingHypotheses.length}</span>
-          <p>patterns currently shaping your recommendations</p>
-          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>
-        </aside>
-
-        <div class="signal-stack">
-          ${workingHypotheses.map(hypothesisCard).join("")}
-        </div>
-      </div>
-      `}
+      <div class="profile-evidence-strip">\n        <span class="profile-evidence-label">Your favorites</span>\n        <div class="profile-evidence-track">\n          ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}\n        </div>\n      </div>\n\n      ${liveProfile ? `\n      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>\n      <div class="profile-map">\n        <aside class="profile-map-aside">\n          <span class="profile-aside-number">${workingHypotheses.length}</span>\n          <p>validated AI patterns currently shaping your profile</p>\n          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>\n        </aside>\n        <div class="signal-stack">${workingHypotheses.map(hypothesisCard).join("")}</div>\n      </div>` : `\n      <div class="profile-empty" role="status">\n        <strong>No generated patterns yet.</strong>\n        <p>Tastemake is not filling this page with demo hypotheses. When live profile AI is available, it will build patterns only from your real experienced evidence.</p>\n      </div>`}
 
       ${blindSpotSection()}
 
