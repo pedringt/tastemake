@@ -3,7 +3,7 @@ export const routes = {
   model: "/taste-profile",
   recommendations: "/recommendations",
   library: "/library",
-  bookmarks: "/bookmarks",
+  bookmarks: "/try-next",
   look: "/look",
   setup: "/setup",
   mine: "/my-tastemake"
@@ -12,6 +12,7 @@ export const routes = {
 export function screenFromPath(pathname = window.location.pathname) {
   const normalized = pathname.replace(/\/$/, "") || "/";
   if (normalized === "/") return "look";
+  if (normalized === "/bookmarks") return "bookmarks";
   const entry = Object.entries(routes).find(([, path]) => path === normalized);
   return entry ? entry[0] : "favorites";
 }
