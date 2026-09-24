@@ -47,6 +47,7 @@ export function initSearch({ onChange, announce, goTo }) {
     return ui.external
       .map(existingEvidenceItem)
       .filter((item) => {
+        if (state.selectedFavorites.has(item.id)) return false;
         if (seen.has(item.id)) return false;
         seen.add(item.id);
         return true;
@@ -227,6 +228,7 @@ export function initSearch({ onChange, announce, goTo }) {
       const payload = await searchExternalCatalog(query, ui.filter, { signal: catalogController.signal });
       if (seq !== catalogSeq) return;
       ui.external = payload.items;
+      ui.catalogError = payload.degraded ? "unavailable" : "";
     } catch (error) {
       if (error?.name === "AbortError" || seq !== catalogSeq) return;
       ui.external = [];
