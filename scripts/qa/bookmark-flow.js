@@ -278,10 +278,12 @@ export async function run() {
   check("finished set offers Keep discovering", Boolean($('[data-action="keep-discovering"]')));
   check("finished set mentions 2 bookmarks", /2 things bookmarked/.test($(".bookmark-note")?.textContent || ""));
 
+  const expectedSecond = taste.nextRecommendations(state);
   await act('[data-action="keep-discovering"]');
-  check("Keep discovering announces the new set", /New set: 5 picks\./.test(live()), live());
   ids = cardIds();
-  check("second set has 5 picks incl. one Surprise", ids.length === 5 && $$(".surprise-burst").length === 1, ids.length);
+  check("Keep discovering announces the actual new-set size", live().includes(`New set: ${expectedSecond.length} picks.`), live());
+  check("second set matches the model-selected next set", ids.join() === expectedSecond.map((item) => item.id).join(), `${ids.join()} vs ${expectedSecond.map((item) => item.id).join()}`);
+  check("second set marks exactly the model-selected curveballs", $$(".surprise-burst").length === expectedSecond.filter((item) => item.surprise).length, $$(".surprise-burst").length);
   check("second set does not repeat the opening set", !ids.some((id) => state.recommendationSets[0].some((item) => item.id === id)));
   check("Keep discovering hidden until something is reacted to", !$('[data-action="keep-discovering"]'));
 
@@ -294,14 +296,37 @@ export async function run() {
   check("Taste Profile with lean lines: layout clean", layoutClean(profileShot), JSON.stringify(profileShot).slice(0, 300));
   await act('[data-step-jump="recommendations"]');
   check("Keep discovering available after ONE reaction (not all 5)", Boolean($('[data-action="keep-discovering"]')));
-  await act('[data-action="keep-discovering"]');
-  ids = cardIds();
-  check("third set is what is left (2 picks, no surprise)", ids.length === 2 && $$(".surprise-burst").length === 0, ids.length);
-  const flat = state.recommendationSets.flat().map((item) => item.id);
-  check("no pick is ever shown twice", new Set(flat).size === flat.length);
 
-  await rate(ids[0], "more");
-  await rate(ids[1], "less");
+  // #60: exhaust however many rounds the catalog actually supports. This deliberately derives each
+  // expected set from the product model instead of assuming followUpPool is exactly 7 items (the old
+  // test hardcoded "5 then 2 then done", which made catalog growth itself a regression).
+  let followUpRounds = 1;
+  while (taste.nextRecommendations(state).length) {
+    const expectedNext = taste.nextRecommendations(state);
+    await act('[data-action="keep-discovering"]');
+    ids = cardIds();
+    followUpRounds += 1;
+    check(`follow-up round ${followUpRounds} matches nextRecommendations()`,
+      ids.join() === expectedNext.map((item) => item.id).join(),
+      `${ids.join()} vs ${expectedNext.map((item) => item.id).join()}`);
+    check(`follow-up round ${followUpRounds} has the expected curveball count`,
+      $$(".surprise-burst").length === expectedNext.filter((item) => item.surprise).length,
+      $$(".surprise-burst").length);
+
+    const flat = state.recommendationSets.flat().map((item) => item.id);
+    check(`follow-up round ${followUpRounds} never repeats a shown pick`, new Set(flat).size === flat.length);
+
+    // One reaction is intentionally enough to unlock another round. On the final round, rate every
+    // card so currentRoundComplete() can surface the honest end-of-demo checkpoint.
+    if (taste.nextRecommendations(state).length) {
+      await rate(ids[0], "more");
+      check(`follow-up round ${followUpRounds} unlocks another set after one reaction`, Boolean($('[data-action="keep-discovering"]')));
+    } else {
+      for (const id of ids) await rate(id, "not-tried");
+    }
+  }
+
+  check("expanded catalog supports at least three follow-up rounds", followUpRounds >= 3, followUpRounds);
   check("no more picks: honest end-of-demo message", /every pick this demo has/.test($(".refresh-banner.is-finished")?.textContent || ""));
   check("no Keep discovering when out of picks", !$('[data-action="keep-discovering"]'));
   const endScreen = layout.checkCurrentScreen();
@@ -420,6 +445,9 @@ export async function run() {
   check("the Look button opens the picker", Boolean($(".look-screen")) && state.screen === "look");
   check("the picker shows all four looks as visual previews", $$(".look-card .look-preview").length === 4 && $$('input[name="look"]').length === 4,
     `${$$(".look-card .look-preview").length} previews`);
+  check("look choices use one native radio group (keyboard/screen-reader semantics)",
+    $$('input[name="look"]').every((input) => input.type === "radio" && Boolean(input.closest("label"))) &&
+    new Set($$('input[name="look"]').map((input) => input.name)).size === 1);
   check("each preview is drawn in its own look", $$(".look-preview").map((p) => p.dataset.look).join(",") === looksData.LOOKS.map((l) => l.id).join(","));
   check("previews are hidden from screen readers; the labels carry the meaning", $$(".look-preview").every((p) => p.getAttribute("aria-hidden") === "true") &&
     $$(".look-card-name").every((n) => n.textContent.trim().length > 3));
@@ -428,8 +456,14 @@ export async function run() {
   const picked = startLook === "graphic" ? "analog" : "graphic";
   const pickedLabel = looksData.LOOKS.find((l) => l.id === picked).label;
   const radio = $(`input[name="look"][value="${picked}"]`);
-  radio.focus(); radio.click(); await tick();
+  const maxScroll = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+  if (maxScroll > 0) window.scrollTo(0, Math.min(120, maxScroll));
+  radio.focus();
+  const scrollBeforeLookChange = window.scrollY;
+  radio.click(); await tick();
   check("picking a look applies it to the whole page straight away", document.documentElement.dataset.look === picked && state.look === picked);
+  check("changing looks does not meaningfully jump the viewport", Math.abs(window.scrollY - scrollBeforeLookChange) <= 10,
+    `${scrollBeforeLookChange} -> ${window.scrollY}`);
   check("...and is announced", new RegExp(`Look: ${pickedLabel}\\.`).test(live()), live());
   check("...and keeps keyboard focus on the radio you used", document.activeElement === radio, document.activeElement?.tagName);
   check("...and moves the selected marker", $(".look-card.is-selected")?.dataset.lookChoice === picked && $$(".look-card.is-selected").length === 1);

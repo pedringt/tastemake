@@ -12,7 +12,7 @@
 import { spawnSync } from "node:child_process";
 
 const args = process.argv.slice(2);
-const widthsArg = args.includes("--widths") ? args[args.indexOf("--widths") + 1] : "1600,1440,1300,1024,860,768,430,390,360,320";
+const widthsArg = args.includes("--widths") ? args[args.indexOf("--widths") + 1] : "1600,1440,1300,1024,860,768,430,390,375,360,320";
 const WIDTHS = widthsArg.split(",").map((w) => w.trim());
 const LOOKS = ["editorial", "collage", "analog", "graphic"];
 

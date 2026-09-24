@@ -102,11 +102,27 @@ function restoreFocus(selector, fallback = app) {
 // Apply a look to the whole page right away (the picker is a live preview). Not taste evidence.
 function setLook(id) {
   if (!isLook(id)) return;
+  // Changing fonts/spacing between looks can trigger browser scroll anchoring by a few pixels.
+  // Treat this as a presentation-only change: keep the user's viewport exactly where it was.
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const root = document.documentElement;
+  const previousOverflowAnchor = root.style.overflowAnchor;
+  root.style.overflowAnchor = "none";
   state.look = id;
-  document.documentElement.dataset.look = id;
+  root.dataset.look = id;
   document.querySelectorAll(".look-card").forEach((card) => card.classList.toggle("is-selected", card.dataset.lookChoice === id));
   const done = app.querySelector('[data-action="look-done"]');
   if (done) done.textContent = lookContinueLabel();
+  const restoreViewport = () => window.scrollTo(scrollX, scrollY);
+  restoreViewport();
+  requestAnimationFrame(() => {
+    restoreViewport();
+    requestAnimationFrame(() => {
+      restoreViewport();
+      root.style.overflowAnchor = previousOverflowAnchor;
+    });
+  });
   announce(`Look: ${lookLabel(id)}.`);
 }
 
