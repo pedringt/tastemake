@@ -417,7 +417,7 @@ app.addEventListener("click", async (event) => {
       // The card usually leaves the list; land on the next card's first action, or on the page if none is left.
       restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
       const left = bookmarkedFeedback(state).length;
-      const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "bookmark removed" })[outcome];
+      const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "removed from Try Next" })[outcome];
       announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Bookmarks.`);
     }
     return;
@@ -546,6 +546,7 @@ window.addEventListener("popstate", () => {
   render();
   updateStepper();
   focusApp();
+  maybeRefreshProfile();
 });
 
 initSearch({
