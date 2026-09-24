@@ -1,4 +1,5 @@
-import { favorites, hypotheses, followUpPool, recommendations } from "../data/catalog.js";
+import { hypotheses, followUpPool, recommendations } from "../data/catalog.js";
+import { starterItems } from "./starters.js";
 import { exonerated, hypothesisMatches, isBookmarked, untriedReactionLean, modelUpdateFor } from "./taste.js";
 import { blindSpotsFor } from "./blindspots.js";
 import { visibleDomains } from "../data/domains.js";
@@ -113,7 +114,7 @@ export const evidenceCount = (rows) => rows.supports.length + rows.against.lengt
 export function domainCoverage(state) {
   const seen = Object.fromEntries(visibleDomains().map((domain) => [domain.id, new Set()]));
   const add = (item) => (item.domains ?? []).forEach((domain) => seen[domain]?.add(item.id));
-  favorites.filter((item) => state.selectedFavorites.has(item.id)).forEach(add);
+  starterItems(state).forEach(add);
   for (const feedback of Object.values(state.feedbackByRecommendation)) {
     if (isExperiencedPositive(feedback)) add(feedback.item);
     if (isExperiencedNegative(feedback)) add(feedback.item);
