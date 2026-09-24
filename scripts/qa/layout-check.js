@@ -165,7 +165,7 @@ export function checkCurrentScreen() {
   const textUnderControls = [];
   const textWalker = document.createTreeWalker(screen, NodeFilter.SHOW_TEXT);
   for (let node = textWalker.nextNode(); node; node = textWalker.nextNode()) {
-    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement)) continue;
+    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement) || node.parentElement?.closest?.('.editorial-art[aria-hidden="true"]')) continue;
     const range = document.createRange();
     range.selectNodeContents(node);
     for (const r of range.getClientRects()) {
