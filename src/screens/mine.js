@@ -46,10 +46,14 @@ function startersRow(starters) {
     <li class="mine-row mine-starters">
       <div class="mine-row-main">
         <strong class="mine-title">Starter favorites <span class="mine-count">${starters.length}</span></strong>
-        <span class="mine-source">Picked on Favorites</span>
-        <ul class="mine-chips">${starters.map((entry) => `<li>${esc(entry.item.title)}</li>`).join("")}</ul>
+        <span class="mine-source">The known loves Tastemake started from</span>
+        <ul class="mine-chips">${starters.map((entry) => `
+          <li>
+            <span>${esc(entry.item.title)}</span>
+            <button type="button" data-starter-replace="${entry.id}">Replace</button>
+            <button type="button" data-starter-remove="${entry.id}">Remove</button>
+          </li>`).join("")}</ul>
       </div>
-      <div class="mine-actions"><button class="button button-quiet mine-action" type="button" data-action="back-favorites">Change on the Favorites page</button></div>
     </li>`;
 }
 
@@ -161,6 +165,24 @@ function conceptsBlock() {
     </section>`;
 }
 
+function setupBlock() {
+  const scope = state.setupAreas.has("all")
+    ? "All"
+    : AREAS.filter((area) => state.setupAreas.has(area.id)).map((area) => area.label).join(", ");
+  const style = ({ safe: "Mostly safe bets", balanced: "Balanced", adventurous: "More adventurous" })[state.recommendationStyle] ?? "Balanced";
+  return `
+    <section class="mine-block mine-setup" aria-labelledby="mine-setup">
+      <h2 id="mine-setup">Your setup</h2>
+      <dl class="mine-setup-list">
+        <div><dt>Name</dt><dd>${esc(state.displayName || "Not set")}</dd></div>
+        <div><dt>Recommendations</dt><dd>${esc(scope || "All")}</dd></div>
+        <div><dt>Discovery style</dt><dd>${esc(style)}</dd></div>
+      </dl>
+      <button class="button button-quiet mine-setup-edit" type="button" data-action="edit-setup">Edit setup</button>
+      <p class="mine-blurb">These are product settings, not taste evidence.</p>
+    </section>`;
+}
+
 function areasBlock() {
   const onCount = AREAS.filter((area) => state.areas[area.id] !== false).length;
   return `
@@ -224,6 +246,7 @@ export function renderMine() {
           ${tastebreakList()}
         </div>
         <aside class="mine-side">
+          ${setupBlock()}
           ${conceptsBlock()}
           ${areasBlock()}
           ${picksBlock()}
