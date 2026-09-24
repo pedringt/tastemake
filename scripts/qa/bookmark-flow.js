@@ -283,14 +283,14 @@ export async function run() {
   ids = cardIds();
   check("Keep discovering announces the actual new-set size", live().includes(`New set: ${expectedSecond.length} picks.`), live());
   check("second set matches the model-selected next set", ids.join() === expectedSecond.map((item) => item.id).join(), `${ids.join()} vs ${expectedSecond.map((item) => item.id).join()}`);
-  check("second set marks exactly the model-selected curveballs", $(".surprise-burst").length === expectedSecond.filter((item) => item.surprise).length, $(".surprise-burst").length);
+  check("second set marks exactly the model-selected curveballs", $$(".surprise-burst").length === expectedSecond.filter((item) => item.surprise).length, $$(".surprise-burst").length);
   check("second set does not repeat the opening set", !ids.some((id) => state.recommendationSets[0].some((item) => item.id === id)));
   check("Keep discovering hidden until something is reacted to", !$('[data-action="keep-discovering"]'));
 
   await rate(ids[0], "more");
   // Taste Profile: a plain More on a pick not yet tried shows as a separate lean, not as taste.
   await act('[data-step-jump="model"]');
-  const leans = $(".signal-lean");
+  const leans = $$(".signal-lean");
   check("Taste Profile shows a lean from a reaction to an untried pick", leans.length >= 1 && /lean toward/.test(leans[0].textContent), leans.map((el) => el.textContent.trim().replace(/\s+/g, " ")).join(" || ").slice(0, 200));
   const profileShot = layout.checkCurrentScreen();
   check("Taste Profile with lean lines: layout clean", layoutClean(profileShot), JSON.stringify(profileShot).slice(0, 300));
@@ -310,8 +310,8 @@ export async function run() {
       ids.join() === expectedNext.map((item) => item.id).join(),
       `${ids.join()} vs ${expectedNext.map((item) => item.id).join()}`);
     check(`follow-up round ${followUpRounds} has the expected curveball count`,
-      $(".surprise-burst").length === expectedNext.filter((item) => item.surprise).length,
-      $(".surprise-burst").length);
+      $$(".surprise-burst").length === expectedNext.filter((item) => item.surprise).length,
+      $$(".surprise-burst").length);
 
     const flat = state.recommendationSets.flat().map((item) => item.id);
     check(`follow-up round ${followUpRounds} never repeats a shown pick`, new Set(flat).size === flat.length);
