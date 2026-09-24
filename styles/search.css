@@ -122,3 +122,23 @@
   .search-shell { max-height:92vh; }
   .search-head,.search-principle,.search-controls,.search-view { padding-inline:16px; }
 }
+
+.search-starter {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:12px 0 16px;
+  padding:12px 14px;
+  border:2px solid var(--navy);
+  border-radius:12px;
+  background:var(--tint-warm,#fff9e6);
+}
+.search-starter > span { display:grid; gap:2px; min-width:0; }
+.search-starter strong { color:var(--navy); font-size:13px; }
+.search-starter small { color:var(--muted); font-size:12px; line-height:1.35; }
+.search-starter .button { flex:none; min-width:0; min-height:40px; padding:7px 12px; font-size:12px; }
+@media (max-width:620px) {
+  .search-starter { align-items:stretch; flex-direction:column; }
+  .search-starter .button { width:100%; }
+}
