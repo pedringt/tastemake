@@ -33,7 +33,7 @@ jobs:
         uses: browser-actions/setup-chrome@v1
         id: chrome
 
-      - name: Full responsive QA sweep (diagnostic)
+      - name: npm test
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
-        run: npm run test:full
+        run: npm test
