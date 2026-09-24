@@ -76,7 +76,7 @@ function hypothesisCard(item, index) {
           </span>
         </div>
         <p class="signal-claim">${esc(item.claim)}</p>
-        <div class="signal-evidence"><span>starting evidence</span> ${esc(item.evidence)}</div>
+        <div class="signal-evidence"><span>cited evidence</span> ${esc(item.evidence)}</div>
         <div class="signal-provenance">${esc(update.provenance)}</div>
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
@@ -129,17 +129,7 @@ export function renderProfile() {
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
           <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they are not taste evidence. Taste Profile patterns appear only when live AI has proposed them and Tastemake has validated every evidence citation.</p>
           ${state.hypothesisAiMessage ? `<p class="profile-ai-status" role="status">${esc(state.hypothesisAiMessage)}</p>` : ""}
-          <details class="profile-legend">
-            <summary>What do the confidence labels mean?</summary>
-            <ul>
-              <li><strong>Emerging:</strong> a starting pattern. Nothing you've tried has tested it yet.</li>
-              <li><strong>Supported:</strong> at least one thing you've tried backs it, and more back it than count against it.</li>
-              <li><strong>Strong:</strong> three or more things you've tried back it, and misses don't outweigh them.</li>
-              <li><strong>Still learning:</strong> something you tried didn't land. One miss never weakens a pattern.</li>
-              <li><strong>Less certain:</strong> more than one thing you tried didn't land.</li>
-            </ul>
-            <p>Reactions to things you haven't tried never count here. They show up as a separate "lean".</p>
-          </details>
+          ${liveProfile ? `<details class="profile-legend">\n            <summary>What do the confidence labels mean?</summary>\n            <ul>\n              <li><strong>Emerging:</strong> an early pattern with limited support.</li>\n              <li><strong>Supported:</strong> experienced evidence backs it.</li>\n              <li><strong>Strong:</strong> several experienced items back it without stronger counterevidence.</li>\n              <li><strong>Still learning:</strong> the evidence is mixed.</li>\n              <li><strong>Less certain:</strong> repeated misses outweigh the support.</li>\n            </ul>\n          </details>` : ""}
         </div>
         <div class="profile-stamp" aria-hidden="true">
           <strong>WORKING</strong>
