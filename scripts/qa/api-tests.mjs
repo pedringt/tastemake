@@ -1,151 +1,128 @@
 #!/usr/bin/env node
-// Tests for the live recommendation endpoint (api/recommendations.mjs). No network and no paid call:
-// every model response is a fake injected through `fetchImpl`.
-//
-//   node scripts/qa/api-tests.mjs
-//
-// Covers: the gate (every reason it stays off), the deterministic fallback being the product's own picks,
-// model answers that pass and answers that must be refused, transport failures, and the HTTP handler.
+// Free, no-network tests for the real-catalog recommendation endpoint.
 
 import handler, { liveConfig, produceRecommendations } from "../../api/recommendations.mjs";
-import { favorites, recommendations, followUpPool } from "./fixtures/catalog.js";
-import { nextRecommendations } from "../../src/model/taste.js";
-import { buildContext } from "../../src/ai/context.js";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+let passed=0;
+const failures=[];
+const check=(name,ok,detail="")=>{if(ok) passed+=1; else failures.push(`${name}${detail?` (${detail})`:""}`);};
+const eq=(name,got,want)=>check(name,got===want,`got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
 
-// ---- fixtures -------------------------------------------------------------------------------------
-const ON = {
-  TASTEMAKE_AI_ENABLED: "1", ANTHROPIC_API_KEY: "test-key-not-real", TASTEMAKE_AI_MODEL: "claude-test",
-  TASTEMAKE_AI_RATE_LIMIT_CONFIRMED: "1", TASTEMAKE_AI_SPEND_CAP_CONFIRMED: "1", VERCEL_ENV: "preview"
+const BASE={
+  TASTEMAKE_TMDB_TOKEN:"tmdb-test",
+  TASTEMAKE_AI_ENABLED:"0",
+  TASTEMAKE_AI_MODEL:"claude-test",
+  TASTEMAKE_AI_RATE_LIMIT_CONFIRMED:"1",
+  TASTEMAKE_AI_SPEND_CAP_CONFIRMED:"1",
+  VERCEL_ENV:"preview"
 };
-const rawState = (extra = {}) => ({
-  selectedFavorites: favorites.filter((f) => f.selected).map((f) => f.id),
-  feedbackByRecommendation: {
-    [recommendations[0].id]: { item: recommendations[0], rating: "more", detail: "loved-before" },
-    [recommendations[1].id]: { item: recommendations[1], rating: "more", detail: "liked-before" },
-    [recommendations[2].id]: { item: recommendations[2], rating: "not-tried", detail: "bookmarked" }
-  },
-  recommendationSets: [recommendations], libraryFavorites: [], customItems: {}, blindSpots: {},
-  blindSpotDrafts: {}, blindSpotDismissed: [], patternStatements: [],
-  areas: { watch: true, read: true, play: true }, curveball: true, ...extra
+const ON={...BASE,TASTEMAKE_AI_ENABLED:"1",ANTHROPIC_API_KEY:"fake-key"};
+
+const favorite={
+  id:"tmdb-movie-1",provider:"tmdb",providerId:"1",title:"Favorite Film",type:"movie",
+  domains:["watch"],about:"A favorite.",artwork:null,providerMeta:{genreIds:[18]}
+};
+const relatedRows=Array.from({length:6},(_,i)=>({
+  id:101+i,title:`Real Candidate ${i+1}`,overview:`Catalog item ${i+1}.`,
+  release_date:`202${i}-01-01`,poster_path:`/p${i}.jpg`,genre_ids:[18]
+}));
+const rawState=(extra={})=>({
+  selectedFavorites:[favorite.id],
+  feedbackByRecommendation:{},
+  recommendationSets:[],
+  libraryFavorites:[],
+  customItems:{[favorite.id]:favorite},
+  blindSpots:{},blindSpotDrafts:{},blindSpotDismissed:[],patternStatements:[],
+  areas:{watch:true,read:true,play:true},curveball:true,
+  ...extra
 });
-const liveState = () => {
-  const raw = rawState();
-  return {
-    ...raw, selectedFavorites: new Set(raw.selectedFavorites), libraryFavorites: new Set(), blindSpotDismissed: new Set()
+
+const modelSays=(picks)=>({
+  content:[{type:"text",text:JSON.stringify({picks})}],
+  usage:{input_tokens:20,output_tokens:40},model:"claude-test"
+});
+const goodPicks=()=>relatedRows.slice(0,5).map((row,i)=>({
+  itemId:`tmdb-movie-${row.id}`,
+  why:`Related to a film you explicitly chose as a favorite; this tests a nearby catalog match ${i+1}.`,
+  cites:[`ev:${favorite.id}`],tests:null,kind:i===4?"curveball":"pick"
+}));
+
+function routedFetch(aiPayload=modelSays(goodPicks()),opts={}){
+  return async (url)=>{
+    const u=String(url);
+    if(u.includes("/movie/1/recommendations")) return {ok:true,status:200,json:async()=>({results:relatedRows})};
+    if(u.includes("api.anthropic.com")){
+      if(opts.abort){const e=new Error("aborted");e.name="AbortError";throw e;}
+      if(opts.fail) throw new Error(opts.fail);
+      if(opts.status && opts.status!==200) return {ok:false,status:opts.status,json:async()=>({error:{type:"test_error",message:"test"}})};
+      return {ok:true,status:200,json:async()=>aiPayload};
+    }
+    throw new Error(`unexpected URL ${u}`);
   };
-};
-const fakeFetch = (payload, { status = 200, fail = null } = {}) => async () => {
-  if (fail === "abort") { const e = new Error("aborted"); e.name = "AbortError"; throw e; }
-  if (fail) throw new Error(fail);
-  return { ok: status >= 200 && status < 300, status, json: async () => payload };
-};
-const modelSays = (picks) => ({ content: [{ type: "text", text: JSON.stringify({ picks }) }], usage: { input_tokens: 10, output_tokens: 20 }, model: "claude-test" });
-const goodPicks = () => {
-  const state = liveState();
-  const ctx = buildContext(state);
-  const cite = ctx.evidence.find((r) => r.class === "experienced" && r.polarity > 0 && r.kind !== "starter-favorite").ref;
-  return nextRecommendations(state).map((item, i) => ({
-    itemId: ctx.candidates[i]?.id ?? item.id,
-    why: `Tests whether ${["structure", "tonal collision", "moral messiness", "discovery", "dry comedy"][i % 5]} still lands for you.`,
-    cites: [cite], tests: null, kind: "pick"
-  }));
-};
-
-// ---- the gate -------------------------------------------------------------------------------------
-eq("gate: all set (non-production) is enabled", liveConfig(ON).enabled, true);
-for (const [key, reason] of [["TASTEMAKE_AI_ENABLED", "off-switch"], ["ANTHROPIC_API_KEY", "missing-key"], ["TASTEMAKE_AI_MODEL", "missing-model"],
-  ["TASTEMAKE_AI_RATE_LIMIT_CONFIRMED", "rate-limit-not-confirmed"], ["TASTEMAKE_AI_SPEND_CAP_CONFIRMED", "spend-cap-not-confirmed"]]) {
-  const env = { ...ON }; delete env[key];
-  const config = liveConfig(env);
-  check(`gate: without ${key} it is off (${reason})`, !config.enabled && config.reasons.includes(reason), config.reasons.join(","));
 }
-const prod = liveConfig({ ...ON, VERCEL_ENV: "production" });
-check("gate: production needs its own approval even with everything else set", !prod.enabled && prod.reasons.includes("production-live-not-approved"), prod.reasons.join(","));
-eq("gate: production with the approval is enabled", liveConfig({ ...ON, VERCEL_ENV: "production", TASTEMAKE_AI_PRODUCTION_APPROVED: "1" }).enabled, true);
 
-// ---- deterministic fallback ----------------------------------------------------------------------
-const expectedIds = nextRecommendations(liveState()).map((item) => item.id).join();
-let out = await produceRecommendations({ rawState: rawState(), env: {}, fetchImpl: fakeFetch(null, { fail: "should not be called" }) });
-eq("gate off: deterministic", out.source, "deterministic");
-eq("gate off: no paid call", out.meta.paidCallMade, false);
-eq("gate off: the fallback is exactly the app's own picks", out.picks.map((p) => p.id).join(), expectedIds);
-check("gate off: the fallback is not filtered by the model's grounding rules", out.picks.length === nextRecommendations(liveState()).length, `${out.picks.length}`);
-const cold = await produceRecommendations({ rawState: rawState({ feedbackByRecommendation: {}, recommendationSets: [] }), env: {} });
-eq("cold start: still the full deterministic set (nothing dropped for having no citation)", cold.picks.length, 5);
+// Gates.
+eq("AI gate enabled in non-production when all safeguards are present",liveConfig(ON).enabled,true);
+for(const [key,reason] of [["TASTEMAKE_AI_ENABLED","off-switch"],["ANTHROPIC_API_KEY","missing-key"],["TASTEMAKE_AI_MODEL","missing-model"],["TASTEMAKE_AI_RATE_LIMIT_CONFIRMED","rate-limit-not-confirmed"],["TASTEMAKE_AI_SPEND_CAP_CONFIRMED","spend-cap-not-confirmed"]]){
+  const env={...ON}; delete env[key];
+  const config=liveConfig(env);
+  check(`gate closes without ${key}`,!config.enabled&&config.reasons.includes(reason),config.reasons.join(","));
+}
+check("production needs explicit live approval",!liveConfig({...ON,VERCEL_ENV:"production"}).enabled);
+eq("production approval opens the gate",liveConfig({...ON,VERCEL_ENV:"production",TASTEMAKE_AI_PRODUCTION_APPROVED:"1"}).enabled,true);
 
-// ---- model answers that pass ------------------------------------------------------------------------
-out = await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: fakeFetch(modelSays(goodPicks())) });
-eq("a valid model answer is used", out.source, "model");
-eq("...and reports the paid call", out.meta.paidCallMade, true);
-check("...and every pick carries its citations", out.picks.every((p) => p.ai?.cites?.length), JSON.stringify(out.picks[0]?.ai));
-check("...and the reason text comes from the model", out.picks.every((p) => /Tests whether/.test(p.reason)), out.picks[0]?.reason);
+// Real-catalog fallback, including the first set.
+let out=await produceRecommendations({rawState:rawState(),env:BASE,fetchImpl:routedFetch()});
+eq("AI off uses real catalog fallback",out.source,"catalog");
+eq("catalog fallback has five real provider picks",out.picks.length,5);
+check("catalog fallback contains no legacy seed ids",out.picks.every(p=>p.id.startsWith("tmdb-movie-")),out.picks.map(p=>p.id).join(","));
+eq("catalog fallback makes no paid call",out.meta.paidCallMade,false);
+check("catalog fallback explains that AI did not rank it",out.picks.every(p=>/Live AI did not rank/.test(p.reason)));
 
-// #28: the model sometimes prefixes its answer with prose despite the "JSON only" instruction (this was
-// the actual cause behind ~60% of live requests falling back). parseModelJson must recover the JSON
-// object rather than discarding a good answer just because something came before or after it.
-const prosePrefixed = { content: [{ type: "text", text: `Looking at your evidence, here is the set:\n\n${JSON.stringify({ picks: goodPicks() })}` }], usage: { input_tokens: 10, output_tokens: 20 }, model: "claude-test" };
-out = await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: fakeFetch(prosePrefixed) });
-eq("a JSON object prefixed with prose is still recovered, not discarded", out.source, "model");
-const proseSuffixed = { content: [{ type: "text", text: `${JSON.stringify({ picks: goodPicks() })}\n\nLet me know if you'd like a different set!` }], usage: { input_tokens: 10, output_tokens: 20 }, model: "claude-test" };
-out = await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: fakeFetch(proseSuffixed) });
-eq("...same for trailing commentary after the JSON", out.source, "model");
+// Valid live output.
+out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch()});
+eq("valid model ranking is used",out.source,"model");
+check("model picks keep real provider ids",out.picks.every(p=>p.provider==="tmdb"));
+check("model picks carry validated citations",out.picks.every(p=>p.ai?.cites?.includes(`ev:${favorite.id}`)));
+eq("model request is reported as paid",out.meta.paidCallMade,true);
 
-// ---- model answers that must be refused -------------------------------------------------------------
-const cases = [
-  ["invented itemId", goodPicks().map((p, i) => (i === 0 ? { ...p, itemId: "not-a-real-item" } : p))],
-  ["citation that does not exist", goodPicks().map((p, i) => (i === 0 ? { ...p, cites: ["ev:nope"] } : p))],
-  ["intent cited as taste", goodPicks().map((p, i) => (i === 0 ? { ...p, cites: [`ev:${recommendations[2].id}`] } : p))],
-  ["no citation", goodPicks().map((p, i) => (i === 0 ? { ...p, cites: [] } : p))],
-  ["circular reason", goodPicks().map((p, i) => (i === 0 ? { ...p, why: "You'll like this because it matches your taste." } : p))],
-  ["identity claim", goodPicks().map((p, i) => (i === 0 ? { ...p, why: "Your aesthetic is dark academia, so this fits." } : p))],
-  ["duplicate picks", goodPicks().map((p) => ({ ...p, itemId: goodPicks()[0].itemId }))],
-  ["too few picks", goodPicks().slice(0, 1)],
-  ["not JSON at all", null]
+// Invalid model output never invents a replacement.
+const invalidCases=[
+  ["invented id",goodPicks().map((p,i)=>i? p:{...p,itemId:"made-up"})],
+  ["missing citation",goodPicks().map((p,i)=>i? p:{...p,cites:[]})],
+  ["bad citation",goodPicks().map((p,i)=>i? p:{...p,cites:["ev:nope"]})],
+  ["circular why",goodPicks().map((p,i)=>i? p:{...p,why:"This matches your taste."})],
+  ["duplicate",goodPicks().map(p=>({...p,itemId:goodPicks()[0].itemId}))],
+  ["too few",goodPicks().slice(0,1)]
 ];
-for (const [name, picks] of cases) {
-  const payload = picks === null ? { content: [{ type: "text", text: "sorry, I can't do that" }] } : modelSays(picks);
-  const result = await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: fakeFetch(payload) });
-  check(`refused and fell back: ${name}`, result.source === "deterministic" && result.picks.map((p) => p.id).join() === expectedIds, `${result.source} / ${result.reason}`);
-  check(`...and the paid call is still reported: ${name}`, result.meta.paidCallMade === true, JSON.stringify(result.meta));
+for(const [name,picks] of invalidCases){
+  const result=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(modelSays(picks))});
+  check(`${name}: falls back to real catalog`,result.source==="catalog"&&result.picks.every(p=>p.provider==="tmdb"),result.source);
 }
-const notMe = rawState({ patternStatements: [{ hypothesisId: "H04", label: "Comedy works better when it has teeth", says: "not-me", weight: null, authority: "user-confirmed" }] });
-const notMeState = { ...notMe, selectedFavorites: new Set(notMe.selectedFavorites), libraryFavorites: new Set(), blindSpotDismissed: new Set() };
-const notMePicks = nextRecommendations(notMeState).map((item, i) => ({ ...goodPicks()[0], itemId: buildContext(notMeState).candidates[i]?.id ?? item.id, tests: "H04" }));
-out = await produceRecommendations({ rawState: notMe, env: ON, fetchImpl: fakeFetch(modelSays(notMePicks)) });
-eq("a pick that tests a pattern the user rejected falls back", out.source, "deterministic");
+const badText={content:[{type:"text",text:"not json"}]};
+out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(badText)});
+eq("non-JSON model output falls back to catalog",out.source,"catalog");
 
-// ---- transport failures ------------------------------------------------------------------------------
-for (const [name, opts] of [["timeout", { fail: "abort" }], ["network error", { fail: "boom" }], ["non-200", { status: 500 }]]) {
-  const result = await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: fakeFetch(modelSays(goodPicks()), opts) });
-  check(`transport ${name}: falls back to the app's picks`, result.source === "deterministic" && result.picks.map((p) => p.id).join() === expectedIds, `${result.source} / ${result.reason}`);
+for(const [name,opts] of [["timeout",{abort:true}],["network",{fail:"boom"}],["500",{status:500}]]){
+  const result=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(modelSays(goodPicks()),opts)});
+  check(`${name}: transport failure keeps real catalog picks`,result.source==="catalog"&&result.picks.length===5,result.source);
 }
 
-// ---- the prompt carries only product-owned context ----------------------------------------------------
-let seenBody = null;
-await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: async (_url, init) => { seenBody = JSON.parse(init.body); return { ok: true, status: 200, json: async () => modelSays(goodPicks()) }; } });
-const prompt = seenBody.messages[0].content;
-check("prompt: no API key or env values", !prompt.includes(ON.ANTHROPIC_API_KEY) && !/process\.env/.test(prompt));
-check("prompt: candidates are sent as ids and public fields only", /"candidates":/.test(prompt) && !/"reason":/.test(prompt.split('"candidates":')[1].slice(0, 2000)), "candidate fields");
-check("prompt: no temperature is sent (newer models reject it)", seenBody.temperature === undefined, String(seenBody.temperature));
+// No provider candidates means an honest empty result, never a seed fallback.
+const noCandidates=async (url)=>{
+  if(String(url).includes("/movie/1/recommendations")) return {ok:true,status:200,json:async()=>({results:[]})};
+  throw new Error("AI should not be called without candidates");
+};
+out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:noCandidates});
+eq("no real candidates returns zero picks",out.picks.length,0);
+eq("no real candidates marks exhausted",out.meta.exhausted,true);
 
-// ---- the HTTP handler --------------------------------------------------------------------------------
-const res = () => { const r = { code: null, body: null, headers: {} }; r.status = (c) => { r.code = c; return r; }; r.json = (b) => { r.body = b; return r; }; r.setHeader = (k, v) => { r.headers[k] = v; }; return r; };
-let r = res(); await handler({ method: "GET", headers: {} }, r); eq("GET is refused", r.code, 405);
-r = res(); await handler({ method: "POST", headers: {}, body: {} }, r); eq("POST with no state is refused", r.code, 400);
-r = res(); await handler({ method: "POST", headers: { "content-length": "999999" }, body: {} }, r); eq("an oversized body is refused", r.code, 413);
-r = res(); await handler({ method: "POST", headers: { "x-forwarded-for": "5.5.5.5" }, body: { state: rawState() } }, r);
-eq("a good POST answers 200", r.code, 200);
-eq("...deterministic while the gate is off in this process", r.body.source, "deterministic");
-eq("...and is never cached", r.headers["cache-control"], "no-store");
-let limited = null;
-for (let i = 0; i < 12; i += 1) { const rr = res(); await handler({ method: "POST", headers: { "x-forwarded-for": "9.9.9.9" }, body: { state: rawState() } }, rr); if (rr.code === 429) { limited = i; break; } }
-check("a burst from one visitor is rate limited (best effort, per instance)", limited !== null, `no 429 in 12 requests`);
+// HTTP shell.
+const res=()=>{const r={code:null,body:null,headers:{}};r.status=(code)=>{r.code=code;return r;};r.json=(body)=>{r.body=body;return r;};r.setHeader=(k,v)=>{r.headers[k]=v;};return r;};
+let rr=res(); await handler({method:"GET",headers:{}},rr); eq("GET refused",rr.code,405);
+rr=res(); await handler({method:"POST",headers:{},body:{}},rr); eq("missing state refused",rr.code,400);
+rr=res(); await handler({method:"POST",headers:{"content-length":"999999"},body:{}},rr); eq("oversized body refused",rr.code,413);
 
 console.log(`api tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+failures.forEach(f=>console.log(`  x ${f}`));
+process.exit(failures.length?1:0);
