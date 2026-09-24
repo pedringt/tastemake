@@ -362,7 +362,7 @@ export async function run() {
   const lovedId = $$(".bookmark-card")[0].dataset.bookmarkId;
   await act(`[data-bookmark-item="${lovedId}"][data-bookmark-action="tried-loved"]`);
   check("after acting on a bookmark, focus moves to the next card (not lost)", document.activeElement?.classList.contains("bookmark-action"), document.activeElement?.tagName + "." + document.activeElement?.className);
-  check("...and the change is announced", /marked Loved it before\. 1 thing left in Bookmarks\./.test(live()), live());
+  check("...and the change is announced", /marked Loved it before\. 1 thing left in Try Next\./.test(live()), live());
   const loved = state.feedbackByRecommendation[lovedId];
   check("'Loved it' becomes a real reaction", loved.rating === "more" && loved.detail === "loved-before", `${loved.rating}/${loved.detail}`);
   check("...that now counts as taste evidence", taste.tasteDelta(loved) === 2, taste.tasteDelta(loved));
@@ -373,7 +373,7 @@ export async function run() {
   await act(`[data-bookmark-item="${lastId}"][data-bookmark-action="remove"]`);
   check("removing the last bookmark shows the empty state", Boolean($(".bookmark-empty")));
   check("with nothing left, focus lands on the page, not nowhere", document.activeElement?.id === "app", document.activeElement?.tagName + "#" + document.activeElement?.id);
-  check("...and is announced", /bookmark removed\. 0 things left in Bookmarks\./.test(live()), live());
+  check("...and is announced", /removed from Try Next\. 0 things left in Try Next\./.test(live()), live());
   check("removed bookmark stays untried, no evidence", state.feedbackByRecommendation[lastId].rating === "not-tried" && taste.tasteDelta(state.feedbackByRecommendation[lastId]) === 0);
   await act('[data-action="show-recs"]');
   check("Bookmarks tab stays visible with no badge when nothing is saved", !bookmarksStep().hidden && !bookmarksStep().querySelector("[data-bookmark-count]"));
