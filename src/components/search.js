@@ -397,7 +397,12 @@ export function initSearch({ onChange, announce, goTo }) {
     }
     // Never create a second record for something already here (duplicate evidence): open the existing one.
     const existing = findExisting(state, title);
-    if (existing) {
+    const knownExisting = existing && (
+      state.selectedFavorites.has(existing.id)
+      || Boolean(state.feedbackByRecommendation[existing.id])
+      || Boolean(state.customItems[existing.id])
+    );
+    if (knownExisting) {
       ui.pending = null;
       ui.itemId = existing.id;
       ui.mode = "sheet";
