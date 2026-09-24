@@ -125,7 +125,7 @@ export function checkCurrentScreen() {
   const texts = [];
   const walker = document.createTreeWalker(screen, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement)) continue;
+    if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement) || node.parentElement?.closest?.('.editorial-art[aria-hidden="true"]')) continue;
     const range = document.createRange();
     range.selectNodeContents(node);
     for (const r of range.getClientRects()) {
@@ -172,10 +172,7 @@ export function checkCurrentScreen() {
       if (r.width < 2 || r.height < 2) continue;
       const clash = controls.find((c) => !c.contains(node) && overlapArea(r, c.getBoundingClientRect()) > 12);
       if (clash) {
-        const textCard = node.parentElement?.closest?.("[data-rec-id]")?.getAttribute("data-rec-id") ?? "no-card";
-        const controlCard = clash.closest?.("[data-rec-id]")?.getAttribute("data-rec-id") ?? "no-card";
-        const cb = clash.getBoundingClientRect();
-        textUnderControls.push(`"${node.textContent.trim().slice(0, 28)}" under ${describe(clash)} [text:${textCard} control:${controlCard} tr:${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.right)},${Math.round(r.bottom)} cr:${Math.round(cb.left)},${Math.round(cb.top)},${Math.round(cb.right)},${Math.round(cb.bottom)}]`);
+        textUnderControls.push(`"${node.textContent.trim().slice(0, 28)}" under ${describe(clash)}`);
         break;
       }
     }
