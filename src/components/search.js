@@ -65,16 +65,16 @@ export function initSearch({ onChange, announce, goTo }) {
     const starterSelected = state.selectedFavorites.has(item.id);
     const starterLabel = state.starterReplaceId
       ? `Replace with ${esc(item.title)}`
-      : starterSelected ? "Remove from starter mix" : "Add to starter mix";
+      : starterSelected ? "Remove favorite" : "Add favorite";
     const starterBlock = `
       <div class="search-starter">
-        <span><strong>Starter mix</strong><small>Known loves are the first evidence Tastemake starts from.</small></span>
+        <span><strong>Favorites</strong><small>Things you have already tried and loved. Tastemake starts here.</small></span>
         <button type="button" class="button ${starterSelected ? "button-quiet" : "button-primary"}" data-search-starter="${starterSelected ? "remove" : "add"}">${starterLabel}</button>
       </div>`;
 
-    if (status.key === "starter") {
+    if (!state.onboarded || status.key === "starter") {
       return `${head}${starterBlock}
-        <p class="search-note">This is already one of the things Tastemake starts from. You can remove or replace it here without leaving search.</p>
+        <p class="search-note">Favorites are things you have already tried and loved. Add or replace one here, then keep searching.</p>
         <p><button type="button" class="button button-primary" data-search-close>Done</button></p>`;
     }
 
@@ -89,7 +89,7 @@ export function initSearch({ onChange, announce, goTo }) {
         </div>
         <div class="search-group" role="group" aria-label="I haven't tried it">
           <span class="search-group-label">I haven't tried it</span>
-          ${actionButton(item, "bookmark", "Bookmark it", on("bookmarked"))}
+          ${actionButton(item, "bookmark", "Try Next", on("bookmarked"))}
           ${actionButton(item, "not-interested", "Not interested", on("not-interested"))}
         </div>
       </div>
@@ -118,7 +118,7 @@ export function initSearch({ onChange, announce, goTo }) {
           </div>
         </fieldset>
         <p class="search-error" role="alert" ${ui.addError ? "" : "hidden"}>${esc(ui.addError)}</p>
-        <p class="search-note">After you add it, you can put it in your starter mix, Library, or Bookmarks. Searching and typing alone never teach Tastemake anything.</p>
+        <p class="search-note">After you add it, you can make it a Favorite, put it in your Library, or save it to Try Next. Searching and typing alone never teach Tastemake anything.</p>
         <p><button type="submit" class="button button-primary">Continue</button></p>
       </form>`;
   }
@@ -229,7 +229,7 @@ export function initSearch({ onChange, announce, goTo }) {
       if (action === "remove") {
         state.selectedFavorites.delete(item.id);
         if (state.starterReplaceId === item.id) state.starterReplaceId = null;
-        onChange(`${item.title} removed from your starter mix.`);
+        onChange(`${item.title} removed from your Favorites.`);
         render();
         focus("#search-sheet-title");
         return;
@@ -245,7 +245,7 @@ export function initSearch({ onChange, announce, goTo }) {
       ui.itemId = null;
       ui.query = "";
       input.value = "";
-      onChange(`${item.title} added to your starter mix. ${state.selectedFavorites.size} of 4 selected.`);
+      onChange(`${item.title} added to your Favorites. ${state.selectedFavorites.size} of 4 selected.`);
       render();
       input.focus();
       return;
