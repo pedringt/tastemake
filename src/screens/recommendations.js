@@ -22,7 +22,7 @@ export function reactionLabel(feedback) {
   if (isStrongPositive(feedback)) return "Loved it before";
   if (isPositiveExperience(feedback)) return "Liked it before";
   if (isExperiencedNegative(feedback)) return "Disliked it before";
-  if (isBookmarked(feedback)) return "Bookmarked";
+  if (isBookmarked(feedback)) return "Try Next";
   return ratingLabel(feedback.rating);
 }
 
@@ -55,7 +55,7 @@ function detailOptionsFor(feedback) {
     ];
   }
 
-  return [["bookmarked", "Bookmark it"]];
+  return [["bookmarked", "Save to Try Next"]];
 }
 
 // #52/#53: three layers, not one block. Primary (More/Less/Not tried) is always visible. Secondary — which
@@ -69,7 +69,7 @@ function detailOptionsFor(feedback) {
 function detailChips(itemId, feedback) {
   const options = detailOptionsFor(feedback);
   const prompt = feedback.rating === "not-tried"
-    ? "Want to save it for later? Optional. Bookmarks don't change your taste profile."
+    ? "Want to save it for later? Optional. Try Next doesn't change your Taste Profile."
     : feedback.rating === "more"
       ? "Already tried it? Tell us how it went. Optional."
       : "Tried it, or just not for you? Optional.";
@@ -258,7 +258,7 @@ function recommendationCard(item, index) {
 }
 
 function bookmarkNote(count) {
-  return count ? `<p class="bookmark-note">${count} ${count === 1 ? "thing" : "things"} saved.</p>` : "";
+  return count ? `<p class="bookmark-note">${count} ${count === 1 ? "thing" : "things"} in Try Next.</p>` : "";
 }
 
 function renderAiStatus() {
@@ -332,12 +332,12 @@ function renderNextSteps() {
       <div>
         <span class="refresh-kicker">Prototype checkpoint</span>
         <strong>That is every pick this demo has.</strong>
-        <p>A real Tastemake would keep going, shaped by everything you reacted to. This prototype only has a small set of hand-written picks, and you have seen them all.</p>
+        <p>Tastemake has reached the end of the currently available candidate set. Your reactions are still saved as evidence for the next set.</p>
         ${bookmarkNote(bookmarks)}
       </div>
       <div class="action-group recommendation-footer-actions">
         ${viewBookmarks}
-        <button class="button button-secondary" type="button" data-action="view-model">See what Tastemake learned</button>
+        <button class="button button-secondary" type="button" data-action="view-model">See profile</button>
         <button class="button button-quiet" type="button" data-action="back-favorites">Change favorites</button>
       </div>
     </div>`;
