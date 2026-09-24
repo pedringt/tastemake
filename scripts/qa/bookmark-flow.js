@@ -39,20 +39,36 @@ export async function run() {
   const rate = (id, rating) => act(`[data-feedback-item="${id}"][data-rating="${rating}"]`);
   const detail = (id, value) => act(`[data-feedback-item="${id}"][data-feedback-detail="${value}"]`);
 
-  // #59: a real visitor starts with 0 favorites selected (product state no longer pre-seeds them).
-  // This suite creates its own known starting set instead of relying on any product default.
-  const starterIds = catalog.favorites.slice(0, 4).map((f) => f.id);
-  check("a fresh page starts with no favorites selected", state.selectedFavorites.size === 0, state.selectedFavorites.size);
+  // First-run starter mix: the screen begins empty and points to search instead of asking the user
+  // to choose from the author's favorites. The full root-path onboarding (Look -> setup -> Favorites)
+  // is checked separately below; this harness page itself resolves to /favorites.
+  const starterSeed = catalog.favorites.slice(0, 4);
+  const starterIds = starterSeed.map((f) => f.id);
+  state.displayName = "QA";
+  state.setupComplete = true;
+  check("a fresh Favorites page starts with no favorites selected", state.selectedFavorites.size === 0, state.selectedFavorites.size);
+  check("the empty starter mix has four designed placeholders and a search-first CTA",
+    $(".starter-placeholder").length === 4 && Boolean($('[data-action="open-search"]')));
   check("Recommendations is locked until 4 favorites are picked", Boolean($('[data-step-jump="recommendations"]')?.getAttribute("aria-disabled") === "true"));
-  for (const id of starterIds) await act(`[data-favorite="${id}"]`);
+
+  await act('[data-action="open-search"]');
+  for (const item of starterSeed) {
+    const input = $("#search-input");
+    input.value = item.title;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await tick();
+    await act(`[data-search-pick="${item.id}"]`);
+    await act('[data-search-starter="add"]');
+  }
+  $("#search-dialog").close(); await tick();
+  check("search can build the starter mix without a seeded picker", state.selectedFavorites.size === 4 && $(".starter-card").length === 4);
   check("picking 4 favorites unlocks Recommendations", $('[data-step-jump="recommendations"]')?.getAttribute("aria-disabled") === "false");
 
   await act('[data-step-jump="recommendations"]');
   let ids = cardIds();
   check("opening set has 5 picks", ids.length === 5, ids.length);
-  // #29/#68: Bookmarks is a visible destination even with nothing saved yet, not one that appears
-  // only after you happen to use it — the count badge is what's empty, not the tab.
-  check("Bookmarks tab is visible even before anything is saved, with no count badge", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "");
+  // Bookmarks stays discoverable, but the nav deliberately has no growing inbox-style count.
+  check("Bookmarks tab is visible even before anything is saved, with no count badge", !bookmarksStep().hidden && !bookmarksStep().querySelector("[data-bookmark-count]"));
 
   // #34: the decorative artwork title must never be obscured by the shapes behind it, for every
   // title in the catalog, and for one deliberately very long one (a title-length regression is
@@ -85,7 +101,7 @@ export async function run() {
   await detail(ids[0], "bookmarked");
   check("focus stays on the chip after choosing it", document.activeElement === $(`[data-feedback-item="${ids[0]}"][data-feedback-detail="bookmarked"]`));
   check("bookmarking is announced with the running count", /Bookmarked\. 1 thing bookmarked\./.test(live()), live());
-  check("Bookmarks tab appears with a count of 1", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "1");
+  check("bookmarking does not add a numeric nav badge", !bookmarksStep().hidden && !bookmarksStep().querySelector("[data-bookmark-count]"));
   const first = state.feedbackByRecommendation[ids[0]];
   check("a bookmark carries NO taste evidence", taste.tasteDelta(first) === 0, taste.tasteDelta(first));
   check("a bookmark lightly steers recommendations (0.35)", taste.recommendationDelta(first) === 0.35, taste.recommendationDelta(first));
@@ -260,8 +276,8 @@ export async function run() {
   check("...and returns to the search box, not a dead end", document.activeElement?.id === "search-input" && !$("#search-sheet-title"), document.activeElement?.id);
   await typeInto("#search-input", "circe");
   await act("#search-view .search-result");
-  check("a starter favorite shows no action buttons here", !$("[data-search-action]") && /starter favorites/.test($(".search-note")?.textContent || ""));
-  check("...and nothing was changed by any of that", snapshot() === before, snapshot());
+  check("a starter favorite can be managed in place from search", !$("[data-search-action]") && Boolean($('[data-search-starter="remove"]')) && /already one/.test($(".search-note")?.textContent || ""));
+  check("...and merely opening its sheet changes nothing", snapshot() === before, snapshot());
   dlg.close(); await tick();
   check("closing returns focus to the Search button", document.activeElement === $("#open-search"), document.activeElement?.id);
   document.activeElement.blur();
@@ -335,7 +351,7 @@ export async function run() {
 
   await act('[data-action="view-bookmarks"]');
   check("Bookmarks page lists both saved items", $$(".bookmark-card").length === 2, $$(".bookmark-card").length);
-  check("Bookmarks tab shows 2", bookmarksStep().querySelector("[data-bookmark-count]").textContent === "2");
+  check("Bookmarks nav remains a plain destination with 2 saved items", !bookmarksStep().querySelector("[data-bookmark-count]"));
   const shot = layout.checkCurrentScreen();
   check("Bookmarks page: no sticker touches text/cards, no sideways scroll",
     !shot.stickerTextHits.length && !shot.stickerBoxHits.length && !shot.stickerOutside.length && !shot.hScroll,
@@ -349,7 +365,7 @@ export async function run() {
   check("'Loved it' becomes a real reaction", loved.rating === "more" && loved.detail === "loved-before", `${loved.rating}/${loved.detail}`);
   check("...that now counts as taste evidence", taste.tasteDelta(loved) === 2, taste.tasteDelta(loved));
   check("...and remembers it was bookmarked first", loved.wasBookmarked === true);
-  check("card leaves Bookmarks; count drops to 1", $$(".bookmark-card").length === 1 && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "1");
+  check("card leaves Bookmarks without changing nav chrome", $(".bookmark-card").length === 1 && !bookmarksStep().querySelector("[data-bookmark-count]"));
 
   const lastId = $$(".bookmark-card")[0].dataset.bookmarkId;
   await act(`[data-bookmark-item="${lastId}"][data-bookmark-action="remove"]`);
@@ -358,7 +374,7 @@ export async function run() {
   check("...and is announced", /bookmark removed\. 0 things left in Bookmarks\./.test(live()), live());
   check("removed bookmark stays untried, no evidence", state.feedbackByRecommendation[lastId].rating === "not-tried" && taste.tasteDelta(state.feedbackByRecommendation[lastId]) === 0);
   await act('[data-action="show-recs"]');
-  check("Bookmarks tab stays visible with the badge cleared when nothing is saved", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "");
+  check("Bookmarks tab stays visible with no badge when nothing is saved", !bookmarksStep().hidden && !bookmarksStep().querySelector("[data-bookmark-count]"));
 
 
 
@@ -424,7 +440,7 @@ export async function run() {
   check("Remove takes the item off the ledger and out of Tastemake", !state.feedbackByRecommendation[targetId] && $$(".mine-row[data-mine-id]").length === rowsBefore - 1);
   check("...announces the removal by title", live().includes(targetTitle) && /removed/.test(live()), live());
   check("...and focus lands on another control, not nowhere", document.activeElement && document.activeElement !== document.body, document.activeElement?.tagName);
-  check("the Bookmarks tab count still matches", (bookmarksStep().querySelector("[data-bookmark-count]").textContent || "0") === String(taste.bookmarkedFeedback(state).length || 0) || bookmarksStep().hidden);
+  check("the Bookmarks nav never becomes a counter", !bookmarksStep().querySelector("[data-bookmark-count]"));
   await act('[data-action="mine-back"]');
   check("Back returns to the page you came from", state.screen === beforeScreen, state.screen);
 
@@ -501,10 +517,7 @@ export async function run() {
   await act('[data-profile-view="list"]');
   state.look = startLook; document.documentElement.dataset.look = startLook;
 
-  // #59 item 5: first visit goes straight to Favorites in the default look (Editorial), not the Look
-  // picker — customizing the product before you know why you'd care was the thing this removed. Look
-  // is still reached any time from the header button (tested above); a ?look= link still goes straight
-  // to that look.
+  // First visit: choose a look, do the tiny setup, then arrive at an empty search-led starter mix.
   const frameCheck = (src, work) => new Promise((resolve) => {
     const frame = document.createElement("iframe");
     frame.style.cssText = "position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0";
@@ -512,15 +525,31 @@ export async function run() {
     frame.src = src;
     document.body.appendChild(frame);
   });
-  const firstVisit = await frameCheck("/", async (doc) => ({
-    picker: Boolean(doc.querySelector(".look-screen")),
-    look: doc.documentElement.dataset.look,
-    favorites: Boolean(doc.querySelector(".favorites-screen"))
-  }));
-  check("first visit skips the look picker and starts in editorial", firstVisit.picker === false && firstVisit.look === "editorial", JSON.stringify(firstVisit));
-  check("...going straight to Favorites", firstVisit.favorites === true, JSON.stringify(firstVisit));
-  const linked = await frameCheck("/?look=collage", async (doc) => ({ picker: Boolean(doc.querySelector(".look-screen")), look: doc.documentElement.dataset.look, favorites: Boolean(doc.querySelector(".favorites-screen")) }));
-  check("a ?look= link uses that look and also goes straight to Favorites", linked.picker === false && linked.look === "collage" && linked.favorites === true, JSON.stringify(linked));
+  const firstVisit = await frameCheck("/", async (doc) => {
+    const first = {
+      picker: Boolean(doc.querySelector(".look-screen")),
+      look: doc.documentElement.dataset.look,
+      topAction: Boolean(doc.querySelector(".look-top-action")),
+      next: doc.querySelector('[data-action="look-done"]')?.textContent.trim()
+    };
+    doc.querySelector('[data-action="look-done"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    first.setup = Boolean(doc.querySelector(".setup-screen"));
+    const name = doc.querySelector("[data-setup-name]");
+    if (name) {
+      name.value = "New user";
+      name.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    doc.querySelector('[data-action="setup-done"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    first.favorites = Boolean(doc.querySelector(".favorites-screen"));
+    first.placeholders = doc.querySelectorAll(".starter-placeholder").length;
+    return first;
+  });
+  check("first visit starts with the look picker and a visible top-right Next", firstVisit.picker && firstVisit.look === "editorial" && firstVisit.topAction && firstVisit.next === "Next", JSON.stringify(firstVisit));
+  check("Next goes through basic setup to an empty four-slot starter mix", firstVisit.setup && firstVisit.favorites && firstVisit.placeholders === 4, JSON.stringify(firstVisit));
+  const linked = await frameCheck("/?look=collage", async (doc) => ({ picker: Boolean(doc.querySelector(".look-screen")), look: doc.documentElement.dataset.look }));
+  check("a ?look= link pre-applies that look and still shows onboarding", linked.picker === true && linked.look === "collage", JSON.stringify(linked));
   const bogus = await frameCheck("/?look=nonsense", async (doc) => ({ look: doc.documentElement.dataset.look }));
   check("an unknown ?look= value is ignored", bogus.look === "editorial", JSON.stringify(bogus));
 
@@ -547,12 +576,21 @@ export async function run() {
 
   // a brand-new visit: nothing you tried yet, so nothing may look validated. #59: a fresh visit has 0
   // favorites, so Taste Profile is locked until 4 are picked — pick the same known set first.
-  const coldStart = await frameCheck("/?look=editorial", async (doc) => {
-    for (const id of starterIds) {
-      doc.querySelector(`[data-favorite="${id}"]`)?.click();
-      await new Promise((resolve) => setTimeout(resolve, 50));
+  const coldStart = await frameCheck("/favorites?look=editorial", async (doc) => {
+    doc.querySelector('[data-action="open-search"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    for (const item of starterSeed) {
+      const input = doc.querySelector("#search-input");
+      input.value = item.title;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      doc.querySelector(`[data-search-pick="${item.id}"]`)?.click();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      doc.querySelector('[data-search-starter="add"]')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 80));
     }
-    doc.querySelector('[data-action="peek"], [data-action="show-model"], [data-step-jump="model"]')?.click();
+    doc.querySelector("#search-dialog")?.close();
+    doc.querySelector('[data-step-jump="model"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 400));
     return { chips: [...doc.querySelectorAll(".signal-status")].map((n) => n.textContent.trim()), lines: [...doc.querySelectorAll(".signal-provenance")].map((n) => n.textContent.trim()) };
   });
@@ -595,10 +633,10 @@ export async function run() {
     Object.keys(state.feedbackByRecommendation).length === 0 && Object.keys(state.customItems).length === 0 && Object.keys(state.blindSpots).length === 0 && state.libraryFavorites.size === 0 && state.patternStatements.length === 0);
   // #59: nothing is pre-seeded any more, so "Start over" clears favorites too, back to the same
   // blank slate a real first visit starts from.
-  check("...clears favorites too and restores default settings", state.selectedFavorites.size === 0 && state.areas.play === true && state.curveball === true);
+  check("...clears favorites and the basic setup", state.selectedFavorites.size === 0 && state.areas.play === true && state.curveball === true && state.setupComplete === false && state.displayName === "");
   check("...keeps your look", state.look === lookKept && document.documentElement.dataset.look === lookKept);
-  check("...goes back to Favorites and announces it", state.screen === "favorites" && /Started over/.test(live()), `${state.screen} / ${live()}`);
-  check("...and the Bookmarks tab stays visible with the badge cleared", !bookmarksStep().hidden && bookmarksStep().querySelector("[data-bookmark-count]").textContent === "");
+  check("...returns to setup and announces it", state.screen === "setup" && /Started over/.test(live()), `${state.screen} / ${live()}`);
+  check("...and the Bookmarks tab stays visible without a badge", !bookmarksStep().hidden && !bookmarksStep().querySelector("[data-bookmark-count]"));
 
   const failed = results.filter((r) => !r.ok);
   return { passed: results.length - failed.length, failed: failed.length, results: failed.length ? failed : undefined, total: results.length };
