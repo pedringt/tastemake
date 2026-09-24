@@ -196,7 +196,7 @@ export function initSearch({ onChange, announce, goTo }) {
     } finally {
       if (seq === catalogSeq) {
         ui.catalogLoading = false;
-        render();
+        if (ui.mode === "results") render();
       }
     }
   }
@@ -245,6 +245,9 @@ export function initSearch({ onChange, announce, goTo }) {
 
     const pick = event.target.closest("[data-search-pick]");
     if (pick) {
+      catalogController?.abort();
+      catalogSeq += 1;
+      ui.catalogLoading = false;
       ui.mode = "sheet";
       ui.itemId = pick.dataset.searchPick;
       render();
@@ -261,6 +264,9 @@ export function initSearch({ onChange, announce, goTo }) {
     }
 
     if (event.target.closest("[data-search-add]")) {
+      catalogController?.abort();
+      catalogSeq += 1;
+      ui.catalogLoading = false;
       ui.mode = "add";
       ui.addTitle = ui.query.trim();
       ui.addError = "";
