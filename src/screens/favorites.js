@@ -58,6 +58,7 @@ export function renderFavorites() {
         <span>${count >= 4 ? "Enough to start." : "Add a few favorites to teach Tastemake where to begin."}</span>
       </div>
 
+      <h2 class="visually-hidden">Your starter mix</h2>
       <div class="starter-grid" aria-label="Your starter mix">
         ${slots.join("")}
       </div>
