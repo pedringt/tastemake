@@ -113,7 +113,10 @@
   background:var(--tint-cool,#fbffff);
 }
 .editorial-rec.is-rated { box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--pink); }
-.editorial-rec-body { padding:18px; display:flex; flex-direction:column; min-width:0; }
+.editorial-rec-body { padding:18px; display:flex; flex-direction:column; min-width:0; min-height:min-content; }
+/* Real catalog titles and optional feedback can be taller than the old demo copy. Do not let the
+   flex column shrink text boxes until later controls overlap their rendered text. */
+.editorial-rec-body > * { flex-shrink:0; }
 .rec-layout-1 .editorial-rec-body,.rec-layout-4 .editorial-rec-body,.rec-surprise .editorial-rec-body { grid-column:2; }
 .rec-layout-1 .editorial-art,.rec-layout-4 .editorial-art,.rec-surprise .editorial-art { grid-column:1; grid-row:1; }
 .editorial-rec-meta {
