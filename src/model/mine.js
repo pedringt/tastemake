@@ -4,15 +4,15 @@ import { countsAsTaste, isExperienced, isExperiencedNegative, isExperiencedPosit
 import { activeBlindSpots } from "./blindspots.js";
 
 // My Tastemake (#8): "What have I told Tastemake?" Everything here is derived from what the app already
-// knows, never stored separately, so it cannot disagree with the Library, Bookmarks, Taste Profile or Map.
+// knows, never stored separately, so it cannot disagree with the Library, Try Next, Taste Profile or Map.
 // Two groups, because they mean different things:
-//   counts as taste   starter favorites, Loved it, Liked it, Tried it and disliked
-//   only steers       plain More / Less on untried picks, Not interested, Bookmarks
+//   counts as taste   Favorites, Loved it, Liked it, Tried it and disliked
+//   only steers       plain More / Less on untried picks, Not interested, Try Next saves
 // Where an item came from is provenance: shown, never rewritten.
 
 function sourceOf(feedback) {
   if (feedback.item.custom) return "Added by you in search";
-  if (feedback.wasBookmarked) return "Bookmarked, then tried";
+  if (feedback.wasBookmarked) return "Try Next, then tried";
   if (feedback.source === "search") return "Told through search";
   return "From Recommendations";
 }
@@ -21,7 +21,7 @@ function statusOf(feedback) {
   if (isStrongPositive(feedback)) return "Loved it before";
   if (isExperiencedPositive(feedback)) return "Liked it before";
   if (isExperiencedNegative(feedback)) return "Tried it and disliked it";
-  if (isSaved(feedback)) return "Bookmarked (haven't tried)";
+  if (isSaved(feedback)) return "Try Next (haven't tried)";
   if (isDeclined(feedback)) return "Not interested";
   if (feedback.rating === "more") return "Wanted more like this (haven't tried)";
   if (feedback.rating === "less") return "Wanted less like this (haven't tried)";
@@ -30,10 +30,10 @@ function statusOf(feedback) {
 
 export function toldItems(state) {
   const starters = starterItems(state)
-    .map((item) => ({ id: item.id, item, starter: true, status: "Starter favorite", source: "Added to starter mix", counts: true }));
+    .map((item) => ({ id: item.id, item, starter: true, status: "Favorite", source: "Added to Favorites", counts: true }));
 
   const reacted = Object.values(state.feedbackByRecommendation)
-    // a starter favorite is already listed above; never show the same item twice
+    // a Favorite is already listed above; never show the same item twice
     .filter((feedback) => !state.selectedFavorites.has(feedback.item.id))
     .map((feedback) => ({
       id: feedback.item.id,
