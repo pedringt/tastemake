@@ -6,7 +6,7 @@ import { searchCatalog } from "../../src/catalog/providers.mjs";
 import { produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
-import { favorites } from "../../src/data/catalog.js";
+import { favorites } from "./fixtures/catalog.js";
 
 let passed = 0;
 const failures = [];
