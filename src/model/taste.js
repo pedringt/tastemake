@@ -1,4 +1,4 @@
-import { followUpPool } from "../data/catalog.js";
+import { followUpPool, recommendations } from "../data/catalog.js";
 import { domainById, visibleDomains } from "../data/domains.js";
 import { isExperienced, isExperiencedPositive, isSaved, tasteWeight } from "./evidence.js";
 
@@ -140,6 +140,31 @@ export function picksHiddenByAreas(state) {
   return nextRecommendations(state).length === 0 && nextRecommendations({ ...state, areas: undefined }).length > 0;
 }
 
+export function openingRecommendations(state) {
+  const pool = [...recommendations, ...followUpPool].filter((item) => areaOn(state, item));
+  const asOpening = (item, index, surprise = false) => ({
+    ...item,
+    rank: surprise ? null : index + 1,
+    fit: item.fit ?? (surprise ? "Exploratory fit" : "Promising fit"),
+    prediction: item.prediction ?? "Worth testing",
+    surprise,
+    reason: surprise && !item.surprise
+      ? `${item.reason} This is the less-obvious option for your opening set.`
+      : item.reason
+  });
+
+  if (pool.length <= 5) return pool.map((item, index) => asOpening(item, index, false));
+
+  if (state.recommendationStyle === "safe") {
+    return pool.slice(0, 5).map((item, index) => asOpening(item, index, false));
+  }
+
+  const surpriseIndex = state.recommendationStyle === "adventurous" ? Math.min(6, pool.length - 1) : 4;
+  const surpriseSource = pool[surpriseIndex];
+  const fits = pool.filter((_, index) => index !== surpriseIndex).slice(0, 4);
+  return [...fits.map((item, index) => asOpening(item, index, false)), asOpening(surpriseSource, 4, true)];
+}
+
 export function nextRecommendations(state) {
   const shownIds = new Set(shownRecommendations(state).map((item) => item.id));
   // Anything the user already told us about (for example through search) is never recommended again,
@@ -166,7 +191,9 @@ export function nextRecommendations(state) {
   if (scored.length < 5) return scored.map(asPick);
   if (state.curveball === false) return scored.slice(0, 5).map(asPick);
 
-  const surpriseSource = scored[4];
+  const surpriseIndex = state.recommendationStyle === "adventurous" ? Math.min(6, scored.length - 1) : 4;
+  const surpriseSource = scored[surpriseIndex];
+  const strongFits = scored.filter((_, index) => index !== surpriseIndex).slice(0, 4);
   const surprise = {
     ...surpriseSource,
     rank: null,
@@ -176,7 +203,7 @@ export function nextRecommendations(state) {
     reason: `${surpriseSource.reason} This is the less-obvious option for the next round.`
   };
 
-  return [...scored.slice(0, 4).map(asPick), surprise];
+  return [...strongFits.map(asPick), surprise];
 }
 
 export function activeRecommendations(state) {

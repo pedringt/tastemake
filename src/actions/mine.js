@@ -66,8 +66,9 @@ export function handleMineClick(event, { render, updateStepper, restoreFocus, an
     if (step === "confirm") {
       resetState();
       state.resetArmed = false;
-      navigate("favorites");
-      announce("Started over. Everything you told Tastemake in this visit is cleared.");
+      state.setupReturn = "favorites";
+      navigate("setup");
+      announce("Started over. Your taste data and setup were cleared. Your look stayed the same.");
       return;
     }
     state.resetArmed = step === "arm";
@@ -88,6 +89,8 @@ export function handleMineChange(event, { render, restoreFocus, announce }) {
     const id = area.dataset.mineArea;
     state.areas[id] = area.checked;
     if (!AREAS.some((a) => state.areas[a.id] !== false)) state.areas[id] = true;   // never all off
+    const enabled = AREAS.filter((a) => state.areas[a.id] !== false).map((a) => a.id);
+    state.setupAreas = enabled.length === AREAS.length ? new Set(["all"]) : new Set(enabled);
     const label = AREAS.find((a) => a.id === id).label;
     render();
     restoreFocus(`[data-mine-area="${id}"]`);
@@ -96,6 +99,7 @@ export function handleMineChange(event, { render, restoreFocus, announce }) {
   }
   if (event.target.closest("[data-mine-curveball]")) {
     state.curveball = event.target.checked;
+    state.recommendationStyle = state.curveball ? "balanced" : "safe";
     render();
     restoreFocus("[data-mine-curveball]");
     announce(`Curveball is ${state.curveball ? "on" : "off"} for new sets.`);

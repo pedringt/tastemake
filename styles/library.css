@@ -85,3 +85,46 @@
   .library-card:nth-child(odd),.library-card:nth-child(even) { transform:none; }
   .library-grid { grid-template-columns:1fr; }
 }
+
+
+/* Calmer favorite-card hierarchy ------------------------------------------------------ */
+.library-reaction-summary {
+  margin-top:auto;
+  padding-top:12px;
+  border-top:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.library-reaction-summary > span { color:var(--muted); font-size:12px; }
+.library-reaction-summary strong { display:block; margin-top:2px; color:var(--navy); font-size:15px; }
+.library-reaction-edit { position:relative; }
+.library-reaction-edit summary {
+  cursor:pointer;
+  color:var(--note-ink,#5749bf);
+  font-size:12px;
+  font-weight:700;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.library-reaction-options { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.library-secondary,.library-starter-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.library-secondary .button,.library-starter-actions .button { min-height:36px; min-width:0; padding:6px 11px; font-size:12px; box-shadow:none; }
+.library-inline-remove {
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.library-card .tastebreak-panel.is-offer { margin-top:6px; }
+
+.library-inline-remove { min-height:44px; padding:8px 4px; }
+
+.library-reaction-edit summary { min-height:44px; display:inline-flex; align-items:center; }

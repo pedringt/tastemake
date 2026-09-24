@@ -1,4 +1,4 @@
-import { favorites } from "../data/catalog.js";
+import { starterItems } from "./starters.js";
 import { isPositiveExperience } from "./taste.js";
 import { isExperiencedNegative, isStrongPositive } from "./evidence.js";
 
@@ -8,9 +8,8 @@ import { isExperiencedNegative, isStrongPositive } from "./evidence.js";
 //   Library   = everything else you have tried and liked or loved
 // Only things the user has actually tried live here. Untried saves are Bookmarks.
 export function libraryItems(state) {
-  const starters = favorites
-    .filter((item) => state.selectedFavorites.has(item.id))
-    .map((item) => ({ id: item.id, item, source: "starter", isFavorite: true, blurb: item.note }));
+  const starters = starterItems(state)
+    .map((item) => ({ id: item.id, item, source: "starter", isFavorite: true, blurb: item.note ?? item.about ?? "One of your starter favorites." }));
 
   const reacted = Object.values(state.feedbackByRecommendation)
     .filter(isPositiveExperience)

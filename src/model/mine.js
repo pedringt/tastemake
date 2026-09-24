@@ -1,4 +1,4 @@
-import { favorites } from "../data/catalog.js";
+import { starterItems } from "./starters.js";
 import { isPositiveExperience } from "./taste.js";
 import { countsAsTaste, isExperienced, isExperiencedNegative, isExperiencedPositive, isSaved, isStrongPositive, isDeclined } from "./evidence.js";
 import { activeBlindSpots } from "./blindspots.js";
@@ -29,9 +29,8 @@ function statusOf(feedback) {
 }
 
 export function toldItems(state) {
-  const starters = favorites
-    .filter((item) => state.selectedFavorites.has(item.id))
-    .map((item) => ({ id: item.id, item, starter: true, status: "Starter favorite", source: "Picked on Favorites", counts: true }));
+  const starters = starterItems(state)
+    .map((item) => ({ id: item.id, item, starter: true, status: "Starter favorite", source: "Added to starter mix", counts: true }));
 
   const reacted = Object.values(state.feedbackByRecommendation)
     // a starter favorite is already listed above; never show the same item twice

@@ -1,4 +1,4 @@
-import { favorites } from "../data/catalog.js";
+import { starterItems } from "./starters.js";
 import { displayLabel, domainsOf } from "../data/domains.js";
 
 // Evidence (#35, #27): what the user actually did or explicitly said about an item.
@@ -83,9 +83,8 @@ function sourceOf(feedback) {
 // Every piece of evidence as a typed record. This is what a live model is handed (not a prose summary),
 // and what its citations must point at: `ref` is the stable id to cite.
 export function evidenceRecords(state) {
-  const starters = favorites
-    .filter((item) => state.selectedFavorites.has(item.id))
-    .map((item) => record(item, "starter-favorite", { source: "favorites" }));
+  const starters = starterItems(state)
+    .map((item) => record(item, "starter-favorite", { source: "starter-mix" }));
   const reactions = Object.values(state.feedbackByRecommendation)
     .filter((feedback) => !state.selectedFavorites.has(feedback.item.id))
     .map((feedback) => record(feedback.item, evidenceKind(feedback), {

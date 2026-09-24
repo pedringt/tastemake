@@ -80,3 +80,25 @@
 @media (max-width: 960px) {
   .mine-columns { grid-template-columns:minmax(0,1fr); }
 }
+
+
+.mine-chips li { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.mine-chips button {
+  border:0;
+  background:transparent;
+  color:var(--note-ink,#5749bf);
+  font:inherit;
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+.mine-setup-list { display:grid; gap:8px; margin:0 0 12px; }
+.mine-setup-list > div { display:flex; justify-content:space-between; gap:12px; padding-bottom:7px; border-bottom:1px solid var(--line); }
+.mine-setup-list dt { color:var(--muted); font-size:12px; }
+.mine-setup-list dd { margin:0; color:var(--navy); font-size:13px; font-weight:700; text-align:right; }
+.mine-setup-edit { min-height:36px; min-width:0; padding:6px 11px; font-size:12px; box-shadow:none; }
+.mine-setup .mine-blurb { margin-top:10px; margin-bottom:0; }
+
+.mine-chips button { min-height:44px; padding:8px 4px; }
