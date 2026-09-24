@@ -174,7 +174,8 @@ export function checkCurrentScreen() {
       if (clash) {
         const textCard = node.parentElement?.closest?.("[data-rec-id]")?.getAttribute("data-rec-id") ?? "no-card";
         const controlCard = clash.closest?.("[data-rec-id]")?.getAttribute("data-rec-id") ?? "no-card";
-        textUnderControls.push(`"${node.textContent.trim().slice(0, 28)}" under ${describe(clash)} [text:${textCard} control:${controlCard}]`);
+        const cb = clash.getBoundingClientRect();
+        textUnderControls.push(`"${node.textContent.trim().slice(0, 28)}" under ${describe(clash)} [text:${textCard} control:${controlCard} tr:${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.right)},${Math.round(r.bottom)} cr:${Math.round(cb.left)},${Math.round(cb.top)},${Math.round(cb.right)},${Math.round(cb.bottom)}]`);
         break;
       }
     }
