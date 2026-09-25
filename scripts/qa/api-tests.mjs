@@ -77,7 +77,7 @@ eq("AI off uses real catalog fallback",out.source,"catalog");
 eq("catalog fallback has five real provider picks",out.picks.length,5);
 check("catalog fallback contains no legacy seed ids",out.picks.every(p=>p.id.startsWith("tmdb-movie-")),out.picks.map(p=>p.id).join(","));
 eq("catalog fallback makes no paid call",out.meta.paidCallMade,false);
-check("catalog fallback explains that AI did not rank it",out.picks.every(p=>/Live AI did not rank/.test(p.reason)));
+check("catalog fallback keeps implementation diagnostics out of card reasons",out.picks.every(p=>!/Live AI did not rank/.test(p.reason)));
 
 // Valid live output.
 out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch()});
