@@ -38,7 +38,8 @@ export function buildHypothesisPrompt(ctx, existing = []) {
   return [
     "You are the taste-interpretation layer inside Tastemake.",
     "Software owns evidence and state. You may only propose working hypotheses from the experienced evidence supplied below.",
-    "Return JSON only: {\"hypotheses\":[{\"id\":\"ai-stable-id\",\"label\":\"...\",\"claim\":\"...\",\"evidence\":[\"ev:...\"],\"counter\":[],\"domains\":[\"watch\"],\"crossDomain\":\"none\",\"level\":\"emerging\",\"conditional\":false,\"context\":null}],\"insufficientEvidence\":false}.",
+    "Return JSON only: {\"hypotheses\":[{\"id\":\"ai-stable-id\",\"label\":\"...\",\"claim\":\"...\",\"evidence\":[\"ev:...\"],\"counter\":[],\"domains\":[\"watch\"],\"crossDomain\":\"untested\",\"level\":\"emerging\",\"conditional\":false,\"context\":null}],\"insufficientEvidence\":false}.",
+    "crossDomain must be exactly one of: untested, tentative, supported. Use \"untested\" unless the cited evidence itself spans two or more domains — there is no \"none\" value.",
     "Use 3 to 6 hypotheses when evidence supports them. Reuse an existing ai-* id when revising the same underlying idea; create a new ai-* id only for a genuinely new pattern.",
     "Every supporting/counter reference must exist. Intent, saved items, browsing and untried reactions are not taste evidence. User-confirmed corrections outrank inference. Do not assign one global aesthetic or identity. Do not claim a domain without cited support in that domain. Prefer specific testable patterns over genres.",
     "The first character must be { and the last must be }. No markdown or prose outside JSON.",
