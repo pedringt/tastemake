@@ -225,3 +225,7 @@
 }
 .profile-empty strong { display:block; margin-bottom:6px; color:var(--navy); font-size:20px; }
 .profile-empty p { max-width:68ch; margin:0; line-height:1.5; }
+
+
+.profile-ai-status { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.profile-retry { min-height:34px; padding:5px 10px; font-size:12px; box-shadow:none; }
