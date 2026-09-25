@@ -148,7 +148,10 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     // Balanced keeps the normal top-ranked set. Adventurous preserves the five strongest fits
     // but reaches deeper into the eligible pool for the one exploratory slot.
     const adventurous = ranked.slice(0, limit);
-    if (adventurous.length >= 6) adventurous[5] = ranked[Math.min(ranked.length - 1, 9)];
+    if (adventurous.length >= 6) {
+      const deepIndex = Math.min(adventurous.length - 1, 9);
+      [adventurous[5], adventurous[deepIndex]] = [adventurous[deepIndex], adventurous[5]];
+    }
     return adventurous;
   }
   return ranked.slice(0, limit);
