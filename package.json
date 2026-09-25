@@ -12,5 +12,8 @@
     "test:full": "node scripts/qa/full-sweep.mjs",
     "test:eval:endpoint": "node scripts/evals/run.mjs --producer endpoint --yes",
     "test:eval:endpoint:dry-run": "node scripts/evals/run.mjs --producer endpoint --dry-run"
+  },
+  "dependencies": {
+    "@vercel/functions": "3.9.9"
   }
 }
