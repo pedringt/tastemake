@@ -22,8 +22,9 @@ const favorite={
   id:"tmdb-movie-1",provider:"tmdb",providerId:"1",title:"Favorite Film",type:"movie",
   domains:["watch"],about:"A favorite.",artwork:null,providerMeta:{genreIds:[18]}
 };
+const candidateTitles=["Amber Harbor","Glass Orchard","Night Signal","Paper Kingdom","Silent Atlas","Copper Sky"];
 const relatedRows=Array.from({length:6},(_,i)=>({
-  id:101+i,title:`Real Candidate ${i+1}`,overview:`Catalog item ${i+1}.`,
+  id:101+i,title:candidateTitles[i],overview:`Catalog item ${i+1}.`,
   release_date:`202${i}-01-01`,poster_path:`/p${i}.jpg`,genre_ids:[18]
 }));
 const rawState=(extra={})=>({
