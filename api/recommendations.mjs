@@ -248,7 +248,16 @@ export default async function handler(req, res) {
     const body = parseBody(req);
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
     if (!body.state || typeof body.state !== "object") return res.status(400).json({ error: "state is required" });
+    const started = Date.now();
     const payload = await produceRecommendations({ rawState: body.state });
+    console.info("[tastemake-recommendations]", JSON.stringify({
+      ms: Date.now() - started,
+      source: payload.source,
+      picks: payload.picks?.length ?? 0,
+      candidates: payload.meta?.catalogCandidates ?? null,
+      paidCallMade: Boolean(payload.meta?.paidCallMade),
+      errorType: payload.meta?.errorType ?? null
+    }));
     res.setHeader("cache-control", "no-store");
     return res.status(200).json(payload);
   } catch {
