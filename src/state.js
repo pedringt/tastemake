@@ -48,6 +48,7 @@ function fresh() {
     mapFilter: "all",
     favoriteFilter: "all",
     recommendationFilter: "all",
+    recommendationMediumFilter: "all",
     libraryFilter: "all",
     // #94: Library has two views, Saved (untried, actionable) and Tried (already experienced).
     // Saved is the default because it's the actionable one. This is presentation state, not
