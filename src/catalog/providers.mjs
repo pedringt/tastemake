@@ -128,6 +128,90 @@ async function searchIgdb(query, env, fetchImpl) {
   return (await response.json()).map(igdbItem);
 }
 
+// ---- Per-media-type detail metadata (#103 item 1/2) --------------------------------------------
+// Search/candidate retrieval above intentionally stays cheap (no per-item detail calls) so it never
+// adds latency to recommendation generation. Detail metadata (director/cast, creator/cast,
+// developer/publisher/platforms) is fetched lazily, one item at a time, only when a user actually
+// expands that item (Library detail view, search result detail). Every field is omitted, never sent
+// as an empty label, when the upstream provider does not have it.
+
+function namesOf(list, n) {
+  return (list ?? []).slice(0, n).map((x) => clean(x.name, 80)).filter(Boolean);
+}
+
+async function tmdbDetail(providerId, type, env, fetchImpl) {
+  const token = env.TASTEMAKE_TMDB_TOKEN;
+  if (!token) return {};
+  const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
+  const kind = type === "tv" ? "tv" : "movie";
+  const response = await fetchImpl(
+    `https://api.themoviedb.org/3/${kind}/${encodeURIComponent(providerId)}?append_to_response=credits&language=en-US`,
+    { headers }
+  );
+  if (!response.ok) throw new Error(`tmdb detail ${response.status}`);
+  const row = await response.json();
+  const credits = row.credits ?? {};
+  const cast = namesOf(credits.cast, 6);
+  if (kind === "movie") {
+    const director = namesOf((credits.crew ?? []).filter((person) => person.job === "Director"), 2);
+    return {
+      director: director.length ? director.join(", ") : null,
+      cast: cast.length ? cast : null,
+      runtime: row.runtime || null
+    };
+  }
+  // TV: showrunner/creator comes from `created_by`, not the crew list. Not every series has one on record.
+  const creator = namesOf(row.created_by, 2);
+  return {
+    creator: creator.length ? creator.join(", ") : null,
+    cast: cast.length ? cast : null,
+    yearsRun: row.first_air_date && row.last_air_date
+      ? `${String(row.first_air_date).slice(0, 4)}–${String(row.last_air_date).slice(0, 4)}`
+      : null
+  };
+}
+
+async function igdbDetail(providerId, env, fetchImpl) {
+  const token = await igdbToken(env, fetchImpl);
+  if (!token) return {};
+  const response = await fetchImpl(IGDB_GAMES, {
+    method: "POST",
+    headers: {
+      "client-id": env.IGDB_CLIENT_ID,
+      authorization: `Bearer ${token}`,
+      "content-type": "text/plain"
+    },
+    body: `fields involved_companies.developer,involved_companies.publisher,involved_companies.company.name,platforms.name; where id = ${Number(providerId) || 0};`
+  });
+  if (!response.ok) throw new Error(`igdb detail ${response.status}`);
+  const [row] = await response.json();
+  if (!row) return {};
+  const companies = row.involved_companies ?? [];
+  const developer = namesOf(companies.filter((c) => c.developer).map((c) => c.company), 3);
+  const publisher = namesOf(companies.filter((c) => c.publisher).map((c) => c.company), 3);
+  const platforms = namesOf(row.platforms, 8);
+  return {
+    developer: developer.length ? developer.join(", ") : null,
+    publisher: publisher.length ? publisher.join(", ") : null,
+    platforms: platforms.length ? platforms : null
+  };
+}
+
+// Books already carry their one required field (author) from search; Open Library's work-level
+// response does not reliably add more per-item detail beyond what search already returns, so there
+// is no separate detail call for books.
+export async function fetchItemDetail(item, { env = process.env, fetchImpl = fetch } = {}) {
+  if (!item?.providerId) return {};
+  try {
+    if (item.provider === "tmdb") return await tmdbDetail(item.providerId, item.type, env, fetchImpl);
+    if (item.provider === "igdb") return await igdbDetail(item.providerId, env, fetchImpl);
+  } catch {
+    // Sparse/unavailable detail is expected (item 2): omit the fields rather than fail the card.
+    return {};
+  }
+  return {};
+}
+
 export async function searchCatalog(query, { domain = "all", env = process.env, fetchImpl = fetch } = {}) {
   const q = clean(query, 100);
   if (q.length < 2) return { items: [], providers: {}, degraded: false };

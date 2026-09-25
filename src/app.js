@@ -4,7 +4,9 @@ import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
-import { renderLibrary } from "./screens/library.js";
+import { renderDetailMeta, renderLibrary } from "./screens/library.js";
+import { fetchCatalogItemDetail } from "./catalog/client.js";
+import { searchableItems } from "./model/search.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
 import { renderMine } from "./screens/mine.js";
@@ -599,6 +601,24 @@ window.addEventListener("popstate", () => {
   focusApp();
   maybeRefreshProfile();
 });
+
+// #103 items 1/2: per-media-type detail (director/cast, creator/cast, developer/publisher/platforms)
+// is fetched lazily the first time a Library card is actually expanded, never during bulk render, so
+// it never adds latency to Recommendations/search. Injected directly into the placeholder slot so a
+// slow/failed fetch cannot blank out the rest of an already-open card.
+const loadedDetailFor = new Set();
+app.addEventListener("toggle", async (event) => {
+  const card = event.target.closest?.(".library-card-compact[open]");
+  if (!card) return;
+  const itemId = card.dataset.libraryId || card.dataset.bookmarkId;
+  if (!itemId || loadedDetailFor.has(itemId)) return;
+  const item = searchableItems(state).find((candidate) => candidate.id === itemId);
+  if (!item) return;
+  loadedDetailFor.add(itemId);
+  const detail = await fetchCatalogItemDetail(item);
+  const slot = card.querySelector(`[data-detail-slot="${CSS.escape(itemId)}"]`);
+  if (slot) slot.innerHTML = renderDetailMeta(item, detail);
+}, true);
 
 initSearch({
   // an explicit action in the search dialog changed state: refresh whatever screen is behind it
