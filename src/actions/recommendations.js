@@ -52,7 +52,7 @@ export function announceReaction(itemId, announce) {
   const feedback = state.feedbackByRecommendation[itemId];
   if (!feedback) return;
   const saved = bookmarkedFeedback(state).length;
-  const bookmarkPart = isBookmarked(feedback) ? ` ${plural(saved, "thing", "things")} in Try Next.` : "";
+  const bookmarkPart = isBookmarked(feedback) ? ` ${plural(saved, "thing", "things")} in Saved.` : "";
   const offer = isBlindSpotCandidate(feedback, state) && !blindSpotFor(state, itemId)
     ? " Tastemake expected you to like this. There is an option below to tell it what it got wrong."
     : "";
@@ -62,6 +62,12 @@ export function announceReaction(itemId, announce) {
 // Recommendation request orchestration. Both the first set and later sets now come from the
 // real catalog pipeline; there is no local hand-written fallback.
 async function runRecommendationRequest({ render, updateStepper, announce, navigate, initial = false }) {
+  // #91: transition to the Recommendations surface immediately, before the request even starts, so
+  // the Continue/More-recommendations click gets visible acknowledgement right away. navigate() first
+  // (so state.screen is already "recommendations" when startRequest fingerprints the request's
+  // screen) then startRequest, so pending-state skeletons (screens/recommendations.js) render on this
+  // same paint because state.aiStatus is already "loading".
+  navigate("recommendations", { replace: true });
   const request = startRequest(state);
   state.aiMessage = initial
     ? "Tastemake is finding real catalog matches from the favorites you chose."

@@ -67,7 +67,7 @@ const lum = ({ r, g, b }) => {
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 };
 const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
-const BOARD = ".favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen";
+const BOARD = ".favorites-screen, .profile-screen, .recommendations-screen, .library-screen";
 
 // The color behind an element, or null when it sits over an image/gradient (can't be judged from CSS colors).
 function backgroundBehind(el) {
@@ -110,7 +110,7 @@ function lowContrast(root, field) {
 }
 
 export function checkCurrentScreen() {
-  const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen, .mine-screen");
+  const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen, .library-screen, .mine-screen");
   const field = screen.querySelector(".sticker-field");
   const board = screen.getBoundingClientRect();
   const stickers = [...screen.querySelectorAll(".sticker")].filter(isVisible);

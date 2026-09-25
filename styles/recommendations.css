@@ -83,12 +83,15 @@
 .refresh-banner .recommendation-footer-actions .button { flex:0 1 auto; }
 .prototype-next-step { display:inline-block; margin-top:10px; color:var(--note-ink,#4053ad); font-family:var(--hand); font-size:20px; transform:rotate(calc(-1deg * var(--tilt))); }
 
+/* #95: compact, scannable, rationale-first cards. Three per row on desktop instead of four
+   stretched equal-height columns; the card's own height follows its content (no forced
+   min-height), so a short pick does not carry a large dead zone. Artwork keeps a fixed,
+   predictable aspect ratio at the top of the card instead of splitting the card in half. */
 .editorial-grid {
   display:grid;
-  grid-template-columns:repeat(12,minmax(0,1fr));
-  grid-auto-flow:dense;
-  gap:16px;
-  align-items:stretch;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:20px;
+  align-items:start;
 }
 .editorial-rec {
   position:relative;
@@ -97,28 +100,19 @@
   background:#fff;
   border:2px solid var(--navy);
   box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12));
-  display:grid;
+  display:flex;
+  flex-direction:column;
   min-width:0;
 }
-.rec-layout-1 { grid-column:span 7; grid-template-columns:44% 56%; min-height:455px; }
-.rec-layout-2 { grid-column:span 5; grid-template-rows:210px 1fr; }
-.rec-layout-3 { grid-column:span 5; grid-template-rows:210px 1fr; }
-.rec-layout-4 { grid-column:span 7; grid-template-columns:42% 58%; min-height:430px; }
+/* The one deliberately different card (the curveball/"Surprise Me" pick) still gets a visual
+   callout, but at the same card width — it is a distinct pick, not a distinct grid shape. */
 .rec-surprise {
-  grid-column:span 12;
-  grid-template-columns:38% 62%;
-  min-height:330px;
   border-color:#0aaec0;
   box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--cyan);
   background:var(--tint-cool,#fbffff);
 }
 .editorial-rec.is-rated { box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--pink); }
-.editorial-rec-body { padding:18px; display:flex; flex-direction:column; min-width:0; min-height:min-content; }
-/* Real catalog titles and optional feedback can be taller than the old demo copy. Do not let the
-   flex column shrink text boxes until later controls overlap their rendered text. */
-.editorial-rec-body > * { flex-shrink:0; }
-.rec-layout-1 .editorial-rec-body,.rec-layout-4 .editorial-rec-body,.rec-surprise .editorial-rec-body { grid-column:2; }
-.rec-layout-1 .editorial-art,.rec-layout-4 .editorial-art,.rec-surprise .editorial-art { grid-column:1; grid-row:1; }
+.editorial-rec-body { padding:16px; display:flex; flex-direction:column; min-width:0; }
 .editorial-rec-meta {
   display:flex;
   justify-content:space-between;
@@ -135,8 +129,9 @@
    safety net: if the two still don't fit on one line, the stamp drops to its own line instead of
    overflowing sideways. */
 .editorial-title-row { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:8px 12px; margin-top:12px; }
-.editorial-title-row h3 { flex:1 1 auto; min-width:0; overflow-wrap:break-word; margin:0; font-size:clamp(24px,2.4vw,36px); }
-.rec-layout-1 .editorial-title-row h3,.rec-surprise .editorial-title-row h3 { font-size:clamp(32px,3.4vw,50px); line-height:.94; }
+/* #95: a fixed clamp range that reads fine at three-per-row width, whatever the title length —
+   no separate "wide layout" font size to keep in sync. */
+.editorial-title-row h3 { flex:1 1 auto; min-width:0; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; }
 .reaction-stamp {
   flex:0 0 auto;
   max-width:100%;
@@ -151,7 +146,28 @@
 .reaction-more { background:var(--pink-soft); border-color:var(--pink); color:var(--on-pink,#9b076e); }
 .reaction-less { background:var(--tint-lilac,#e7e9ff); }
 .reaction-not-tried { background:var(--violet-soft); }
-.editorial-about { color:var(--muted); line-height:1.48; font-size:14px; margin:10px 0 14px; }
+/* #95: the rationale is the primary card copy — "why did Tastemake pick this?" — shown before the
+   catalog synopsis, in the note-ink color used elsewhere for Tastemake's own commentary. */
+.editorial-rationale {
+  color:var(--note-ink,#4053ad);
+  font-weight:600;
+  line-height:1.42;
+  font-size:14px;
+  margin:8px 0 0;
+}
+
+/* #95: default card copy prioritizes the recommendation rationale over long catalog synopsis —
+   the synopsis is clamped to a short number of lines instead of running as a wall of text. */
+.editorial-about {
+  color:var(--muted);
+  line-height:1.45;
+  font-size:13px;
+  margin:8px 0 10px;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+}
 .editorial-why {
   position:relative;
   z-index:20;
@@ -219,14 +235,19 @@
   transform:translateY(0) rotate(calc(-.4deg * var(--tilt)));
 }
 
+/* #95: fixed, predictable aspect ratio; object-fit:cover on the real-artwork <img> below never
+   stretches the image, and the container's own size never shifts once the layout is known — the
+   image loading later cannot cause layout shift. */
 .editorial-art {
   position:relative;
   overflow:hidden;
-  min-height:100%;
-  border-right:2px solid var(--navy);
+  aspect-ratio:16/10;
+  width:100%;
+  border-bottom:2px solid var(--navy);
   background:#151d56;
+  flex:0 0 auto;
 }
-.rec-layout-2 .editorial-art,.rec-layout-3 .editorial-art { border-right:0; border-bottom:2px solid var(--navy); }
+.editorial-art-real img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 .art-kicker,.art-title,.art-corner { position:absolute; z-index:4; }
 .art-kicker {
   left:14px;
@@ -240,15 +261,20 @@
   letter-spacing:.08em;
 }
 .art-title {
-  left:18px;
-  right:18px;
-  bottom:18px;
+  left:14px;
+  right:14px;
+  bottom:14px;
   color:#fff;
-  font-size:clamp(28px,3vw,48px);
-  line-height:.88;
+  /* #95: cards are narrower now (3-up) with a shorter art block, so this needs to fit a smaller box. */
+  font-size:clamp(18px,2.4vw,28px);
+  line-height:1;
   font-weight:700;
-  letter-spacing:-.065em;
+  letter-spacing:-.04em;
   text-transform:uppercase;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
 }
 .art-corner { right:12px; top:14px; color:#fff; font-size:9px; font-weight:700; letter-spacing:.08em; }
 .art-pattern,.art-shape { position:absolute; inset:auto; pointer-events:none; }
@@ -354,6 +380,37 @@
 .more-feedback-toggle[aria-expanded="true"] { border-style:solid; }
 .tertiary-feedback[hidden] { display:none; }
 
+/* #93: the ongoing-loop action and the optional taste-input nudge. Both sit above the per-item
+   grid so they read as "keep going" rather than an end-of-list footer action. */
+.keep-discovering-bar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+  margin:0 0 18px;
+  padding:13px 16px;
+  border:2px dashed var(--navy);
+  border-radius:10px;
+  background:rgba(255,255,255,.6);
+}
+.keep-discovering-bar p { margin:0; color:var(--text2,#3f4774); font-size:13px; flex:1 1 260px; }
+.keep-discovering-bar .button { flex:0 0 auto; }
+.taste-input-prompt {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+  margin:0 0 18px;
+  padding:13px 16px;
+  border:1px dashed var(--line);
+  border-radius:10px;
+  background:transparent;
+}
+.taste-input-prompt p { margin:0; color:var(--muted); font-size:13px; flex:1 1 260px; }
+.taste-input-prompt-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
 .recommendation-footer {
   display:flex;
   justify-content:space-between;
@@ -365,3 +422,23 @@
 .recommendation-footer-actions { flex-wrap:nowrap; }
 .recommendation-footer-actions .button { flex:0 0 auto; }
 .recommendation-empty { min-height:220px; }
+
+/* #91: pending-state skeletons for the very first set. Sized like a real card (art block + text
+   lines + action row) so results replacing them do not cause a jarring layout jump. */
+.editorial-rec-skeleton {
+  min-height:340px;
+  border:2px solid var(--line);
+  border-radius:10px;
+  background:linear-gradient(100deg,rgba(0,0,0,.045) 30%,rgba(0,0,0,.09) 45%,rgba(0,0,0,.045) 60%);
+  background-size:250% 100%;
+  animation:skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position:200% 0; }
+  100% { background-position:-200% 0; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .editorial-rec-skeleton { animation:none; background:rgba(0,0,0,.06); }
+}
+
+.rating-button[disabled],.keep-discovering-bar .button[disabled] { opacity:.55; cursor:default; pointer-events:none; }
