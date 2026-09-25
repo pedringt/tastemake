@@ -7,6 +7,29 @@ const uniq = (items) => {
 };
 
 const areaAllowed = (state, item) => !item.domains?.length || item.domains.some((domain) => state.areas?.[domain] !== false);
+const modeAllowed = (state, item) => {
+  const mode = state.recommendationFilter ?? "all";
+  return mode === "all" || item.domains?.includes(mode);
+};
+
+function interleave(rows) {
+  const out = [];
+  const depth = Math.max(0, ...rows.map((bucket) => bucket.length));
+  for (let i = 0; i < depth; i += 1) {
+    for (const bucket of rows) if (bucket[i]) out.push(bucket[i]);
+  }
+  return out;
+}
+
+function balanceDomains(items, mode) {
+  if (mode !== "all") return items;
+  const buckets = new Map([["watch", []], ["read", []], ["play", []], ["other", []]]);
+  for (const item of items) {
+    const key = ["watch", "read", "play"].find((domain) => item.domains?.includes(domain)) ?? "other";
+    buckets.get(key).push(item);
+  }
+  return interleave([...buckets.values()].filter((bucket) => bucket.length));
+}
 
 function externalEvidenceItems(state) {
   const ids = new Set([
@@ -83,12 +106,12 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     ...Object.keys(state.feedbackByRecommendation ?? {}),
     ...(state.recommendationSets ?? []).flat().map((item) => item.id)
   ]);
-  const eligible = uniq(rows.flat()).filter((item) => !blocked.has(item.id) && areaAllowed(state, item));
+  const eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
 
   // #92: the novelty guard runs here — after retrieval, before this shared function returns
   // candidates to either the deterministic baseline (src/ai/baseline.js) or the live-AI ranking
   // path (api/recommendations.mjs), both of which call retrieveCatalogCandidates. Suppressed
   // sequels/remakes are dropped from the primary pool; whatever else was retrieved fills their slot.
   const { primary } = applyNoveltyGuard(eligible, evidenceItems);
-  return primary.slice(0, limit);
+  return balanceDomains(primary, state.recommendationFilter ?? "all").slice(0, limit);
 }
