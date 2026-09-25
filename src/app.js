@@ -18,7 +18,7 @@ import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, runInitialRecommendations, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback, toggleExpandedFeedback } from "./actions/recommendations.js";
+import { announceReaction, runInitialRecommendations, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback, saveSeriesExperience, toggleExpandedFeedback } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 
@@ -285,9 +285,20 @@ app.addEventListener("click", async (event) => {
   if (filter) {
     const scope = filter.dataset.filterScope;
     if (scope === "favorites") state.favoriteFilter = filter.dataset.domainFilter;
-    if (scope === "recommendations") state.recommendationFilter = filter.dataset.domainFilter;
+    if (scope === "recommendations") {
+      state.recommendationFilter = filter.dataset.domainFilter;
+      state.recommendationMediumFilter = "all";
+    }
     if (scope === "library") state.libraryFilter = filter.dataset.domainFilter;
     if (scope === "map") state.mapFilter = filter.dataset.domainFilter;
+    render();
+    restoreFocus(focusSelector);
+    return;
+  }
+
+  const mediumFilter = event.target.closest("[data-recommendation-medium]");
+  if (mediumFilter) {
+    state.recommendationMediumFilter = mediumFilter.dataset.recommendationMedium;
     render();
     restoreFocus(focusSelector);
     return;
@@ -435,6 +446,16 @@ app.addEventListener("click", async (event) => {
     if (saveFeedbackDetail(itemId, detail.dataset.feedbackDetail)) {
       renderPreservingCardPosition(itemId, focusSelector);
       announceReaction(itemId, announce);
+    }
+    return;
+  }
+
+  const series = event.target.closest("[data-series-experience][data-feedback-item]");
+  if (series) {
+    const itemId = series.dataset.feedbackItem;
+    if (saveSeriesExperience(itemId, series.dataset.seriesExperience)) {
+      renderPreservingCardPosition(itemId, focusSelector);
+      announce("Series experience updated. Future recommendations will avoid treating covered installments as new discoveries.");
     }
     return;
   }
