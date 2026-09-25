@@ -18,11 +18,12 @@ function memorySet(key, value, ttl) {
 
 export async function cachedValue(key, producer, { ttl = 300, tags = [] } = {}) {
   try {
-    const cache = getCache(undefined, "tastemake");
-    const hit = await cache.get(key);
+    const cache = getCache();
+    const cacheKey = `tastemake:${key}`;
+    const hit = await cache.get(cacheKey);
     if (hit !== undefined && hit !== null) return hit;
     const value = await producer();
-    await cache.set(key, value, { ttl, tags });
+    await cache.set(cacheKey, value, { ttl, tags });
     return value;
   } catch {
     const local = memoryGet(key);
