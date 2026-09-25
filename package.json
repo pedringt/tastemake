@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "test": "npm run test:unit && npm run test:model && npm run test:flow && npm run test:layout && npm run test:a11y && npm run test:eval",
-    "test:unit": "node scripts/qa/api-tests.mjs && node scripts/qa/catalog-ai-tests.mjs && node scripts/qa/escaping-tests.mjs && node scripts/qa/async-tests.mjs && node scripts/qa/validate-tests.mjs",
+    "test:unit": "node scripts/qa/api-tests.mjs && node scripts/qa/catalog-ai-tests.mjs && node scripts/qa/escaping-tests.mjs && node scripts/qa/async-tests.mjs && node scripts/qa/validate-tests.mjs && node scripts/qa/novelty-tests.mjs && node scripts/qa/loop-tests.mjs && node scripts/qa/library-tests.mjs",
     "test:model": "scripts/qa/headless.sh model",
     "test:flow": "scripts/qa/headless.sh flow 1440",
     "test:layout": "scripts/qa/headless.sh layout 1440",

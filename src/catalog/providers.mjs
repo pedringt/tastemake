@@ -24,7 +24,10 @@ function tmdbItem(row, type) {
     year: date ? String(date).slice(0, 4) : null,
     artwork: row.poster_path ? `${TMDB_IMAGE}${row.poster_path}` : null,
     genres: (row.genre_ids ?? []).map(String),
-    providerMeta: { genreIds: row.genre_ids ?? [] },
+    // #92: belongs_to_collection is TMDb's own franchise/collection relationship (e.g. every Lord of the
+    // Rings film shares one collection id). When the provider response includes it, the shared novelty
+    // guard in catalog/related.mjs can suppress same-collection sequels without relying on title text.
+    providerMeta: { genreIds: row.genre_ids ?? [], collectionId: row.belongs_to_collection?.id ?? null },
     sourceUrl: type === "tv" ? `https://www.themoviedb.org/tv/${row.id}` : `https://www.themoviedb.org/movie/${row.id}`
   };
 }
@@ -93,7 +96,13 @@ function igdbItem(row) {
     year: row.first_release_date ? String(new Date(row.first_release_date * 1000).getUTCFullYear()) : null,
     artwork: cover,
     genres: (row.genres ?? []).map((x) => clean(x.name, 60)),
-    providerMeta: { genreIds: (row.genres ?? []).map((x) => x.id) },
+    // #92: IGDB's franchise/collection ids group numbered game series (e.g. every entry in a series
+    // shares a collection id) so the shared novelty guard can suppress sequels without title guessing.
+    providerMeta: {
+      genreIds: (row.genres ?? []).map((x) => x.id),
+      collectionId: row.collection?.id ?? null,
+      franchiseId: (row.franchises ?? [])[0]?.id ?? row.franchise?.id ?? null
+    },
     sourceUrl: row.url ?? null
   };
 }
@@ -108,7 +117,7 @@ async function searchIgdb(query, env, fetchImpl) {
       authorization: `Bearer ${token}`,
       "content-type": "text/plain"
     },
-    body: `search "${String(query).replace(/"/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name; limit 8;`
+    body: `search "${String(query).replace(/"/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; limit 8;`
   });
   if (!response.ok) throw new Error(`igdb ${response.status}`);
   return (await response.json()).map(igdbItem);

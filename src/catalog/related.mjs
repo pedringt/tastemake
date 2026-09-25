@@ -1,4 +1,5 @@
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
+import { applyNoveltyGuard } from "./novelty.mjs";
 
 const uniq = (items) => {
   const seen = new Set();
@@ -50,7 +51,7 @@ async function igdbRelated(item, env, fetchImpl) {
       authorization: `Bearer ${token}`,
       "content-type": "text/plain"
     },
-    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name; where genres = (${genreIds.slice(0, 3).join(",")}) & id != ${Number(item.providerId) || 0}; sort total_rating_count desc; limit 12;`
+    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where genres = (${genreIds.slice(0, 3).join(",")}) & id != ${Number(item.providerId) || 0}; sort total_rating_count desc; limit 12;`
   });
   if (!response.ok) return [];
   return (await response.json()).map(igdbItem);
@@ -77,7 +78,12 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     ...Object.keys(state.feedbackByRecommendation ?? {}),
     ...(state.recommendationSets ?? []).flat().map((item) => item.id)
   ]);
-  return uniq(rows.flat())
-    .filter((item) => !blocked.has(item.id) && areaAllowed(state, item))
-    .slice(0, limit);
+  const eligible = uniq(rows.flat()).filter((item) => !blocked.has(item.id) && areaAllowed(state, item));
+
+  // #92: the novelty guard runs here — after retrieval, before this shared function returns
+  // candidates to either the deterministic baseline (src/ai/baseline.js) or the live-AI ranking
+  // path (api/recommendations.mjs), both of which call retrieveCatalogCandidates. Suppressed
+  // sequels/remakes are dropped from the primary pool; whatever else was retrieved fills their slot.
+  const { primary } = applyNoveltyGuard(eligible, evidenceItems);
+  return primary.slice(0, limit);
 }
