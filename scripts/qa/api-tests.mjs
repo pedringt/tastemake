@@ -42,10 +42,10 @@ const modelSays=(picks)=>({
   content:[{type:"text",text:JSON.stringify({picks})}],
   usage:{input_tokens:20,output_tokens:40},model:"claude-test"
 });
-const goodPicks=()=>relatedRows.slice(0,5).map((row,i)=>({
+const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   itemId:`tmdb-movie-${row.id}`,
   why:`Related to a film you explicitly chose as a favorite; this tests a nearby catalog match ${i+1}.`,
-  cites:[`ev:${favorite.id}`],tests:null,kind:i===4?"curveball":"pick"
+  cites:[`ev:${favorite.id}`],tests:null,kind:i===5?"curveball":"pick"
 }));
 
 function routedFetch(aiPayload=modelSays(goodPicks()),opts={}){
@@ -75,7 +75,7 @@ eq("production approval opens the gate",liveConfig({...ON,VERCEL_ENV:"production
 // Real-catalog fallback, including the first set.
 let out=await produceRecommendations({rawState:rawState(),env:BASE,fetchImpl:routedFetch()});
 eq("AI off uses real catalog fallback",out.source,"catalog");
-eq("catalog fallback has five real provider picks",out.picks.length,5);
+eq("catalog fallback has six real provider picks",out.picks.length,6);
 check("catalog fallback contains no legacy seed ids",out.picks.every(p=>p.id.startsWith("tmdb-movie-")),out.picks.map(p=>p.id).join(","));
 eq("catalog fallback makes no paid call",out.meta.paidCallMade,false);
 check("catalog fallback keeps implementation diagnostics out of card reasons",out.picks.every(p=>!/Live AI did not rank/.test(p.reason)));
@@ -106,7 +106,7 @@ eq("non-JSON model output falls back to catalog",out.source,"catalog");
 
 for(const [name,opts] of [["timeout",{abort:true}],["network",{fail:"boom"}],["500",{status:500}]]){
   const result=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(modelSays(goodPicks()),opts)});
-  check(`${name}: transport failure keeps real catalog picks`,result.source==="catalog"&&result.picks.length===5,result.source);
+  check(`${name}: transport failure keeps real catalog picks`,result.source==="catalog"&&result.picks.length===6,result.source);
 }
 
 // No provider candidates means an honest empty result, never a seed fallback.
