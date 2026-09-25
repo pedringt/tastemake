@@ -124,7 +124,7 @@ export function applyNoveltyGuard(candidates, evidenceItems = []) {
 
     // User-declared series coverage is stronger than an individual-title reaction for discovery:
     // once they say they have experienced the series, do not keep surfacing sibling installments.
-    const coveredSeries = against.some((item) => {
+    const coveredSeries = evidenceItems.some((item) => {
       if (!item.seriesExperience || item.seriesExperience === "unseen-rest") return false;
       const a = seriesKey(candidate);
       const b = seriesKey(item);
