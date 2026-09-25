@@ -180,6 +180,10 @@
 :root[data-look="graphic"] .brand-tagline { font-size:13px; line-height:1.05; font-weight:500; white-space:normal; max-width:172px; }
 :root[data-look="graphic"] .brand-word { font-weight:900; letter-spacing:-.045em; font-size:clamp(26px, 2.5vw, 36px); }
 :root[data-look="graphic"] :is(.favorite-tile, .library-card, .bookmark-card, .editorial-rec, .rec-progress-card, .taste-map-node) { border-width:3px; }
+/* #103 item 5: the thicker Bold Graphic border was eating into the compact Library card's fixed
+   64px/24px columns, squeezing long titles ("The Storm Riders") and metadata. Keep the compact
+   collection cards at the base 2px border; the thick border still reads on every other card type. */
+:root[data-look="graphic"] .library-card-compact { border-width:2px; }
 :root[data-look="graphic"] .favorite-tile::before { border-color:rgb(11 11 11 / .14); }
 :root[data-look="graphic"] .button { border-width:3px; }
 :root[data-look="graphic"] .brand::after { height:6px; transform:none; border-radius:0; }

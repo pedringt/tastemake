@@ -11,7 +11,7 @@ async function freshState() {
   return { fresh: () => { mod.resetState(); return mod.state; } };
 }
 
-const { saveBookmarkAction } = await import("../../src/actions/library.js");
+const { saveBookmarkAction, saveLibraryAction } = await import("../../src/actions/library.js");
 const { bookmarkedFeedback, isBookmarked, isPositiveExperience } = await import("../../src/model/taste.js");
 const { libraryItems } = await import("../../src/model/library.js");
 const { routes, screenFromPath } = await import("../../src/router.js");
@@ -52,6 +52,38 @@ check("it no longer registers as Saved (no duplication across tabs)", !isBookmar
 // Nothing is persisted client-side (no localStorage/sessionStorage schema anywhere), so there is no
 // migration to write: resetting state cannot duplicate or lose anything that was never stored.
 eq("state carries no persistence schema/version field (nothing is persisted)", typeof state2.schemaVersion, "undefined");
+
+// #103 item 6: Tried -> Favorite (and back), and Favorite/Disliked must never be simultaneously
+// true. Favorite is a flag layered onto an experienced-positive reaction, not a separate collection,
+// so correcting a reaction to "disliked" automatically clears any Favorite flag on it.
+const state3 = fresh();
+const lovedItem = { id: "tmdb-movie-2", title: "Loved Thing", type: "movie", domains: ["watch"] };
+state3.feedbackByRecommendation[lovedItem.id] = { item: lovedItem, rating: "more", detail: "loved-before" };
+
+check("favoriting a Loved item succeeds", saveLibraryAction(lovedItem.id, "favorite"));
+check("it is now a Favorite", state3.libraryFavorites.has(lovedItem.id));
+check("it appears in the Favorites bucket, not the plain Tried bucket", (() => {
+  const { favorites, library } = libraryItems(state3);
+  return favorites.some((e) => e.id === lovedItem.id) && !library.some((e) => e.id === lovedItem.id);
+})());
+
+check("un-favoriting it succeeds and keeps it in Tried", (() => {
+  const ok = saveLibraryAction(lovedItem.id, "unfavorite");
+  const { library } = libraryItems(state3);
+  return ok && !state3.libraryFavorites.has(lovedItem.id) && library.some((e) => e.id === lovedItem.id);
+})());
+
+// Re-favorite, then correct the reaction to disliked: Favorite must not survive the contradiction.
+saveLibraryAction(lovedItem.id, "favorite");
+check("re-favorited before the contradiction check", state3.libraryFavorites.has(lovedItem.id));
+saveLibraryAction(lovedItem.id, "disliked");
+check("correcting to 'disliked' clears Favorite (no Disliked+Favorite state)", !state3.libraryFavorites.has(lovedItem.id));
+check("it no longer counts as a positive experience", !isPositiveExperience(state3.feedbackByRecommendation[lovedItem.id]));
+
+// Favorite can never be set directly on a merely-liked (not loved) or untried item.
+const likedItem = { id: "tmdb-movie-3", title: "Liked Thing", type: "movie", domains: ["watch"] };
+state3.feedbackByRecommendation[likedItem.id] = { item: likedItem, rating: "more", detail: "liked-before" };
+check("favoriting a merely-liked (not loved) item is refused", !saveLibraryAction(likedItem.id, "favorite"));
 
 console.log(`library tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));

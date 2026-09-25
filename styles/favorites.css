@@ -153,6 +153,22 @@
   font-size:14px;
 }
 .starter-progress strong { color:var(--navy); font-size:18px; }
+/* #103 item 7: an inline text-link-styled button inside the Taste Foundations progress line. */
+.button-inline {
+  display:inline-flex;
+  align-items:center;
+  border:0;
+  background:transparent;
+  padding:8px 2px;
+  min-height:44px;
+  font:inherit;
+  font-size:inherit;
+  color:var(--note-ink,#584bb5);
+  text-decoration:underline;
+  text-underline-offset:3px;
+  cursor:pointer;
+  box-shadow:none;
+}
 .starter-grid {
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));

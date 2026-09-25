@@ -32,3 +32,29 @@ export async function searchExternalCatalog(query, domain = "all", { signal } = 
     new Promise((_, reject) => signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true }))
   ]);
 }
+
+const detailCache = new Map();
+
+// #103 item 1/2: fetched once per item, only when a user actually expands it (Library/detail view),
+// never as part of bulk search or recommendation retrieval. A miss/error resolves to {} so the caller
+// can omit fields gracefully instead of showing an empty label.
+export async function fetchCatalogItemDetail(item) {
+  if (!item?.provider || !item?.providerId) return {};
+  const key = `${item.provider}:${item.type ?? ""}:${item.providerId}`;
+  if (detailCache.has(key)) return detailCache.get(key);
+
+  const request = (async () => {
+    try {
+      const url = `/api/catalog-detail?provider=${encodeURIComponent(item.provider)}&providerId=${encodeURIComponent(item.providerId)}&type=${encodeURIComponent(item.type ?? "")}`;
+      const response = await fetch(url, { headers: { accept: "application/json" } });
+      if (!response.ok) return {};
+      const payload = await response.json();
+      return payload.detail ?? {};
+    } catch {
+      return {};
+    }
+  })();
+
+  detailCache.set(key, request);
+  return request;
+}
