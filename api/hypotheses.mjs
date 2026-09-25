@@ -50,11 +50,27 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
   const state = hydrateState(rawState);
   const ctx = buildContext(state);
   const config = hypothesisConfig(env);
-  if (!config.enabled) return { source: "unavailable", reason: "live profile AI is not enabled", hypotheses: [], meta: { paidCallMade: false } };
+  if (!config.enabled) {
+    // #86: this gate was failing silently in production with no way to tell which of the six
+    // required env vars was missing. Every other return path below already gets logged one way
+    // or another (accepted, or the handler's catch block); this was the one silent gap.
+    console.error("[tastemake-profile-ai]", "config disabled", config.reasons.join(","));
+    return { source: "unavailable", reason: "live profile AI is not enabled", hypotheses: [], meta: { paidCallMade: false } };
+  }
 
   const model = await callAnthropic({ prompt: buildHypothesisPrompt(ctx, state.modelHypotheses), env, fetchImpl });
   const validated = validateHypotheses(model.json, ctx);
   if (!validated.accepted.length) {
+    // #86: a rejected/insufficient-evidence response returns 200 (it's a normal outcome, not an
+    // error), so nothing surfaced why the profile stayed empty. Log the real reason set so a blank
+    // Profile can be told apart from "not enough evidence yet" without guessing.
+    console.log("[tastemake-profile-ai]", "no hypotheses accepted", JSON.stringify({
+      fallback: validated.fallback ?? false,
+      proposedCount: Array.isArray(model.json?.hypotheses) ? model.json.hypotheses.length : 0,
+      rejectedCount: validated.rejected?.length ?? 0,
+      notes: validated.notes ?? [],
+      rejectedReasons: (validated.rejected ?? []).flatMap((r) => r.reasons ?? [])
+    }));
     return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage } };
   }
   return {
