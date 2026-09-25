@@ -38,7 +38,7 @@
 .recommendation-filter-band { margin-bottom:20px; }
 
 .refresh-banner {
-  margin:22px 0 18px;
+  margin:0 0 18px;
   padding:15px 17px;
   display:flex;
   justify-content:space-between;
@@ -401,7 +401,7 @@
   justify-content:space-between;
   gap:16px;
   flex-wrap:wrap;
-  margin:0 0 18px;
+  margin:22px 0 18px;
   padding:13px 16px;
   border:2px dashed var(--navy);
   border-radius:10px;
