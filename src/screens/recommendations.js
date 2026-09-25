@@ -129,6 +129,31 @@ function qualityExpanded(itemId, feedback) {
   return override !== undefined ? override : Boolean(feedback?.quality);
 }
 
+function seriesExperienceFeedback(item, feedback) {
+  if (!hasSeriesSignal(item) || (!isPositiveExperience(feedback) && !isExperiencedNegative(feedback))) return "";
+  const options = [
+    ["loved-most", "Loved most of it"],
+    ["liked-most", "Liked most of it"],
+    ["mixed", "Mixed"],
+    ["disliked-most", "Mostly disliked it"],
+    ["unseen-rest", "Have not tried the rest"]
+  ];
+  return `
+    <div class="series-feedback">
+      <span class="feedback-detail-prompt">Seen more from this series? Optional.</span>
+      <div class="detail-chip-row">
+        ${options.map(([value, label]) => `
+          <button
+            class="detail-chip series-chip"
+            type="button"
+            data-series-experience="${value}"
+            data-feedback-item="${item.id}"
+            aria-pressed="${feedback.seriesExperience === value}"
+          >${label}</button>`).join("")}
+      </div>
+    </div>`;
+}
+
 function moreFeedbackToggle(itemId, expanded, panelId) {
   return `
     <button
