@@ -22,12 +22,15 @@ function domainScopeControls(item, record) {
   const excluded = record.scope.excluded;
   return `
     <div class="signal-say signal-scope" role="group" aria-label="Where does “${esc(item.title)}” apply?">
-      <span class="signal-say-label">Where does this apply?</span>
-      <div class="detail-chip-row">
+      <span class="signal-say-label signal-scope-label">This pattern applies to</span>
+      <div class="signal-scope-options">
         ${domains.map((domainId) => {
           const label = domainById(domainId)?.label ?? domainId;
           const isExcluded = excluded.includes(domainId);
-          return `<button type="button" class="detail-chip" data-scope-pattern="${item.id}" data-scope-domain="${domainId}" aria-pressed="${!isExcluded}">${isExcluded ? "Not in" : "In"} ${esc(label)}</button>`;
+          return `<button type="button" class="signal-scope-option" data-scope-pattern="${item.id}" data-scope-domain="${domainId}" aria-pressed="${!isExcluded}" aria-label="${esc(label)}: ${isExcluded ? "not included" : "included"}">
+            <span class="signal-scope-check" aria-hidden="true">${isExcluded ? "" : "✓"}</span>
+            <span>${esc(label)}</span>
+          </button>`;
         }).join("")}
       </div>
     </div>`;
