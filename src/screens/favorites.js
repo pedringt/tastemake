@@ -72,7 +72,7 @@ export function renderFavorites() {
         </div>
         <div class="action-group">
           ${state.onboarded ? `<button class="button button-secondary" type="button" data-action="view-model" ${count < 4 ? "disabled" : ""}>See profile</button>` : ""}
-          <button class="button button-primary" type="button" data-action="show-recs" ${count < 4 ? "disabled" : ""}>See recommendations <span aria-hidden="true">&rarr;</span></button>
+          <button class="button button-primary" type="button" data-action="show-recs" ${count < 4 || state.aiStatus === "loading" ? "disabled" : ""}>${state.aiStatus === "loading" ? "Finding recommendations…" : "See recommendations"} <span aria-hidden="true">&rarr;</span></button>
         </div>
       </div>
     </section>`;

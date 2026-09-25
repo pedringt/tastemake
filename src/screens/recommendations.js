@@ -20,7 +20,7 @@ export function reactionLabel(feedback) {
   if (isStrongPositive(feedback)) return "Loved it before";
   if (isPositiveExperience(feedback)) return "Liked it before";
   if (isExperiencedNegative(feedback)) return "Disliked it before";
-  if (isBookmarked(feedback)) return "Try Next";
+  if (isBookmarked(feedback)) return "Saved";
   return ratingLabel(feedback.rating);
 }
 
@@ -53,7 +53,7 @@ function detailOptionsFor(feedback) {
     ];
   }
 
-  return [["bookmarked", "Save to Try Next"]];
+  return [["bookmarked", "Save for later"]];
 }
 
 // #52/#53: three layers, not one block. Primary (More/Less/Not tried) is always visible. Secondary — which
@@ -67,7 +67,7 @@ function detailOptionsFor(feedback) {
 function detailChips(itemId, feedback) {
   const options = detailOptionsFor(feedback);
   const prompt = feedback.rating === "not-tried"
-    ? "Want to save it for later? Optional. Try Next doesn't change your Taste Profile."
+    ? "Want to save it for later? Optional. Saved doesn't change your Taste Profile."
     : feedback.rating === "more"
       ? "Already tried it? Tell us how it went. Optional."
       : "Tried it, or just not for you? Optional.";
@@ -191,15 +191,18 @@ function whyContent(item) {
   const kicker = whyKicker(item, pattern);
   const label = pattern ? `${kicker}: ${esc(pattern.title)}` : kicker;
 
+  // The rationale itself (item.reason) is now shown up front on the card (#95); this popover adds
+  // the pattern context around it (what's being tested, and how confident that pattern is) rather
+  // than repeating the same sentence.
   return `
     <span class="why-kicker">${label}</span>
-    <p>${esc(item.reason)}</p>
+    ${pattern ? `<p>This tests a pattern Tastemake is ${String(pattern.strength ?? "still forming").toLowerCase()} on: ${esc(pattern.title)}.</p>` : `<p>Tastemake does not have a named pattern behind this one yet — it is an early test.</p>`}
     ${isCurveball ? `<p class="why-caveat">This one deliberately breaks from the pattern above, to see what that tells Tastemake.</p>` : ""}`;
 }
 
 function recommendationCard(item, index) {
   const saved = state.feedbackByRecommendation[item.id];
-  const layoutClass = item.surprise ? "rec-surprise" : `rec-layout-${(index % 4) + 1}`;
+  const layoutClass = item.surprise ? "rec-surprise" : "";
   const whyId = `why-${item.id}`;
   const qualityId = `quality-${item.id}`;
   const showQuality = hasQualityNote(saved);
@@ -222,6 +225,10 @@ function recommendationCard(item, index) {
           ${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}
         </div>
 
+        <!-- #95: rationale-first — Tastemake's "why this fits" is the primary card copy, shown
+             up front rather than only behind the "Why this one?" trigger. The trigger still opens
+             the fuller pattern context (curveball caveat, tested-pattern label). -->
+        <p class="editorial-rationale">${esc(item.reason)}</p>
         <p class="editorial-about">${esc(item.about)}</p>
 
         <div class="editorial-why">
@@ -230,7 +237,7 @@ function recommendationCard(item, index) {
             type="button"
             aria-expanded="false"
             aria-controls="${whyId}"
-          >Why this one?</button>
+          >More about why</button>
           <div class="why-popover" id="${whyId}" role="tooltip">
             ${whyContent(item)}
           </div>
@@ -255,8 +262,25 @@ function recommendationCard(item, index) {
     </article>`;
 }
 
+// #91: a lightweight skeleton while the FIRST set is loading and there is nothing to show yet, so the
+// screen never looks frozen — it deliberately mirrors the real card shape (art block, title line,
+// action row) rather than a generic spinner. Once any set exists, a later loading state is already
+// communicated by renderAiStatus()/renderKeepDiscoveringBar(), so no skeleton is needed to avoid a
+// jarring layout jump when results replace an already-populated grid.
+function skeletonCard(index) {
+  return `<div class="editorial-rec-skeleton" aria-hidden="true" style="animation-delay:${index * 70}ms"></div>`;
+}
+
+function renderCardArea(visible, items) {
+  if (state.aiStatus === "loading" && items.length === 0) {
+    return Array.from({ length: 5 }, (_, index) => skeletonCard(index)).join("");
+  }
+  if (visible.length) return visible.map(recommendationCard).join("");
+  return `<div class="filter-empty recommendation-empty">${items.length ? "No picks in this category in the current set. Try All." : "No real catalog recommendations are available yet. Change your favorites or try again."}</div>`;
+}
+
 function bookmarkNote(count) {
-  return count ? `<p class="bookmark-note">${count} ${count === 1 ? "thing" : "things"} in Try Next.</p>` : "";
+  return count ? `<p class="bookmark-note">${count} ${count === 1 ? "thing" : "things"} in Saved.</p>` : "";
 }
 
 function renderAiStatus() {
@@ -284,11 +308,41 @@ function renderAiStatus() {
     </div>`;
 }
 
+// #93: the ongoing-loop action. Deliberately available the moment there is at least one reaction
+// (canKeepDiscovering), not gated behind rating every card in the current set — the issue is explicit
+// that a user should not have to react to every card before requesting another batch.
+function renderKeepDiscoveringBar() {
+  if (!canKeepDiscovering(state)) return "";
+  const disabled = state.aiStatus === "loading";
+  return `
+    <div class="keep-discovering-bar">
+      <p>Reacted to a few? You can ask for another set whenever you want — it uses what you have told Tastemake so far.</p>
+      <button class="button button-primary" type="button" data-action="keep-discovering" ${disabled ? "disabled" : ""}>
+        ${disabled ? "Finding more…" : "More recommendations"}
+      </button>
+    </div>`;
+}
+
+// #93: an optional, easy-to-ignore nudge once the current set is fully rated. It never blocks or
+// forces a return to onboarding — "Keep browsing" (i.e. just asking for more, or leaving it alone)
+// is always the default path.
+function renderTasteInputPrompt() {
+  if (!currentRoundComplete(state)) return "";
+  return `
+    <div class="taste-input-prompt">
+      <p><strong>Want better recommendations?</strong> Optional — Tastemake works fine either way.</p>
+      <div class="taste-input-prompt-actions">
+        <button class="button button-secondary" type="button" data-action="back-favorites">Pick a few more favorites</button>
+        <button class="button button-quiet" type="button" data-action="keep-discovering">Just keep browsing</button>
+      </div>
+    </div>`;
+}
+
 function renderNextSteps() {
   if (!currentRoundComplete(state)) return "";
   const bookmarks = bookmarkedFeedback(state).length;
   const viewBookmarks = bookmarks
-    ? `<button class="button button-secondary" type="button" data-action="view-bookmarks">Try Next</button>`
+    ? `<button class="button button-secondary" type="button" data-action="view-bookmarks">Saved</button>`
     : "";
 
   if (!outOfPicks(state)) {
@@ -375,13 +429,13 @@ export function renderRecommendations() {
       </div>
 
       ${renderAiStatus()}
+      ${renderKeepDiscoveringBar()}
       ${renderNextSteps()}
+      ${renderTasteInputPrompt()}
 
       <h2 class="visually-hidden">Your picks</h2>
       <div class="editorial-grid">
-        ${visible.length
-          ? visible.map(recommendationCard).join("")
-          : `<div class="filter-empty recommendation-empty">${items.length ? "No picks in this category in the current set. Try All." : "No real catalog recommendations are available yet. Change your favorites or try again."}</div>`}
+        ${renderCardArea(visible, items)}
       </div>
 
       <div class="recommendation-footer page-actions">

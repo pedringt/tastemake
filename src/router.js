@@ -3,16 +3,20 @@ export const routes = {
   model: "/taste-profile",
   recommendations: "/recommendations",
   library: "/library",
-  bookmarks: "/try-next",
   look: "/look",
   setup: "/setup",
   mine: "/my-tastemake"
 };
 
+// #94: Library absorbed the old separate "Try Next" screen as its Saved tab. Old links/bookmarks to
+// /try-next or /bookmarks still land on Library (Saved is the default view there anyway), so nothing
+// that was bookmarked externally breaks.
+const LEGACY_SAVED_PATHS = new Set(["/bookmarks", "/try-next"]);
+
 export function screenFromPath(pathname = window.location.pathname) {
   const normalized = pathname.replace(/\/$/, "") || "/";
   if (normalized === "/") return "look";
-  if (normalized === "/bookmarks") return "bookmarks";
+  if (LEGACY_SAVED_PATHS.has(normalized)) return "library";
   const entry = Object.entries(routes).find(([, path]) => path === normalized);
   return entry ? entry[0] : "favorites";
 }

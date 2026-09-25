@@ -163,10 +163,13 @@ export async function runAll() {
   const results={};
   const record=(name,scope)=>{results[name]=checkNow(scope);};
 
-  for(const [name,jump] of [["favorites","favorites"],["recommendations","recommendations"],["profile","model"],["library","library"],["bookmarks","bookmarks"]]){
+  for(const [name,jump] of [["favorites","favorites"],["recommendations","recommendations"],["profile","model"],["library","library"]]){
     await click(`.step[data-step-jump="${jump}"]`);
     record(name);
   }
+  // #94: Library now has Saved (default, already recorded above) and Tried tabs.
+  await click('[data-library-tab="tried"]'); record("library tried");
+  await click('[data-library-tab="saved"]');
   await click("#open-mine"); record("my tastemake");
   document.querySelector("[data-open-look]")?.click(); await wait(); record("look picker");
   document.querySelector('[data-action="look-done"]')?.click(); await wait();

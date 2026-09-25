@@ -4,7 +4,6 @@ import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
-import { renderBookmarks } from "./screens/bookmarks.js";
 import { renderLibrary } from "./screens/library.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
@@ -34,7 +33,6 @@ const views = {
   model: renderProfile,
   recommendations: renderRecommendations,
   library: renderLibrary,
-  bookmarks: renderBookmarks,
   look: renderLook,
   setup: renderSetup,
   mine: renderMine
@@ -45,9 +43,9 @@ function hasEnoughFavorites() {
 }
 
 function canAccess(screen) {
-  // #29/#68: Bookmarks is a real destination even with nothing saved yet — the empty state explains how
-  // to get there instead of the tab just disappearing until you happen to bookmark something.
-  if (screen === "look" || screen === "setup" || screen === "mine" || screen === "bookmarks") return true;
+  // #29/#68/#94: Library (Saved + Tried) is a real destination even with nothing saved yet — its
+  // empty state explains how to get there instead of the tab just disappearing until something lands.
+  if (screen === "look" || screen === "setup" || screen === "mine" || screen === "library") return true;
   return screen === "favorites" || hasEnoughFavorites();
 }
 
@@ -56,7 +54,7 @@ function render() {
 }
 
 function updateStepper() {
-  const order = ["favorites", "recommendations", "model", "bookmarks", "library"];
+  const order = ["favorites", "recommendations", "model", "library"];
   const activeIndex = order.indexOf(state.screen);
 
   // #59 item 4: keep the guided first-run path (Favorites -> Recommendations) visually dominant by
@@ -415,8 +413,8 @@ app.addEventListener("click", async (event) => {
       // The card usually leaves the list; land on the next card's first action, or on the page if none is left.
       restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
       const left = bookmarkedFeedback(state).length;
-      const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "removed from Try Next" })[outcome];
-      announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Try Next.`);
+      const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "removed from Saved" })[outcome];
+      announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Saved.`);
     }
     return;
   }
@@ -473,6 +471,16 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const libraryTab = event.target.closest("[data-library-tab]");
+  if (libraryTab) {
+    state.libraryView = libraryTab.dataset.libraryTab === "tried" ? "tried" : "saved";
+    render();
+    updateStepper();
+    restoreFocus(`[data-library-tab="${state.libraryView}"]`);
+    announce(state.libraryView === "tried" ? "Showing Tried." : "Showing Saved.");
+    return;
+  }
+
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
 
@@ -489,7 +497,10 @@ app.addEventListener("click", async (event) => {
     else if (state.aiStatus !== AI_LOADING) await runInitialRecommendations({ render, updateStepper, announce, navigate });
   }
 
-  if (action === "view-bookmarks") navigate("bookmarks");
+  if (action === "view-bookmarks") {
+    state.libraryView = "saved";
+    navigate("library");
+  }
 
   if (action === "keep-discovering" && canKeepDiscovering(state) && state.aiStatus !== AI_LOADING) {
     await runKeepDiscovering({ render, updateStepper, announce, navigate });

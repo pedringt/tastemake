@@ -9,7 +9,9 @@
 - **Live AI is ON in production and stays on** (Paige: "I'm ok with the gate, no one is using this but me" — settled, don't re-ask). Live job: choose and explain the next recommendation set on "Keep discovering." Hypothesis inference is still deterministic. Model `claude-sonnet-5`, ~$0.014/call.
 - **CI is real and required.** `npm test` runs on every push/PR via `.github/workflows/test.yml`. See the local-Chrome note below before assuming a local failure is real.
 
-**Where the product stands, portfolio-wise:** issue **#68** is the live portfolio-readiness checklist — read it first for the actual current bar, not this doc. Short version as of this handoff: first-run onboarding (#59) and the live-AI reliability proof (#28) are essentially done; the Bookmarks-naming question is resolved (kept "Bookmarks"); the remaining blockers (#58 mobile/a11y sweep, #60 catalog expansion, #67's visual re-verification, and the final end-to-end QA pass) are all downstream of one thing: **local headless Chrome needs to be stable enough to run `npm run test:full`.** That's the single next milestone, not more feature work.
+**QA policy update (Sept. 25, 2026):** do **not** treat `npm run test:full` or an every-Look × every-width sweep as a default portfolio-readiness gate. That exhaustive sweep proved too slow for the value it adds here. The default release check is now: green required CI + focused automated tests for the changed behavior + a short live smoke test of the affected flow at one representative desktop width and one representative mobile width, with one alternate Look only when the change is visual/theme-sensitive. Run the full sweep only when a concrete regression, broad CSS/system change, or specific issue justifies it. Do not block routine portfolio work waiting for exhaustive matrix coverage.
+
+**Where the product stands, portfolio-wise:** prioritize the current active PR/issues and focused smoke verification. Do not resurrect older instructions that say local Chrome stability or `npm run test:full` is the next milestone; those are superseded by the QA policy above.
 
 **Issues closed this session** (each has a final comment explaining why): none yet — every issue touched has a "here's what shipped" comment, but closing was left to Paige's review rather than assumed. Check open issues for ones you're ready to close now that everything's merged.
 
@@ -18,9 +20,9 @@
 **Local Chrome can get stuck — know this before you burn an hour on it.** Local headless Chrome on this machine has repeatedly hung (updater/crash-handler churn), most likely from concurrent Claude Code sessions sharing this Mac. If `scripts/qa/headless.sh` or `npm test` hangs/times out locally with no clear error, **do not spend more than one retry chasing it**. Instead: push the branch, open a **throwaway PR** to `main` (title it "diagnostic" or similar) so the `pull_request` trigger runs the suite in GitHub's clean container, read that result with `gh pr checks <n>`, then **close the PR without merging** (`gh pr close <n> --comment "..."`) — do not merge or fast-forward `main` without Paige's separate, explicit go-ahead each time. This pattern caught two real regressions this session before they reached production. Never `pkill` browsers or other processes broadly on this machine — ask first.
 
 **What's next, roughly in order:**
-1. **Get local Chrome stable**, then run `npm run test:full`. This unblocks #58 (mobile/a11y sweep across all widths/looks), #60 (the followUpPool catalog expansion, which needs `bookmark-flow.js`'s hardcoded round-size assumptions rewritten in the same pass), and a real visual check of #67's overlap fix.
+1. Use the required CI and targeted tests as the default gate. For UI changes, do a short portfolio smoke test of the affected flow rather than an exhaustive every-Look × every-width matrix.
 2. A small paid spot-check of the #28 JSON-parsing fix against a real live call (cheap, not urgent) — confirms the tightened prompt + more robust parser work against the actual model, not just the regression tests.
-3. Once #58/#60/#67 are clean, #68's final item — one end-to-end portfolio QA pass (fresh user → favorites → recommendations → react → Taste Profile → bookmark → find it again → keep discovering) — is what's left before Paige can freeze for the case study.
+3. For the final portfolio pass, do one focused end-to-end smoke test (fresh user → favorites → recommendations → react → Taste Profile → save → find it again → keep discovering). Add extra widths/Looks only when a concrete issue points there.
 4. Review this session's issue comments and close whichever are done to your satisfaction — nothing was auto-closed.
 5. **#15** (Experiment 004) stays parked — waiting on Paige to actually watch/read/play the 5 locked candidates.
 6. **#48** (hard-boundary exclusions) and **#69** (Music/Art domains) are deliberately unbuilt — both explicitly post-portfolio/optional.
@@ -30,7 +32,7 @@
 
 ```
 npm test                                              # the required gate (free, no model)
-npm run test:full                                     # every look x every width (slower, manual) — the real next step
+npm run test:full                                     # optional exhaustive matrix; NOT a default release/portfolio gate
 node scripts/evals/run.mjs                            # deterministic eval baseline (free)
 node scripts/evals/run.mjs --producer endpoint --yes   # PAID ~$0.20: live model through production
 scripts/qa/headless.sh model|flow|layout|a11y <widths> # browser suites; LOOK=collage etc. for other looks
@@ -90,7 +92,7 @@ Screens render with template strings and `innerHTML`, and live AI made that urge
 
 **First CI run failed:** `scripts/qa/headless.sh model` returned a bare "NO RESULT after 3 tries" with no visible cause, because Chrome's stderr was discarded. Fixed: added `--no-sandbox --disable-dev-shm-usage` (standard for headless Chrome in CI containers) and made the script print Chrome's stderr on the final retry instead of failing silently. Verified via a diagnostic PR's `pull_request`-triggered run before merging, then confirmed green on `main` itself.
 
-`npm run test:full` (`scripts/qa/full-sweep.mjs`) is the slower every-look, every-width sweep this project has been run with by hand; it is not part of the required CI gate. `npm run test:eval:endpoint` is the paid live-model eval, run manually with `--yes`.
+`npm run test:full` (`scripts/qa/full-sweep.mjs`) is the slower every-look, every-width sweep. **As of Sept. 25, 2026 it is optional, not a default portfolio/release gate.** Use it only when a broad visual/system change or a concrete regression warrants exhaustive matrix coverage. `npm run test:eval:endpoint` is the paid live-model eval, run manually with `--yes`.
 
 ## Centralized evidence predicates (#40), done
 
