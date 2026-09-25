@@ -83,7 +83,7 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
   const request = startRequest(state);
   state.aiMessage = initial
     ? "Tastemake is finding real catalog matches from the favorites you chose."
-    : "Tastemake is checking what you have actually tried against the next real catalog matches.";
+    : `Tastemake is finding another ${state.recommendationFilter === "all" ? "mixed" : state.recommendationFilter} set from what you have told it.`;
   state.recommendationExhausted = false;
   render();
   updateStepper();
@@ -117,7 +117,6 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
 
     finishRequest(state, request, { source, message });
     state.recommendationExhausted = exhausted;
-    state.recommendationFilter = "all";
     state.recommendationMediumFilter = "all";
 
     if (picks.length) state.recommendationSets.push(picks);
