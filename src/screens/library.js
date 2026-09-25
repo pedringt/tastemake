@@ -165,6 +165,7 @@ function libraryTab(id, label, count) {
     <button
       class="library-tab"
       type="button"
+      id="library-tab-${id}"
       data-library-tab="${id}"
       role="tab"
       aria-selected="${active}"
@@ -195,8 +196,11 @@ export function renderLibrary() {
         ${renderDomainFilter({ selected: state.libraryFilter, scope: "library", label: "Filter your library by type" })}
       </div>
 
-      <div id="library-panel-${view}" role="tabpanel">
-        ${view === "saved" ? renderSavedView() : renderTriedView()}
+      <div id="library-panel-saved" role="tabpanel" aria-labelledby="library-tab-saved" ${view === "saved" ? "" : "hidden"}>
+        ${renderSavedView()}
+      </div>
+      <div id="library-panel-tried" role="tabpanel" aria-labelledby="library-tab-tried" ${view === "tried" ? "" : "hidden"}>
+        ${renderTriedView()}
       </div>
 
       <div class="recommendation-footer page-actions">
