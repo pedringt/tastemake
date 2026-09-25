@@ -107,7 +107,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   ).slice(0, 6);
   if (!evidenceItems.length) return [];
 
-  const rows = await Promise.all(evidenceItems.map(async (item) => {
+  const loadEvidence = async (items) => Promise.all(items.map(async (item) => {
     try {
       let related = [];
       if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl);
@@ -119,17 +119,28 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     }
   }));
 
+  // Start with four diverse evidence sources. Only fan out to the remaining two when the
+  // first wave cannot provide a healthy pool, which keeps the common path faster.
+  const firstWave = evidenceItems.slice(0, 4);
+  const laterWave = evidenceItems.slice(4);
+  const rows = await loadEvidence(firstWave);
+
   const blocked = new Set([
     ...evidenceItems.map((item) => item.id),
     ...Object.keys(state.feedbackByRecommendation ?? {}),
     ...(state.recommendationSets ?? []).flat().map((item) => item.id)
   ]);
-  const eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
+  let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
+  let guarded = applyNoveltyGuard(eligible, evidenceItems);
+  if (guarded.primary.length < Math.min(12, limit) && laterWave.length) {
+    rows.push(...await loadEvidence(laterWave));
+    eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
+    guarded = applyNoveltyGuard(eligible, evidenceItems);
+  }
 
   // #92: the novelty guard runs here — after retrieval, before this shared function returns
   // candidates to either the deterministic baseline (src/ai/baseline.js) or the live-AI ranking
   // path (api/recommendations.mjs), both of which call retrieveCatalogCandidates. Suppressed
   // sequels/remakes are dropped from the primary pool; whatever else was retrieved fills their slot.
-  const { primary } = applyNoveltyGuard(eligible, evidenceItems);
-  return balanceDomains(primary, state.recommendationFilter ?? "all").slice(0, limit);
+  return balanceDomains(guarded.primary, state.recommendationFilter ?? "all").slice(0, limit);
 }
