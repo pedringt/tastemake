@@ -31,9 +31,9 @@ function normalizeHypothesis(h, index, state) {
   };
 }
 
-export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {} } = {}) {
+export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, force = false } = {}) {
   const key = hypothesisEvidenceKey(state);
-  if (state.hypothesisAiStatus === "loading" || state.hypothesisAiKey === key) return;
+  if (state.hypothesisAiStatus === "loading" || (!force && state.hypothesisAiKey === key)) return;
 
   state.hypothesisAiStatus = "loading";
   state.hypothesisAiMessage = "Checking what your actual experiences add up to.";
@@ -65,16 +65,17 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
       }
       state.modelHypotheses = next;
       state.hypothesisAiMessage = "Live AI refreshed these working patterns. Product rules checked every evidence citation.";
+      state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");
     } else {
-      state.hypothesisAiMessage = payload.reason || "The live profile interpreter is not enabled, so Tastemake is not showing generated patterns.";
+      state.hypothesisAiKey = null;
+      state.hypothesisAiMessage = payload.reason || "Live profile AI did not return a usable pattern set. You can retry."; 
     }
-    state.hypothesisAiKey = key;
     state.hypothesisAiStatus = "ready";
   } catch {
     state.hypothesisAiStatus = "ready";
-    state.hypothesisAiKey = key;
-    state.hypothesisAiMessage = "The live profile interpreter was unavailable, so Tastemake left the profile empty rather than showing demo patterns.";
+    state.hypothesisAiKey = null;
+    state.hypothesisAiMessage = "The live profile interpreter was unavailable. Tastemake left the profile empty instead of showing demo patterns, and you can retry.";
   }
   onUpdate();
 }
