@@ -108,6 +108,7 @@ function setLook(id) {
   root.style.overflowAnchor = "none";
   state.look = id;
   root.dataset.look = id;
+  persistState(state);
   document.querySelectorAll(".look-card").forEach((card) => card.classList.toggle("is-selected", card.dataset.lookChoice === id));
   const done = app.querySelector('[data-action="look-done"]');
   if (done) done.textContent = lookContinueLabel();
