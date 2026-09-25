@@ -86,7 +86,12 @@ async function igdbRelated(item, env, fetchImpl) {
 }
 
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30 } = {}) {
-  const evidenceItems = externalEvidenceItems(state).slice(0, 6);
+  const mode = state.recommendationFilter ?? "all";
+  const allEvidence = externalEvidenceItems(state);
+  const evidenceItems = (mode === "all"
+    ? balanceDomains(allEvidence, "all")
+    : allEvidence.filter((item) => item.domains?.includes(mode))
+  ).slice(0, 6);
   if (!evidenceItems.length) return [];
 
   const rows = await Promise.all(evidenceItems.map(async (item) => {
