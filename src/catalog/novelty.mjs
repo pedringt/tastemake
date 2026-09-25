@@ -94,6 +94,17 @@ function sharesFranchiseName(candidate, evidenceItem, minWords = 2) {
   return true;
 }
 
+function isBatchContinuation(candidate, picked) {
+  if (!candidate?.title || !picked?.title) return false;
+  if (candidate.id === picked.id) return true;
+  if (shareCollection(candidate, picked)) return true;
+  if (isNearDuplicateTitle(candidate, picked)) return true;
+  if (isNumberedContinuation(candidate, picked)) return true;
+  const prefixA = titleSeriesPrefix(candidate.title);
+  const prefixB = titleSeriesPrefix(picked.title);
+  return Boolean(prefixA.length && prefixB.length && prefixA.join(" ") === prefixB.join(" "));
+}
+
 // Exported for eval/test coverage: whether `candidate` is an obvious sequel/prequel/same-series
 // continuation or a remake/near-duplicate of `evidenceItem`, and therefore should not take a
 // primary recommendation slot on that item's behalf.
@@ -133,7 +144,7 @@ export function applyNoveltyGuard(candidates, evidenceItems = []) {
 
     // Batch diversity: once one installment has earned a slot, obvious sibling installments do not
     // consume another slot in the same set. This is separate from evidence-based suppression.
-    const duplicatesPrimary = primary.some((picked) => isFranchiseContinuation(candidate, picked));
+    const duplicatesPrimary = primary.some((picked) => isBatchContinuation(candidate, picked));
 
     const continuation = coveredSeries
       || against.some((item) => isFranchiseContinuation(candidate, item))
