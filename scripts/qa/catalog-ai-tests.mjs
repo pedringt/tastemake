@@ -86,8 +86,12 @@ check("grounded retrieval excludes the evidence item itself", !related.some((x) 
 
 // #107: recommendation style must survive serialization and change candidate selection.
 eq("recommendation style is serialized for the server", serializeAiState({ selectedFavorites: new Set(), feedbackByRecommendation: {}, recommendationSets: [], libraryFavorites: new Set(), customItems: {}, blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(), patternStatements: [], areas: {}, curveball: true, recommendationStyle: "adventurous" }).recommendationStyle, "adventurous");
-const manyRelatedRows = Array.from({ length: 12 }, (_, i) => ({
-  id: 100 + i, title: `Related Candidate ${i + 1}`, overview: "Related.", release_date: "2024-01-01", genre_ids: [18]
+const adventurousTitles = [
+  "Amber Harbor", "Glass Orchard", "Night Signal", "Paper Kingdom", "Silent Atlas", "Copper Sky",
+  "Velvet Transit", "Winter Circuit", "Crimson Static", "Moss Cathedral", "Silver Current", "Ivory Motel"
+];
+const manyRelatedRows = adventurousTitles.map((title, i) => ({
+  id: 100 + i, title, overview: "Related.", release_date: "2024-01-01", genre_ids: [18]
 }));
 const manyRelatedFetch = async (url) => {
   if (String(url).includes("/movie/10/recommendations")) return { ok: true, json: async () => ({ results: manyRelatedRows }) };
@@ -95,8 +99,8 @@ const manyRelatedFetch = async (url) => {
 };
 const balancedRelated = await retrieveCatalogCandidates({ ...relatedState, recommendationStyle: "balanced", curveball: true }, { env, fetchImpl: manyRelatedFetch });
 const adventurousRelated = await retrieveCatalogCandidates({ ...relatedState, recommendationStyle: "adventurous", curveball: true }, { env, fetchImpl: manyRelatedFetch });
-eq("balanced keeps the normal sixth candidate", balancedRelated[5]?.title, "Related Candidate 6");
-eq("adventurous reaches deeper for the exploratory sixth slot", adventurousRelated[5]?.title, "Related Candidate 10");
+eq("balanced keeps the normal sixth candidate", balancedRelated[5]?.title, "Copper Sky");
+eq("adventurous reaches deeper for the exploratory sixth slot", adventurousRelated[5]?.title, "Moss Cathedral");
 
 
 const mixedState = {
