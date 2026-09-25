@@ -21,6 +21,7 @@ import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
 import { announceReaction, runInitialRecommendations, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback, saveSeriesExperience, toggleExpandedFeedback } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
+import { persistState } from "./persistence.js";
 
 // app.js is orchestration only: routing between screens, rendering, focus/announce plumbing, and
 // dispatching DOM events to the action modules in ./actions/ and ./model/ (#39). Product rules and
@@ -50,6 +51,7 @@ function canAccess(screen) {
 }
 
 function render() {
+  persistState(state);
   app.innerHTML = views[state.screen]();
 }
 
@@ -106,6 +108,7 @@ function setLook(id) {
   root.style.overflowAnchor = "none";
   state.look = id;
   root.dataset.look = id;
+  persistState(state);
   document.querySelectorAll(".look-card").forEach((card) => card.classList.toggle("is-selected", card.dataset.lookChoice === id));
   const done = app.querySelector('[data-action="look-done"]');
   if (done) done.textContent = lookContinueLabel();
@@ -199,9 +202,10 @@ function markOnboarded(screen) {
   if (screen === "recommendations") state.onboarded = true;
 }
 
-function maybeRefreshProfile() {
+function maybeRefreshProfile({ force = false } = {}) {
   if (state.screen !== "model") return;
   void refreshProfileHypotheses(state, {
+    force,
     onUpdate() { render(); updateStepper(); },
     announce
   });
@@ -522,6 +526,7 @@ app.addEventListener("click", async (event) => {
   if (action === "setup-done") finishSetup();
   if (action === "back-favorites") navigate("favorites");
   if (action === "view-model") navigate("model");
+  if (action === "retry-profile") maybeRefreshProfile({ force: true });
   if (action === "show-recs") {
     if (state.recommendationSets.length) navigate("recommendations");
     else if (state.aiStatus !== AI_LOADING) await runInitialRecommendations({ render, updateStepper, announce, navigate });

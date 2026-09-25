@@ -74,7 +74,16 @@ export default async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body ?? {};
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
     if (!body.state || typeof body.state !== "object") return res.status(400).json({ error: "state is required" });
+    const started = Date.now();
     const payload = await produceHypotheses({ rawState: body.state });
+    console.info("[tastemake-profile]", JSON.stringify({
+      ms: Date.now() - started,
+      source: payload.source,
+      hypotheses: payload.hypotheses?.length ?? 0,
+      paidCallMade: Boolean(payload.meta?.paidCallMade),
+      rejected: payload.meta?.rejected ?? null,
+      notes: payload.meta?.notes?.slice?.(0, 2) ?? []
+    }));
     res.setHeader("cache-control", "no-store");
     return res.status(200).json(payload);
   } catch (error) {

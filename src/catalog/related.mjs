@@ -1,5 +1,6 @@
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
+import { cachedValue } from "../server/cache.mjs";
 
 const uniq = (items) => {
   const seen = new Set();
@@ -46,43 +47,55 @@ function externalEvidenceItems(state) {
 
 async function tmdbRelated(item, env, fetchImpl) {
   if (!env.TASTEMAKE_TMDB_TOKEN || item.provider !== "tmdb") return [];
-  const kind = item.type === "tv" ? "tv" : "movie";
-  const response = await fetchImpl(`https://api.themoviedb.org/3/${kind}/${item.providerId}/recommendations?language=en-US&page=1`, {
-    headers: { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" }
-  });
-  if (!response.ok) return [];
-  return ((await response.json()).results ?? []).slice(0, 12).map((row) => tmdbItem(row, kind));
+  const load = async () => {
+    const kind = item.type === "tv" ? "tv" : "movie";
+    const response = await fetchImpl(`https://api.themoviedb.org/3/${kind}/${item.providerId}/recommendations?language=en-US&page=1`, {
+      headers: { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" }
+    });
+    if (!response.ok) return [];
+    return ((await response.json()).results ?? []).slice(0, 12).map((row) => tmdbItem(row, kind));
+  };
+  if (fetchImpl !== fetch) return load();
+  return cachedValue(`related:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
 }
 
 async function openLibraryRelated(item, env, fetchImpl) {
   if (item.provider !== "openlibrary") return [];
   const subject = item.genres?.find(Boolean);
   if (!subject) return [];
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject";
-  const response = await fetchImpl(`https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
-    headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
-  });
-  if (!response.ok) return [];
-  return ((await response.json()).docs ?? []).slice(0, 12).map(openLibraryItem);
+  const load = async () => {
+    const fields = "key,title,author_name,first_publish_year,cover_i,subject";
+    const response = await fetchImpl(`https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
+      headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
+    });
+    if (!response.ok) return [];
+    return ((await response.json()).docs ?? []).slice(0, 12).map(openLibraryItem);
+  };
+  if (fetchImpl !== fetch) return load();
+  return cachedValue(`related:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });
 }
 
 async function igdbRelated(item, env, fetchImpl) {
   if (item.provider !== "igdb") return [];
   const genreIds = item.providerMeta?.genreIds ?? [];
   if (!genreIds.length) return [];
-  const token = await igdbToken(env, fetchImpl);
-  if (!token) return [];
-  const response = await fetchImpl("https://api.igdb.com/v4/games", {
-    method: "POST",
-    headers: {
-      "client-id": env.IGDB_CLIENT_ID,
-      authorization: `Bearer ${token}`,
-      "content-type": "text/plain"
-    },
-    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where genres = (${genreIds.slice(0, 3).join(",")}) & id != ${Number(item.providerId) || 0}; sort total_rating_count desc; limit 12;`
-  });
-  if (!response.ok) return [];
-  return (await response.json()).map(igdbItem);
+  const load = async () => {
+    const token = await igdbToken(env, fetchImpl);
+    if (!token) return [];
+    const response = await fetchImpl("https://api.igdb.com/v4/games", {
+      method: "POST",
+      headers: {
+        "client-id": env.IGDB_CLIENT_ID,
+        authorization: `Bearer ${token}`,
+        "content-type": "text/plain"
+      },
+      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where genres = (${genreIds.slice(0, 3).join(",")}) & id != ${Number(item.providerId) || 0}; sort total_rating_count desc; limit 12;`
+    });
+    if (!response.ok) return [];
+    return (await response.json()).map(igdbItem);
+  };
+  if (fetchImpl !== fetch) return load();
+  return cachedValue(`related:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
 }
 
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30 } = {}) {
@@ -94,7 +107,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   ).slice(0, 6);
   if (!evidenceItems.length) return [];
 
-  const rows = await Promise.all(evidenceItems.map(async (item) => {
+  const loadEvidence = async (items) => Promise.all(items.map(async (item) => {
     try {
       let related = [];
       if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl);
@@ -106,17 +119,28 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     }
   }));
 
+  // Start with four diverse evidence sources. Only fan out to the remaining two when the
+  // first wave cannot provide a healthy pool, which keeps the common path faster.
+  const firstWave = evidenceItems.slice(0, 4);
+  const laterWave = evidenceItems.slice(4);
+  const rows = await loadEvidence(firstWave);
+
   const blocked = new Set([
     ...evidenceItems.map((item) => item.id),
     ...Object.keys(state.feedbackByRecommendation ?? {}),
     ...(state.recommendationSets ?? []).flat().map((item) => item.id)
   ]);
-  const eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
+  let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
+  let guarded = applyNoveltyGuard(eligible, evidenceItems);
+  if (guarded.primary.length < Math.min(12, limit) && laterWave.length) {
+    rows.push(...await loadEvidence(laterWave));
+    eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
+    guarded = applyNoveltyGuard(eligible, evidenceItems);
+  }
 
   // #92: the novelty guard runs here — after retrieval, before this shared function returns
   // candidates to either the deterministic baseline (src/ai/baseline.js) or the live-AI ranking
   // path (api/recommendations.mjs), both of which call retrieveCatalogCandidates. Suppressed
   // sequels/remakes are dropped from the primary pool; whatever else was retrieved fills their slot.
-  const { primary } = applyNoveltyGuard(eligible, evidenceItems);
-  return balanceDomains(primary, state.recommendationFilter ?? "all").slice(0, limit);
+  return balanceDomains(guarded.primary, state.recommendationFilter ?? "all").slice(0, limit);
 }

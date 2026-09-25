@@ -256,7 +256,7 @@ export function initSearch({ onChange, announce, goTo }) {
     render();
 
     if (query.length < 2) return;
-    catalogTimer = setTimeout(refreshExternal, 260);
+    catalogTimer = setTimeout(refreshExternal, 160);
   }
 
   opener.addEventListener("click", open);

@@ -88,7 +88,8 @@
   display:grid;
   grid-template-columns:repeat(12,minmax(0,1fr));
   gap:20px;
-  align-items:start;
+  align-items:stretch;
+  grid-auto-rows:1fr;
 }
 .editorial-rec {
   position:relative;
@@ -100,6 +101,7 @@
   display:flex;
   flex-direction:column;
   min-width:0;
+  height:100%;
 }
 .rec-span-4 { grid-column:span 4; }
 .rec-span-5 { grid-column:span 5; }
@@ -114,7 +116,7 @@
   background:var(--tint-cool,#fbffff);
 }
 .editorial-rec.is-rated { box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--pink); }
-.editorial-rec-body { padding:16px; display:flex; flex-direction:column; min-width:0; }
+.editorial-rec-body { padding:16px; display:flex; flex-direction:column; min-width:0; flex:1 1 auto; }
 .editorial-rec-meta {
   display:flex;
   justify-content:space-between;
@@ -133,7 +135,7 @@
 .editorial-title-row { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:8px 12px; margin-top:12px; }
 /* #95: a fixed clamp range that reads fine at three-per-row width, whatever the title length —
    no separate "wide layout" font size to keep in sync. */
-.editorial-title-row h3 { flex:1 1 auto; min-width:0; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; }
+.editorial-title-row h3 { flex:1 1 auto; min-width:0; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; min-height:2.16em; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
 .reaction-stamp {
   flex:0 0 auto;
   max-width:100%;
@@ -156,6 +158,11 @@
   line-height:1.42;
   font-size:14px;
   margin:8px 0 0;
+  min-height:5.68em;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:4;
+  overflow:hidden;
 }
 
 /* #95: default card copy prioritizes the recommendation rationale over long catalog synopsis —
@@ -169,6 +176,7 @@
   -webkit-box-orient:vertical;
   -webkit-line-clamp:2;
   overflow:hidden;
+  min-height:3.77em;
 }
 .editorial-why {
   position:relative;

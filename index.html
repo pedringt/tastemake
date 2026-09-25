@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Tastemake prototype: understand the patterns in what you're drawn to, then find more that fits." />
     <title>Tastemake Prototype</title>
-    <script>try{var l=new URLSearchParams(location.search).get("look");if(/^(editorial|collage|analog|graphic)$/.test(l))document.documentElement.dataset.look=l}catch(e){}</script>
+    <script>try{var l=new URLSearchParams(location.search).get("look");var p=JSON.parse(localStorage.getItem("tastemake:test-state:v1")||"null");var saved=p&&p.state&&p.state.look;if(/^(editorial|collage|analog|graphic)$/.test(l))document.documentElement.dataset.look=l;else if(/^(editorial|collage|analog|graphic)$/.test(saved))document.documentElement.dataset.look=saved}catch(e){}</script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Space+Grotesk:wght@500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,400&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Archivo:wght@800;900&display=swap" rel="stylesheet" />
