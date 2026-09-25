@@ -1,3 +1,4 @@
+import { cachedValue } from "../server/cache.mjs";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
@@ -77,10 +78,14 @@ async function searchOpenLibrary(query, env, fetchImpl) {
 
 async function igdbToken(env, fetchImpl) {
   if (!env.IGDB_CLIENT_ID || !env.IGDB_CLIENT_SECRET) return null;
-  const url = `${TWITCH_TOKEN}?client_id=${encodeURIComponent(env.IGDB_CLIENT_ID)}&client_secret=${encodeURIComponent(env.IGDB_CLIENT_SECRET)}&grant_type=client_credentials`;
-  const response = await fetchImpl(url, { method: "POST" });
-  if (!response.ok) throw new Error(`twitch ${response.status}`);
-  return (await response.json()).access_token ?? null;
+  const load = async () => {
+    const url = `${TWITCH_TOKEN}?client_id=${encodeURIComponent(env.IGDB_CLIENT_ID)}&client_secret=${encodeURIComponent(env.IGDB_CLIENT_SECRET)}&grant_type=client_credentials`;
+    const response = await fetchImpl(url, { method: "POST" });
+    if (!response.ok) throw new Error(`twitch ${response.status}`);
+    return (await response.json()).access_token ?? null;
+  };
+  if (fetchImpl !== fetch) return load();
+  return cachedValue(`igdb-token:${env.IGDB_CLIENT_ID}`, load, { ttl: 3300, tags: ["igdb-auth"] });
 }
 
 function igdbItem(row) {
