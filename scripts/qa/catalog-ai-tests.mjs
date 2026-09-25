@@ -6,6 +6,7 @@ import { searchCatalog } from "../../src/catalog/providers.mjs";
 import { produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
+import { serializeAiState } from "../../src/ai/live-client.js";
 
 let passed = 0;
 const failures = [];
@@ -34,6 +35,32 @@ check("available artwork is normalized to a URL", catalog.items.every((x) => x.a
 check("All interleaves domains so games are present without choosing Play", catalog.items.some((x) => x.type === "game"));
 eq("domain filtering can request books only", (await searchCatalog("test", { domain: "read", env, fetchImpl: providerFetch })).items.map((x) => x.type).join(), "book");
 
+// #106: rank exact/canonical matches across provider result types instead of preserving provider bucket order.
+const rankingFetch = async (url, init = {}) => {
+  const u = String(url);
+  if (u.includes("api.themoviedb.org/3/search/movie")) return { ok: true, json: async () => ({ results: [
+    { id: 1, title: "El Camino: A Breaking Bad Movie", popularity: 80 },
+    { id: 2, title: "Breaking Bad Documentary", popularity: 12 }
+  ] }) };
+  if (u.includes("api.themoviedb.org/3/search/tv")) return { ok: true, json: async () => ({ results: [
+    { id: 3, name: "Breaking Bad", first_air_date: "2008-01-20", popularity: 250 }
+  ] }) };
+  if (u.includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "fake-token" }) };
+  if (u.includes("api.igdb.com/v4/games")) {
+    check("IGDB search widens the provider pool before local relevance ranking", /limit 20/.test(init.body || ""));
+    return { ok: true, json: async () => [
+      { id: 20, name: "Star Control I & II", total_rating_count: 1000, genres: [] },
+      { id: 21, name: "Control Resonant", total_rating_count: 500, genres: [] },
+      { id: 22, name: "Control", total_rating_count: 4000, first_release_date: 1559347200, genres: [] }
+    ] };
+  }
+  throw new Error(`unexpected ranking URL: ${u}`);
+};
+const rankedWatch = await searchCatalog("Breaking Bad", { domain: "watch", env, fetchImpl: rankingFetch });
+eq("exact TV match outranks weaker movie matches", rankedWatch.items[0]?.title, "Breaking Bad");
+const rankedPlay = await searchCatalog("Control", { domain: "play", env, fetchImpl: rankingFetch });
+eq("exact canonical game outranks partial/edition matches", rankedPlay.items[0]?.title, "Control");
+
 
 const relatedState = {
   selectedFavorites: new Set(["tmdb-movie-10"]),
@@ -56,6 +83,20 @@ const relatedFetch = async (url) => {
 const related = await retrieveCatalogCandidates(relatedState, { env, fetchImpl: relatedFetch });
 eq("grounded retrieval returns a real provider candidate", related[0]?.id, "tmdb-movie-22");
 check("grounded retrieval excludes the evidence item itself", !related.some((x) => x.id === "tmdb-movie-10"));
+
+// #107: recommendation style must survive serialization and change candidate selection.
+eq("recommendation style is serialized for the server", serializeAiState({ selectedFavorites: new Set(), feedbackByRecommendation: {}, recommendationSets: [], libraryFavorites: new Set(), customItems: {}, blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(), patternStatements: [], areas: {}, curveball: true, recommendationStyle: "adventurous" }).recommendationStyle, "adventurous");
+const manyRelatedRows = Array.from({ length: 12 }, (_, i) => ({
+  id: 100 + i, title: `Related Candidate ${i + 1}`, overview: "Related.", release_date: "2024-01-01", genre_ids: [18]
+}));
+const manyRelatedFetch = async (url) => {
+  if (String(url).includes("/movie/10/recommendations")) return { ok: true, json: async () => ({ results: manyRelatedRows }) };
+  throw new Error(`unexpected many-related URL: ${url}`);
+};
+const balancedRelated = await retrieveCatalogCandidates({ ...relatedState, recommendationStyle: "balanced", curveball: true }, { env, fetchImpl: manyRelatedFetch });
+const adventurousRelated = await retrieveCatalogCandidates({ ...relatedState, recommendationStyle: "adventurous", curveball: true }, { env, fetchImpl: manyRelatedFetch });
+eq("balanced keeps the normal sixth candidate", balancedRelated[5]?.title, "Related Candidate 6");
+eq("adventurous reaches deeper for the exploratory sixth slot", adventurousRelated[5]?.title, "Related Candidate 10");
 
 
 const mixedState = {
