@@ -51,7 +51,7 @@ function stripSequenceTokens(words) {
 // a subtitle prefix ("The Hobbit: ...") or a sequence-stripped title ("Uncharted 4") is used.
 export function seriesKey(item) {
   const providerKey = item?.providerMeta?.collectionId ?? item?.providerMeta?.franchiseId ?? null;
-  if (providerKey != null) return `provider:${providerKey}`;
+  if (providerKey != null) return `provider:${item?.provider || "unknown"}:${providerKey}`;
   const prefix = titleSeriesPrefix(item?.title);
   if (prefix.length) return `title:${prefix.join(" ")}`;
   const words = stripSequenceTokens(significantWords(item?.title));
