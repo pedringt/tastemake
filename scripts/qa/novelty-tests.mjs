@@ -82,6 +82,16 @@ const related = await retrieveCatalogCandidates(relatedState, { env, fetchImpl: 
 check("the shared retrieval path excludes the sequel from primary candidates", !related.some((x) => x.id === "tmdb-movie-2"));
 check("...and keeps the genuinely distinct candidate", related.some((x) => x.id === "tmdb-movie-3"));
 
+
+// Batch diversity + explicit series coverage.
+const hobbit1 = { id: "tmdb-movie-20", title: "The Hobbit: An Unexpected Journey" };
+const hobbit2 = { id: "tmdb-movie-21", title: "The Hobbit: The Desolation of Smaug" };
+check("same-series subtitle siblings are flagged", isFranchiseContinuation(hobbit2, hobbit1));
+const hobbitBatch = applyNoveltyGuard([hobbit1, hobbit2, unrelatedGenreMatch], []);
+check("only one obvious franchise sibling occupies a recommendation batch", hobbitBatch.primary.filter((x) => x.title.startsWith("The Hobbit:")).length === 1);
+check("a distinct candidate still fills the batch", hobbitBatch.primary.some((x) => x.id === unrelatedGenreMatch.id));
+const coveredSeries = applyNoveltyGuard([hobbit2, unrelatedGenreMatch], [{ ...hobbit1, seriesExperience: "loved-most" }]);
+check("explicit whole-series experience suppresses sibling installments", !coveredSeries.primary.some((x) => x.id === hobbit2.id));
 console.log(`novelty guard tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);

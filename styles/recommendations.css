@@ -83,13 +83,12 @@
 .refresh-banner .recommendation-footer-actions .button { flex:0 1 auto; }
 .prototype-next-step { display:inline-block; margin-top:10px; color:var(--note-ink,#4053ad); font-family:var(--hand); font-size:20px; transform:rotate(calc(-1deg * var(--tilt))); }
 
-/* #95: compact, scannable, rationale-first cards. Three per row on desktop instead of four
-   stretched equal-height columns; the card's own height follows its content (no forced
-   min-height), so a short pick does not carry a large dead zone. Artwork keeps a fixed,
-   predictable aspect ratio at the top of the card instead of splitting the card in half. */
+/* Compact, rationale-first cards with intentional asymmetry. Five picks resolve as 7+5,
+   then 4+4+4, so a five-card set feels editorial rather than like a missing sixth tile. */
 .editorial-grid {
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  grid-auto-flow:dense;
   gap:20px;
   align-items:start;
 }
@@ -104,8 +103,13 @@
   flex-direction:column;
   min-width:0;
 }
-/* The one deliberately different card (the curveball/"Surprise Me" pick) still gets a visual
-   callout, but at the same card width — it is a distinct pick, not a distinct grid shape. */
+.rec-span-4 { grid-column:span 4; }
+.rec-span-5 { grid-column:span 5; }
+.rec-span-6 { grid-column:span 6; }
+.rec-span-7 { grid-column:span 7; }
+.rec-span-12 { grid-column:span 12; }
+
+/* Surprise Me remains visually distinct without forcing a separate full-width row. */
 .rec-surprise {
   border-color:#0aaec0;
   box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--cyan);
@@ -379,6 +383,17 @@
 }
 .more-feedback-toggle[aria-expanded="true"] { border-style:solid; }
 .tertiary-feedback[hidden] { display:none; }
+.series-feedback { margin-top:10px; padding-top:9px; border-top:1px dotted #d6d6e7; }
+.series-chip { background:var(--cyan-soft); color:#176672; }
+
+.ai-inline-status {
+  margin:0 0 12px;
+  padding:6px 2px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.35;
+}
+.ai-inline-status strong { color:var(--navy); }
 
 /* #93: the ongoing-loop action and the optional taste-input nudge. Both sit above the per-item
    grid so they read as "keep going" rather than an end-of-list footer action. */
@@ -395,6 +410,19 @@
   background:rgba(255,255,255,.6);
 }
 .keep-discovering-bar p { margin:0; color:var(--text2,#3f4774); font-size:13px; flex:1 1 260px; }
+.recommendation-medium-filter { display:flex; gap:6px; margin:-8px 0 16px 78px; flex-wrap:wrap; }
+.recommendation-medium-button {
+  appearance:none;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.72);
+  color:var(--muted);
+  border-radius:999px;
+  padding:6px 11px;
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+}
+.recommendation-medium-button.is-active { background:var(--navy); color:#fff; border-color:var(--navy); }
 .keep-discovering-bar .button { flex:0 0 auto; }
 .taste-input-prompt {
   display:flex;

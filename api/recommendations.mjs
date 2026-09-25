@@ -175,7 +175,7 @@ function catalogPicks(candidates, state) {
       fit: curveball ? "Exploratory fit" : "Catalog match",
       prediction: "Worth testing",
       surprise: curveball,
-      reason: `${basis} Live AI did not rank this fallback set.`,
+      reason: basis,
       ai: null
     };
   });

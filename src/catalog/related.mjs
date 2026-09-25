@@ -13,7 +13,12 @@ function externalEvidenceItems(state) {
     ...(state.selectedFavorites ?? []),
     ...Object.keys(state.feedbackByRecommendation ?? {})
   ]);
-  return Object.values(state.customItems ?? {}).filter((item) => item?.provider && ids.has(item.id));
+  return Object.values(state.customItems ?? {})
+    .filter((item) => item?.provider && ids.has(item.id))
+    .map((item) => ({
+      ...item,
+      seriesExperience: state.feedbackByRecommendation?.[item.id]?.seriesExperience ?? null
+    }));
 }
 
 async function tmdbRelated(item, env, fetchImpl) {

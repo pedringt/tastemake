@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
+import { isExperiencedNegative } from "../model/evidence.js";
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
 import { cancelRequest, finishRequest, staleReason, startRequest } from "../ai/requests.js";
@@ -25,7 +26,8 @@ export function saveQuickFeedback(itemId, rating) {
     rating,
     detail: null,
     // "Surprised me" only makes sense after Loved/Liked it before, which a fresh rating clears.
-    quality: existing?.quality === "surprised-me" ? null : existing?.quality || null
+    quality: existing?.quality === "surprised-me" ? null : existing?.quality || null,
+    seriesExperience: rating === "not-tried" ? null : existing?.seriesExperience ?? null
   };
 
   return true;
@@ -37,6 +39,16 @@ export function saveFeedbackDetail(itemId, detail) {
 
   existing.detail = existing.detail === detail ? null : detail;
   if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
+  if (!isPositiveExperience(existing) && !isExperiencedNegative(existing)) existing.seriesExperience = null;
+  return true;
+}
+
+export function saveSeriesExperience(itemId, value) {
+  const existing = state.feedbackByRecommendation[itemId];
+  if (!existing || (!isPositiveExperience(existing) && !isExperiencedNegative(existing))) return false;
+  const allowed = new Set(["loved-most", "liked-most", "mixed", "disliked-most", "unseen-rest"]);
+  if (!allowed.has(value)) return false;
+  existing.seriesExperience = existing.seriesExperience === value ? null : value;
   return true;
 }
 
@@ -106,6 +118,7 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
     finishRequest(state, request, { source, message });
     state.recommendationExhausted = exhausted;
     state.recommendationFilter = "all";
+    state.recommendationMediumFilter = "all";
 
     if (picks.length) state.recommendationSets.push(picks);
     navigate("recommendations", { replace: true });

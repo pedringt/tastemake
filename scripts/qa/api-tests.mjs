@@ -22,8 +22,9 @@ const favorite={
   id:"tmdb-movie-1",provider:"tmdb",providerId:"1",title:"Favorite Film",type:"movie",
   domains:["watch"],about:"A favorite.",artwork:null,providerMeta:{genreIds:[18]}
 };
+const candidateTitles=["Amber Harbor","Glass Orchard","Night Signal","Paper Kingdom","Silent Atlas","Copper Sky"];
 const relatedRows=Array.from({length:6},(_,i)=>({
-  id:101+i,title:`Real Candidate ${i+1}`,overview:`Catalog item ${i+1}.`,
+  id:101+i,title:candidateTitles[i],overview:`Catalog item ${i+1}.`,
   release_date:`202${i}-01-01`,poster_path:`/p${i}.jpg`,genre_ids:[18]
 }));
 const rawState=(extra={})=>({
@@ -77,7 +78,7 @@ eq("AI off uses real catalog fallback",out.source,"catalog");
 eq("catalog fallback has five real provider picks",out.picks.length,5);
 check("catalog fallback contains no legacy seed ids",out.picks.every(p=>p.id.startsWith("tmdb-movie-")),out.picks.map(p=>p.id).join(","));
 eq("catalog fallback makes no paid call",out.meta.paidCallMade,false);
-check("catalog fallback explains that AI did not rank it",out.picks.every(p=>/Live AI did not rank/.test(p.reason)));
+check("catalog fallback keeps implementation diagnostics out of card reasons",out.picks.every(p=>!/Live AI did not rank/.test(p.reason)));
 
 // Valid live output.
 out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch()});
