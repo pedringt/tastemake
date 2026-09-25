@@ -6,6 +6,7 @@ import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { hasSeriesSignal } from "../catalog/novelty.mjs";
 
 export function ratingLabel(value) {
   return ({
