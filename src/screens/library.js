@@ -24,23 +24,31 @@ function savedCard(feedback) {
   const { item } = feedback;
   const action = (name, label, className = "button button-secondary") => `
     <button class="${className} bookmark-action" type="button" data-bookmark-item="${item.id}" data-bookmark-action="${name}">${label}</button>`;
+  const info = [displayLabel(item), item.year].filter(Boolean).join(" · ");
 
   return `
-    <article class="bookmark-card ${item.artwork ? "has-artwork" : ""}" data-bookmark-id="${item.id}">
-      ${item.artwork ? renderArtwork(item, "bookmark-artwork") : ""}
-      <span class="bookmark-tape" aria-hidden="true"></span>
-      <span class="bookmark-medium">${esc(displayLabel(item))}</span>
-      <h3>${esc(item.title)}</h3>
-      <p class="bookmark-about">${esc(item.about ?? item.note ?? "")}</p>
-      ${item.reason ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${esc(item.reason)}</p>` : ""}
-      <div class="bookmark-actions" role="group" aria-label="Tried ${esc(item.title)}?">
-        <span class="bookmark-actions-label">Tried it?</span>
-        ${action("tried-loved", "Loved it")}
-        ${action("tried-liked", "Liked it")}
-        ${action("tried-disliked", "Didn't like it")}
-        ${action("remove", "Remove", "button button-quiet")}
+    <details class="library-card library-card-compact ${item.artwork ? "has-artwork" : ""}" data-bookmark-id="${item.id}">
+      <summary class="library-compact-summary">
+        ${item.artwork ? renderArtwork(item, "library-compact-artwork") : `<span class="library-compact-artwork is-empty" aria-hidden="true"></span>`}
+        <span class="library-compact-copy">
+          <span class="library-compact-info">${esc(info)}</span>
+          <strong>${esc(item.title)}</strong>
+          <span class="library-compact-status">Saved</span>
+        </span>
+        <span class="library-compact-open" aria-hidden="true">+</span>
+      </summary>
+      <div class="library-compact-detail">
+        <p class="library-blurb">${esc(item.about ?? item.note ?? "")}</p>
+        ${item.reason ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${esc(item.reason)}</p>` : ""}
+        <div class="bookmark-actions" role="group" aria-label="Tried ${esc(item.title)}?">
+          <span class="bookmark-actions-label">Tried it?</span>
+          ${action("tried-loved", "Loved it")}
+          ${action("tried-liked", "Liked it")}
+          ${action("tried-disliked", "Didn't like it")}
+          ${action("remove", "Remove", "button button-quiet")}
+        </div>
       </div>
-    </article>`;
+    </details>`;
 }
 
 function renderSavedView() {
@@ -50,7 +58,7 @@ function renderSavedView() {
     <div class="library-view" data-library-view-panel="saved">
       <p class="library-view-lede">Things you might want to watch, read, or play next. Saving something here does not change your Taste Profile — only what you actually try does.</p>
       <h2 class="visually-hidden">Saved to try</h2>
-      <div class="bookmark-grid">
+      <div class="library-grid">
         ${saved.length
           ? saved.map(savedCard).join("")
           : `<div class="filter-empty bookmark-empty">Nothing saved yet. From Recommendations, react "Not tried" on something and choose "Save to Saved" to come back to it here.</div>`}
@@ -68,6 +76,8 @@ function reactionButton(itemId, action, label, pressed) {
 function triedCard(entry) {
   const { item, id, source } = entry;
   const tried = source !== "starter";
+  const info = [displayLabel(item), item.year].filter(Boolean).join(" · ");
+  const status = entry.isFavorite ? "Favorite" : SOURCE_LABEL[source];
 
   const controls = tried
     ? `
@@ -92,18 +102,22 @@ function triedCard(entry) {
       </div>`;
 
   return `
-    <article class="library-card ${entry.isFavorite ? "is-favorite" : ""} ${item.artwork ? "has-artwork" : ""}" data-library-id="${id}">
-      ${item.artwork ? renderArtwork(item, "library-artwork") : ""}
-      <span class="library-tape" aria-hidden="true"></span>
-      <div class="library-meta">
-        <span class="library-medium">${esc(displayLabel(item))}</span>
-        <span class="library-source">${entry.isFavorite && tried ? "Favorite" : SOURCE_LABEL[source]}</span>
+    <details class="library-card library-card-compact ${entry.isFavorite ? "is-favorite" : ""} ${item.artwork ? "has-artwork" : ""}" data-library-id="${id}">
+      <summary class="library-compact-summary">
+        ${item.artwork ? renderArtwork(item, "library-compact-artwork") : `<span class="library-compact-artwork is-empty" aria-hidden="true"></span>`}
+        <span class="library-compact-copy">
+          <span class="library-compact-info">${esc(info)}</span>
+          <strong>${esc(item.title)}</strong>
+          <span class="library-compact-status">${esc(status)}</span>
+        </span>
+        <span class="library-compact-open" aria-hidden="true">+</span>
+      </summary>
+      <div class="library-compact-detail">
+        <p class="library-blurb">${esc(entry.blurb)}</p>
+        ${controls}
+        ${tried ? renderTastebreakPanel(id) : ""}
       </div>
-      <h3>${esc(item.title)}</h3>
-      <p class="library-blurb">${esc(entry.blurb)}</p>
-      ${controls}
-      ${tried ? renderTastebreakPanel(id) : ""}
-    </article>`;
+    </details>`;
 }
 
 function section(title, note, entries, emptyText) {

@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
+import { renderDomainFilter } from "../components/domain-filter.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
 import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
@@ -226,17 +226,13 @@ function whyContent(item) {
     ${isCurveball ? `<p class="why-caveat">This one deliberately breaks from the pattern above, to see what that tells Tastemake.</p>` : ""}`;
 }
 
-function cardSizeClass(index, total) {
-  if (total === 5) return index === 0 ? "rec-span-7" : index === 1 ? "rec-span-5" : "rec-span-4";
-  if (total === 4) return index < 2 ? (index === 0 ? "rec-span-7" : "rec-span-5") : "rec-span-6";
-  if (total === 3) return index === 0 ? "rec-span-7" : index === 1 ? "rec-span-5" : "rec-span-12";
-  if (total === 2) return index === 0 ? "rec-span-7" : "rec-span-5";
-  return "rec-span-12";
+function cardSizeClass() {
+  return "rec-span-4";
 }
 
 function recommendationCard(item, index, total) {
   const saved = state.feedbackByRecommendation[item.id];
-  const layoutClass = `${cardSizeClass(index, total)} ${item.surprise ? "rec-surprise" : ""}`;
+  const layoutClass = `${cardSizeClass()} ${item.surprise ? "rec-surprise" : ""}`;
   const whyId = `why-${item.id}`;
   const qualityId = `quality-${item.id}`;
   const showQuality = hasQualityNote(saved);
@@ -251,7 +247,7 @@ function recommendationCard(item, index, total) {
       <div class="editorial-rec-body">
         <div class="editorial-rec-meta">
           <span>${item.surprise ? "Surprise Me" : `Pick ${String(index + 1).padStart(2, "0")}`}</span>
-          <span>${esc(displayLabel(item))}</span>
+          <span>${esc(displayLabel(item))}${item.year ? ` · ${esc(item.year)}` : ""}</span>
         </div>
 
         <div class="editorial-title-row">
@@ -303,15 +299,25 @@ function recommendationCard(item, index, total) {
 // communicated by renderAiStatus()/renderKeepDiscoveringBar(), so no skeleton is needed to avoid a
 // jarring layout jump when results replace an already-populated grid.
 function skeletonCard(index) {
-  return `<div class="editorial-rec-skeleton" aria-hidden="true" style="animation-delay:${index * 70}ms"></div>`;
+  return `
+    <div class="editorial-rec-skeleton rec-span-4" aria-hidden="true" style="animation-delay:${index * 70}ms">
+      <div class="skeleton-art"></div>
+      <div class="skeleton-body">
+        <span class="skeleton-line is-short"></span>
+        <span class="skeleton-line is-title"></span>
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line is-medium"></span>
+        <div class="skeleton-actions"><span></span><span></span><span></span></div>
+      </div>
+    </div>`;
 }
 
-function renderCardArea(visible, items) {
-  if (state.aiStatus === "loading" && items.length === 0) {
-    return Array.from({ length: 5 }, (_, index) => skeletonCard(index)).join("");
+function renderCardArea(items) {
+  if (state.aiStatus === "loading") {
+    return Array.from({ length: 6 }, (_, index) => skeletonCard(index)).join("");
   }
-  if (visible.length) return visible.map((item, index) => recommendationCard(item, index, visible.length)).join("");
-  return `<div class="filter-empty recommendation-empty">${items.length ? "No picks in this category in the current set. Try All." : "No real catalog recommendations are available yet. Change your favorites or try again."}</div>`;
+  if (items.length) return items.map((item, index) => recommendationCard(item, index, items.length)).join("");
+  return `<div class="filter-empty recommendation-empty">No real catalog recommendations are available yet. Change your favorites or try another category.</div>`;
 }
 
 function bookmarkNote(count) {
@@ -342,7 +348,7 @@ function renderKeepDiscoveringBar() {
   const disabled = state.aiStatus === "loading";
   return `
     <div class="keep-discovering-bar">
-      <p>Reacted to a few? You can ask for another set whenever you want — it uses what you have told Tastemake so far.</p>
+      <p>Ready for another set? Tastemake will use what you have told it so far and stay in the category selected above.</p>
       <button class="button button-primary" type="button" data-action="keep-discovering" ${disabled ? "disabled" : ""}>
         ${disabled ? "Finding more…" : "More recommendations"}
       </button>
@@ -388,23 +394,11 @@ function renderNextSteps() {
     </div>`;
 }
 
-function renderWatchSubfilter() {
-  if (state.recommendationFilter !== "watch") return "";
-  const options = [["all", "All watch"], ["movie", "Movies"], ["tv", "TV"]];
-  return `
-    <div class="recommendation-medium-filter" role="group" aria-label="Filter Watch recommendations">
-      ${options.map(([value, label]) => `<button type="button" class="recommendation-medium-button${state.recommendationMediumFilter === value ? " is-active" : ""}" data-recommendation-medium="${value}" aria-pressed="${state.recommendationMediumFilter === value}">${label}</button>`).join("")}
-    </div>`;
-}
 export function renderRecommendations() {
   const items = activeRecommendations(state);
   const rated = currentRoundRatedCount(state);
   const roundTwo = state.recommendationSets.length > 1;
   const segments = items.map((_, index) => `<span class="progress-segment ${index < rated ? "is-filled" : ""}"></span>`).join("");
-  const domainVisible = items.filter((item) => itemMatchesDomain(item, state.recommendationFilter));
-  const visible = state.recommendationFilter === "watch" && state.recommendationMediumFilter !== "all"
-    ? domainVisible.filter((item) => item.type === state.recommendationMediumFilter)
-    : domainVisible;
 
   return `
     <section class="recommendations-screen">
@@ -430,24 +424,24 @@ export function renderRecommendations() {
 
       <div class="filter-band recommendation-filter-band">
         <span class="filter-band-label">Show me</span>
-        ${renderDomainFilter({ selected: state.recommendationFilter, scope: "recommendations", label: "Filter recommendations by type" })}
-        <span class="filter-context">This changes what you browse, not what Tastemake thinks you like.</span>
+        ${renderDomainFilter({ selected: state.recommendationFilter, scope: "recommendations", label: "Generate recommendations by type" })}
+        <span class="filter-context">Choose the kind of recommendation set you want next. This does not change your Taste Profile.</span>
       </div>
-      ${renderWatchSubfilter()}
-
       ${renderAiStatus()}
-      ${renderKeepDiscoveringBar()}
       ${renderNextSteps()}
 
       <h2 class="visually-hidden">Your picks</h2>
       <div class="editorial-grid">
-        ${renderCardArea(visible, items)}
+        ${renderCardArea(items)}
       </div>
 
+      ${renderKeepDiscoveringBar()}
+
+      ${state.aiStatus === "loading" ? "" : `
       <div class="recommendation-footer page-actions">
         <div class="page-actions-left"><button class="button button-quiet" type="button" data-action="back-favorites">&larr; Change favorites</button></div>
         <span class="footer-note">discover. react. repeat.</span>
         <div class="page-actions-right"><button class="button button-primary" type="button" data-action="view-model">See profile &rarr;</button></div>
-      </div>
+      </div>`}
     </section>`;
 }

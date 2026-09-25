@@ -57,6 +57,38 @@ const related = await retrieveCatalogCandidates(relatedState, { env, fetchImpl: 
 eq("grounded retrieval returns a real provider candidate", related[0]?.id, "tmdb-movie-22");
 check("grounded retrieval excludes the evidence item itself", !related.some((x) => x.id === "tmdb-movie-10"));
 
+
+const mixedState = {
+  selectedFavorites: new Set(["tmdb-movie-10", "openlibrary-book-OL123W", "igdb-game-12"]),
+  feedbackByRecommendation: {},
+  recommendationSets: [],
+  customItems: {
+    "tmdb-movie-10": relatedState.customItems["tmdb-movie-10"],
+    "openlibrary-book-OL123W": {
+      id: "openlibrary-book-OL123W", provider: "openlibrary", providerId: "OL123W", title: "Seed Book",
+      type: "book", domains: ["read"], genres: ["Fantasy"]
+    },
+    "igdb-game-12": {
+      id: "igdb-game-12", provider: "igdb", providerId: "12", title: "Seed Game",
+      type: "game", domains: ["play"], providerMeta: { genreIds: [31] }
+    }
+  },
+  areas: { watch: true, read: true, play: true },
+  recommendationFilter: "all"
+};
+const mixedFetch = async (url, init = {}) => {
+  const u = String(url);
+  if (u.includes("/movie/10/recommendations")) return { ok: true, json: async () => ({ results: [{ id: 31, title: "Related Movie", overview: "Movie.", release_date: "2024-01-01", genre_ids: [18] }] }) };
+  if (u.includes("openlibrary.org/search.json")) return { ok: true, json: async () => ({ docs: [{ key: "/works/OL999W", title: "Related Book", author_name: ["Author"], first_publish_year: 2021, subject: ["Fantasy"] }] }) };
+  if (u.includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "fake-token" }) };
+  if (u.includes("api.igdb.com/v4/games")) return { ok: true, json: async () => [{ id: 32, name: "Related Game", summary: "Game.", first_release_date: 1640995200, genres: [{ id: 31, name: "Adventure" }] }] };
+  throw new Error(`unexpected mixed URL: ${u}`);
+};
+const mixed = await retrieveCatalogCandidates(mixedState, { env, fetchImpl: mixedFetch });
+check("All recommendation retrieval represents available domains", ["watch", "read", "play"].every((domain) => mixed.slice(0, 3).some((item) => item.domains?.includes(domain))), mixed.map((x) => x.domains?.[0]).join(","));
+const readOnly = await retrieveCatalogCandidates({ ...mixedState, recommendationFilter: "read" }, { env, fetchImpl: mixedFetch });
+check("category recommendation retrieval returns only that domain", readOnly.length > 0 && readOnly.every((item) => item.domains?.includes("read")), readOnly.map((x) => x.domains?.[0]).join(","));
+
 const OFF = hypothesisConfig({});
 check("live hypotheses are fail-closed by default", !OFF.enabled && OFF.reasons.includes("hypotheses-off-switch"));
 

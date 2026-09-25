@@ -31,7 +31,7 @@
 .rec-progress-top { display:flex; align-items:baseline; gap:8px; color:var(--navy); }
 .rec-progress-top strong { font-size:34px; letter-spacing:-.06em; }
 .rec-progress-top span { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
-.progress-track { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin:10px 0; }
+.progress-track { display:grid; grid-template-columns:repeat(6,1fr); gap:5px; margin:10px 0; }
 .progress-segment { height:8px; background:var(--tint-lilac,#e4e3f0); border-radius:999px; }
 .progress-segment.is-filled { background:var(--pink); }
 .progress-note { color:var(--note-ink,#4053ad); font-size:18px; line-height:.95; }
@@ -83,12 +83,10 @@
 .refresh-banner .recommendation-footer-actions .button { flex:0 1 auto; }
 .prototype-next-step { display:inline-block; margin-top:10px; color:var(--note-ink,#4053ad); font-family:var(--hand); font-size:20px; transform:rotate(calc(-1deg * var(--tilt))); }
 
-/* Compact, rationale-first cards with intentional asymmetry. Five picks resolve as 7+5,
-   then 4+4+4, so a five-card set feels editorial rather than like a missing sixth tile. */
+/* Six recommendations in a clean 3 x 2 desktop grid. */
 .editorial-grid {
   display:grid;
   grid-template-columns:repeat(12,minmax(0,1fr));
-  grid-auto-flow:dense;
   gap:20px;
   align-items:start;
 }
@@ -403,7 +401,7 @@
   justify-content:space-between;
   gap:16px;
   flex-wrap:wrap;
-  margin:0 0 18px;
+  margin:22px 0 18px;
   padding:13px 16px;
   border:2px dashed var(--navy);
   border-radius:10px;
@@ -451,22 +449,38 @@
 .recommendation-footer-actions .button { flex:0 0 auto; }
 .recommendation-empty { min-height:220px; }
 
-/* #91: pending-state skeletons for the very first set. Sized like a real card (art block + text
-   lines + action row) so results replacing them do not cause a jarring layout jump. */
+/* Pending cards mirror the real 3 x 2 recommendation layout instead of showing tall empty columns. */
 .editorial-rec-skeleton {
-  min-height:340px;
+  min-height:0;
   border:2px solid var(--line);
   border-radius:10px;
+  overflow:hidden;
+  background:#fff;
+}
+.skeleton-art {
+  aspect-ratio:16 / 10;
   background:linear-gradient(100deg,rgba(0,0,0,.045) 30%,rgba(0,0,0,.09) 45%,rgba(0,0,0,.045) 60%);
   background-size:250% 100%;
   animation:skeleton-shimmer 1.4s ease-in-out infinite;
 }
+.skeleton-body { padding:16px; display:grid; gap:9px; }
+.skeleton-line {
+  display:block;
+  height:10px;
+  border-radius:999px;
+  background:rgba(0,0,0,.08);
+}
+.skeleton-line.is-short { width:28%; height:8px; }
+.skeleton-line.is-title { width:70%; height:20px; border-radius:6px; }
+.skeleton-line.is-medium { width:82%; }
+.skeleton-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:7px; }
+.skeleton-actions span { height:42px; border:1px solid var(--line); border-radius:8px; background:rgba(0,0,0,.045); }
 @keyframes skeleton-shimmer {
   0% { background-position:200% 0; }
   100% { background-position:-200% 0; }
 }
 @media (prefers-reduced-motion:reduce) {
-  .editorial-rec-skeleton { animation:none; background:rgba(0,0,0,.06); }
+  .skeleton-art { animation:none; background:rgba(0,0,0,.06); }
 }
 
 .rating-button[disabled],.keep-discovering-bar .button[disabled] { opacity:.55; cursor:default; pointer-events:none; }

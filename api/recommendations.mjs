@@ -30,7 +30,8 @@ function hydrateState(raw = {}) {
     blindSpotDrafts: raw.blindSpotDrafts ?? {},
     patternStatements: raw.patternStatements ?? [],
     areas: raw.areas ?? {},
-    curveball: raw.curveball !== false
+    curveball: raw.curveball !== false,
+    recommendationFilter: raw.recommendationFilter ?? "all"
   };
 }
 
@@ -165,9 +166,9 @@ function clientPicks(validated) {
 // When live AI is unavailable or its output fails validation, fall back to the same real catalog
 // candidates. There is no hand-written recommendation inventory in the product.
 function catalogPicks(candidates, state) {
-  const chosen = candidates.slice(0, 5);
+  const chosen = candidates.slice(0, 6);
   return chosen.map((item, index) => {
-    const curveball = state.curveball !== false && chosen.length >= 5 && index === chosen.length - 1;
+    const curveball = state.curveball !== false && chosen.length >= 6 && index === chosen.length - 1;
     const basis = item.relatedTo ? `Related in the catalog to ${item.relatedTo}.` : "Related to things you told Tastemake you love.";
     return {
       ...item,
@@ -194,7 +195,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   const state = hydrateState(rawState);
   const retrieved = await retrieveCatalogCandidates(state, { env, fetchImpl });
   const ctx = buildContext(state, retrieved);
-  const candidates = ctx.candidates.slice(0, 5);
+  const candidates = ctx.candidates.slice(0, 6);
   if (!candidates.length) {
     return { source: "catalog", reason: "no eligible catalog picks remain", picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length } };
   }

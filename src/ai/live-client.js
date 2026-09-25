@@ -14,7 +14,8 @@ export function serializeAiState(state) {
     blindSpotDismissed: [...(state.blindSpotDismissed ?? [])],
     patternStatements: state.patternStatements ?? [],
     areas: state.areas ?? {},
-    curveball: state.curveball !== false
+    curveball: state.curveball !== false,
+    recommendationFilter: state.recommendationFilter ?? "all"
   };
 }
 
