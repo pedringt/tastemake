@@ -16,7 +16,9 @@ export function saveBookmarkAction(itemId, action) {
   if (!isBookmarked(existing)) return false;
 
   if (action === "remove") {
-    existing.detail = null;
+    delete state.feedbackByRecommendation[itemId];
+    state.libraryFavorites.delete(itemId);
+    delete state.customItems?.[itemId];
     return true;
   }
 
