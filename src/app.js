@@ -286,8 +286,17 @@ app.addEventListener("click", async (event) => {
     const scope = filter.dataset.filterScope;
     if (scope === "favorites") state.favoriteFilter = filter.dataset.domainFilter;
     if (scope === "recommendations") {
-      state.recommendationFilter = filter.dataset.domainFilter;
+      const nextMode = filter.dataset.domainFilter;
+      if (state.recommendationFilter === nextMode) {
+        restoreFocus(focusSelector);
+        return;
+      }
+      state.recommendationFilter = nextMode;
       state.recommendationMediumFilter = "all";
+      if (state.recommendationSets.length && state.aiStatus !== AI_LOADING) {
+        await runKeepDiscovering({ render, updateStepper, announce, navigate });
+        return;
+      }
     }
     if (scope === "library") state.libraryFilter = filter.dataset.domainFilter;
     if (scope === "map") state.mapFilter = filter.dataset.domainFilter;
