@@ -36,6 +36,32 @@ function significantWords(title) {
   return normalizeTitle(title).split(" ").filter((word) => word && !STOPWORDS.has(word));
 }
 
+function titleSeriesPrefix(title) {
+  const raw = String(title || "");
+  if (!raw.includes(":")) return [];
+  return significantWords(raw.split(":")[0]);
+}
+
+function stripSequenceTokens(words) {
+  return words.filter((word) => !/^\d+$/.test(word) && !/^(ii|iii|iv|v|vi|vii|viii|ix|x)$/.test(word));
+}
+
+// A deliberately conservative family key used only after the user explicitly tells Tastemake
+// they have experienced more of a series. Provider collection/franchise metadata wins. Otherwise
+// a subtitle prefix ("The Hobbit: ...") or a sequence-stripped title ("Uncharted 4") is used.
+export function seriesKey(item) {
+  const providerKey = item?.providerMeta?.collectionId ?? item?.providerMeta?.franchiseId ?? null;
+  if (providerKey != null) return `provider:${providerKey}`;
+  const prefix = titleSeriesPrefix(item?.title);
+  if (prefix.length) return `title:${prefix.join(" ")}`;
+  const words = stripSequenceTokens(significantWords(item?.title));
+  return words.length && words.length < significantWords(item?.title).length ? `title:${words.join(" ")}` : null;
+}
+
+export function hasSeriesSignal(item) {
+  return Boolean(seriesKey(item));
+}
+
 function shareCollection(a, b) {
   const aId = a.providerMeta?.collectionId ?? a.providerMeta?.franchiseId ?? null;
   const bId = b.providerMeta?.collectionId ?? b.providerMeta?.franchiseId ?? null;
@@ -57,6 +83,10 @@ function isNumberedContinuation(candidate, evidenceItem) {
 }
 
 function sharesFranchiseName(candidate, evidenceItem, minWords = 2) {
+  const prefixA = titleSeriesPrefix(candidate.title);
+  const prefixB = titleSeriesPrefix(evidenceItem.title);
+  if (prefixA.length && prefixB.length && prefixA.join(" ") === prefixB.join(" ")) return true;
+
   const wa = significantWords(candidate.title);
   const wb = significantWords(evidenceItem.title);
   if (wa.length < minWords || wb.length < minWords) return false;
@@ -91,7 +121,23 @@ export function applyNoveltyGuard(candidates, evidenceItems = []) {
     const against = candidate.relatedToId
       ? evidenceItems.filter((item) => item.id === candidate.relatedToId)
       : evidenceItems;
-    const continuation = against.some((item) => isFranchiseContinuation(candidate, item));
+
+    // User-declared series coverage is stronger than an individual-title reaction for discovery:
+    // once they say they have experienced the series, do not keep surfacing sibling installments.
+    const coveredSeries = against.some((item) => {
+      if (!item.seriesExperience || item.seriesExperience === "unseen-rest") return false;
+      const a = seriesKey(candidate);
+      const b = seriesKey(item);
+      return Boolean(a && b && a === b);
+    });
+
+    // Batch diversity: once one installment has earned a slot, obvious sibling installments do not
+    // consume another slot in the same set. This is separate from evidence-based suppression.
+    const duplicatesPrimary = primary.some((picked) => isFranchiseContinuation(candidate, picked));
+
+    const continuation = coveredSeries
+      || against.some((item) => isFranchiseContinuation(candidate, item))
+      || duplicatesPrimary;
     (continuation ? suppressed : primary).push(candidate);
   }
   return { primary, suppressed };
