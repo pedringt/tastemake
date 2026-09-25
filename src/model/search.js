@@ -92,11 +92,24 @@ export function searchItems(state, query, domain = "all") {
     .map((hit) => hit.item);
 }
 
-// Avoid duplicate evidence: if the typed title is already here (in any medium), point at that item.
-export function findExisting(state, title) {
-  const wanted = normalize(title);
+// Avoid duplicate evidence without collapsing adaptations or same-title works across media.
+export function findExisting(state, itemOrTitle) {
+  const target = typeof itemOrTitle === "object" && itemOrTitle
+    ? itemOrTitle
+    : { title: itemOrTitle };
+  const wanted = normalize(target.title);
   if (!wanted) return null;
-  return searchableItems(state).find((item) => normalize(item.title) === wanted) ?? null;
+
+  return searchableItems(state).find((item) => {
+    if (target.id && item.id === target.id) return true;
+    if (target.provider && target.providerId && item.provider && item.providerId) {
+      return item.provider === target.provider
+        && String(item.providerId) === String(target.providerId)
+        && (!target.type || item.type === target.type);
+    }
+    if (target.type && item.type !== target.type) return false;
+    return normalize(item.title) === wanted;
+  }) ?? null;
 }
 
 const slug = (text) => normalize(text).replace(/ /g, "-").slice(0, 60);
@@ -144,7 +157,7 @@ export function applySearchAction(state, item, action) {
     if (!existing) return null;
     delete state.feedbackByRecommendation[item.id];
     state.libraryFavorites.delete(item.id);
-    if (item.custom) delete state.customItems[item.id];
+    delete state.customItems[item.id];
     return `${item.title} removed from Tastemake.`;
   }
 
