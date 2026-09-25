@@ -33,7 +33,7 @@ export function initSearch({ onChange, announce, goTo }) {
   // User-facing search is the real external catalog. The old seeded title inventory is gone;
   // only items the user has actually acted on remain in local product state (#89).
   const existingEvidenceItem = (item) => {
-    const existing = findExisting(state, item.title);
+    const existing = findExisting(state, item);
     if (!existing) return item;
     const isKnown = state.selectedFavorites.has(existing.id)
       || Boolean(state.feedbackByRecommendation[existing.id])
@@ -397,7 +397,7 @@ export function initSearch({ onChange, announce, goTo }) {
       return;
     }
     // Never create a second record for something already here (duplicate evidence): open the existing one.
-    const existing = findExisting(state, title);
+    const existing = findExisting(state, { title, type: medium });
     const knownExisting = existing && (
       state.selectedFavorites.has(existing.id)
       || Boolean(state.feedbackByRecommendation[existing.id])
