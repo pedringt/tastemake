@@ -1,5 +1,6 @@
 import { DEFAULT_LOOK, isLook } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
+import { clearPersistedState, loadPersistedState } from "./persistence.js";
 
 // Everything the user has told Tastemake or configured, in one place so "Start over" can clear it.
 // (The look, and where the user is, are not part of this: starting over keeps your look.)
@@ -80,15 +81,35 @@ function fresh() {
   };
 }
 
+const persisted = loadPersistedState();
+const initial = fresh();
+
 export const state = {
   screen: "favorites",
-  // Starting look (#25). In memory only, like everything else; ?look=... in the link sets it before first paint.
-  look: isLook(document.documentElement.dataset.look) ? document.documentElement.dataset.look : DEFAULT_LOOK,
-  lookReturn: "favorites",  // where "Done" goes when the picker was opened from the header
-  mineReturn: "favorites",  // where "Back" goes from My Tastemake
-  ...fresh()
+  look: isLook(persisted.look) ? persisted.look : (isLook(document.documentElement.dataset.look) ? document.documentElement.dataset.look : DEFAULT_LOOK),
+  lookReturn: "favorites",
+  mineReturn: "favorites",
+  ...initial,
+  ...persisted,
+  selectedFavorites: persisted.selectedFavorites instanceof Set ? persisted.selectedFavorites : initial.selectedFavorites,
+  libraryFavorites: persisted.libraryFavorites instanceof Set ? persisted.libraryFavorites : initial.libraryFavorites,
+  blindSpotDismissed: persisted.blindSpotDismissed instanceof Set ? persisted.blindSpotDismissed : initial.blindSpotDismissed,
+  setupAreas: persisted.setupAreas instanceof Set ? persisted.setupAreas : initial.setupAreas,
+  aiRequest: null,
+  aiStatus: "idle",
+  aiSource: null,
+  aiMessage: null,
+  hypothesisAiStatus: "idle",
+  hypothesisAiMessage: null,
+  recommendationMediumFilter: "all",
+  starterReplaceId: null,
+  resetArmed: false
 };
 
+document.documentElement.dataset.look = state.look;
+
 export function resetState() {
-  Object.assign(state, fresh());
+  const look = state.look;
+  clearPersistedState();
+  Object.assign(state, fresh(), { look });
 }
