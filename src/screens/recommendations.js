@@ -226,9 +226,17 @@ function whyContent(item) {
     ${isCurveball ? `<p class="why-caveat">This one deliberately breaks from the pattern above, to see what that tells Tastemake.</p>` : ""}`;
 }
 
-function recommendationCard(item, index) {
+function cardSizeClass(index, total) {
+  if (total === 5) return index === 0 ? "rec-span-7" : index === 1 ? "rec-span-5" : "rec-span-4";
+  if (total === 4) return index < 2 ? (index === 0 ? "rec-span-7" : "rec-span-5") : "rec-span-6";
+  if (total === 3) return index === 0 ? "rec-span-7" : index === 1 ? "rec-span-5" : "rec-span-12";
+  if (total === 2) return index === 0 ? "rec-span-7" : "rec-span-5";
+  return "rec-span-12";
+}
+
+function recommendationCard(item, index, total) {
   const saved = state.feedbackByRecommendation[item.id];
-  const layoutClass = item.surprise ? "rec-surprise" : "";
+  const layoutClass = `${cardSizeClass(index, total)} ${item.surprise ? "rec-surprise" : ""}`;
   const whyId = `why-${item.id}`;
   const qualityId = `quality-${item.id}`;
   const showQuality = hasQualityNote(saved);
@@ -276,6 +284,7 @@ function recommendationCard(item, index) {
         </div>
 
         ${saved ? detailChips(item.id, saved) : ""}
+        ${saved ? seriesExperienceFeedback(item, saved) : ""}
         ${showQuality ? `
           <div class="tertiary-feedback-toggle">
             ${moreFeedbackToggle(item.id, expanded, qualityId)}
@@ -301,7 +310,7 @@ function renderCardArea(visible, items) {
   if (state.aiStatus === "loading" && items.length === 0) {
     return Array.from({ length: 5 }, (_, index) => skeletonCard(index)).join("");
   }
-  if (visible.length) return visible.map(recommendationCard).join("");
+  if (visible.length) return visible.map((item, index) => recommendationCard(item, index, visible.length)).join("");
   return `<div class="filter-empty recommendation-empty">${items.length ? "No picks in this category in the current set. Try All." : "No real catalog recommendations are available yet. Change your favorites or try again."}</div>`;
 }
 
