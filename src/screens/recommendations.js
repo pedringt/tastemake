@@ -330,19 +330,10 @@ function renderAiStatus() {
       </div>`;
   }
   if (!state.aiMessage) return "";
-  const cls = state.aiSource === "model" ? "is-live" : "is-fallback";
-  const kicker = state.aiSource === "model" ? "Live AI + product rules" : state.aiSource === "catalog" ? "Real catalog fallback" : "Unavailable";
-  const strong = state.aiSource === "model" ? "This set passed Tastemake's checks." : state.aiSource === "catalog" ? "These picks came from the real catalog." : "Tastemake did not substitute demo picks.";
-  return `
-    <div class="refresh-banner ${cls}">
-      <div>
-        <span class="refresh-kicker">${kicker}</span>
-        <strong>${strong}</strong>
-        <p>${state.aiMessage}</p>
-      </div>
-    </div>`;
+  if (state.aiSource === "model") return `<p class="ai-inline-status"><strong>Live AI:</strong> ranked this set and passed validation.</p>`;
+  if (state.aiSource === "catalog") return `<p class="ai-inline-status"><strong>Catalog fallback:</strong> live AI was not used for this set.</p>`;
+  return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> no demo picks were substituted.</p>`;
 }
-
 // #93: the ongoing-loop action. Deliberately available the moment there is at least one reaction
 // (canKeepDiscovering), not gated behind rating every card in the current set — the issue is explicit
 // that a user should not have to react to every card before requesting another batch.
@@ -358,43 +349,12 @@ function renderKeepDiscoveringBar() {
     </div>`;
 }
 
-// #93: an optional, easy-to-ignore nudge once the current set is fully rated. It never blocks or
-// forces a return to onboarding — "Keep browsing" (i.e. just asking for more, or leaving it alone)
-// is always the default path.
-function renderTasteInputPrompt() {
-  if (!currentRoundComplete(state)) return "";
-  return `
-    <div class="taste-input-prompt">
-      <p><strong>Want better recommendations?</strong> Optional — Tastemake works fine either way.</p>
-      <div class="taste-input-prompt-actions">
-        <button class="button button-secondary" type="button" data-action="back-favorites">Pick a few more favorites</button>
-        <button class="button button-quiet" type="button" data-action="keep-discovering">Just keep browsing</button>
-      </div>
-    </div>`;
-}
-
 function renderNextSteps() {
-  if (!currentRoundComplete(state)) return "";
+  if (!currentRoundComplete(state) || !outOfPicks(state)) return "";
   const bookmarks = bookmarkedFeedback(state).length;
   const viewBookmarks = bookmarks
     ? `<button class="button button-secondary" type="button" data-action="view-bookmarks">Saved</button>`
     : "";
-
-  if (!outOfPicks(state)) {
-    return `
-      <div class="refresh-banner">
-        <div>
-          <span class="refresh-kicker">Nice. That is enough signal.</span>
-          <strong>See what Tastemake learned.</strong>
-          <p>Check the working profile, then use it to keep discovering.</p>
-          ${bookmarkNote(bookmarks)}
-        </div>
-        <div class="action-group recommendation-footer-actions">
-          <button class="button button-primary" type="button" data-action="view-model">See profile &rarr;</button>
-          ${viewBookmarks}
-        </div>
-      </div>`;
-  }
 
   if (picksHiddenByAreas(state)) {
     return `
@@ -417,7 +377,7 @@ function renderNextSteps() {
       <div>
         <span class="refresh-kicker">Prototype checkpoint</span>
         <strong>No more eligible catalog matches right now.</strong>
-        <p>Tastemake did not fall back to a seeded demo list. Change your favorites or areas to give it a different starting point.</p>
+        <p>Change your favorites or areas to give Tastemake a different starting point.</p>
         ${bookmarkNote(bookmarks)}
       </div>
       <div class="action-group recommendation-footer-actions">
@@ -428,12 +388,23 @@ function renderNextSteps() {
     </div>`;
 }
 
+function renderWatchSubfilter() {
+  if (state.recommendationFilter !== "watch") return "";
+  const options = [["all", "All watch"], ["movie", "Movies"], ["tv", "TV"]];
+  return `
+    <div class="recommendation-medium-filter" role="group" aria-label="Filter Watch recommendations">
+      ${options.map(([value, label]) => `<button type="button" class="recommendation-medium-button${state.recommendationMediumFilter === value ? " is-active" : ""}" data-recommendation-medium="${value}" aria-pressed="${state.recommendationMediumFilter === value}">${label}</button>`).join("")}
+    </div>`;
+}
 export function renderRecommendations() {
   const items = activeRecommendations(state);
   const rated = currentRoundRatedCount(state);
   const roundTwo = state.recommendationSets.length > 1;
   const segments = items.map((_, index) => `<span class="progress-segment ${index < rated ? "is-filled" : ""}"></span>`).join("");
-  const visible = items.filter((item) => itemMatchesDomain(item, state.recommendationFilter));
+  const domainVisible = items.filter((item) => itemMatchesDomain(item, state.recommendationFilter));
+  const visible = state.recommendationFilter === "watch" && state.recommendationMediumFilter !== "all"
+    ? domainVisible.filter((item) => item.type === state.recommendationMediumFilter)
+    : domainVisible;
 
   return `
     <section class="recommendations-screen">
@@ -462,11 +433,11 @@ export function renderRecommendations() {
         ${renderDomainFilter({ selected: state.recommendationFilter, scope: "recommendations", label: "Filter recommendations by type" })}
         <span class="filter-context">This changes what you browse, not what Tastemake thinks you like.</span>
       </div>
+      ${renderWatchSubfilter()}
 
       ${renderAiStatus()}
       ${renderKeepDiscoveringBar()}
       ${renderNextSteps()}
-      ${renderTasteInputPrompt()}
 
       <h2 class="visually-hidden">Your picks</h2>
       <div class="editorial-grid">
