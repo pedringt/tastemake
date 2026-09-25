@@ -29,6 +29,9 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
       - name: Install Chrome (for the headless browser suites)
         uses: browser-actions/setup-chrome@v1
         id: chrome
