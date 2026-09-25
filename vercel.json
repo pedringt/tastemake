@@ -1,7 +1,13 @@
 {
   "functions": {
-    "api/*.mjs": {
-      "maxDuration": 30
+    "api/recommendations.mjs": {
+      "maxDuration": 60
+    },
+    "api/hypotheses.mjs": {
+      "maxDuration": 60
+    },
+    "api/catalog.mjs": {
+      "maxDuration": 20
     }
   },
   "rewrites": [
@@ -33,5 +39,6 @@
       "source": "/my-tastemake",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "fluid": true
 }
