@@ -49,6 +49,11 @@ function fresh() {
     favoriteFilter: "all",
     recommendationFilter: "all",
     libraryFilter: "all",
+    // #94: Library has two views, Saved (untried, actionable) and Tried (already experienced).
+    // Saved is the default because it's the actionable one. This is presentation state, not
+    // evidence, and — like the rest of state — lives only in memory; there is no persisted schema
+    // to migrate, so there is nothing that can duplicate or lose data across a reload.
+    libraryView: "saved",
     // #52: per-item explicit open/closed override for the discovery-quality note, keyed by item id.
     // Purely a display preference, not evidence. Without an override it defaults to open once there is
     // already an answer in it (see qualityExpanded in screens/recommendations.js) and closed otherwise,

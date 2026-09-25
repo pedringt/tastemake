@@ -119,7 +119,7 @@ export function itemStatus(state, item) {
   if (state.selectedFavorites.has(item.id)) return { key: "starter", label: "Favorite" };
   const feedback = state.feedbackByRecommendation[item.id];
   if (!feedback) return { key: "none", label: "Not in your Tastemake yet" };
-  if (isBookmarked(feedback)) return { key: "bookmarked", label: "Try Next" };
+  if (isBookmarked(feedback)) return { key: "bookmarked", label: "Saved" };
   if (isStrongPositive(feedback)) return { key: "loved", label: state.libraryFavorites.has(item.id) ? "Loved it (a Favorite)" : "Loved it" };
   if (isExperiencedPositive(feedback)) return { key: "liked", label: "Liked it" };
   if (isExperiencedNegative(feedback)) return { key: "disliked", label: "Didn't like it" };
@@ -131,7 +131,7 @@ const OUTCOMES = {
   loved: { rating: "more", detail: "loved-before", said: "marked Loved it before" },
   liked: { rating: "more", detail: "liked-before", said: "marked Liked it before" },
   disliked: { rating: "less", detail: "tried-disliked", said: "marked Tried it and disliked it" },
-  bookmark: { rating: "not-tried", detail: "bookmarked", said: "saved to Try Next" },
+  bookmark: { rating: "not-tried", detail: "bookmarked", said: "saved for later" },
   "not-interested": { rating: "less", detail: "not-interested", said: "marked Not interested" }
 };
 

@@ -59,7 +59,6 @@ const screens = {
   recommendations: (await import("../../src/screens/recommendations.js")).renderRecommendations,
   profile: (await import("../../src/screens/profile.js")).renderProfile,
   library: (await import("../../src/screens/library.js")).renderLibrary,
-  bookmarks: (await import("../../src/screens/bookmarks.js")).renderBookmarks,
   mine: (await import("../../src/screens/mine.js")).renderMine,
   look: (await import("../../src/screens/look.js")).renderLook
 };
@@ -78,6 +77,13 @@ state.profileView = "map";
 const profileAgain = screens.profile();
 check("profile alternate state: no raw payload", !profileAgain.includes(PAYLOAD));
 state.profileView = "list";
+
+// #94: the Tried tab (disliked items, reaction history) holds untrusted text too, but is only
+// rendered when that tab is active — Saved is the default, so check it explicitly.
+state.libraryView = "tried";
+const libraryTried = screens.library();
+check("library Tried tab: no raw payload", !libraryTried.includes(PAYLOAD));
+state.libraryView = "saved";
 
 console.log(`escaping tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));

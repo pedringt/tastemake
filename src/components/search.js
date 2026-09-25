@@ -139,7 +139,7 @@ export function initSearch({ onChange, announce, goTo }) {
         </div>
         <div class="search-group" role="group" aria-label="I haven't tried it">
           <span class="search-group-label">I haven't tried it</span>
-          ${actionButton(item, "bookmark", "Try Next", on("bookmarked"))}
+          ${actionButton(item, "bookmark", "Saved", on("bookmarked"))}
           ${actionButton(item, "not-interested", "Not interested", on("not-interested"))}
         </div>
       </div>
@@ -168,7 +168,7 @@ export function initSearch({ onChange, announce, goTo }) {
           </div>
         </fieldset>
         <p class="search-error" role="alert" ${ui.addError ? "" : "hidden"}>${esc(ui.addError)}</p>
-        <p class="search-note">After you add it, you can make it a Favorite, put it in your Library, or save it to Try Next. Searching and typing alone never teach Tastemake anything.</p>
+        <p class="search-note">After you add it, you can make it a Favorite, put it in your Library, or save it for later. Searching and typing alone never teach Tastemake anything.</p>
         <p><button type="submit" class="button button-primary">Continue</button></p>
       </form>`;
   }
