@@ -47,6 +47,7 @@ export function renderFavorites() {
           <h1>Start with something you <span class="marker-word">love.</span></h1>
           <p class="lede">Pick books, movies, shows, or games you've already tried and loved. Four favorites are enough for Tastemake to make its first guesses.</p>
           <button class="button button-primary starter-search" type="button" data-action="open-search">Search for something you love</button>
+          <p class="starter-browse-row"><button class="button button-quiet" type="button" data-action="browse">Can't think of one? Browse instead →</button></p>
         </div>
         <div class="favorites-side-note" aria-hidden="true">
           <span>real examples,</span>
