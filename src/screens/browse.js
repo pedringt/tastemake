@@ -76,9 +76,9 @@ export function renderBrowse() {
       </div>
 
       <div class="browse-controls">
-        <div class="browse-domain-tabs" role="tablist" aria-label="Browse category">
+        <div class="browse-domain-tabs" role="group" aria-label="Browse category">
           ${domains.map((domain) => `
-            <button type="button" role="tab" class="browse-domain ${state.browseDomain === domain.id ? "is-active" : ""}" data-browse-domain="${domain.id}" aria-selected="${state.browseDomain === domain.id}">${domain.label}</button>
+            <button type="button" class="browse-domain ${state.browseDomain === domain.id ? "is-active" : ""}" data-browse-domain="${domain.id}" aria-pressed="${state.browseDomain === domain.id}">${domain.label}</button>
           `).join("")}
         </div>
         <div class="browse-genres" role="group" aria-label="${esc(state.browseDomain)} genres">
@@ -108,6 +108,13 @@ export function renderBrowse() {
 
       ${state.browseLoading && !state.browseItems.length ? `
         <div class="browse-loading" role="status"><span class="search-spinner" aria-hidden="true"></span><strong>Finding ${esc(genres.find((genre) => genre.id === state.browseGenre)?.label ?? "")} picks…</strong></div>` : ""}
+
+      ${!state.browseLoading && !state.browseError && !state.browseItems.length ? `
+        <div class="browse-empty" role="status">
+          <strong>Nothing useful showed up in this batch.</strong>
+          <span>Try another genre or search for a title directly.</span>
+          <button class="button button-secondary" type="button" data-action="open-search">Search instead</button>
+        </div>` : ""}
 
       ${state.browseItems.length ? `
         <div class="browse-grid">
