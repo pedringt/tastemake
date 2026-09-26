@@ -77,6 +77,7 @@ export const recordCountsAsTaste = (record) => record.weight !== 0;
 function sourceOf(feedback) {
   if (feedback.item.custom) return "added";
   if (feedback.source === "search") return "search";
+  if (feedback.source === "browse") return "browse";
   return "recommendations";
 }
 
