@@ -65,7 +65,7 @@
   flex-direction:column;
 }
 .browse-artwork { display:block; width:100%; aspect-ratio:16/10; overflow:hidden; background:var(--tint-lilac,#ececf6); }
-.browse-artwork img { width:100%; height:100%; object-fit:cover; display:block; }
+.browse-artwork img { width:100%; height:100%; object-fit:contain; display:block; background:linear-gradient(135deg,var(--tint-cool,#eef3ff),var(--tint-warm,#fff4dd)); }
 .browse-artwork.artwork-fallback { display:grid; place-items:center; font-size:40px; font-weight:800; color:var(--muted); }
 .browse-card-copy { display:flex; flex:1; flex-direction:column; padding:14px; min-width:0; }
 .browse-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
