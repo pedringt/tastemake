@@ -141,6 +141,13 @@ export async function runAll() {
     surprise:false,reason:"Related to a favorite.",ai:null
   }));
   state.recommendationSets=[picks];
+  state.browseDomain="watch";
+  state.browseGenre="drama";
+  state.browseItems=[...picks];
+  state.browsePage=1;
+  state.browseHasMore=false;
+  state.browseLoading=false;
+  state.browseError=false;
   search.applySearchAction(state,picks[0],"loved");
   search.applySearchAction(state,picks[1],"liked");
   search.applySearchAction(state,picks[2],"disliked");
@@ -163,7 +170,7 @@ export async function runAll() {
   const results={};
   const record=(name,scope)=>{results[name]=checkNow(scope);};
 
-  for(const [name,jump] of [["favorites","favorites"],["recommendations","recommendations"],["profile","model"],["library","library"]]){
+  for(const [name,jump] of [["favorites","favorites"],["browse","browse"],["recommendations","recommendations"],["profile","model"],["library","library"]]){
     await click(`.step[data-step-jump="${jump}"]`);
     record(name);
   }

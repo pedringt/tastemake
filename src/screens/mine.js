@@ -147,6 +147,7 @@ function tastebreakList() {
 // whether they land with a new user (that needs someone other than Paige, tracked separately in #29).
 const CONCEPTS = [
   ["Favorites", "The handful of already-known loves you started from."],
+  ["Browse", "A catalog to explore by category and genre. Looking around never counts as taste evidence."],
   ["Recommendations", "Tastemake's current best guesses at what fits, and a way to test them."],
   ["Taste Profile", "What Tastemake thinks the patterns in your reactions add up to, and how sure it is."],
   ["Library", "Things you've actually tried and reacted to."],
