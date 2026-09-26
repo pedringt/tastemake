@@ -1,13 +1,13 @@
 export const BROWSE_GENRES = {
   watch: [
-    { id: "drama", label: "Drama", provider: { kind: "genre", value: 18 } },
-    { id: "comedy", label: "Comedy", provider: { kind: "genre", value: 35 } },
-    { id: "horror", label: "Horror", provider: { kind: "genre", value: 27 } },
-    { id: "sci-fi", label: "Sci-fi", provider: { kind: "genre", value: 878 } },
-    { id: "fantasy", label: "Fantasy", provider: { kind: "genre", value: 14 } },
-    { id: "thriller", label: "Thriller", provider: { kind: "genre", value: 53 } },
-    { id: "documentary", label: "Documentary", provider: { kind: "genre", value: 99 } },
-    { id: "animation", label: "Animation", provider: { kind: "genre", value: 16 } }
+    { id: "drama", label: "Drama", provider: { kind: "genre", movie: 18, tv: 18 } },
+    { id: "comedy", label: "Comedy", provider: { kind: "genre", movie: 35, tv: 35 } },
+    { id: "horror", label: "Horror", provider: { kind: "genre", movie: 27, tv: null } },
+    { id: "sci-fi", label: "Sci-fi", provider: { kind: "genre", movie: 878, tv: 10765 } },
+    { id: "fantasy", label: "Fantasy", provider: { kind: "genre", movie: 14, tv: 10765 } },
+    { id: "thriller", label: "Thriller", provider: { kind: "genre", movie: 53, tv: null } },
+    { id: "documentary", label: "Documentary", provider: { kind: "genre", movie: 99, tv: 99 } },
+    { id: "animation", label: "Animation", provider: { kind: "genre", movie: 16, tv: 16 } }
   ],
   read: [
     { id: "fantasy", label: "Fantasy", provider: { kind: "subject", value: "fantasy" } },
