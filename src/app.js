@@ -220,7 +220,7 @@ function maybeRefreshProfile({ force = false } = {}) {
 
 let browseController = null;
 
-async function loadBrowse({ reset = false } = {}) {
+async function loadBrowse({ reset = false, focusSelector = null } = {}) {
   if (state.screen !== "browse") return;
   const domain = state.browseDomain;
   const genre = state.browseGenre || firstBrowseGenre(domain);
@@ -243,6 +243,7 @@ async function loadBrowse({ reset = false } = {}) {
   state.browseError = false;
   render();
   updateStepper();
+  if (focusSelector) restoreFocus(focusSelector);
 
   try {
     const payload = await fetchBrowsePage(domain, genre, page, { signal: controller.signal });
@@ -259,6 +260,7 @@ async function loadBrowse({ reset = false } = {}) {
       state.browseLoading = false;
       render();
       updateStepper();
+      if (focusSelector) restoreFocus(focusSelector);
     }
   }
 }
@@ -575,10 +577,7 @@ app.addEventListener("click", async (event) => {
     state.browsePage = 0;
     state.browseHasMore = true;
     state.browseError = false;
-    render();
-    updateStepper();
-    restoreFocus(`[data-browse-domain="${state.browseDomain}"]`);
-    void loadBrowse();
+    void loadBrowse({ focusSelector: `[data-browse-domain="${state.browseDomain}"]` });
     return;
   }
 
@@ -589,16 +588,13 @@ app.addEventListener("click", async (event) => {
     state.browsePage = 0;
     state.browseHasMore = true;
     state.browseError = false;
-    render();
-    updateStepper();
-    restoreFocus(`[data-browse-genre="${state.browseGenre}"]`);
-    void loadBrowse();
+    void loadBrowse({ focusSelector: `[data-browse-genre="${state.browseGenre}"]` });
     return;
   }
 
   const browseMore = event.target.closest("[data-browse-more]");
   if (browseMore) {
-    void loadBrowse();
+    void loadBrowse({ focusSelector: "[data-browse-more]" });
     return;
   }
 
