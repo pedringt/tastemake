@@ -33,6 +33,7 @@
   cursor:pointer;
 }
 .browse-domain.is-active { border-color:var(--navy); background:var(--navy); color:#fff; }
+.browse-domain.is-active::after,.browse-genre.is-active::after { content:" ✓"; }
 .browse-genre.is-active { border-color:var(--pink); background:var(--pink-soft); color:var(--navy); }
 
 .browse-ready {
@@ -91,6 +92,7 @@
   cursor:pointer;
 }
 .browse-action[aria-pressed="true"] { border-color:var(--navy); background:var(--navy); color:#fff; }
+.browse-action[aria-pressed="true"]::before { content:"✓ "; }
 
 .browse-favorite-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; }
 .browse-favorite-row .button { min-height:38px; padding:6px 11px; font-size:11px; box-shadow:none; }
