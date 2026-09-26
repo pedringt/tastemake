@@ -30,19 +30,23 @@ function browseCard(item) {
         </div>
         <p class="browse-about">${esc(item.about ?? "")}</p>
 
-        <div class="browse-reactions">
-          <div class="browse-reaction-group" role="group" aria-label="I've tried ${esc(item.title)}">
-            <span>I've tried it</span>
-            ${actionButton(item, "loved", "Loved it", status.key === "loved" || status.key === "starter")}
-            ${actionButton(item, "liked", "Liked it", status.key === "liked")}
-            ${actionButton(item, "disliked", "Didn't like it", status.key === "disliked")}
+        ${favorite ? `
+          <p class="browse-favorite-note">This is one of your Favorites. Remove it from Favorites first if you want to change your reaction.</p>
+        ` : `
+          <div class="browse-reactions">
+            <div class="browse-reaction-group" role="group" aria-label="I've tried ${esc(item.title)}">
+              <span>I've tried it</span>
+              ${actionButton(item, "loved", "Loved it", status.key === "loved")}
+              ${actionButton(item, "liked", "Liked it", status.key === "liked")}
+              ${actionButton(item, "disliked", "Didn't like it", status.key === "disliked")}
+            </div>
+            <div class="browse-reaction-group" role="group" aria-label="I haven't tried ${esc(item.title)}">
+              <span>I haven't tried it</span>
+              ${actionButton(item, "bookmark", "Save", status.key === "bookmarked")}
+              ${actionButton(item, "not-interested", "Not interested", status.key === "not-interested")}
+            </div>
           </div>
-          <div class="browse-reaction-group" role="group" aria-label="I haven't tried ${esc(item.title)}">
-            <span>I haven't tried it</span>
-            ${actionButton(item, "bookmark", "Save", status.key === "bookmarked")}
-            ${actionButton(item, "not-interested", "Not interested", status.key === "not-interested")}
-          </div>
-        </div>
+        `}
 
         ${loved ? `
           <div class="browse-favorite-row">
