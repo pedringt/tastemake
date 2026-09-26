@@ -140,6 +140,47 @@
 .signal-say-label { color:var(--muted); font-size:12px; font-weight:700; }
 .signal-say-button { min-height:32px; min-width:0; padding:4px 10px; font-size:12px; box-shadow:none; }
 .signal-say-button[aria-pressed="true"] { background:var(--navy); color:#fff; }
+.signal-scope { align-items:center; }
+.signal-scope-label { color:var(--navy); font-size:13px; }
+.signal-scope-options { display:flex; flex-wrap:wrap; gap:8px; }
+.signal-scope-option {
+  appearance:none;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:38px;
+  padding:6px 11px 6px 8px;
+  border:2px solid var(--line);
+  border-radius:10px;
+  background:rgba(255,255,255,.72);
+  color:var(--muted);
+  font:inherit;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.signal-scope-option[aria-pressed="true"] {
+  border-color:var(--navy);
+  background:var(--paper);
+  color:var(--navy);
+}
+.signal-scope-check {
+  display:grid;
+  place-items:center;
+  width:19px;
+  height:19px;
+  flex:none;
+  border:2px solid currentColor;
+  border-radius:4px;
+  background:transparent;
+  font-size:12px;
+  line-height:1;
+}
+.signal-scope-option[aria-pressed="true"] .signal-scope-check {
+  background:var(--navy);
+  border-color:var(--navy);
+  color:#fff;
+}
 .signal-said { margin-top:8px; padding:6px 10px; border-left:3px solid var(--navy); background:var(--tint-warm,#fff9e6); font-size:13px; color:var(--text2,#3f4774); }
 .signal-row.is-excluded .signal-claim, .signal-row.is-excluded h3 { opacity:.6; }
 .signal-provenance { margin-top:6px; font-size:13px; line-height:1.4; color:var(--text2,#3f4774); }

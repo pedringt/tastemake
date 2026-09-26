@@ -15,6 +15,7 @@ export function serializeAiState(state) {
     patternStatements: state.patternStatements ?? [],
     areas: state.areas ?? {},
     curveball: state.curveball !== false,
+    recommendationStyle: state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced"),
     recommendationFilter: state.recommendationFilter ?? "all"
   };
 }

@@ -15,6 +15,7 @@ const { saveBookmarkAction } = await import("../../src/actions/library.js");
 const { bookmarkedFeedback, isBookmarked, isPositiveExperience } = await import("../../src/model/taste.js");
 const { libraryItems } = await import("../../src/model/library.js");
 const { routes, screenFromPath } = await import("../../src/router.js");
+const { findExisting } = await import("../../src/model/search.js");
 
 let passed = 0;
 const failures = [];
@@ -48,6 +49,25 @@ check("it appears exactly once in Tried/Favorites, not duplicated", (() => {
   return [...favorites, ...library].filter((entry) => entry.id === item.id).length === 1;
 })());
 check("it no longer registers as Saved (no duplication across tabs)", !isBookmarked(state2.feedbackByRecommendation[item.id]));
+
+// #108: removing from Saved returns the item to unknown instead of leaving a hidden neutral blocker.
+const state3 = fresh();
+const savedItem = { id: "tmdb-movie-9", provider: "tmdb", providerId: "9", title: "Saved Movie", type: "movie", domains: ["watch"] };
+state3.feedbackByRecommendation[savedItem.id] = { item: savedItem, rating: "not-tried", detail: "bookmarked" };
+state3.customItems[savedItem.id] = savedItem;
+check("Saved -> Remove action succeeds", saveBookmarkAction(savedItem.id, "remove"));
+check("Saved -> Remove deletes the feedback record", !(savedItem.id in state3.feedbackByRecommendation));
+check("Saved -> Remove deletes the retained catalog item when nothing else refers to it", !(savedItem.id in state3.customItems));
+eq("Saved -> Remove leaves zero bookmarks", bookmarkedFeedback(state3).length, 0);
+
+// #109: duplicate protection must distinguish same-title works across media/provider identity.
+const state4 = fresh();
+const movie = { id: "tmdb-movie-1", provider: "tmdb", providerId: "1", title: "Piranesi", type: "movie", domains: ["watch"] };
+const book = { id: "openlibrary-book-OL1W", provider: "openlibrary", providerId: "OL1W", title: "Piranesi", type: "book", domains: ["read"] };
+state4.customItems[movie.id] = movie;
+eq("same provider identity finds the existing item", findExisting(state4, { ...movie })?.id, movie.id);
+eq("same title in a different medium does not collapse into the movie", findExisting(state4, book), null);
+eq("typed item with explicit book type stays distinct from existing movie", findExisting(state4, { title: "Piranesi", type: "book" }), null);
 
 // Nothing is persisted client-side (no localStorage/sessionStorage schema anywhere), so there is no
 // migration to write: resetting state cannot duplicate or lose anything that was never stored.

@@ -142,5 +142,17 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   // candidates to either the deterministic baseline (src/ai/baseline.js) or the live-AI ranking
   // path (api/recommendations.mjs), both of which call retrieveCatalogCandidates. Suppressed
   // sequels/remakes are dropped from the primary pool; whatever else was retrieved fills their slot.
-  return balanceDomains(guarded.primary, state.recommendationFilter ?? "all").slice(0, limit);
+  const ranked = balanceDomains(guarded.primary, state.recommendationFilter ?? "all");
+  const style = state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced");
+  if (style === "adventurous" && state.curveball !== false && ranked.length > 6) {
+    // Balanced keeps the normal top-ranked set. Adventurous preserves the five strongest fits
+    // but reaches deeper into the eligible pool for the one exploratory slot.
+    const adventurous = ranked.slice(0, limit);
+    if (adventurous.length >= 6) {
+      const deepIndex = Math.min(adventurous.length - 1, 9);
+      [adventurous[5], adventurous[deepIndex]] = [adventurous[deepIndex], adventurous[5]];
+    }
+    return adventurous;
+  }
+  return ranked.slice(0, limit);
 }
