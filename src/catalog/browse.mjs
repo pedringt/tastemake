@@ -30,7 +30,7 @@ async function browseWatch(genre, page, env, fetchImpl) {
 async function browseRead(genre, page, env, fetchImpl) {
   const fields = "key,title,author_name,first_publish_year,cover_i,subject";
   const offset = (page - 1) * BROWSE_PAGE_SIZE;
-  const url = `https://openlibrary.org/search.json?subject=${encodeURIComponent(genre.provider.value)}&limit=${BROWSE_PAGE_SIZE}&offset=${offset}&fields=${fields}&sort=rating`;
+  const url = `https://openlibrary.org/search.json?subject=${encodeURIComponent(genre.provider.value)}&limit=${BROWSE_PAGE_SIZE}&offset=${offset}&fields=${fields}`;
   const response = await fetchImpl(url, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
@@ -52,6 +52,7 @@ async function browsePlay(genre, page, env, fetchImpl) {
     : genre.provider.kind === "theme"
       ? `where themes = (${Number(genre.provider.value)});`
       : `search "${String(genre.provider.value).replace(/"/g, "")}";`;
+  const sort = genre.provider.kind === "search" ? "" : "sort total_rating_count desc;";
   const response = await fetchImpl("https://api.igdb.com/v4/games", {
     method: "POST",
     headers: {
@@ -59,7 +60,7 @@ async function browsePlay(genre, page, env, fetchImpl) {
       authorization: `Bearer ${token}`,
       "content-type": "text/plain"
     },
-    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id,total_rating_count; ${filter} sort total_rating_count desc; limit ${BROWSE_PAGE_SIZE}; offset ${offset};`
+    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id,total_rating_count; ${filter} ${sort} limit ${BROWSE_PAGE_SIZE}; offset ${offset};`
   });
   if (!response.ok) throw new Error("igdb browse unavailable");
   const rows = await response.json();
