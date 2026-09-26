@@ -67,7 +67,7 @@ const lum = ({ r, g, b }) => {
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 };
 const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
-const BOARD = ".favorites-screen, .profile-screen, .recommendations-screen, .library-screen";
+const BOARD = ".favorites-screen, .browse-screen, .profile-screen, .recommendations-screen, .library-screen";
 
 // The color behind an element, or null when it sits over an image/gradient (can't be judged from CSS colors).
 function backgroundBehind(el) {
@@ -110,7 +110,7 @@ function lowContrast(root, field) {
 }
 
 export function checkCurrentScreen() {
-  const screen = document.querySelector(".favorites-screen, .profile-screen, .recommendations-screen, .library-screen, .mine-screen");
+  const screen = document.querySelector(".favorites-screen, .browse-screen, .profile-screen, .recommendations-screen, .library-screen, .mine-screen");
   const field = screen.querySelector(".sticker-field");
   const board = screen.getBoundingClientRect();
   const stickers = [...screen.querySelectorAll(".sticker")].filter(isVisible);
@@ -250,6 +250,13 @@ export async function runAll() {
     reason:"Related to a favorite in the external catalog.",artwork:null,ai:null
   }));
   state.recommendationSets=[picks];
+  state.browseDomain="watch";
+  state.browseGenre="drama";
+  state.browseItems=[...picks];
+  state.browsePage=1;
+  state.browseHasMore=false;
+  state.browseLoading=false;
+  state.browseError=false;
   state.feedbackByRecommendation={
     [picks[0].id]:{item:picks[0],rating:"more",detail:"loved-before"},
     [picks[1].id]:{item:picks[1],rating:"not-tried",detail:"bookmarked"}
@@ -261,7 +268,7 @@ export async function runAll() {
   }];
   state.hypothesisAiStatus="loading";
 
-  const pages={favorites:"favorites",recommendations:"recommendations",profile:"model",library:"library"};
+  const pages={favorites:"favorites",browse:"browse",recommendations:"recommendations",profile:"model",library:"library"};
   const results={};
   for(const [name,jump] of Object.entries(pages)){
     document.querySelector(`.step[data-step-jump="${jump}"]`)?.click();
