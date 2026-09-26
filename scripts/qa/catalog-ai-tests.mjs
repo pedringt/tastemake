@@ -32,6 +32,9 @@ eq("external catalog returns movie, show, book and game", catalog.items.length, 
 check("external ids are provider-stable and unique", new Set(catalog.items.map((x) => x.id)).size === 4 && catalog.items.every((x) => /^(tmdb|openlibrary|igdb)-/.test(x.id)));
 check("every provider item keeps source provenance", catalog.items.every((x) => x.provider && x.providerId));
 check("available artwork is normalized to a URL", catalog.items.every((x) => x.artwork?.startsWith("http")));
+check("TMDb requests higher-resolution poster art", catalog.items.find((x) => x.provider === "tmdb")?.artwork?.includes("/w780/"));
+check("Open Library requests large covers", catalog.items.find((x) => x.provider === "openlibrary")?.artwork?.includes("-L.jpg"));
+check("IGDB requests 2x cover art", catalog.items.find((x) => x.provider === "igdb")?.artwork?.includes("/t_cover_big_2x/"));
 check("All interleaves domains so games are present without choosing Play", catalog.items.some((x) => x.type === "game"));
 eq("domain filtering can request books only", (await searchCatalog("test", { domain: "read", env, fetchImpl: providerFetch })).items.map((x) => x.type).join(), "book");
 
