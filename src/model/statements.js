@@ -12,15 +12,17 @@ import { recordRevision } from "./history.js";
 // Stored as state.patternStatements = [{ hypothesisId, label, says, weight, authority }]; `says` is the fit
 // answer (the name the AI validator reads).
 //
-// #36 v1 (2026-09-23): a pattern can also carry a lightweight `context: "some"` qualifier — "this only
-// applies in some contexts, not always" — narrower than a full "not me" and separate from domain scope
-// (excludedDomains, below). It is deliberately just one boolean qualifier, not a context taxonomy: the
-// issue asked to prove context can be represented without hard-coding one. A live model cannot ignore or
-// overwrite it; src/ai/validate.js caps the confidence level it may claim for a context-qualified pattern.
+// #36, expanded in the portfolio-polish pass: context refinement is separate from domain scope.
+// "broad" means the user says the pattern usually holds, "some" narrows it to some contexts, and
+// "unsure" records uncertainty. Only "some" caps model confidence; none of these are taste evidence.
 
 export const FIT = { accurate: "You confirmed this", "not-me": "You said this isn't you" };
 export const WEIGHT = { lot: "Matters a lot to you", little: "Matters a little to you" };
-export const CONTEXT = { some: "You said this only applies in some contexts, not always" };
+export const CONTEXT = {
+  broad: "You said this usually holds",
+  some: "You said this only applies in some contexts",
+  unsure: "You said you are not sure yet"
+};
 
 const same = (a, b) => hypothesisMatches([a], b) || hypothesisMatches([b], a);
 

@@ -1,3 +1,60 @@
+# Latest handoff: portfolio polish round (Sept. 25, 2026)
+
+Branch: `polish-round-sep25`  
+Base: current `main` at `042818d5607f05cfe76585c16b57c01d820c6b5a`
+
+This branch contains one scoped portfolio-polish round. Do not mix unrelated cleanup into it.
+
+## Changes in this branch
+
+### Favorites Browse CTA
+- The secondary “Can’t think of one? Browse instead →” action now has its own compact, higher-contrast treatment.
+- In Bold Graphic it uses a smaller white button with dark border/shadow so it no longer disappears into the yellow surface or compete with the primary Search CTA.
+
+### Artwork quality / crop handling
+- TMDb poster requests moved from `w500` to `w780`.
+- Open Library covers moved from `-M.jpg` to `-L.jpg`.
+- IGDB covers moved from `t_cover_big` to `t_cover_big_2x`.
+- Wide recommendation and Browse art now use `object-fit: contain` instead of aggressively cropping portrait posters/covers with `cover`.
+- Existing portrait-sized Search/Favorites/Library thumbnails keep their existing behavior.
+
+### Taste Profile context refinement
+- “Does this hold everywhere?” is replaced with “Does this hold broadly?”
+- Context is now a three-choice refinement:
+  - Usually
+  - Only in some contexts
+  - Not sure yet
+- Stored values are `broad`, `some`, and `unsure`.
+- Only `some` limits model confidence, preserving the existing validator rule.
+- `broad` and `unsure` are explicit user-confirmed refinements but do not add taste evidence or change confidence.
+
+## Verification
+GitHub Actions run `36216403886` passed on PR #114.
+
+Relevant results:
+- catalog/AI: 27 passed, 0 failed
+- model rules: 32/32
+- flow at 1440px: 29/29
+- layout and accessibility passed at 1440px
+- layout and accessibility passed at 390px
+- deterministic eval hard rules passed
+
+Coverage added:
+- Catalog QA checks the higher-resolution artwork URL variants.
+- Model-rules QA checks all three context states and confirms only `some` is confidence-limiting.
+
+Remaining human visual check before promotion:
+- confirm the smaller Browse CTA feels right in Bold Graphic
+- inspect a few real book/game/movie covers in Browse and Recommendations to make sure `contain` looks better than the old crop and does not create an awkward amount of empty space
+
+## Important merge note
+There is an older open draft PR #104 that touches metadata/Profile/Library/Favorites. This polish branch was created from current `main`, not from #104. If #104 is still needed later, rebase/reconcile it after this branch rather than blindly merging overlapping files.
+
+## Promotion status
+Implementation is on `polish-round-sep25` only. Do not merge to `main` or promote production without Paige explicitly asking for that destination.
+
+---
+
 # Handoff: Tastemake live AI producer
 
 ## Next chat: start here (updated Sept 23, 2026, end of session — clean handoff)

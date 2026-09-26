@@ -220,3 +220,33 @@
 }
 
 .starter-remove { min-height:44px; padding:8px 4px; }
+
+/* Portfolio polish: Browse is an easy escape hatch, but should read as secondary to Search. */
+.starter-browse-row { margin:10px 0 0; }
+.starter-browse-button {
+  min-height:42px;
+  min-width:0;
+  padding:8px 13px;
+  border:2px solid var(--navy);
+  border-radius:10px;
+  background:rgba(255,255,255,.92);
+  color:var(--navy);
+  font-size:13px;
+  font-weight:800;
+  box-shadow:none;
+}
+.starter-browse-button:hover {
+  background:#fff;
+  transform:translateY(-1px);
+}
+:root[data-look="graphic"] .starter-browse-button {
+  border-width:3px;
+  border-radius:6px;
+  background:#fff;
+  color:#0b0b0b;
+  box-shadow:4px 4px 0 #0b0b0b;
+}
+:root[data-look="graphic"] .starter-browse-button:hover {
+  transform:translate(-1px,-1px);
+  box-shadow:5px 5px 0 #0b0b0b;
+}

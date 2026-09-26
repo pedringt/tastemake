@@ -1,5 +1,5 @@
 import { cachedValue } from "../server/cache.mjs";
-const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
+const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
 const TWITCH_TOKEN = "https://id.twitch.tv/oauth2/token";
@@ -96,7 +96,7 @@ function openLibraryItem(row) {
     by: clean((row.author_name ?? []).slice(0, 3).join(", "), 120),
     about: row.first_publish_year ? `First published ${row.first_publish_year}.` : "Book from Open Library.",
     year: row.first_publish_year ? String(row.first_publish_year) : null,
-    artwork: row.cover_i ? `https://covers.openlibrary.org/b/id/${row.cover_i}-M.jpg?default=false` : null,
+    artwork: row.cover_i ? `https://covers.openlibrary.org/b/id/${row.cover_i}-L.jpg?default=false` : null,
     genres: (row.subject ?? []).slice(0, 12).map((x) => clean(x, 60)),
     sourceUrl: key ? `https://openlibrary.org/works/${key}` : "https://openlibrary.org/"
   };
@@ -124,7 +124,7 @@ async function igdbToken(env, fetchImpl) {
 }
 
 function igdbItem(row) {
-  const cover = row.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${row.cover.image_id}.jpg` : null;
+  const cover = row.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big_2x/${row.cover.image_id}.jpg` : null;
   return {
     id: `igdb-game-${row.id}`,
     provider: "igdb",
