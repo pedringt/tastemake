@@ -256,7 +256,7 @@ button:focus-visible,a:focus-visible,.why-trigger:focus-visible { outline:3px so
 
 
 /* Physical collage layer: corkboard + Trapper-Keeper energy without covering content. */
-.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen {
+.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.browse-screen {
   position:relative;
   isolation:isolate;
   border:2px solid rgb(var(--ink-rgb,17 26 75) / .18);
@@ -273,7 +273,7 @@ button:focus-visible,a:focus-visible,.why-trigger:focus-visible { outline:3px so
 /* Collage frame: every board reserves side gutters and top/bottom bands for decoration.
    Content never enters the frame and stickers never leave it, so nothing can cover text.
    Sizes and positions are relative to the gutter/band, so they hold at any width. */
-.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen {
+.favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.browse-screen {
   --gutter:clamp(40px,5.6vw,96px);
   --band:clamp(54px,6.6vw,96px);
   padding:var(--band) var(--gutter);
