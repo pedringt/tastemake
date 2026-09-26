@@ -15,14 +15,16 @@ function interleave(rows) {
 async function browseWatch(genre, page, env, fetchImpl) {
   if (!env.TASTEMAKE_TMDB_TOKEN) return { items: [], configured: false };
   const headers = { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" };
-  const params = `with_genres=${genre.provider.value}&sort_by=popularity.desc&include_adult=false&language=en-US&page=${page}`;
+  const common = `sort_by=popularity.desc&include_adult=false&language=en-US&page=${page}`;
+  const movieGenre = genre.provider.movie;
+  const tvGenre = genre.provider.tv;
   const [movies, tv] = await Promise.all([
-    fetchImpl(`https://api.themoviedb.org/3/discover/movie?${params}`, { headers }),
-    fetchImpl(`https://api.themoviedb.org/3/discover/tv?${params}`, { headers })
+    movieGenre ? fetchImpl(`https://api.themoviedb.org/3/discover/movie?with_genres=${movieGenre}&${common}`, { headers }) : Promise.resolve(null),
+    tvGenre ? fetchImpl(`https://api.themoviedb.org/3/discover/tv?with_genres=${tvGenre}&${common}`, { headers }) : Promise.resolve(null)
   ]);
-  if (!movies.ok && !tv.ok) throw new Error("tmdb browse unavailable");
-  const movieRows = movies.ok ? ((await movies.json()).results ?? []).slice(0, 10).map((row) => tmdbItem(row, "movie")) : [];
-  const tvRows = tv.ok ? ((await tv.json()).results ?? []).slice(0, 10).map((row) => tmdbItem(row, "tv")) : [];
+  if ((!movies || !movies.ok) && (!tv || !tv.ok)) throw new Error("tmdb browse unavailable");
+  const movieRows = movies?.ok ? ((await movies.json()).results ?? []).slice(0, 10).map((row) => tmdbItem(row, "movie")) : [];
+  const tvRows = tv?.ok ? ((await tv.json()).results ?? []).slice(0, 10).map((row) => tmdbItem(row, "tv")) : [];
   const items = interleave([movieRows, tvRows]).slice(0, BROWSE_PAGE_SIZE);
   return { items, configured: true, hasMore: movieRows.length >= 10 || tvRows.length >= 10 };
 }
@@ -85,7 +87,7 @@ export async function browseCatalog({ domain, genreId, page = 1, env = process.e
 
     return {
       items: result.items ?? [],
-      hasMore: Boolean(result.hasMore),
+      hasMore: safePage < 20 && Boolean(result.hasMore),
       degraded: result.configured === false
     };
   } catch {
