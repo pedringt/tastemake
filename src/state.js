@@ -51,6 +51,15 @@ function fresh() {
     recommendationFilter: "all",
     recommendationMediumFilter: "all",
     libraryFilter: "all",
+    // Browse is a presentation/discovery surface. Browsing alone is never evidence and these fields
+    // are intentionally transient rather than persisted.
+    browseDomain: "watch",
+    browseGenre: "drama",
+    browseItems: [],
+    browsePage: 0,
+    browseHasMore: true,
+    browseLoading: false,
+    browseError: false,
     // #94: Library has two views, Saved (untried, actionable) and Tried (already experienced).
     // Saved is the default because it's the actionable one. This is presentation state, not
     // evidence, and — like the rest of state — lives only in memory; there is no persisted schema
@@ -102,6 +111,11 @@ export const state = {
   hypothesisAiStatus: "idle",
   hypothesisAiMessage: null,
   recommendationMediumFilter: "all",
+  browseItems: [],
+  browsePage: 0,
+  browseHasMore: true,
+  browseLoading: false,
+  browseError: false,
   starterReplaceId: null,
   resetArmed: false
 };
