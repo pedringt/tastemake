@@ -20,7 +20,11 @@ import { recordRevision } from "./history.js";
 
 export const FIT = { accurate: "You confirmed this", "not-me": "You said this isn't you" };
 export const WEIGHT = { lot: "Matters a lot to you", little: "Matters a little to you" };
-export const CONTEXT = { some: "You said this only applies in some contexts, not always" };
+export const CONTEXT = {
+  broad: "You said this usually holds",
+  some: "You said this only applies in some contexts",
+  unsure: "You said you are not sure yet"
+};
 
 const same = (a, b) => hypothesisMatches([a], b) || hypothesisMatches([b], a);
 
