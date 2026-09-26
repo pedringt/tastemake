@@ -14,6 +14,7 @@ function sourceOf(feedback) {
   if (feedback.item.custom) return "Added by you in search";
   if (feedback.wasBookmarked) return "Saved, then tried";
   if (feedback.source === "search") return "Told through search";
+  if (feedback.source === "browse") return "Told through Browse";
   return "From Recommendations";
 }
 
