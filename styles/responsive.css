@@ -79,7 +79,7 @@
   .favorites-screen { padding:24px 0 32px; }
   .profile-screen { padding:22px 0 30px; }
   .recommendations-screen { padding:18px 0 32px; }
-  .bookmarks-screen,.library-screen,.browse-screen,.browse-screen { padding:18px 0 32px; }
+  .bookmarks-screen,.library-screen,.browse-screen { padding:18px 0 32px; }
   .favorites-hero,.profile-hero,.recommendations-masthead { margin-inline:4px; }
 
   .filter-band { margin-inline:0; align-items:flex-start; }
@@ -121,12 +121,12 @@
 
 @media (max-width:860px) {
   .sticker.t-hide { display:none; }
-  .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.browse-screen,.browse-screen { border-radius:16px; }
+  .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.browse-screen { border-radius:16px; }
 }
 @media (max-width:620px) {
   .sticker-field { display:none; }
   .note-arrow { display:none; }
-  .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.browse-screen,.browse-screen { background-size:22px 22px,26px 26px,100% 100%; }
+  .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.browse-screen { background-size:22px 22px,26px 26px,100% 100%; }
   .editorial-rec::before { display:none; }
 }
 
