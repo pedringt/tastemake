@@ -1,5 +1,6 @@
 export const routes = {
   favorites: "/favorites",
+  browse: "/browse",
   model: "/taste-profile",
   recommendations: "/recommendations",
   library: "/library",
