@@ -16,7 +16,8 @@ const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(
 
 eq("Browse exposes Watch / Read / Play", BROWSE_DOMAINS.map((x) => x.id).join(","), "watch,read,play");
 check("every Browse domain has genres", BROWSE_DOMAINS.every((domain) => browseGenresFor(domain.id).length >= 8));
-eq("Watch Horror maps to a provider genre", browseGenreById("watch", "horror")?.provider?.value, 27);
+eq("Watch Horror maps to the TMDb movie genre", browseGenreById("watch", "horror")?.provider?.movie, 27);
+eq("Watch Sci-fi maps to TMDb's separate TV genre", browseGenreById("watch", "sci-fi")?.provider?.tv, 10765);
 eq("Play Horror maps to the provider horror theme", browseGenreById("play", "horror")?.provider?.value, 19);
 
 const env = {
@@ -27,11 +28,17 @@ const env = {
 
 const watchFetch = async (url) => {
   const u = String(url);
-  if (u.includes("/discover/movie")) return { ok: true, json: async () => ({ results: Array.from({ length: 10 }, (_, i) => ({ id: i + 1, title: `Movie ${i + 1}`, release_date: "2020-01-01", genre_ids: [27] })) }) };
-  if (u.includes("/discover/tv")) return { ok: true, json: async () => ({ results: Array.from({ length: 10 }, (_, i) => ({ id: 100 + i, name: `Show ${i + 1}`, first_air_date: "2021-01-01", genre_ids: [27] })) }) };
+  if (u.includes("/discover/movie")) {
+    check("Watch Sci-fi uses the movie genre id", u.includes("with_genres=878"), u);
+    return { ok: true, json: async () => ({ results: Array.from({ length: 10 }, (_, i) => ({ id: i + 1, title: `Movie ${i + 1}`, release_date: "2020-01-01", genre_ids: [878] })) }) };
+  }
+  if (u.includes("/discover/tv")) {
+    check("Watch Sci-fi uses the TV genre id", u.includes("with_genres=10765"), u);
+    return { ok: true, json: async () => ({ results: Array.from({ length: 10 }, (_, i) => ({ id: 100 + i, name: `Show ${i + 1}`, first_air_date: "2021-01-01", genre_ids: [10765] })) }) };
+  }
   throw new Error(`unexpected watch URL: ${u}`);
 };
-const watch = await browseCatalog({ domain: "watch", genreId: "horror", page: 1, env, fetchImpl: watchFetch });
+const watch = await browseCatalog({ domain: "watch", genreId: "sci-fi", page: 1, env, fetchImpl: watchFetch });
 eq("Watch Browse returns the page size", watch.items.length, BROWSE_PAGE_SIZE);
 check("Watch Browse mixes movies and TV", watch.items.some((x) => x.type === "movie") && watch.items.some((x) => x.type === "tv"));
 check("Watch Browse keeps provider identities", watch.items.every((x) => x.provider === "tmdb"));
