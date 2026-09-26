@@ -51,9 +51,11 @@ function sayControls(item, said) {
         ${sayButton(item, "weight", "lot", "A lot", said)}
         ${sayButton(item, "weight", "little", "A little", said)}
       </div>
-      <div class="signal-say-group" role="group" aria-label="Does \u201c${esc(item.title)}\u201d hold everywhere for you?">
-        <span class="signal-say-label">Does this hold everywhere?</span>
+      <div class="signal-say-group signal-context-group" role="group" aria-label="How broadly does \u201c${esc(item.title)}\u201d hold for you?">
+        <span class="signal-say-label">Does this hold broadly?</span>
+        ${sayButton(item, "context", "broad", "Usually", said)}
         ${sayButton(item, "context", "some", "Only in some contexts", said)}
+        ${sayButton(item, "context", "unsure", "Not sure yet", said)}
       </div>
     </div>`;
 }
@@ -83,7 +85,7 @@ function hypothesisCard(item, index) {
         <div class="signal-provenance">${esc(update.provenance)}</div>
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
-        ${said?.context === "some" ? `<div class="signal-said">${CONTEXT.some}. Tastemake can't claim this is Strong until it's specific about which context.</div>` : ""}
+        ${said?.context ? `<div class="signal-said">${CONTEXT[said.context] ?? "You refined how broadly this applies."}${said.context === "some" ? ". Tastemake can't claim this is Strong until it's specific about which context." : "."}</div>` : ""}
         ${sayControls(item, said)}
         ${said?.says === "not-me" ? "" : domainScopeControls(item, record)}
         ${blindLine}
