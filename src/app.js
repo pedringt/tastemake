@@ -2,6 +2,7 @@ import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
 import { renderFavorites } from "./screens/favorites.js";
+import { renderBrowse } from "./screens/browse.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
 import { renderLibrary } from "./screens/library.js";
@@ -11,6 +12,11 @@ import { renderMine } from "./screens/mine.js";
 import { setStatement, toggleDomainExclusion } from "./model/statements.js";
 import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
+import { firstBrowseGenre } from "./catalog/browse-genres.js";
+import { fetchBrowsePage } from "./catalog/browse-client.js";
+import { mergeUniqueBrowseItems } from "./model/browse.js";
+import { applySearchAction } from "./model/search.js";
+import { isStrongPositive } from "./model/evidence.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
 import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
@@ -31,6 +37,7 @@ const app = document.querySelector("#app");
 
 const views = {
   favorites: renderFavorites,
+  browse: renderBrowse,
   model: renderProfile,
   recommendations: renderRecommendations,
   library: renderLibrary,
@@ -46,7 +53,7 @@ function hasEnoughFavorites() {
 function canAccess(screen) {
   // #29/#68/#94: Library (Saved + Tried) is a real destination even with nothing saved yet — its
   // empty state explains how to get there instead of the tab just disappearing until something lands.
-  if (screen === "look" || screen === "setup" || screen === "mine" || screen === "library") return true;
+  if (screen === "look" || screen === "setup" || screen === "mine" || screen === "library" || screen === "browse") return true;
   return screen === "favorites" || hasEnoughFavorites();
 }
 
@@ -56,7 +63,7 @@ function render() {
 }
 
 function updateStepper() {
-  const order = ["favorites", "recommendations", "model", "library"];
+  const order = ["favorites", "browse", "recommendations", "model", "library"];
   const activeIndex = order.indexOf(state.screen);
 
   // #59 item 4: keep the guided first-run path (Favorites -> Recommendations) visually dominant by
@@ -211,10 +218,64 @@ function maybeRefreshProfile({ force = false } = {}) {
   });
 }
 
+let browseController = null;
+
+async function loadBrowse({ reset = false } = {}) {
+  if (state.screen !== "browse") return;
+  const domain = state.browseDomain;
+  const genre = state.browseGenre || firstBrowseGenre(domain);
+  if (!genre) return;
+
+  if (reset) {
+    state.browseGenre = genre;
+    state.browseItems = [];
+    state.browsePage = 0;
+    state.browseHasMore = true;
+    state.browseError = false;
+  }
+  if (state.browseLoading || !state.browseHasMore) return;
+
+  const page = state.browsePage + 1;
+  browseController?.abort();
+  const controller = new AbortController();
+  browseController = controller;
+  state.browseLoading = true;
+  state.browseError = false;
+  render();
+  updateStepper();
+
+  try {
+    const payload = await fetchBrowsePage(domain, genre, page, { signal: controller.signal });
+    if (controller.signal.aborted || state.screen !== "browse" || state.browseDomain !== domain || state.browseGenre !== genre) return;
+    state.browseItems = mergeUniqueBrowseItems(state.browseItems, payload.items);
+    state.browsePage = page;
+    state.browseHasMore = payload.hasMore && payload.items.length > 0;
+    state.browseError = payload.degraded && payload.items.length === 0;
+  } catch (error) {
+    if (error?.name !== "AbortError") state.browseError = true;
+  } finally {
+    if (browseController === controller) browseController = null;
+    if (!controller.signal.aborted && state.screen === "browse" && state.browseDomain === domain && state.browseGenre === genre) {
+      state.browseLoading = false;
+      render();
+      updateStepper();
+    }
+  }
+}
+
+function maybeLoadBrowse() {
+  if (state.screen === "browse" && !state.browseItems.length && !state.browseLoading) void loadBrowse();
+}
+
 function navigate(screen, { replace = false, scroll = true } = {}) {
   if (!canAccess(screen)) return;
   // Leaving the page a request was started from makes its answer irrelevant (#42).
   if (state.aiRequest && screen !== state.aiRequest.screen) cancelRequest(state, "you moved to another page while it was thinking");
+  if (screen !== "browse") {
+    browseController?.abort();
+    browseController = null;
+    state.browseLoading = false;
+  }
 
   markOnboarded(screen);
   state.screen = screen;
@@ -225,6 +286,7 @@ function navigate(screen, { replace = false, scroll = true } = {}) {
   if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
   focusApp();
   maybeRefreshProfile();
+  maybeLoadBrowse();
 }
 
 function renderPreservingPosition(selector, focusSelector = null) {
@@ -505,6 +567,76 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const browseDomain = event.target.closest("[data-browse-domain]");
+  if (browseDomain) {
+    state.browseDomain = browseDomain.dataset.browseDomain;
+    state.browseGenre = firstBrowseGenre(state.browseDomain);
+    state.browseItems = [];
+    state.browsePage = 0;
+    state.browseHasMore = true;
+    state.browseError = false;
+    render();
+    updateStepper();
+    restoreFocus(`[data-browse-domain="${state.browseDomain}"]`);
+    void loadBrowse();
+    return;
+  }
+
+  const browseGenre = event.target.closest("[data-browse-genre]");
+  if (browseGenre) {
+    state.browseGenre = browseGenre.dataset.browseGenre;
+    state.browseItems = [];
+    state.browsePage = 0;
+    state.browseHasMore = true;
+    state.browseError = false;
+    render();
+    updateStepper();
+    restoreFocus(`[data-browse-genre="${state.browseGenre}"]`);
+    void loadBrowse();
+    return;
+  }
+
+  const browseMore = event.target.closest("[data-browse-more]");
+  if (browseMore) {
+    void loadBrowse();
+    return;
+  }
+
+  const browseAction = event.target.closest("[data-browse-action][data-browse-item]");
+  if (browseAction) {
+    const itemId = browseAction.dataset.browseItem;
+    const item = state.browseItems.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+    const message = applySearchAction(state, item, browseAction.dataset.browseAction, { source: "browse" });
+    if (!message) return;
+    render();
+    updateStepper();
+    restoreFocus(`[data-browse-action="${browseAction.dataset.browseAction}"][data-browse-item="${itemId}"]`, app.querySelector(`[data-browse-card="${itemId}"]`) || app);
+    announce(message);
+    return;
+  }
+
+  const browseFavorite = event.target.closest("[data-browse-favorite][data-browse-item]");
+  if (browseFavorite) {
+    const itemId = browseFavorite.dataset.browseItem;
+    const item = state.browseItems.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+    if (browseFavorite.dataset.browseFavorite === "add") {
+      const feedback = state.feedbackByRecommendation[itemId];
+      if (!isStrongPositive(feedback)) return;
+      state.customItems[item.id] = item;
+      state.selectedFavorites.add(itemId);
+      announce(`${item.title} added to Favorites. ${state.selectedFavorites.size} of 4 selected.`);
+    } else {
+      state.selectedFavorites.delete(itemId);
+      announce(`${item.title} removed from Favorites.`);
+    }
+    render();
+    updateStepper();
+    restoreFocus(`[data-browse-favorite][data-browse-item="${itemId}"]`, app.querySelector(`[data-browse-card="${itemId}"]`) || app);
+    return;
+  }
+
   const libraryTab = event.target.closest("[data-library-tab]");
   if (libraryTab) {
     state.libraryView = libraryTab.dataset.libraryTab === "tried" ? "tried" : "saved";
@@ -519,6 +651,7 @@ app.addEventListener("click", async (event) => {
   if (!action) return;
 
   if (action === "open-search") document.querySelector("#open-search")?.click();
+  if (action === "browse") navigate("browse");
   if (action === "edit-setup") {
     state.setupReturn = state.screen;
     navigate("setup");
@@ -598,6 +731,7 @@ window.addEventListener("popstate", () => {
   updateStepper();
   focusApp();
   maybeRefreshProfile();
+  maybeLoadBrowse();
 });
 
 initSearch({
@@ -620,3 +754,4 @@ writeRoute(state.screen, { replace: true });
 render();
 updateStepper();
 maybeRefreshProfile();
+maybeLoadBrowse();
