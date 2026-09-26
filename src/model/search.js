@@ -149,7 +149,7 @@ const OUTCOMES = {
 };
 
 // The only way search changes anything. Returns a sentence for the live region, or null if nothing changed.
-export function applySearchAction(state, item, action) {
+export function applySearchAction(state, item, action, { source = "search" } = {}) {
   if (state.selectedFavorites.has(item.id)) return null;   // Favorites are managed on the Favorites page
   const existing = state.feedbackByRecommendation[item.id];
 
@@ -181,7 +181,7 @@ export function applySearchAction(state, item, action) {
     rating: outcome.rating,
     detail: outcome.detail,
     quality: existing?.quality ?? null,
-    source: "search"
+    source
   };
   if (existing?.wasBookmarked || (existing && isBookmarked(existing) && action !== "bookmark")) entry.wasBookmarked = true;
   // "Surprised me" only makes sense after Loved / Liked it before.
