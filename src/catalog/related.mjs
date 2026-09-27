@@ -1,6 +1,7 @@
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { cachedValue } from "../server/cache.mjs";
+import { canonicalizeWriteBehind } from "./canonical-store.mjs";
 
 const uniq = (items) => {
   const seen = new Set();
@@ -147,6 +148,10 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
       else if (item.provider === "openlibrary") related = await openLibraryRelated(item, env, fetchImpl);
       else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl);
       console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: related.length }));
+      // #135 foundation: write-behind canonicalization of real related candidates (see the same
+      // note in providers.mjs's searchCatalog). Not awaited, never throws, no-op when
+      // TASTEMAKE_DATABASE_URL isn't configured.
+      canonicalizeWriteBehind(related, { env });
       return related.map((candidate) => ({ ...candidate, relatedTo: item.title, relatedToId: item.id }));
     } catch {
       console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: 0, errored: true }));

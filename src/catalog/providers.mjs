@@ -1,4 +1,5 @@
 import { cachedValue } from "../server/cache.mjs";
+import { canonicalizeWriteBehind } from "./canonical-store.mjs";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
@@ -281,7 +282,15 @@ export async function searchCatalog(query, { domain = "all", env = process.env, 
 
   const configured = settled.filter(([, , , isConfigured]) => isConfigured);
   const degraded = configured.length === 0 || configured.every(([, , , , available]) => !available);
-  return { items: uniq(interleaved).slice(0, 24), providers, degraded };
+  const results = uniq(interleaved).slice(0, 24);
+
+  // #135 foundation: start building up the canonical item store in the background from whatever
+  // real provider items search already fetched. This is write-behind only (nothing here is
+  // awaited), so it can never add latency or throw into the search response, and it is a no-op
+  // when TASTEMAKE_DATABASE_URL isn't configured (e.g. this sandbox, or a preview env without it).
+  canonicalizeWriteBehind(results, { env });
+
+  return { items: results, providers, degraded };
 }
 
 export { igdbToken, igdbItem, openLibraryItem, tmdbItem };
