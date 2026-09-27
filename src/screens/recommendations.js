@@ -427,6 +427,11 @@ export function renderRecommendations() {
         ${renderDomainFilter({ selected: state.recommendationFilter, scope: "recommendations", label: "Generate recommendations by type" })}
         <span class="filter-context">Choose the kind of recommendation set you want next. This does not change your Taste Profile.</span>
       </div>
+      <!-- #117: Browse's post-onboarding home is here, as an alternate discovery mode, not a permanent
+           top-level nav item. Looking around is still never taste evidence on its own. -->
+      <p class="recommendation-browse-link">
+        <button class="button button-quiet" type="button" data-action="browse">Browse by genre instead &rarr;</button>
+      </p>
       ${renderAiStatus()}
       ${renderNextSteps()}
 

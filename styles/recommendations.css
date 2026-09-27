@@ -36,6 +36,8 @@
 .progress-segment.is-filled { background:var(--pink); }
 .progress-note { color:var(--note-ink,#4053ad); font-size:18px; line-height:.95; }
 .recommendation-filter-band { margin-bottom:20px; }
+/* #117: Browse's post-onboarding home — a quiet alternate-discovery link, not a competing CTA. */
+.recommendation-browse-link { margin:-8px 0 20px; }
 
 .refresh-banner {
   margin:0 0 18px;
