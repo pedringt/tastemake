@@ -191,10 +191,24 @@ function fallbackPayload(candidates, state, reason, meta = {}) {
   };
 }
 
+// #120: stage-boundary timing, logged server-side only (never returned to the client) in the same
+// sanitized style as [tastemake-catalog]/[tastemake-related]: stage name and ms, nothing about
+// prompt/candidate contents or credentials.
+function logStage(stage, ms, extra = {}) {
+  console.info("[tastemake-recommendations-timing]", JSON.stringify({ stage, ms, ...extra }));
+}
+
 export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch } = {}) {
   const state = hydrateState(rawState);
+
+  let started = Date.now();
   const retrieved = await retrieveCatalogCandidates(state, { env, fetchImpl });
+  logStage("candidateRetrieval", Date.now() - started, { candidates: retrieved.length });
+
+  started = Date.now();
   const ctx = buildContext(state, retrieved);
+  logStage("buildContext", Date.now() - started);
+
   const candidates = ctx.candidates.slice(0, 6);
   if (!candidates.length) {
     return { source: "catalog", reason: "no eligible catalog picks remain", picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length } };
@@ -204,9 +218,15 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length });
 
   try {
+    started = Date.now();
     const model = await callAnthropic({ prompt: buildPickPrompt(ctx, candidates.length), env, fetchImpl });
+    logStage("liveAiCall", Date.now() - started, { model: model.model });
+
+    started = Date.now();
     const validated = validatePicks(model.json, ctx);
     const result = acceptOrFallback(validated, candidates, { minAccepted: candidates.length });
+    logStage("validation", Date.now() - started, { accepted: result.source === "model" });
+
     if (result.source !== "model") {
       return fallbackPayload(candidates, state, result.reason || "model output did not pass validation", {
         model: model.model,
