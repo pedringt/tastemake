@@ -62,6 +62,7 @@ const state = {
   recommendationStyle: "balanced"
 };
 
+const summaries = [];
 for (let run = 1; run <= 3; run += 1) {
   const started = Date.now();
   const response = await fetch(endpoint, {
@@ -70,14 +71,17 @@ for (let run = 1; run <= 3; run += 1) {
     body:JSON.stringify({state})
   });
   const payload = await response.json();
-  console.log(JSON.stringify({
+  summaries.push({
     run,
-    status:response.status,
-    clientMs:Date.now()-started,
-    source:payload.source,
-    reason:payload.reason,
-    usage:payload.meta?.usage ?? null,
-    picks:(payload.picks ?? []).map((p)=>({title:p.title,reason:p.reason,cites:p.ai?.cites ?? []}))
-  }));
+    status: response.status,
+    clientMs: Date.now() - started,
+    source: payload.source,
+    reason: payload.reason,
+    usage: payload.meta?.usage ?? null,
+    pickCount: (payload.picks ?? []).length,
+    leakedInternalRef: (payload.picks ?? []).some((p) => /ev:[\\w-]+/i.test(String(p.reason ?? "")))
+  });
   if (run < 3) await new Promise((resolve)=>setTimeout(resolve,12000));
 }
+
+console.log(JSON.stringify({ endpoint, summaries }, null, 2));
