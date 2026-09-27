@@ -105,7 +105,15 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
   check("timing logs cover candidate retrieval", stages.includes("candidateRetrieval"), stages.join(","));
   check("timing logs cover the live AI call", stages.includes("liveAiCall"), stages.join(","));
   check("timing logs cover validation", stages.includes("validation"), stages.join(","));
-  check("every timing stage reports a numeric ms", timingLines.every((line) => typeof JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim()).ms === "number"));
+  check("timing logs cover prompt size", stages.includes("promptSize"), stages.join(","));
+  // promptSize is a size measurement, not a duration -- it has no "ms" field by design (#120 follow-up:
+  // known even if the call that follows it errors/times out before returning any duration).
+  const durationLines = timingLines.filter((line) => !line.includes('"stage":"promptSize"'));
+  check("every duration-reporting stage has a numeric ms", durationLines.every((line) => typeof JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim()).ms === "number"));
+  check("promptSize reports a numeric character count", timingLines.some((line) => {
+    const parsed = JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim());
+    return parsed.stage === "promptSize" && typeof parsed.promptChars === "number";
+  }));
   check("per-provider related-catalog timing is logged", relatedLines.some((line) => line.includes('"provider":"tmdb"')));
   check("timing logs never include the API key", [...timingLines, ...relatedLines].every((line) => !line.includes("fake-key") && !line.includes(ON.ANTHROPIC_API_KEY)));
   check("timing logs never include prompt/candidate text", [...timingLines, ...relatedLines].every((line) => !line.includes("Favorite Film") && !line.includes(candidateTitles[0])));
