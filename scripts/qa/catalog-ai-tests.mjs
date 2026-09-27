@@ -87,6 +87,36 @@ const related = await retrieveCatalogCandidates(relatedState, { env, fetchImpl: 
 eq("grounded retrieval returns a real provider candidate", related[0]?.id, "tmdb-movie-22");
 check("grounded retrieval excludes the evidence item itself", !related.some((x) => x.id === "tmdb-movie-10"));
 
+// #131: Open Library's raw subject arrays include broad/noisy labels. A bestseller tag alone should
+// not make a self-help book a meaningful neighbor of an epic-fantasy source.
+{
+  const fantasyState = {
+    selectedFavorites: new Set(["openlibrary-book-OL-WOK"]),
+    feedbackByRecommendation: {},
+    recommendationSets: [],
+    customItems: {
+      "openlibrary-book-OL-WOK": {
+        id:"openlibrary-book-OL-WOK",provider:"openlibrary",providerId:"OL-WOK",title:"Epic Fantasy Seed",
+        type:"book",domains:["read"],genres:["New York Times bestseller","Fantasy","Epic fiction","Magic"]
+      }
+    },
+    areas:{watch:true,read:true,play:true},
+    recommendationFilter:"read"
+  };
+  let requestedUrl = "";
+  const fantasyFetch = async (url) => {
+    requestedUrl = String(url);
+    return {ok:true,json:async()=>({docs:[
+      {key:"/works/OL-ATOMIC",title:"Habit Book",author_name:["Author A"],first_publish_year:2018,subject:["New York Times bestseller","Self-help","Habit"]},
+      {key:"/works/OL-GOOD",title:"Good Fantasy Neighbor",author_name:["Author B"],first_publish_year:2019,subject:["Fantasy","Epic fiction","Magic"]}
+    ]})};
+  };
+  const fantasyRelated = await retrieveCatalogCandidates(fantasyState,{env,fetchImpl:fantasyFetch});
+  check("Open Library related query skips broad bestseller metadata", decodeURIComponent(requestedUrl).includes('subject:"Fantasy"'), requestedUrl);
+  check("weak one-tag book relation is filtered", !fantasyRelated.some((item)=>item.title==="Habit Book"), fantasyRelated.map((item)=>item.title).join(","));
+  check("multi-subject related book remains eligible", fantasyRelated.some((item)=>item.title==="Good Fantasy Neighbor"), fantasyRelated.map((item)=>item.title).join(","));
+}
+
 // #107: recommendation style must survive serialization and change candidate selection.
 eq("recommendation style is serialized for the server", serializeAiState({ selectedFavorites: new Set(), feedbackByRecommendation: {}, recommendationSets: [], libraryFavorites: new Set(), customItems: {}, blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(), patternStatements: [], areas: {}, curveball: true, recommendationStyle: "adventurous" }).recommendationStyle, "adventurous");
 const adventurousTitles = [
