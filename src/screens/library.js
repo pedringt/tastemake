@@ -18,6 +18,32 @@ import { renderArtwork } from "../components/artwork.js";
 
 const SOURCE_LABEL = { starter: "Favorite", loved: "Loved it", liked: "Liked it" };
 
+// #103 items 1/2/10: per-media-type detail fields, rendered only when present. `detail` comes from
+// fetchCatalogItemDetail (fetched lazily on expand, see app.js) and every field is optional — sparse
+// upstream data means an omitted line, never a label with nothing after it.
+export function renderDetailMeta(item, detail = {}) {
+  const lines = [];
+  if (item.type === "book" && item.by) lines.push(["Author", item.by]);
+  if (item.type === "movie") {
+    if (detail.director) lines.push(["Director", detail.director]);
+    if (detail.cast) lines.push(["Cast", detail.cast.join(", ")]);
+  }
+  if (item.type === "tv") {
+    if (detail.creator) lines.push(["Creator", detail.creator]);
+    if (detail.cast) lines.push(["Cast", detail.cast.join(", ")]);
+  }
+  if (item.type === "game") {
+    if (detail.developer) lines.push(["Developer", detail.developer]);
+    if (detail.publisher) lines.push(["Publisher", detail.publisher]);
+    if (detail.platforms) lines.push(["Platforms", detail.platforms.join(", ")]);
+  }
+  if (!lines.length) return "";
+  return `
+    <dl class="library-detail-meta">
+      ${lines.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join("")}
+    </dl>`;
+}
+
 // ---- Saved (formerly the standalone "Try Next" screen) -------------------------------------
 
 function savedCard(feedback) {
@@ -38,6 +64,7 @@ function savedCard(feedback) {
         <span class="library-compact-open" aria-hidden="true">+</span>
       </summary>
       <div class="library-compact-detail">
+        <div class="library-detail-meta-slot" data-detail-slot="${item.id}">${renderDetailMeta(item)}</div>
         <p class="library-blurb">${esc(item.about ?? item.note ?? "")}</p>
         ${item.reason ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${esc(item.reason)}</p>` : ""}
         <div class="bookmark-actions" role="group" aria-label="Tried ${esc(item.title)}?">
@@ -113,6 +140,7 @@ function triedCard(entry) {
         <span class="library-compact-open" aria-hidden="true">+</span>
       </summary>
       <div class="library-compact-detail">
+        <div class="library-detail-meta-slot" data-detail-slot="${item.id}">${renderDetailMeta(item)}</div>
         <p class="library-blurb">${esc(entry.blurb)}</p>
         ${controls}
         ${tried ? renderTastebreakPanel(id) : ""}
