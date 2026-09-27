@@ -114,6 +114,16 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
     const parsed = JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim());
     return parsed.stage === "promptSize" && typeof parsed.promptChars === "number";
   }));
+  check("promptSize breaks the prompt down without logging content", timingLines.some((line) => {
+    const parsed = JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim());
+    if (parsed.stage !== "promptSize") return false;
+    const keys = ["fixedChars", "evidenceChars", "candidateChars", "statementsChars", "contextsChars", "controlChars", "framingChars"];
+    return keys.every((key) => typeof parsed[key] === "number")
+      && parsed.fixedChars + parsed.evidenceChars + parsed.candidateChars + parsed.statementsChars
+        + parsed.contextsChars + parsed.controlChars + parsed.framingChars === parsed.promptChars
+      && parsed.candidateCount === 6
+      && parsed.evidenceCount === 1;
+  }));
   check("per-provider related-catalog timing is logged", relatedLines.some((line) => line.includes('"provider":"tmdb"')));
   check("timing logs never include the API key", [...timingLines, ...relatedLines].every((line) => !line.includes("fake-key") && !line.includes(ON.ANTHROPIC_API_KEY)));
   check("timing logs never include prompt/candidate text", [...timingLines, ...relatedLines].every((line) => !line.includes("Favorite Film") && !line.includes(candidateTitles[0])));
