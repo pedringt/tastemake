@@ -16,6 +16,7 @@
 // offline against an in-memory fake instead of a real database.
 
 import { query as defaultQuery, isConfigured } from "../server/db.mjs";
+import { waitUntil } from "@vercel/functions";
 
 const MEDIA_TYPES = new Set(["movie", "tv", "book", "game"]);
 
@@ -153,13 +154,23 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
 // latency to the caller's response path (nothing here is awaited by callers; failures are logged in
 // the same sanitized style used elsewhere and swallowed). A no-op when TASTEMAKE_DATABASE_URL isn't
 // configured, so catalog search/recommendations behave identically with or without a database.
+//
+// Verified live on production after the first version of this shipped: zero rows had actually
+// landed in Neon despite real requests succeeding. Root cause -- a Vercel serverless function's
+// execution environment can be frozen the instant its HTTP response is sent; an un-awaited promise
+// has no guarantee of ever resuming after that point. `waitUntil` (already a dependency via
+// @vercel/functions, used elsewhere for the runtime cache) is exactly Vercel's API for extending a
+// function's lifetime for background work like this. Outside an actual Vercel request context (this
+// sandbox, local scripts, the test suite) it safely no-ops rather than throwing, so nothing here
+// needed to change for tests.
 export function canonicalizeWriteBehind(items, { env = process.env, query: queryImpl } = {}) {
   if (!queryImpl && !isConfigured(env)) return;
   for (const item of items ?? []) {
-    Promise.resolve()
+    const task = Promise.resolve()
       .then(() => upsertCanonicalItem(item, { env, query: queryImpl }))
       .catch((error) => {
         console.info("[tastemake-canonical]", JSON.stringify({ error: error?.message || "upsert failed" }));
       });
+    waitUntil(task);
   }
 }
