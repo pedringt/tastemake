@@ -7,6 +7,7 @@ import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
+import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -297,7 +298,7 @@ function recommendationCard(item, index, total) {
              the fuller pattern context (curveball caveat, tested-pattern label). The rationale and
              synopsis strings are truncated (word/sentence boundary) at the data layer below, not by
              a CSS clip, so nothing here can end mid-thought. -->
-        <p class="editorial-rationale">${esc(truncateCopy(item.reason, RATIONALE_MAX_CHARS))}</p>
+        <p class="editorial-rationale">${esc(truncateCopy(sanitizeRecommendationCopy(item.reason), RATIONALE_MAX_CHARS))}</p>
         <p class="editorial-about">${esc(truncateCopy(item.about, ABOUT_MAX_CHARS))}</p>
 
         <div class="editorial-why">
