@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const previewRoot = "https://tastemake-git-recommendation-context-and-copy-120-129-cairn10.vercel.app";
-const shareUrl = `${previewRoot}/?_vercel_share=YFt4gF2mjh7hJdz06hS2ezvcWZdsCXmt`;
-const endpoint = `${previewRoot}/api/recommendations`;
+const previewRoot = "https://tastemake-git-eval-after-context-130-cairn10.vercel.app";
+const shareUrl = `${previewRoot}/?_vercel_share=PEuSjPOwfuBxyss2sf1Yn5PcA09acb9Q`;
+const endpoint = `${previewRoot}/api/eval-recommendations`;
 const authResponse = await fetch(shareUrl, { redirect: "manual" });
 const previewCookie = authResponse.headers.get("set-cookie")?.split(";")[0] ?? "";
 if (!previewCookie) throw new Error(`preview auth did not return a cookie (status ${authResponse.status})`);
@@ -83,6 +83,7 @@ for (let run = 1; run <= 3; run += 1) {
     source: payload.source,
     reason: payload.reason,
     usage: payload.meta?.usage ?? null,
+    eval: payload._eval ?? null,
     pickCount: (payload.picks ?? []).length,
     leakedInternalRef: (payload.picks ?? []).some((p) => /ev:[\\w-]+/i.test(String(p.reason ?? "")))
   });
