@@ -134,10 +134,15 @@
    reaction stamp — the last child — gets pushed out over the neighboring card. flex-wrap is a second
    safety net: if the two still don't fit on one line, the stamp drops to its own line instead of
    overflowing sideways. */
-.editorial-title-row { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:8px 12px; margin-top:12px; }
+.editorial-title-row { display:flex; align-items:flex-start; margin-top:12px; }
 /* #95: a fixed clamp range that reads fine at three-per-row width, whatever the title length —
    no separate "wide layout" font size to keep in sync. */
 .editorial-title-row h3 { flex:1 1 auto; min-width:0; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; min-height:2.16em; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+/* #121: a reserved band directly under the title, present whether or not a card has a status chip,
+   so one-line vs. two/three-line titles never shift the chip's vertical position and a row of cards
+   stays level even when only some of them carry a status. min-height is sized to the chip's own
+   rendered height (padding + line height + border) so the empty state reserves the same space. */
+.editorial-status-row { min-height:30px; display:flex; align-items:flex-start; margin-top:8px; }
 .reaction-stamp {
   flex:0 0 auto;
   max-width:100%;
@@ -152,33 +157,30 @@
 .reaction-more { background:var(--pink-soft); border-color:var(--pink); color:var(--on-pink,#9b076e); }
 .reaction-less { background:var(--tint-lilac,#e7e9ff); }
 .reaction-not-tried { background:var(--violet-soft); }
-/* #95: the rationale is the primary card copy — "why did Tastemake pick this?" — shown before the
-   catalog synopsis, in the note-ink color used elsewhere for Tastemake's own commentary. */
+/* #95/#121: the rationale is the primary card copy — "why did Tastemake pick this?" — shown before
+   the catalog synopsis, in the note-ink color used elsewhere for Tastemake's own commentary. The
+   copy is truncated at a sentence/word boundary in recommendations.js before it ever reaches this
+   markup, so there is no CSS line-clamp/overflow:hidden here to clip it mid-thought — min-height
+   still keeps cards from feeling collapsed when the (now-bounded) text is short, and the grid's
+   align-items:stretch keeps a row's cards equal height. */
 .editorial-rationale {
   color:var(--note-ink,#4053ad);
   font-weight:600;
   line-height:1.42;
   font-size:14px;
   margin:8px 0 0;
-  min-height:5.68em;
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:4;
-  overflow:hidden;
+  min-height:2.84em;
 }
 
-/* #95: default card copy prioritizes the recommendation rationale over long catalog synopsis —
-   the synopsis is clamped to a short number of lines instead of running as a wall of text. */
+/* #95/#121: default card copy prioritizes the recommendation rationale over the catalog synopsis —
+   the synopsis string itself is capped at a clean boundary (see truncateCopy in recommendations.js)
+   rather than clamped/clipped here. */
 .editorial-about {
   color:var(--muted);
   line-height:1.45;
   font-size:13px;
   margin:8px 0 10px;
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:2;
-  overflow:hidden;
-  min-height:3.77em;
+  min-height:1.45em;
 }
 .editorial-why {
   position:relative;

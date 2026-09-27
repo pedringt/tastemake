@@ -227,6 +227,8 @@ export function checkCurrentScreen() {
     mapOverlaps,
     lowContrast: [...lowContrast(screen, field), ...lowContrast(document.querySelector(".topbar"), null)],
     artworkHits: checkArtwork(),   // #34: recommendation artwork title vs. decorative shapes
+    clippedText: checkClippedText(screen),      // #121: rationale/synopsis must never be CSS-clipped
+    chipMisalignment: checkChipAlignment(screen), // #121: status chips must share a band across a row
     hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth
   };
 }
@@ -243,11 +245,28 @@ export async function runAll() {
   state.selectedFavorites=new Set(favorites.map(item=>item.id));
   state.setupComplete=true;
   state.displayName="QA";
+  // #121: deliberately uneven titles and rationale/synopsis lengths (one-line, two-line, and an
+  // unusually long title; short and very long rationale) so the layout checks below actually exercise
+  // the clipping and chip-alignment fix rather than five near-identical cards.
+  const titles=[
+    "Catalog Pick",
+    "A Catalog Recommendation With A Longer Two Line Title",
+    "An Unusually Long Catalog Recommendation Title That Should Still Never Push The Status Chip Out Of Its Reserved Band",
+    "Short Title",
+    "Catalog Recommendation Five"
+  ];
+  const reasons=[
+    "Related to a favorite in the external catalog.",
+    "This is a deliberately long recommendation rationale meant to exercise the truncation boundary logic instead of relying on CSS to clip it, so it keeps going for a while with several clauses, in the hope that it lands past the character limit and gets truncated at a clean sentence or word boundary rather than mid-word or mid-thought.",
+    "Short reason.",
+    "A medium-length rationale that explains the connection to a favorite in a couple of clauses, enough to wrap onto more than one line without being extreme.",
+    "Related to a favorite in the external catalog."
+  ];
   const picks=Array.from({length:5},(_,i)=>({
-    id:`tmdb-movie-${820+i}`,provider:"tmdb",providerId:String(820+i),title:`Catalog Recommendation ${i+1}`,
-    type:"movie",domains:["watch"],about:"A real-catalog-style recommendation with enough copy to exercise the card layout.",
+    id:`tmdb-movie-${820+i}`,provider:"tmdb",providerId:String(820+i),title:titles[i],
+    type:"movie",domains:["watch"],about:i===1?"A real-catalog-style synopsis with enough copy to exercise the card layout and check that truncation ends cleanly instead of mid-sentence when the source text runs long.":"Short synopsis.",
     prediction:"Worth testing",fit:i===4?"Exploratory fit":"Catalog match",rank:i===4?null:i+1,surprise:i===4,
-    reason:"Related to a favorite in the external catalog.",artwork:null,ai:null
+    reason:reasons[i],artwork:null,ai:null
   }));
   state.recommendationSets=[picks];
   state.browseDomain="watch";
@@ -257,9 +276,13 @@ export async function runAll() {
   state.browseHasMore=false;
   state.browseLoading=false;
   state.browseError=false;
+  // #121: a mix of status states across the row — loved/liked, saved (bookmarked), disliked, and two
+  // cards with no status at all — so the reserved chip band is checked with a realistic, uneven mix,
+  // not just "all cards have a chip" or "all cards don't".
   state.feedbackByRecommendation={
     [picks[0].id]:{item:picks[0],rating:"more",detail:"loved-before"},
-    [picks[1].id]:{item:picks[1],rating:"not-tried",detail:"bookmarked"}
+    [picks[1].id]:{item:picks[1],rating:"not-tried",detail:"bookmarked"},
+    [picks[2].id]:{item:picks[2],rating:"less",detail:"tried-disliked"}
   };
   state.modelHypotheses=[{
     id:"ai-layout-one",title:"Structure supports experimentation",claim:"Unusual ideas seem stronger when a clear structure keeps them moving.",
@@ -304,5 +327,52 @@ export function checkArtwork() {
       }
     });
   });
+  return hits;
+}
+
+// #121: the rationale/synopsis are truncated at a word/sentence boundary in recommendations.js, not
+// clamped by CSS — this asserts that promise held, i.e. nothing on the recommendation cards is still
+// being cut off by overflow:hidden with more content hidden below the visible box.
+export function checkClippedText(root = document) {
+  const hits = [];
+  root.querySelectorAll(".editorial-rationale, .editorial-about").forEach((el) => {
+    if (!isVisible(el)) return;
+    const cs = getComputedStyle(el);
+    if (cs.overflowY === "hidden" && el.scrollHeight > el.clientHeight + 1) {
+      const card = el.closest(".editorial-rec");
+      const title = card?.querySelector(".editorial-title-row h3")?.textContent?.trim().slice(0, 24) || "?";
+      hits.push(`${el.classList.contains("editorial-rationale") ? "rationale" : "synopsis"} clipped on "${title}"`);
+    }
+  });
+  return hits;
+}
+
+// #121: status chips ("Saved", "Liked it before", etc.) must share one vertical band across a row of
+// recommendation cards, whether or not a given card has a status and regardless of its title's line
+// count. Cards are grouped into rows by their own top position (equal-height grid cells put every card
+// in a row at the same top), then each row's .editorial-status-row top offsets (relative to the card)
+// are compared.
+export function checkChipAlignment(root = document) {
+  const hits = [];
+  const cards = [...root.querySelectorAll(".editorial-rec")].filter(isVisible);
+  const rows = new Map();
+  cards.forEach((card) => {
+    const top = Math.round(card.getBoundingClientRect().top);
+    if (!rows.has(top)) rows.set(top, []);
+    rows.get(top).push(card);
+  });
+  for (const rowCards of rows.values()) {
+    if (rowCards.length < 2) continue;
+    const offsets = rowCards.map((card) => {
+      const band = card.querySelector(".editorial-status-row");
+      if (!band) return null;
+      return band.getBoundingClientRect().top - card.getBoundingClientRect().top;
+    }).filter((v) => v !== null);
+    if (offsets.length < 2) continue;
+    const spread = Math.max(...offsets) - Math.min(...offsets);
+    if (spread > 1) {
+      hits.push(`status band offsets vary by ${Math.round(spread)}px across a row (${offsets.map((o) => Math.round(o)).join(",")})`);
+    }
+  }
   return hits;
 }
