@@ -1,5 +1,9 @@
 name: test
 
+permissions:
+  contents: read
+  pull-requests: write
+
 # The required automated gate (#41). Runs on every push and PR: the three no-browser suites
 # (endpoint contract, escaping, async request state), one look's model/flow/layout/a11y checks,
 # and the free deterministic eval. No dependencies to install (this project has none), no build
@@ -40,3 +44,19 @@ jobs:
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: npm test
+
+      - name: Paid production smoke after #130
+        run: node scripts/evals/context-after-main-smoke.mjs | tee /tmp/post130.txt
+
+      - name: Post smoke metrics
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'Post-#130 production smoke:'
+            echo '```json'
+            cat /tmp/post130.txt 2>/dev/null || true
+            echo '```'
+          } > /tmp/post130-comment.md
+          gh pr comment 134 --body-file /tmp/post130-comment.md
