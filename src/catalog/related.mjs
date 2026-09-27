@@ -59,9 +59,34 @@ async function tmdbRelated(item, env, fetchImpl) {
   return cachedValue(`related:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
 }
 
+const GENERIC_BOOK_SUBJECT = /^(fiction|literature|books?|reading|bestsellers?|new york times bestsellers?|nyt bestsellers?|protected daisy|accessible book)$/i;
+
+function normalizeBookSubject(value) {
+  return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function meaningfulBookSubjects(values = []) {
+  return values
+    .map((value) => String(value ?? "").trim())
+    .filter((value) => value && value.length >= 3 && !GENERIC_BOOK_SUBJECT.test(value))
+    .filter((value, index, rows) => rows.findIndex((other) => normalizeBookSubject(other) === normalizeBookSubject(value)) === index);
+}
+
+function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
+  const source = new Set(meaningfulBookSubjects(sourceSubjects).map(normalizeBookSubject));
+  if (!source.size) return false;
+  const candidate = meaningfulBookSubjects(candidateSubjects).map(normalizeBookSubject);
+  const overlap = candidate.filter((subject) => source.has(subject)).length;
+  // If the source only has one useful subject, that exact subject is the best signal available.
+  // With richer metadata, require at least two meaningful overlaps so one loose tag cannot create
+  // an absurd relationship like Atomic Habits from The Way of Kings.
+  return overlap >= Math.min(2, source.size);
+}
+
 async function openLibraryRelated(item, env, fetchImpl) {
   if (item.provider !== "openlibrary") return [];
-  const subject = item.genres?.find(Boolean);
+  const sourceSubjects = meaningfulBookSubjects(item.genres ?? []);
+  const subject = sourceSubjects[0];
   if (!subject) return [];
   const load = async () => {
     const fields = "key,title,author_name,first_publish_year,cover_i,subject";
@@ -69,7 +94,10 @@ async function openLibraryRelated(item, env, fetchImpl) {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
     });
     if (!response.ok) return [];
-    return ((await response.json()).docs ?? []).slice(0, 12).map(openLibraryItem);
+    return ((await response.json()).docs ?? [])
+      .filter((row) => openLibraryCandidateIsRelated(sourceSubjects, row.subject ?? []))
+      .slice(0, 12)
+      .map(openLibraryItem);
   };
   if (fetchImpl !== fetch) return load();
   return cachedValue(`related:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });

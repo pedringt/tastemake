@@ -16,6 +16,7 @@ const { setStatement } = await import("../../src/model/statements.js");
 const { saveBlindSpot, patternsFor } = await import("../../src/model/blindspots.js");
 const { startTastebreak, toggleTastebreakPattern, setTastebreakNote, saveTastebreak } = await import("../../src/model/tastebreak.js");
 const { esc } = await import("../../src/lib/html.js");
+const { sanitizeRecommendationCopy } = await import("../../src/lib/recommendation-copy.js");
 
 const PAYLOAD = `<img src=x onerror="alert(1)">`;
 const ATTR = `" onmouseover="alert(2)`;
@@ -30,6 +31,13 @@ check("esc() turns every dangerous character into an entity", esc(`<>&"'`) === "
 check("esc() leaves ordinary text alone", esc("Everything Everywhere All at Once") === "Everything Everywhere All at Once");
 check("esc() handles null and undefined", esc(null) === "" && esc(undefined) === "");
 
+// #129: internal evidence refs are grounding metadata, never user-facing copy.
+for (const ref of ["ev:openlibrary-book-OL8369445W", "ev:tmdb-movie-12345", "ev:igdb-game-67890"]) {
+  const cleaned = sanitizeRecommendationCopy(`A useful connection **(${ref}).**`);
+  check(`recommendation copy hides ${ref.split(":")[1].split("-")[0]} evidence ref`, cleaned === "A useful connection", cleaned);
+}
+check("citation-only copy becomes empty", sanitizeRecommendationCopy("**(ev:tmdb-movie-123).**") === "");
+
 // hostile data in every untrusted slot
 const nasty = makeCustomItem(`${PAYLOAD} Title`, "movie");
 nasty.about = `${PAYLOAD} about`;
@@ -39,7 +47,7 @@ applySearchAction(state, nasty, "loved");
 state.modelHypotheses = hypotheses;
 const [first, second, third] = recommendations;
 // a model wrote these: the pick reason and, later, hypothesis text
-state.recommendationSets = [[{ ...first, reason: `${PAYLOAD} why`, about: `${PAYLOAD} about`, title: `${PAYLOAD} pick` }, second, third]];
+state.recommendationSets = [[{ ...first, reason: `${PAYLOAD} why **(ev:tmdb-movie-999).**`, about: `${PAYLOAD} about`, title: `${PAYLOAD} pick` }, second, third]];
 applySearchAction(state, second, "bookmark");
 applySearchAction(state, third, "disliked");
 saveBlindSpot(state, third.id, { broken: [hypotheses[0].id], reasons: ["tone"] });
@@ -70,6 +78,7 @@ for (const [name, render] of Object.entries(screens)) {
   check(`${name}: the payload is present but escaped`, !html.includes(PAYLOAD) && (html.includes(ESCAPED) || !html.includes("onerror")), "");
   check(`${name}: no unescaped quote can break out of an attribute`, !html.includes(ATTR));
   check(`${name}: ordinary copy still renders`, html.length > 200);
+  if (name === "recommendations") check("recommendations: internal evidence refs never render", !html.includes("ev:tmdb-movie-999"), html);
 }
 
 // profile remains safe when its presentation state changes
