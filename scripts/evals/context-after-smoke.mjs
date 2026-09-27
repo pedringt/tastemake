@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
-const endpoint = "https://tastemake-git-recommendation-context-and-copy-120-129-cairn10.vercel.app/api/recommendations?_vercel_share=YFt4gF2mjh7hJdz06hS2ezvcWZdsCXmt";
+const previewRoot = "https://tastemake-git-recommendation-context-and-copy-120-129-cairn10.vercel.app";
+const shareUrl = `${previewRoot}/?_vercel_share=YFt4gF2mjh7hJdz06hS2ezvcWZdsCXmt`;
+const endpoint = `${previewRoot}/api/recommendations`;
+const authResponse = await fetch(shareUrl, { redirect: "manual" });
+const previewCookie = authResponse.headers.get("set-cookie")?.split(";")[0] ?? "";
+if (!previewCookie) throw new Error(`preview auth did not return a cookie (status ${authResponse.status})`);
 
 const favorite = {
   id: "openlibrary-book-OL-WOK",
@@ -67,7 +72,7 @@ for (let run = 1; run <= 3; run += 1) {
   const started = Date.now();
   const response = await fetch(endpoint, {
     method:"POST",
-    headers:{"content-type":"application/json"},
+    headers:{"content-type":"application/json",cookie:previewCookie},
     body:JSON.stringify({state})
   });
   const payload = await response.json();
