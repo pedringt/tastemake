@@ -37,10 +37,26 @@ export function isConfigured(env = process.env) {
 // of the underlying driver's own return shape. Throws on a real DB/query error — callers that want
 // graceful degradation (e.g. the write-behind canonicalization in providers.mjs/related.mjs) are
 // responsible for catching, exactly like they already do around provider fetches.
-export async function query(text, params = [], { env = process.env } = {}) {
+//
+// `sqlImpl` is a test-only seam: passing it skips `sqlFor`/the real driver entirely and calls
+// `sqlImpl(text, params)` directly. This exists because the offline canonical-store tests mock at
+// a higher level (an injected `query` function) and never actually exercised this module's real
+// call convention against the driver -- which is exactly how a real bug shipped and sat live in
+// production silently swallowing every write until it was caught by hand. A test that passes a
+// plain callable fake (mirroring `neon()`'s actual shape: callable, no `.query()` method) now
+// exercises this exact call site and would have failed loudly instead.
+export async function query(text, params = [], { env = process.env, sqlImpl } = {}) {
+  if (sqlImpl) {
+    const result = await sqlImpl(text, params);
+    return Array.isArray(result) ? result : (result?.rows ?? []);
+  }
   const url = env.TASTEMAKE_DATABASE_URL;
   if (!url) throw new Error("TASTEMAKE_DATABASE_URL is not configured");
+  // The `neon()` client is itself the callable query function (`sql(text, params)`) -- it has no
+  // `.query()` method. Verified live on production: every write-behind upsert was throwing
+  // "sql.query is not a function" and getting silently swallowed by the caller's own catch handler,
+  // so rows were never landing despite requests succeeding and no visible user-facing error.
   const sql = await sqlFor(url);
-  const result = await sql.query(text, params);
+  const result = await sql(text, params);
   return Array.isArray(result) ? result : (result?.rows ?? []);
 }
