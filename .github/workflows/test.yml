@@ -45,8 +45,11 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: npm test
 
-      - name: Paid context smoke eval (AFTER #130)
-        run: node scripts/evals/context-after-smoke.mjs | tee /tmp/after-eval.txt
+      - name: Paid direct model eval (AFTER #130)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TASTEMAKE_AI_MODEL: claude-sonnet-5
+        run: node scripts/evals/context-after-direct.mjs | tee /tmp/after-eval.txt
 
       - name: Post after-eval metrics
         if: always()
@@ -54,7 +57,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           {
-            echo 'After-context smoke eval output:'
+            echo 'After-context direct eval output:'
             echo '```json'
             cat /tmp/after-eval.txt 2>/dev/null || true
             echo '```'
