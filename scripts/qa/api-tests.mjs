@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Free, no-network tests for the real-catalog recommendation endpoint.
 
-import handler, { liveConfig, produceRecommendations } from "../../api/recommendations.mjs";
+import handler, { buildPickPrompt, liveConfig, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
 
 let passed=0;
 const failures=[];
@@ -86,6 +86,57 @@ eq("valid model ranking is used",out.source,"model");
 check("model picks keep real provider ids",out.picks.every(p=>p.provider==="tmdb"));
 check("model picks carry validated citations",out.picks.every(p=>p.ai?.cites?.includes(`ev:${favorite.id}`)));
 eq("model request is reported as paid",out.meta.paidCallMade,true);
+
+// #120: keep full history in product state/validation, but send a bounded, compact, experienced-only
+// working set to the ranking model. This is the scaling guard for a Library that can grow indefinitely.
+{
+  const manyEvidence = Array.from({ length: 40 }, (_, i) => ({
+    ref: `ev:test-${i}`,
+    itemId: `test-${i}`,
+    title: `Evidence ${i}`,
+    type: i % 2 ? "movie" : "book",
+    domains: [i % 2 ? "watch" : "read"],
+    kind: i % 7 === 0 ? "experienced-negative" : i % 5 === 0 ? "experienced-strong-positive" : "experienced-positive",
+    class: "experienced",
+    polarity: i % 7 === 0 ? -1 : 1,
+    countsAsTaste: true,
+    weight: i % 7 === 0 ? -2 : 1.25,
+    authority: "user",
+    context: null,
+    source: "recommendations"
+  }));
+  manyEvidence.push({
+    ref:"ev:intent-only",itemId:"intent-only",title:"Saved only",type:"movie",domains:["watch"],
+    kind:"saved",class:"intent",polarity:1,countsAsTaste:false,weight:0,authority:"user",context:null,source:"recommendations"
+  });
+  const ctx = {
+    evidence: manyEvidence,
+    candidates: [
+      {id:"c1",title:"Candidate 1",type:"movie",domains:["watch"],about:"x",hypotheses:[],provider:"tmdb",providerId:"1",year:2020,genres:["Drama"]},
+      {id:"c2",title:"Candidate 2",type:"book",domains:["read"],about:"x",hypotheses:[],provider:"openlibrary",providerId:"OL1W",year:2020,genres:["Fiction"]}
+    ],
+    curveball:true,statements:[],contexts:[]
+  };
+  const selected = selectPromptEvidence(ctx);
+  check("prompt evidence is bounded", selected.length <= 18, String(selected.length));
+  check("prompt evidence excludes intent-only history", selected.every((row) => row.class === "experienced"), selected.map((row) => row.kind).join(","));
+  check("prompt evidence keeps represented domains", selected.some((row) => row.domains.includes("watch")) && selected.some((row) => row.domains.includes("read")));
+  const prompt = buildPickPrompt(ctx, 2);
+  check("prompt omits redundant evidence fields", !prompt.includes('"authority":"user"') && !prompt.includes('"countsAsTaste"') && !prompt.includes('"itemId":"test-'));
+  check("prompt excludes saved-only evidence", !prompt.includes("ev:intent-only"));
+}
+
+// #129: structured cites stay intact, but an internal evidence id echoed into natural-language why
+// must be stripped before the response reaches a card.
+{
+  const leaked = goodPicks().map((pick, i) => i === 0
+    ? { ...pick, why:`Because Favorite Film worked for you **(${pick.cites[0]}).**` }
+    : pick);
+  const result = await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(modelSays(leaked))});
+  eq("citation leak: valid model output is still usable", result.source, "model");
+  check("citation leak: user-facing reason hides internal ref", !result.picks[0].reason.includes("ev:"), result.picks[0].reason);
+  check("citation leak: structured cite remains available", result.picks[0].ai?.cites?.includes(`ev:${favorite.id}`));
+}
 
 // #120: stage-boundary timing instrumentation must fire for both the retrieval and live-AI
 // paths, log server-side only in the sanitized style used elsewhere, and never leak the prompt,
