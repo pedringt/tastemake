@@ -198,6 +198,39 @@ function logStage(stage, ms, extra = {}) {
   console.info("[tastemake-recommendations-timing]", JSON.stringify({ stage, ms, ...extra }));
 }
 
+// #120 diagnosis only: count characters by prompt section without logging any prompt/user/catalog text.
+// These component sizes plus framingChars equal promptChars.
+function promptSizeBreakdown(ctx, count, prompt) {
+  const candidates = ctx.candidates.map(({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres }) => ({
+    id, title, type, domains, about, hypotheses, provider, providerId, year, genres
+  }));
+  const fixedChars = [
+    "You are the recommendation interpreter inside Tastemake.",
+    "The product, not you, decides what is evidence, which candidates are eligible, and what state may change.",
+    `Choose exactly ${count} items from candidates and return JSON only in this shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."],"tests":null,"kind":"pick"}]}.`,
+    "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; interest/bookmarks/untried reactions are not taste evidence; tests must be null or one of that candidate's hypothesis ids; never use a tests pattern the user marked not-me; never contradict a user-confirmed pattern statement; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; at most one curveball, and none when curveball is false; explain what the pick tests in specific plain English; call a pick a curveball, in kind or in why, only for that one exploratory pick, and set kind to \"curveball\" whenever why calls it one — every other pick keeps kind \"pick\" and its why should not describe itself as a curveball.",
+    "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
+  ].join("\n\n").length;
+  const evidenceChars = JSON.stringify(ctx.evidence).length;
+  const candidateChars = JSON.stringify(candidates).length;
+  const statementsChars = JSON.stringify(ctx.statements).length;
+  const contextsChars = JSON.stringify(ctx.contexts).length;
+  const controlChars = JSON.stringify(ctx.curveball).length;
+  const measuredChars = fixedChars + evidenceChars + candidateChars + statementsChars + contextsChars + controlChars;
+  return {
+    promptChars: prompt.length,
+    fixedChars,
+    evidenceChars,
+    candidateChars,
+    statementsChars,
+    contextsChars,
+    controlChars,
+    framingChars: prompt.length - measuredChars,
+    candidateCount: candidates.length,
+    evidenceCount: Array.isArray(ctx.evidence) ? ctx.evidence.length : 0
+  };
+}
+
 export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch } = {}) {
   const state = hydrateState(rawState);
 
@@ -221,7 +254,10 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     const prompt = buildPickPrompt(ctx, candidates.length);
     // #120 follow-up: known even if the call below errors/times out, so a large prompt isn't ruled
     // out as a cause just because we never got a usage.input_tokens back for a failed call.
-    console.info("[tastemake-recommendations-timing]", JSON.stringify({ stage: "promptSize", promptChars: prompt.length }));
+    console.info("[tastemake-recommendations-timing]", JSON.stringify({
+      stage: "promptSize",
+      ...promptSizeBreakdown(ctx, candidates.length, prompt)
+    }));
     started = Date.now();
     const model = await callAnthropic({ prompt, env, fetchImpl });
     // The live-AI call itself is the dominant cost in every measured production request (~85-95% of
