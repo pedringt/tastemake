@@ -8,6 +8,36 @@ import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
 
+// #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
+// with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
+// ending in a naked "…" partway through a word or clause) while the card's fixed text-box height left
+// unused space below. Truncating the *string* here, at a sentence or word boundary, means what's
+// rendered is always a complete-reading fragment — CSS is no longer responsible for hiding overflow.
+// Limits are generous enough that most real rationale/synopsis copy is untouched; they exist only to
+// stop one verbose card from growing enormous relative to the rest of a row (the direction explicitly
+// warns against removing all limits).
+const RATIONALE_MAX_CHARS = 220;
+const ABOUT_MAX_CHARS = 130;
+
+export function truncateCopy(text, maxChars) {
+  const value = String(text ?? "").trim();
+  if (value.length <= maxChars) return value;
+
+  // Prefer ending at a sentence boundary within the limit; a run-on rationale/synopsis reads better
+  // cut cleanly after a full sentence than mid-sentence with an ellipsis, provided that boundary isn't
+  // so early it discards most of the allowed length.
+  const window = value.slice(0, maxChars + 1);
+  const lastSentenceEnd = Math.max(window.lastIndexOf(". "), window.lastIndexOf("! "), window.lastIndexOf("? "));
+  if (lastSentenceEnd > maxChars * 0.4) return value.slice(0, lastSentenceEnd + 1).trim();
+
+  // Otherwise fall back to the last whole word boundary before the limit, so truncation never lands
+  // mid-word.
+  const truncated = value.slice(0, maxChars);
+  const lastSpace = truncated.lastIndexOf(" ");
+  const clean = (lastSpace > maxChars * 0.6 ? truncated.slice(0, lastSpace) : truncated).replace(/[,;:.\-\s]+$/, "");
+  return `${clean}…`;
+}
+
 export function ratingLabel(value) {
   return ({
     more: "More like this",
@@ -252,14 +282,23 @@ function recommendationCard(item, index, total) {
 
         <div class="editorial-title-row">
           <h3>${esc(item.title)}</h3>
+        </div>
+
+        <!-- #121: the status chip gets its own reserved row directly under the title, instead of
+             flowing inline after it. Titles of different heights (one line vs. two/three) no longer
+             move the chip's vertical position, and a card with no status still reserves the same
+             band so a row of cards stays visually level. -->
+        <div class="editorial-status-row">
           ${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}
         </div>
 
-        <!-- #95: rationale-first — Tastemake's "why this fits" is the primary card copy, shown
+        <!-- #95/#121: rationale-first — Tastemake's "why this fits" is the primary card copy, shown
              up front rather than only behind the "Why this one?" trigger. The trigger still opens
-             the fuller pattern context (curveball caveat, tested-pattern label). -->
-        <p class="editorial-rationale">${esc(item.reason)}</p>
-        <p class="editorial-about">${esc(item.about)}</p>
+             the fuller pattern context (curveball caveat, tested-pattern label). The rationale and
+             synopsis strings are truncated (word/sentence boundary) at the data layer below, not by
+             a CSS clip, so nothing here can end mid-thought. -->
+        <p class="editorial-rationale">${esc(truncateCopy(item.reason, RATIONALE_MAX_CHARS))}</p>
+        <p class="editorial-about">${esc(truncateCopy(item.about, ABOUT_MAX_CHARS))}</p>
 
         <div class="editorial-why">
           <button
