@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const endpoint = "https://tastemake-git-recommendation-context-and-copy-120-129-cairn10.vercel.app/api/recommendations";
+const endpoint = "https://tastemake-git-recommendation-context-and-copy-120-129-cairn10.vercel.app/api/recommendations?_vercel_share=YFt4gF2mjh7hJdz06hS2ezvcWZdsCXmt";
 
 const favorite = {
   id: "openlibrary-book-OL-WOK",
