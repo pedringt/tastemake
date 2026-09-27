@@ -226,6 +226,9 @@ export function renderLibrary() {
         <p class="kicker">Your stuff</p>
         <h1>Library.</h1>
         <p class="lede">Discovery happens in Recommendations. This is what you've kept: things saved for later, and things you've already tried.</p>
+        <button class="button button-secondary library-search-open" type="button" data-action="open-search">
+          Search the catalog<span class="library-search-open-hint">Add or update a title. Looking it up never changes anything on its own.</span>
+        </button>
       </div>
 
       <div class="library-tabs" role="tablist" aria-label="Library view">
