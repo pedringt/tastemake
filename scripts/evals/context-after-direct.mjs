@@ -3,10 +3,6 @@ import { buildContext } from "../../src/ai/context.js";
 import { buildPickPrompt, callAnthropic } from "../../api/recommendations.mjs";
 import { validatePicks } from "../../src/ai/validate.js";
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.log(JSON.stringify({ error: "ANTHROPIC_API_KEY secret unavailable" }, null, 2));
-  process.exit(2);
-}
 process.env.TASTEMAKE_AI_MODEL ||= "claude-sonnet-5";
 
 const favorite = {
@@ -46,6 +42,18 @@ const candidates=Array.from({length:12},(_,i)=>({
 }));
 const ctx=buildContext(state,candidates);
 const prompt=buildPickPrompt(ctx,6);
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.log(JSON.stringify({
+    dryRun: true,
+    reason: "ANTHROPIC_API_KEY secret unavailable",
+    promptChars: prompt.length,
+    estimatedInputTokens: Math.ceil(prompt.length / 4),
+    totalEvidence: ctx.evidence.length,
+    promptEvidenceCap: 18,
+    candidateCount: ctx.candidates.length
+  }, null, 2));
+  process.exit(0);
+}
 const results=[];
 for(let run=1;run<=3;run++){
   const started=Date.now();
