@@ -1,6 +1,12 @@
 .library-masthead { margin:12px 0 22px; }
 .library-masthead h1 { max-width:900px; }
 
+/* #122: a compact search entry point inside Library, not a second onboarding-style flow. It just
+   opens the existing shared search dialog (#search-dialog), so it carries no state of its own and
+   never disturbs the Saved/Tried view behind it. */
+.library-search-open { display:flex; flex-direction:column; align-items:flex-start; gap:2px; margin-top:14px; max-width:360px; text-align:left; }
+.library-search-open-hint { font-weight:400; font-size:0.82em; opacity:0.75; }
+
 /* #94: Saved / Tried tabs inside a single Library screen. Saved is the default view. */
 .library-tabs { display:flex; gap:8px; margin:0 0 18px; }
 .library-tab {

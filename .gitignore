@@ -1,3 +1,6 @@
 # Live eval reports are committed deliberately, after a real reviewed run (a blocked or dry run
 # would otherwise leave a report that reads like a model-quality result).
 scripts/evals/reports/live-*
+
+node_modules/
+package-lock.json
