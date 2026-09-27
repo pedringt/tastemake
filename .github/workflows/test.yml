@@ -1,5 +1,9 @@
 name: test
 
+permissions:
+  contents: read
+  pull-requests: write
+
 # The required automated gate (#41). Runs on every push and PR: the three no-browser suites
 # (endpoint contract, escaping, async request state), one look's model/flow/layout/a11y checks,
 # and the free deterministic eval. No dependencies to install (this project has none), no build
@@ -42,4 +46,17 @@ jobs:
         run: npm test
 
       - name: Paid context smoke eval (AFTER #130)
-        run: node scripts/evals/context-after-smoke.mjs
+        run: node scripts/evals/context-after-smoke.mjs | tee /tmp/after-eval.txt
+
+      - name: Post after-eval metrics
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'After-context smoke eval output:'
+            echo '```json'
+            cat /tmp/after-eval.txt 2>/dev/null || true
+            echo '```'
+          } > /tmp/after-comment.md
+          gh pr comment 133 --body-file /tmp/after-comment.md
