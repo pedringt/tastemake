@@ -103,18 +103,21 @@ check("grounded retrieval excludes the evidence item itself", !related.some((x) 
     areas:{watch:true,read:true,play:true},
     recommendationFilter:"read"
   };
-  let requestedUrl = "";
+  const requestedUrls = [];
   const fantasyFetch = async (url) => {
-    requestedUrl = String(url);
+    requestedUrls.push(String(url));
     return {ok:true,json:async()=>({docs:[
       {key:"/works/OL-ATOMIC",title:"Habit Book",author_name:["Author A"],first_publish_year:2018,subject:["New York Times bestseller","Self-help","Habit"]},
       {key:"/works/OL-GOOD",title:"Good Fantasy Neighbor",author_name:["Author B"],first_publish_year:2019,subject:["Fantasy","Epic fiction","Magic"]}
     ]})};
   };
   const fantasyRelated = await retrieveCatalogCandidates(fantasyState,{env,fetchImpl:fantasyFetch});
-  check("Open Library related query skips broad bestseller metadata", decodeURIComponent(requestedUrl).includes('subject:"Fantasy"'), requestedUrl);
+  // #131 follow-up: retrieval now queries more than one meaningful subject (top 3), not just the
+  // first, so a healthy pool doesn't collapse to an exact-overlap gate on one brittle query.
+  check("Open Library related retrieval queries multiple meaningful subjects", ["Fantasy","Epic fiction","Magic"].every((s) => requestedUrls.some((u) => decodeURIComponent(u).includes(`subject:"${s}"`))), requestedUrls.join(" | "));
+  check("Open Library related query skips broad bestseller metadata", !requestedUrls.some((u) => decodeURIComponent(u).includes('subject:"New York Times bestseller"')), requestedUrls.join(" | "));
   check("weak one-tag book relation is filtered", !fantasyRelated.some((item)=>item.title==="Habit Book"), fantasyRelated.map((item)=>item.title).join(","));
-  check("multi-subject related book remains eligible", fantasyRelated.some((item)=>item.title==="Good Fantasy Neighbor"), fantasyRelated.map((item)=>item.title).join(","));
+  check("multi-subject related book remains eligible and marked strong", fantasyRelated.some((item)=>item.title==="Good Fantasy Neighbor" && item.relationStrength==="strong"), fantasyRelated.map((item)=>`${item.title}:${item.relationStrength}`).join(","));
 }
 
 // #107: recommendation style must survive serialization and change candidate selection.

@@ -84,6 +84,47 @@ function identifierNamespace(item, mediaType) {
   return `${item.provider}:${mediaType}`;
 }
 
+// #135 "prefer anchors with richer metadata": a best-effort batch lookup of previously-stored
+// metadata_completeness for a set of provider items, used only to prefer richer ANCHORS during
+// candidate retrieval (src/catalog/related.mjs) -- it never returns candidates and is not the
+// "read candidates from the canonical store" swap that #135 explicitly scopes to later work.
+// Injectable/mockable the same way as upsertCanonicalItem/canonicalizeWriteBehind above. Must
+// degrade gracefully and add no meaningful latency: unconfigured, empty, slow or erroring all
+// resolve to an empty Map rather than throwing, so a caller can always treat "no data" the same
+// as "no preference" and never block retrieval on this.
+export async function lookupMetadataCompleteness(items, { env = process.env, query: queryImpl, timeoutMs = 250 } = {}) {
+  const runQuery = queryImpl ?? ((text, params) => defaultQuery(text, params, { env }));
+  if (!queryImpl && !isConfigured(env)) return new Map();
+
+  const identifiers = (items ?? [])
+    .filter((entry) => entry?.id && entry?.provider && entry?.providerId && MEDIA_TYPES.has(entry.type))
+    .map((entry) => ({ id: entry.id, provider: identifierNamespace(entry, entry.type), providerId: String(entry.providerId) }));
+  if (!identifiers.length) return new Map();
+
+  try {
+    const withTimeout = (promise) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("metadata-completeness lookup timed out")), timeoutMs))
+    ]);
+    const rows = await withTimeout(runQuery(
+      `select ii.provider, ii.provider_id, i.metadata_completeness
+         from item_identifiers ii
+         join items i on i.id = ii.item_id
+        where (ii.provider, ii.provider_id) in (${identifiers.map((_, index) => `($${index * 2 + 1}, $${index * 2 + 2})`).join(", ")})`,
+      identifiers.flatMap((entry) => [entry.provider, entry.providerId])
+    ));
+    const result = new Map();
+    for (const entry of identifiers) {
+      const row = (rows ?? []).find((candidate) => candidate.provider === entry.provider && candidate.provider_id === entry.providerId);
+      if (row?.metadata_completeness != null) result.set(entry.id, Number(row.metadata_completeness));
+    }
+    return result;
+  } catch (error) {
+    console.info("[tastemake-canonical]", JSON.stringify({ error: error?.message || "completeness lookup failed" }));
+    return new Map();
+  }
+}
+
 // Upserts one provider item into the canonical store. Resolves an existing canonical item by
 // provider identity when known, otherwise inserts a new one. Never writes `traits`. Returns the
 // canonical item id, or null when there is nothing to write (unsupported shape, no provider id, or

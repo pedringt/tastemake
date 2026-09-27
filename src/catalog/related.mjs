@@ -1,7 +1,7 @@
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { cachedValue } from "../server/cache.mjs";
-import { canonicalizeWriteBehind } from "./canonical-store.mjs";
+import { canonicalizeWriteBehind, lookupMetadataCompleteness } from "./canonical-store.mjs";
 
 const uniq = (items) => {
   const seen = new Set();
@@ -73,35 +73,69 @@ function meaningfulBookSubjects(values = []) {
     .filter((value, index, rows) => rows.findIndex((other) => normalizeBookSubject(other) === normalizeBookSubject(value)) === index);
 }
 
-function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
+// #131 follow-up: overlap is now a graded signal rather than one hard pass/fail gate. A candidate
+// with 2+ meaningful subject overlaps (or, when the source itself only ever offers one meaningful
+// subject, that one overlap -- it's the best signal available) is "strong" evidence. A candidate
+// with exactly one meaningful overlap against a richer source is "weak" -- still eligible, so a
+// good neighbor doesn't get dropped purely because Open Library's taxonomy is noisy/inconsistent,
+// but ranked below strong matches so it doesn't crowd out clearly-related books. Zero meaningful
+// overlap (including "only a generic/noisy label in common", since GENERIC_BOOK_SUBJECT is already
+// stripped out of both sides before this runs) is rejected outright.
+function openLibraryOverlapStrength(sourceSubjects, candidateSubjects) {
   const source = new Set(meaningfulBookSubjects(sourceSubjects).map(normalizeBookSubject));
-  if (!source.size) return false;
+  if (!source.size) return null;
   const candidate = meaningfulBookSubjects(candidateSubjects).map(normalizeBookSubject);
   const overlap = candidate.filter((subject) => source.has(subject)).length;
-  // If the source only has one useful subject, that exact subject is the best signal available.
-  // With richer metadata, require at least two meaningful overlaps so one loose tag cannot create
-  // an absurd relationship like Atomic Habits from The Way of Kings.
-  return overlap >= Math.min(2, source.size);
+  if (overlap <= 0) return null;
+  return overlap >= Math.min(2, source.size) ? "strong" : "weak";
 }
 
-async function openLibraryRelated(item, env, fetchImpl) {
-  if (item.provider !== "openlibrary") return [];
-  const sourceSubjects = meaningfulBookSubjects(item.genres ?? []);
-  const subject = sourceSubjects[0];
-  if (!subject) return [];
+// Kept for callers/tests that only need the old boolean pass/fail shape.
+function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
+  return openLibraryOverlapStrength(sourceSubjects, candidateSubjects) !== null;
+}
+
+async function openLibrarySubjectSearch(subject, env, fetchImpl) {
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject";
   const load = async () => {
-    const fields = "key,title,author_name,first_publish_year,cover_i,subject";
     const response = await fetchImpl(`https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
     });
     if (!response.ok) return [];
-    return ((await response.json()).docs ?? [])
-      .filter((row) => openLibraryCandidateIsRelated(sourceSubjects, row.subject ?? []))
-      .slice(0, 12)
-      .map(openLibraryItem);
+    return (await response.json()).docs ?? [];
   };
   if (fetchImpl !== fetch) return load();
   return cachedValue(`related:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });
+}
+
+// #131/#135: query more than one meaningful subject when the source book has them (the top 2-3,
+// each a separate Open Library subject-search query run concurrently, matching the existing
+// Promise.all fan-out pattern used elsewhere in this file) instead of just `sourceSubjects[0]`.
+// One brittle single-subject query was the root cause of a healthy 12-row pool collapsing to 4
+// once the post-#130 overlap gate ran (#131). Results across queries are merged/deduped by Open
+// Library work key, then ranked by overlap strength (see openLibraryOverlapStrength above) so the
+// combined pool stays large without readmitting the Atomic-Habits-style false positive #130 fixed.
+async function openLibraryRelated(item, env, fetchImpl) {
+  if (item.provider !== "openlibrary") return [];
+  const sourceSubjects = meaningfulBookSubjects(item.genres ?? []);
+  const querySubjects = sourceSubjects.slice(0, 3);
+  if (!querySubjects.length) return [];
+
+  const rows = (await Promise.all(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl)))).flat();
+
+  const byKey = new Map();
+  for (const row of rows) {
+    const key = String(row?.key ?? "");
+    if (!key || byKey.has(key)) continue;
+    const strength = openLibraryOverlapStrength(sourceSubjects, row.subject ?? []);
+    if (!strength) continue;
+    byKey.set(key, { row, strength });
+  }
+
+  return [...byKey.values()]
+    .sort((a, b) => (a.strength === b.strength ? 0 : a.strength === "strong" ? -1 : 1))
+    .slice(0, 20)
+    .map(({ row, strength }) => ({ ...openLibraryItem(row), relationStrength: strength }));
 }
 
 async function igdbRelated(item, env, fetchImpl) {
@@ -127,9 +161,25 @@ async function igdbRelated(item, env, fetchImpl) {
   return cachedValue(`related:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
 }
 
+// #135 "prefer anchors with richer metadata": a best-effort reorder of evidence items by their
+// canonical-store metadata_completeness, within whatever domain-balancing scheme the caller already
+// applies (this only changes ORDER within a domain, never which domains are represented). Scoped
+// down per #135's own caveat -- a short-timeout, no-op-on-any-failure lookup, not a rearchitecture
+// of anchor selection. A missing/unconfigured/slow store, or any error, leaves input order intact.
+async function preferRicherAnchors(items, { env, fetchImpl }) {
+  if (!items.length) return items;
+  try {
+    const completeness = await lookupMetadataCompleteness(items, { env });
+    if (!completeness.size) return items;
+    return [...items].sort((a, b) => (completeness.get(b.id) ?? -1) - (completeness.get(a.id) ?? -1));
+  } catch {
+    return items;
+  }
+}
+
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30 } = {}) {
   const mode = state.recommendationFilter ?? "all";
-  const allEvidence = externalEvidenceItems(state);
+  const allEvidence = await preferRicherAnchors(externalEvidenceItems(state), { env, fetchImpl });
   const evidenceItems = (mode === "all"
     ? balanceDomains(allEvidence, "all")
     : allEvidence.filter((item) => item.domains?.includes(mode))
