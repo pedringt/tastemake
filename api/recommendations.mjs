@@ -2,12 +2,14 @@ import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
+import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
 
 const MAX_BODY_BYTES = 160_000;
 const MAX_OUTPUT_TOKENS = 2000;   // the cap has to cover any thinking tokens as well as the JSON itself
 const REQUEST_TIMEOUT_MS = 25_000;   // 12s was tripping on every real call; the function allows 30s
 const DEFAULT_VISITOR_LIMIT = 6;
 const DEFAULT_WINDOW_MS = 60_000;
+const MAX_PROMPT_EVIDENCE = 18;
 const rateBuckets = globalThis.__tastemakeAiRateBuckets ??= new Map();
 
 function parseBody(req) {
@@ -66,22 +68,84 @@ export function liveConfig(env = process.env) {
   return { enabled: reasons.length === 0, reasons, model: env.TASTEMAKE_AI_MODEL || null };
 }
 
-export function buildPickPrompt(ctx, count) {
-  const safeContext = {
-    evidence: ctx.evidence,
+function compactEvidenceRecord(record) {
+  return {
+    ref: record.ref,
+    title: record.title,
+    type: record.type ?? null,
+    domains: record.domains ?? [],
+    kind: record.kind,
+    polarity: record.polarity
+  };
+}
+
+function promptEvidencePriority(record) {
+  if (record.kind === "starter-favorite" || record.kind === "experienced-strong-positive") return 3;
+  if (record.kind === "experienced-negative") return 2;
+  if (record.kind === "experienced-positive") return 1;
+  return 0;
+}
+
+// #120: the full product history remains in state and in the validator context. The model does not need
+// every historical row on every ranking call. Curate a small experienced-evidence working set by the
+// domains represented in the current candidate pool, keeping strong anchors and counterexamples.
+export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
+  const all = (ctx.evidence ?? []).filter((record) => record?.class === "experienced");
+  if (all.length <= limit) return all;
+
+  const candidateDomains = [...new Set((ctx.candidates ?? []).flatMap((item) => item.domains ?? []))];
+  const relevant = candidateDomains.length
+    ? all.filter((record) => (record.domains ?? []).some((domain) => candidateDomains.includes(domain)))
+    : all;
+  const pool = relevant.length ? relevant : all;
+
+  const selected = [];
+  const seen = new Set();
+  const add = (record) => {
+    if (!record || seen.has(record.ref) || selected.length >= limit) return;
+    seen.add(record.ref);
+    selected.push(record);
+  };
+  const ranked = (records) => records
+    .map((record, index) => ({ record, index }))
+    .sort((a, b) => promptEvidencePriority(b.record) - promptEvidencePriority(a.record) || b.record.weight - a.record.weight || a.index - b.index)
+    .map(({ record }) => record);
+
+  // Give each represented domain a fair slice before the global fill so one large history area cannot
+  // crowd the others out. Four positive anchors + two negatives per domain is enough to ground a pick
+  // while preserving room for multiple domains.
+  for (const domain of candidateDomains) {
+    const rows = pool.filter((record) => (record.domains ?? []).includes(domain));
+    ranked(rows.filter((record) => record.polarity > 0)).slice(0, 4).forEach(add);
+    ranked(rows.filter((record) => record.polarity < 0)).slice(0, 2).forEach(add);
+  }
+
+  ranked(pool).forEach(add);
+  return selected.slice(0, limit);
+}
+
+function pickPromptPayload(ctx) {
+  return {
+    evidence: selectPromptEvidence(ctx).map(compactEvidenceRecord),
     candidates: ctx.candidates.map(({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres }) => ({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres })),
     curveball: ctx.curveball,
     statements: ctx.statements,
     contexts: ctx.contexts
   };
+}
+
+function pickPromptInstructions(count) {
   return [
     "You are the recommendation interpreter inside Tastemake.",
     "The product, not you, decides what is evidence, which candidates are eligible, and what state may change.",
     `Choose exactly ${count} items from candidates and return JSON only in this shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."],"tests":null,"kind":"pick"}]}.`,
-    "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; interest/bookmarks/untried reactions are not taste evidence; tests must be null or one of that candidate's hypothesis ids; never use a tests pattern the user marked not-me; never contradict a user-confirmed pattern statement; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; at most one curveball, and none when curveball is false; explain what the pick tests in specific plain English; call a pick a curveball, in kind or in why, only for that one exploratory pick, and set kind to \"curveball\" whenever why calls it one — every other pick keeps kind \"pick\" and its why should not describe itself as a curveball.",
-    "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON.",
-    `CONTEXT\n${JSON.stringify(safeContext)}`
+    "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; tests must be null or one of that candidate's hypothesis ids; never use a tests pattern the user marked not-me; never contradict a user-confirmed pattern statement; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; at most one curveball, and none when curveball is false; explain what the pick tests in specific plain English; internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; call a pick a curveball, in kind or in why, only for that one exploratory pick, and set kind to \"curveball\" whenever why calls it one — every other pick keeps kind \"pick\" and its why should not describe itself as a curveball.",
+    "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
   ].join("\n\n");
+}
+
+export function buildPickPrompt(ctx, count) {
+  return [pickPromptInstructions(count), `CONTEXT\n${JSON.stringify(pickPromptPayload(ctx))}`].join("\n\n");
 }
 
 // #28: about 60% of live calls were falling back to deterministic not because the model's answer was
@@ -158,7 +222,7 @@ function clientPicks(validated) {
     fit: pick.kind === "curveball" ? "Exploratory fit" : "Promising fit",
     prediction: "Worth testing",
     surprise: pick.kind === "curveball",
-    reason: pick.why,
+    reason: sanitizeRecommendationCopy(pick.why) || "Tastemake is testing this against things you've liked before.",
     ai: { cites: pick.cites, tests: pick.tests, kind: pick.kind, contract: pick.contract }
   }));
 }
@@ -201,21 +265,13 @@ function logStage(stage, ms, extra = {}) {
 // #120 diagnosis only: count characters by prompt section without logging any prompt/user/catalog text.
 // These component sizes plus framingChars equal promptChars.
 function promptSizeBreakdown(ctx, count, prompt) {
-  const candidates = ctx.candidates.map(({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres }) => ({
-    id, title, type, domains, about, hypotheses, provider, providerId, year, genres
-  }));
-  const fixedChars = [
-    "You are the recommendation interpreter inside Tastemake.",
-    "The product, not you, decides what is evidence, which candidates are eligible, and what state may change.",
-    `Choose exactly ${count} items from candidates and return JSON only in this shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."],"tests":null,"kind":"pick"}]}.`,
-    "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; interest/bookmarks/untried reactions are not taste evidence; tests must be null or one of that candidate's hypothesis ids; never use a tests pattern the user marked not-me; never contradict a user-confirmed pattern statement; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; at most one curveball, and none when curveball is false; explain what the pick tests in specific plain English; call a pick a curveball, in kind or in why, only for that one exploratory pick, and set kind to \"curveball\" whenever why calls it one — every other pick keeps kind \"pick\" and its why should not describe itself as a curveball.",
-    "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
-  ].join("\n\n").length;
-  const evidenceChars = JSON.stringify(ctx.evidence).length;
-  const candidateChars = JSON.stringify(candidates).length;
-  const statementsChars = JSON.stringify(ctx.statements).length;
-  const contextsChars = JSON.stringify(ctx.contexts).length;
-  const controlChars = JSON.stringify(ctx.curveball).length;
+  const payload = pickPromptPayload(ctx);
+  const fixedChars = pickPromptInstructions(count).length;
+  const evidenceChars = JSON.stringify(payload.evidence).length;
+  const candidateChars = JSON.stringify(payload.candidates).length;
+  const statementsChars = JSON.stringify(payload.statements).length;
+  const contextsChars = JSON.stringify(payload.contexts).length;
+  const controlChars = JSON.stringify(payload.curveball).length;
   const measuredChars = fixedChars + evidenceChars + candidateChars + statementsChars + contextsChars + controlChars;
   return {
     promptChars: prompt.length,
@@ -226,8 +282,9 @@ function promptSizeBreakdown(ctx, count, prompt) {
     contextsChars,
     controlChars,
     framingChars: prompt.length - measuredChars,
-    candidateCount: candidates.length,
-    evidenceCount: Array.isArray(ctx.evidence) ? ctx.evidence.length : 0
+    candidateCount: payload.candidates.length,
+    evidenceCount: payload.evidence.length,
+    totalEvidenceCount: Array.isArray(ctx.evidence) ? ctx.evidence.length : 0
   };
 }
 
