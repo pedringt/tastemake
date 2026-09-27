@@ -129,9 +129,13 @@ export function applyNoveltyGuard(candidates, evidenceItems = []) {
   const primary = [];
   const suppressed = [];
   for (const candidate of candidates) {
-    const against = candidate.relatedToId
-      ? evidenceItems.filter((item) => item.id === candidate.relatedToId)
-      : evidenceItems;
+    // Always check the full evidence set, not just whatever evidence item happened to generate
+    // this candidate via `relatedToId`. A candidate fetched as "related to X" can still be an
+    // obvious sequel/remake of a DIFFERENT evidence item Y (e.g. a provider's recommendations
+    // endpoint for one franchise entry surfacing a sibling of another entry the user separately
+    // favorited or reacted to). Narrowing to only X let that slip through across repeated "More
+    // recommendations" rounds once evidence accumulated beyond the original anchor (#92).
+    const against = evidenceItems;
 
     // User-declared series coverage is stronger than an individual-title reaction for discovery:
     // once they say they have experienced the series, do not keep surfacing sibling installments.

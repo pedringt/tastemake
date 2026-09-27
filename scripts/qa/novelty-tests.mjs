@@ -92,6 +92,65 @@ check("only one obvious franchise sibling occupies a recommendation batch", hobb
 check("a distinct candidate still fills the batch", hobbitBatch.primary.some((x) => x.id === unrelatedGenreMatch.id));
 const coveredSeries = applyNoveltyGuard([hobbit2, unrelatedGenreMatch], [{ ...hobbit1, seriesExperience: "loved-most" }]);
 check("explicit whole-series experience suppresses sibling installments", !coveredSeries.primary.some((x) => x.id === hobbit2.id));
+
+// #92 regression: repeated-round suppression must not depend on which specific evidence item
+// generated a candidate via `relatedToId`. A candidate fetched as "related to" one evidence item
+// (e.g. "The Hobbit", reacted to positively in an earlier round) can still be an obvious sequel of
+// a DIFFERENT evidence item (Fellowship, the original starter Favorite) -- the guard must check
+// the full evidence set, not just the one item that happened to produce the candidate.
+const repeatedRoundCandidate = { ...twoTowers, relatedToId: "evidence-hobbit" };
+const repeatedRoundEvidence = [
+  { ...fellowship, id: "evidence-fellowship" }, // original starter Favorite, round 1
+  { id: "evidence-hobbit", title: "The Hobbit: An Unexpected Journey" } // reacted-to in round 1, generated this round-2 candidate
+];
+const repeatedRoundGuard = applyNoveltyGuard([repeatedRoundCandidate, unrelatedGenreMatch], repeatedRoundEvidence);
+check(
+  "a repeated-round candidate is suppressed against the FULL evidence set, not only the item that generated it via relatedToId",
+  !repeatedRoundGuard.primary.some((x) => x.id === twoTowers.id)
+);
+check("...and a genuinely distinct candidate still fills that slot", repeatedRoundGuard.primary.some((x) => x.id === unrelatedGenreMatch.id));
+
+// Same scenario end-to-end through the shared retrieval path: round 1 the user favorited
+// Fellowship AND reacted positively to the Hobbit (from an earlier recommendation set). Round 2's
+// "More recommendations" re-fetches TMDb related candidates for ALL evidence, including the
+// Hobbit, whose recommendations happen to surface the Two Towers -- exactly the cross-anchor case
+// that slipped through before the fix.
+const repeatedRoundState = {
+  selectedFavorites: new Set(["tmdb-movie-1"]),
+  feedbackByRecommendation: { "tmdb-movie-30": { reaction: "loved" } },
+  recommendationSets: [],
+  customItems: {
+    "tmdb-movie-1": {
+      id: "tmdb-movie-1", provider: "tmdb", providerId: "1", title: "The Lord of the Rings: The Fellowship of the Ring",
+      type: "movie", domains: ["watch"], genres: ["18"], providerMeta: { genreIds: [18] }
+    },
+    "tmdb-movie-30": {
+      id: "tmdb-movie-30", provider: "tmdb", providerId: "30", title: "The Hobbit: An Unexpected Journey",
+      type: "movie", domains: ["watch"], genres: ["18"], providerMeta: { genreIds: [18] }
+    }
+  },
+  areas: { watch: true, read: true, play: true }
+};
+const repeatedRoundFetch = async (url) => {
+  if (String(url).includes("/movie/1/recommendations")) {
+    return { ok: true, json: async () => ({ results: [
+      { id: 3, title: "A Wholly Unrelated Discovery", overview: "Not a sequel.", release_date: "2019-06-01", poster_path: "/other.jpg", genre_ids: [18] }
+    ] }) };
+  }
+  if (String(url).includes("/movie/30/recommendations")) {
+    return { ok: true, json: async () => ({ results: [
+      { id: 2, title: "The Lord of the Rings: The Two Towers", overview: "Sequel.", release_date: "2002-12-18", poster_path: "/tt.jpg", genre_ids: [18] }
+    ] }) };
+  }
+  throw new Error(`unexpected related URL: ${url}`);
+};
+const repeatedRoundResult = await retrieveCatalogCandidates(repeatedRoundState, { env, fetchImpl: repeatedRoundFetch });
+check(
+  "end-to-end repeated-round retrieval also excludes the sequel surfaced via a different evidence item's relatedToId",
+  !repeatedRoundResult.some((x) => x.id === "tmdb-movie-2")
+);
+check("...and still fills the slot with the genuinely distinct candidate", repeatedRoundResult.some((x) => x.id === "tmdb-movie-3"));
+
 console.log(`novelty guard tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);
