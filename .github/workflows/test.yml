@@ -40,3 +40,8 @@ jobs:
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: npm test
+
+      - name: Paid endpoint eval (BEFORE #130)
+        run: |
+          node scripts/evals/run.mjs --producer endpoint --yes --pause 11000
+          cat scripts/evals/reports/endpoint-latest.md
