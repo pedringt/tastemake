@@ -218,9 +218,21 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length });
 
   try {
+    const prompt = buildPickPrompt(ctx, candidates.length);
+    // #120 follow-up: known even if the call below errors/times out, so a large prompt isn't ruled
+    // out as a cause just because we never got a usage.input_tokens back for a failed call.
+    console.info("[tastemake-recommendations-timing]", JSON.stringify({ stage: "promptSize", promptChars: prompt.length }));
     started = Date.now();
-    const model = await callAnthropic({ prompt: buildPickPrompt(ctx, candidates.length), env, fetchImpl });
-    logStage("liveAiCall", Date.now() - started, { model: model.model });
+    const model = await callAnthropic({ prompt, env, fetchImpl });
+    // The live-AI call itself is the dominant cost in every measured production request (~85-95% of
+    // total time). Logging real token counts (not just wall-clock ms) so a large prompt/context can
+    // be told apart from "that's just how long this call takes" without guessing.
+    logStage("liveAiCall", Date.now() - started, {
+      model: model.model,
+      inputTokens: model.usage?.input_tokens ?? null,
+      outputTokens: model.usage?.output_tokens ?? null,
+      cacheReadTokens: model.usage?.cache_read_input_tokens ?? null
+    });
 
     started = Date.now();
     const validated = validatePicks(model.json, ctx);
