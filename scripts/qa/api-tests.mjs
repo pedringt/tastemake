@@ -87,6 +87,30 @@ check("model picks keep real provider ids",out.picks.every(p=>p.provider==="tmdb
 check("model picks carry validated citations",out.picks.every(p=>p.ai?.cites?.includes(`ev:${favorite.id}`)));
 eq("model request is reported as paid",out.meta.paidCallMade,true);
 
+// #120: stage-boundary timing instrumentation must fire for both the retrieval and live-AI
+// paths, log server-side only in the sanitized style used elsewhere, and never leak the prompt,
+// candidate contents, or the API key into a log line.
+{
+  const originalInfo = console.info;
+  const lines = [];
+  console.info = (...args) => { lines.push(args.map(String).join(" ")); };
+  try {
+    await produceRecommendations({ rawState: rawState(), env: ON, fetchImpl: routedFetch() });
+  } finally {
+    console.info = originalInfo;
+  }
+  const timingLines = lines.filter((line) => line.includes("[tastemake-recommendations-timing]"));
+  const relatedLines = lines.filter((line) => line.includes("[tastemake-related]"));
+  const stages = timingLines.map((line) => JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim()).stage);
+  check("timing logs cover candidate retrieval", stages.includes("candidateRetrieval"), stages.join(","));
+  check("timing logs cover the live AI call", stages.includes("liveAiCall"), stages.join(","));
+  check("timing logs cover validation", stages.includes("validation"), stages.join(","));
+  check("every timing stage reports a numeric ms", timingLines.every((line) => typeof JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim()).ms === "number"));
+  check("per-provider related-catalog timing is logged", relatedLines.some((line) => line.includes('"provider":"tmdb"')));
+  check("timing logs never include the API key", [...timingLines, ...relatedLines].every((line) => !line.includes("fake-key") && !line.includes(ON.ANTHROPIC_API_KEY)));
+  check("timing logs never include prompt/candidate text", [...timingLines, ...relatedLines].every((line) => !line.includes("Favorite Film") && !line.includes(candidateTitles[0])));
+}
+
 // Invalid model output never invents a replacement.
 const invalidCases=[
   ["invented id",goodPicks().map((p,i)=>i? p:{...p,itemId:"made-up"})],

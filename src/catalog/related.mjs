@@ -107,14 +107,21 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   ).slice(0, 6);
   if (!evidenceItems.length) return [];
 
+  // #120: per-item provider timing, logged in the sanitized style used elsewhere (never the
+  // provider payload itself, just provider name/ms/result count) so a slow TMDb/Open
+  // Library/IGDB call is visible without guessing. Items within a wave already run concurrently
+  // (Promise.all below) — this only measures that existing concurrency, it does not add any.
   const loadEvidence = async (items) => Promise.all(items.map(async (item) => {
+    const startedAt = Date.now();
     try {
       let related = [];
       if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl);
       else if (item.provider === "openlibrary") related = await openLibraryRelated(item, env, fetchImpl);
       else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl);
+      console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: related.length }));
       return related.map((candidate) => ({ ...candidate, relatedTo: item.title, relatedToId: item.id }));
     } catch {
+      console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: 0, errored: true }));
       return [];
     }
   }));
@@ -123,7 +130,9 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   // first wave cannot provide a healthy pool, which keeps the common path faster.
   const firstWave = evidenceItems.slice(0, 4);
   const laterWave = evidenceItems.slice(4);
+  const waveStarted = Date.now();
   const rows = await loadEvidence(firstWave);
+  console.info("[tastemake-related]", JSON.stringify({ wave: "first", items: firstWave.length, ms: Date.now() - waveStarted }));
 
   const blocked = new Set([
     ...evidenceItems.map((item) => item.id),
@@ -131,9 +140,13 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     ...(state.recommendationSets ?? []).flat().map((item) => item.id)
   ]);
   let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
+  const guardStarted = Date.now();
   let guarded = applyNoveltyGuard(eligible, evidenceItems);
+  console.info("[tastemake-related]", JSON.stringify({ noveltyGuardMs: Date.now() - guardStarted, eligible: eligible.length, primary: guarded.primary.length }));
   if (guarded.primary.length < Math.min(12, limit) && laterWave.length) {
+    const secondWaveStarted = Date.now();
     rows.push(...await loadEvidence(laterWave));
+    console.info("[tastemake-related]", JSON.stringify({ wave: "second", items: laterWave.length, ms: Date.now() - secondWaveStarted }));
     eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
     guarded = applyNoveltyGuard(eligible, evidenceItems);
   }
