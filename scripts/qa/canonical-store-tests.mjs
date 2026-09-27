@@ -218,6 +218,30 @@ check("null item normalizes to null", normalizeCanonicalItem(null) === null);
   check("searchCatalog is not marked degraded just because there's no database", result.degraded === false);
 }
 
+// ---- db.mjs's real call convention against the driver (not just the injected-query mock above) --
+// The tests above all mock at the canonical-store level (an injected `query` function), which never
+// actually exercises db.mjs's own call against the driver -- and that's exactly how a real bug
+// shipped: db.mjs called `sql.query(text, params)`, but neon()'s returned client is itself the
+// callable query function with no `.query()` method, so every real write-behind was throwing
+// "sql.query is not a function", silently swallowed by the caller's own catch handler. This fakes
+// the driver's actual shape (a plain callable, not an object with a method) to catch that class of
+// interface-mismatch bug offline, without needing real database credentials.
+{
+  const { query } = await import("../../src/server/db.mjs");
+  let calledWith = null;
+  const fakeDriverCallable = async (text, params) => { calledWith = { text, params }; return [{ id: "1" }]; };
+  const rows = await query("select 1", ["a"], { sqlImpl: fakeDriverCallable });
+  check("query() calls the driver as a plain callable, not a .query() method", calledWith?.text === "select 1" && Array.isArray(calledWith?.params));
+  check("query() returns the driver's rows unchanged", Array.isArray(rows) && rows[0]?.id === "1");
+
+  // A driver client shaped like neon()'s real return value: callable, but with no .query method --
+  // if db.mjs ever regresses back to calling `.query(...)`, this fails with the same real error
+  // ("sql.query is not a function") instead of passing against a too-permissive mock.
+  const realShapedFake = Object.assign(async (text, params) => [{ ok: true, text, params }], { /* no .query */ });
+  check("query() works against a driver shaped exactly like the real neon() client (callable, no .query method)",
+    (await query("select 2", [], { sqlImpl: realShapedFake }))[0]?.ok === true);
+}
+
 console.log(`canonical store tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);
