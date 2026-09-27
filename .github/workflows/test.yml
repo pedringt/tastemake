@@ -40,3 +40,6 @@ jobs:
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: npm test
+
+      - name: Paid context smoke eval (AFTER #130)
+        run: node scripts/evals/context-after-smoke.mjs
