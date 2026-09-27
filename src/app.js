@@ -719,10 +719,11 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("popstate", () => {
-  const next = screenFromPath();
-  state.screen = canAccess(next) ? next : "favorites";
+  const next = screenFromPath(undefined, { onboarded: state.onboarded });
+  const fallback = state.onboarded ? "recommendations" : "favorites";
+  state.screen = canAccess(next) ? next : fallback;
   markOnboarded(state.screen);
-  if (state.screen !== next) writeRoute("favorites", { replace: true });
+  if (state.screen !== next) writeRoute(fallback, { replace: true });
   render();
   updateStepper();
   focusApp();
@@ -742,9 +743,10 @@ initSearch({
 });
 
 // First visit is deliberately short: choose a look -> basic setup -> choose Favorites.
-// Direct links still open their requested screen when accessible.
-const initialScreen = screenFromPath();
-state.screen = canAccess(initialScreen) ? initialScreen : "look";
+// Direct links still open their requested screen when accessible. #117: a returning user hitting
+// "/" (or an unrecognized path) lands in the ongoing product, not back through first-run setup.
+const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
+state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "look");
 markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();

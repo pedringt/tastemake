@@ -14,12 +14,15 @@ export const routes = {
 // that was bookmarked externally breaks.
 const LEGACY_SAVED_PATHS = new Set(["/bookmarks", "/try-next"]);
 
-export function screenFromPath(pathname = window.location.pathname) {
+// #117: a returning (already-onboarded) user hitting "/" or an unrecognized path should land in the
+// ongoing product, not be sent back through first-run setup (Look/Favorites) every time they revisit.
+export function screenFromPath(pathname = window.location.pathname, { onboarded = false } = {}) {
   const normalized = pathname.replace(/\/$/, "") || "/";
-  if (normalized === "/") return "look";
+  const setupFallback = onboarded ? "recommendations" : "look";
+  if (normalized === "/") return setupFallback;
   if (LEGACY_SAVED_PATHS.has(normalized)) return "library";
   const entry = Object.entries(routes).find(([, path]) => path === normalized);
-  return entry ? entry[0] : "favorites";
+  return entry ? entry[0] : (onboarded ? "recommendations" : "favorites");
 }
 
 export function pathForScreen(screen) {
