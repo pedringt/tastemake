@@ -219,9 +219,26 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
 
   try {
     const prompt = buildPickPrompt(ctx, candidates.length);
-    // #120 follow-up: known even if the call below errors/times out, so a large prompt isn't ruled
-    // out as a cause just because we never got a usage.input_tokens back for a failed call.
-    console.info("[tastemake-recommendations-timing]", JSON.stringify({ stage: "promptSize", promptChars: prompt.length }));
+    // #120 follow-up: the total promptChars figure from the previous logging pass (26,021 chars on a
+    // real production request) doesn't match what candidates/evidence alone would suggest from
+    // representative catalog data -- rather than guess further, break the total down by section so
+    // the next real request says exactly where the bytes go. Known even if the call below errors/
+    // times out, so a large prompt isn't ruled out as a cause just because a failed call never
+    // returned usage.input_tokens.
+    const evidenceChars = JSON.stringify(ctx.evidence).length;
+    const candidatesChars = JSON.stringify(ctx.candidates.map(({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres }) => ({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres }))).length;
+    const statementsChars = JSON.stringify(ctx.statements).length;
+    console.info("[tastemake-recommendations-timing]", JSON.stringify({
+      stage: "promptSize",
+      promptChars: prompt.length,
+      evidenceChars,
+      evidenceCount: ctx.evidence.length,
+      candidatesChars,
+      candidatesCount: ctx.candidates.length,
+      statementsChars,
+      statementsCount: (ctx.statements ?? []).length,
+      instructionsChars: prompt.length - evidenceChars - candidatesChars - statementsChars
+    }));
     started = Date.now();
     const model = await callAnthropic({ prompt, env, fetchImpl });
     // The live-AI call itself is the dominant cost in every measured production request (~85-95% of
