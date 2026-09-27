@@ -36,3 +36,25 @@ export function dislikedItems(state) {
     .filter(isExperiencedNegative)
     .map((feedback) => ({ id: feedback.item.id, item: feedback.item }));
 }
+
+// #117 follow-up: selectedFavorites was, before this, a second permanent Favorite representation
+// alongside feedbackByRecommendation + libraryFavorites -- new Favorites after onboarding would have
+// had to pick one of two paths. Library (feedback + libraryFavorites) is the durable source of truth;
+// selectedFavorites is only ever the onboarding-selection mechanism. Called once, right when
+// onboarding completes: each starter item becomes a normal "Loved it" reaction plus a Favorite flag
+// (exactly what choosing it as a starter Favorite already meant), then selectedFavorites is cleared so
+// nothing after this point can add to it. This does not change any item's taste weight or evidence
+// class -- starter-favorite already counted as full experienced-strong-positive evidence; it only
+// changes which state field represents that fact, so it can be corrected/un-favorited through the
+// same Library flow as everything else instead of a separate onboarding-only mechanism.
+export function migrateStarterFavorites(state) {
+  for (const id of state.selectedFavorites) {
+    const item = state.customItems[id];
+    if (!item) continue;
+    if (!state.feedbackByRecommendation[id]) {
+      state.feedbackByRecommendation[id] = { item, rating: "more", detail: "loved-before" };
+    }
+    state.libraryFavorites.add(id);
+  }
+  state.selectedFavorites.clear();
+}

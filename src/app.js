@@ -1,6 +1,7 @@
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
+import { migrateStarterFavorites } from "./model/library.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderBrowse } from "./screens/browse.js";
 import { renderProfile } from "./screens/profile.js";
@@ -46,8 +47,12 @@ const views = {
   mine: renderMine
 };
 
+// Library is the durable source of truth for Favorites after onboarding (#117/#118 follow-up):
+// selectedFavorites is only the onboarding-selection mechanism and is cleared once its items are
+// migrated into the ongoing Library model (see migrateStarterFavorites in model/library.js), so this
+// can't just check its size once setup is done -- state.onboarded is the real "has enough" record.
 function hasEnoughFavorites() {
-  return state.selectedFavorites.size >= 4;
+  return state.onboarded || state.selectedFavorites.size >= 4;
 }
 
 function canAccess(screen) {
@@ -205,8 +210,13 @@ function finishSetup() {
 }
 
 // #59: reaching Recommendations at least once ends the guided first-run state (see state.js).
+// #117 follow-up: that's also the one moment starter Favorites are migrated into the ongoing
+// Library model, exactly once (state.onboarded is the guard so this can't re-run on every visit).
 function markOnboarded(screen) {
-  if (screen === "recommendations") state.onboarded = true;
+  if (screen === "recommendations" && !state.onboarded) {
+    state.onboarded = true;
+    migrateStarterFavorites(state);
+  }
 }
 
 function maybeRefreshProfile({ force = false } = {}) {

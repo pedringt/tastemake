@@ -13,7 +13,10 @@ async function freshState() {
 
 const { saveBookmarkAction } = await import("../../src/actions/library.js");
 const { bookmarkedFeedback, isBookmarked, isPositiveExperience } = await import("../../src/model/taste.js");
-const { libraryItems } = await import("../../src/model/library.js");
+const { libraryItems, migrateStarterFavorites } = await import("../../src/model/library.js");
+const { browseReadyForRecommendations } = await import("../../src/model/browse.js");
+const { itemStatus, applySearchAction } = await import("../../src/model/search.js");
+const { isStrongPositive } = await import("../../src/model/evidence.js");
 const { routes, screenFromPath } = await import("../../src/router.js");
 const { findExisting } = await import("../../src/model/search.js");
 
@@ -72,6 +75,38 @@ eq("typed item with explicit book type stays distinct from existing movie", find
 // Nothing is persisted client-side (no localStorage/sessionStorage schema anywhere), so there is no
 // migration to write: resetting state cannot duplicate or lose anything that was never stored.
 eq("state carries no persistence schema/version field (nothing is persisted)", typeof state2.schemaVersion, "undefined");
+
+// #117 follow-up: migrateStarterFavorites is the one moment starter Favorites move from
+// selectedFavorites into the ongoing Library model (feedbackByRecommendation + libraryFavorites).
+// Library is the durable source of truth after onboarding; selectedFavorites is onboarding-only.
+const state6 = fresh();
+const starter1 = { id: "tmdb-movie-10", title: "Starter One", type: "movie", domains: ["watch"] };
+const starter2 = { id: "tmdb-movie-11", title: "Starter Two", type: "movie", domains: ["watch"] };
+state6.customItems[starter1.id] = starter1;
+state6.customItems[starter2.id] = starter2;
+state6.selectedFavorites.add(starter1.id);
+state6.selectedFavorites.add(starter2.id);
+
+eq("before migration, itemStatus reports a starter Favorite", itemStatus(state6, starter1).key, "starter");
+check("before migration, reacting to a starter favorite through Search is blocked", applySearchAction(state6, starter1, "loved") === null);
+
+migrateStarterFavorites(state6);
+
+check("migration clears selectedFavorites", state6.selectedFavorites.size === 0);
+check("browseReadyForRecommendations stays true after the Set that used to back it is cleared", browseReadyForRecommendations({ ...state6, onboarded: true }));
+check("each starter becomes a real Loved-it reaction", isStrongPositive(state6.feedbackByRecommendation[starter1.id]));
+check("each starter is flagged as a Library Favorite", state6.libraryFavorites.has(starter1.id) && state6.libraryFavorites.has(starter2.id));
+eq("post-migration, itemStatus reports it through the normal Loved+Favorite path, not \"starter\"", itemStatus(state6, starter1).key, "loved");
+eq("post-migration label distinguishes a Favorite from a plain Loved reaction", itemStatus(state6, starter1).label, "Loved it (a Favorite)");
+
+const { favorites: favoritesAfter } = libraryItems(state6);
+check("migrated starters still appear in Library's Favorites bucket", favoritesAfter.some((e) => e.id === starter1.id) && favoritesAfter.some((e) => e.id === starter2.id));
+
+// Once migrated, a starter favorite is a normal correctable Library item like any other: it can be
+// un-favorited (keeping the Loved reaction) through the exact same saveLibraryAction path already
+// covered above, and it is no longer exempt from Search's normal reaction-correction flow.
+check("post-migration, Search can now correct the reaction on a former starter (no longer exempt)", applySearchAction(state6, starter1, "liked") !== null);
+check("correcting it away from Loved clears its Favorite flag (no Disliked/Liked + Favorite state)", !state6.libraryFavorites.has(starter1.id));
 
 console.log(`library tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
