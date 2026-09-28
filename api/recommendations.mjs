@@ -134,11 +134,21 @@ function pickPromptPayload(ctx) {
   };
 }
 
-function pickPromptInstructions(count) {
+function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
   return [
     "You are the recommendation interpreter inside Tastemake.",
     "The product, not you, decides what is evidence, which candidates are eligible, and what state may change.",
     `Choose exactly ${count} items from candidates and return JSON only in this shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."],"tests":null,"kind":"pick"}]}.`,
+    // Real report (2026-09-28): with the domain filter set to "All", one real request returned 5/6
+    // picks from a single domain (games), and the very next returned 6/6 from a different single
+    // domain (movies) -- candidate retrieval already interleaves a mixed pool across domains, but
+    // nothing told the model to keep its own final selection spread out, so it could freely cluster
+    // in whichever domain its strongest evidence happened to favor. A soft nudge, not a hard quota
+    // (Paige's call): prefer spread when it's a reasonably close call, but a real, strongly-evidenced
+    // cluster in one domain is still allowed to stand rather than be forced apart artificially.
+    ...(recommendationFilter === "all" ? [
+      "The domain filter is \"All\": each candidate's domains field shows watch/read/play. Prefer a spread across the domains actually represented in candidates rather than clustering most or all picks in a single domain, unless the evidence genuinely and specifically favors that domain over the others -- do not force in a weaker candidate from another domain just to manufacture variety."
+    ] : []),
     // #120: live-call latency is proportional to output tokens (~11ms/token, measured directly from
     // real production timing across requests with very different prompt sizes -- see #120). "why"
     // had no length limit before this, and real output ran 150-260+ tokens per pick. A hard word cap
@@ -155,7 +165,7 @@ function pickPromptInstructions(count) {
 }
 
 export function buildPickPrompt(ctx, count) {
-  return [pickPromptInstructions(count), `CONTEXT\n${JSON.stringify(pickPromptPayload(ctx))}`].join("\n\n");
+  return [pickPromptInstructions(count, { recommendationFilter: ctx.recommendationFilter }), `CONTEXT\n${JSON.stringify(pickPromptPayload(ctx))}`].join("\n\n");
 }
 
 // #28: about 60% of live calls were falling back to deterministic not because the model's answer was
@@ -276,7 +286,7 @@ function logStage(stage, ms, extra = {}) {
 // These component sizes plus framingChars equal promptChars.
 function promptSizeBreakdown(ctx, count, prompt) {
   const payload = pickPromptPayload(ctx);
-  const fixedChars = pickPromptInstructions(count).length;
+  const fixedChars = pickPromptInstructions(count, { recommendationFilter: ctx.recommendationFilter }).length;
   const evidenceChars = JSON.stringify(payload.evidence).length;
   const candidateChars = JSON.stringify(payload.candidates).length;
   const statementsChars = JSON.stringify(payload.statements).length;
