@@ -210,6 +210,31 @@ for(const [name,picks] of invalidCases){
   const result=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(modelSays(picks))});
   check(`${name}: falls back to real catalog`,result.source==="catalog"&&result.picks.every(p=>p.provider==="tmdb"),result.source);
 }
+
+// QA sweep (2026-09-28) real bug: validatePicks used .every() instead of .some() for the
+// intent-evidence check, so a pick citing one real (experienced) item PLUS one intent-only item
+// (a bookmark) still passed -- ai-contract.md bans citing intent as support outright, it isn't a
+// majority vote. A pick that cites intent evidence at all, even alongside real evidence, must fail.
+{
+  const bookmarked={id:"tmdb-movie-9",provider:"tmdb",providerId:"9",title:"Bookmarked Film",type:"movie",domains:["watch"]};
+  const mixedState=rawState({feedbackByRecommendation:{[bookmarked.id]:{item:bookmarked,rating:"not-tried",detail:"bookmarked"}}});
+  const mixedCitationPicks=goodPicks().map((p,i)=>i?p:{...p,cites:[...p.cites,`ev:${bookmarked.id}`]});
+  const result=await produceRecommendations({rawState:mixedState,env:ON,fetchImpl:routedFetch(modelSays(mixedCitationPicks))});
+  check("a pick citing intent evidence alongside real evidence is rejected, not accepted",result.source==="catalog"&&result.picks.every(p=>p.provider==="tmdb"),result.source);
+}
+// QA sweep real bug: rank used to be the raw array index + 1, so a curveball landing anywhere but
+// last left a gap in the visible rank sequence for the real picks (e.g. 1, null, 3 instead of
+// 1, null, 2). The model's picks array order is whatever it returned -- nothing sorts curveballs to
+// the end first -- so this puts the curveball at index 1 (not last) to prove the gap is gone.
+{
+  const midCurveballPicks=goodPicks().map((p,i)=>({...p,kind:i===1?"curveball":"pick"}));
+  const result=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(modelSays(midCurveballPicks))});
+  eq("mid-array curveball: still a valid model result",result.source,"model");
+  const ranks=result.picks.map(p=>p.rank);
+  eq("the curveball itself has no rank",ranks[1],null);
+  const realRanks=ranks.filter(r=>r!==null);
+  check("non-curveball picks have a dense 1..N rank sequence with no gap",realRanks.every((r,i)=>r===i+1),realRanks.join(","));
+}
 const badText={content:[{type:"text",text:"not json"}]};
 out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(badText)});
 eq("non-JSON model output falls back to catalog",out.source,"catalog");

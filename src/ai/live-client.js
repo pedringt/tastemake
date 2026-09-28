@@ -2,10 +2,30 @@
 // The browser sends product-owned state. The server rebuilds the typed model context, validates model
 // output, and returns either accepted model picks or the deterministic fallback.
 
+// #120 follow-up, QA sweep real bug: feedbackByRecommendation and customItems have the exact same
+// unbounded-growth shape that made recommendationSets 413 -- a full item object (about/artwork are
+// the biggest fields: full synopsis text, image URLs) stored forever per reaction/search/favorite,
+// resent on every request. Unlike recommendationSets, server-side code genuinely needs real item
+// data from these two (evidence records need title/type/domains; anchor selection needs
+// provider/providerId/genres/providerMeta) -- confirmed by grep that .about/.artwork/.sourceUrl are
+// never read anywhere server-side (src/ai/context.js, src/model/evidence.js, src/catalog/related.mjs,
+// api/recommendations.mjs), so those three purely-display fields are the ones worth dropping.
+function trimItemForWire(item) {
+  if (!item) return item;
+  const { about, artwork, sourceUrl, ...rest } = item;
+  return rest;
+}
+
 export function serializeAiState(state) {
+  const feedbackByRecommendation = Object.fromEntries(
+    Object.entries(state.feedbackByRecommendation ?? {}).map(([id, feedback]) => [id, { ...feedback, item: trimItemForWire(feedback.item) }])
+  );
+  const customItems = Object.fromEntries(
+    Object.entries(state.customItems ?? {}).map(([id, item]) => [id, trimItemForWire(item)])
+  );
   return {
     selectedFavorites: [...state.selectedFavorites],
-    feedbackByRecommendation: state.feedbackByRecommendation,
+    feedbackByRecommendation,
     // #120 follow-up, real bug: server-side, every historical set is only ever read for its item ids
     // (the "already shown" exclusion set in related.mjs/context.js) -- never full item data. The
     // full objects (title, artwork URL, synopsis, provider metadata, AI reasoning text) were being
@@ -16,7 +36,7 @@ export function serializeAiState(state) {
     // with zero behavior change server-side.
     recommendationSets: state.recommendationSets.map((set) => set.map((item) => item.id)),
     libraryFavorites: [...(state.libraryFavorites ?? [])],
-    customItems: state.customItems ?? {},
+    customItems,
     blindSpots: state.blindSpots ?? {},
     blindSpotDrafts: state.blindSpotDrafts ?? {},
     blindSpotDismissed: [...(state.blindSpotDismissed ?? [])],

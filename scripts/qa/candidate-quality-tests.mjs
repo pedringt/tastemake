@@ -148,6 +148,50 @@ const bookState = (genres) => ({
   eq("IGDB genre-only query from a single anchor already returns a healthy (12-row) pool", related.length, 12);
 }
 
+// ---- QA sweep real bug: IGDB self-exclusion fallback let an anchor recommend itself -------------
+// `Number(item.providerId) || 0` silently became "id != 0" when providerId wasn't a valid number --
+// real IGDB ids are never 0, so that excluded nothing. Two cases: (1) a malformed providerId omits
+// the now-meaningless query-string clause rather than emitting a fake "!= 0" that excludes nothing
+// for real; (2) a client-side filter is the actual guarantee regardless of the clause -- proven here
+// by having the fake API return the anchor's own id anyway (as if the exclusion clause failed for
+// any reason, e.g. provider-side inconsistency) and confirming it still never reaches the output.
+{
+  const makeState = (providerId) => ({
+    selectedFavorites: new Set(["igdb-game-anchor"]),
+    feedbackByRecommendation: {},
+    recommendationSets: [],
+    customItems: { "igdb-game-anchor": { id: "igdb-game-anchor", provider: "igdb", providerId, title: "Anchor Game", type: "game", domains: ["play"], providerMeta: { genreIds: [31] } } },
+    areas: { watch: true, read: true, play: true },
+    recommendationFilter: "play"
+  });
+
+  const malformedFetch = async (url, init = {}) => {
+    if (String(url).includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "fake-token" }) };
+    if (String(url).includes("api.igdb.com/v4/games")) {
+      check("a malformed providerId never emits the old meaningless \"id != 0\" clause", !/id != 0/.test(init.body || ""), init.body);
+      return { ok: true, json: async () => [{ id: 900, name: "Different Game", summary: "x", first_release_date: 1600000000, genres: [{ id: 31, name: "Adventure" }] }] };
+    }
+    throw new Error(`unexpected igdb URL: ${url}`);
+  };
+  await retrieveCatalogCandidates(makeState("not-a-number"), { env, fetchImpl: malformedFetch });
+
+  const defenseInDepthFetch = async (url) => {
+    if (String(url).includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "fake-token" }) };
+    if (String(url).includes("api.igdb.com/v4/games")) {
+      // Simulates the exclusion clause failing to keep the anchor out, for any reason -- the API
+      // returns the anchor's own id (777) alongside a real different game.
+      return { ok: true, json: async () => [
+        { id: 777, name: "Anchor Game", summary: "x", first_release_date: 1600000000, genres: [{ id: 31, name: "Adventure" }] },
+        { id: 778, name: "Different Game", summary: "x", first_release_date: 1600000000, genres: [{ id: 31, name: "Adventure" }] }
+      ] };
+    }
+    throw new Error(`unexpected igdb URL: ${url}`);
+  };
+  const defended = await retrieveCatalogCandidates(makeState("777"), { env, fetchImpl: defenseInDepthFetch });
+  check("client-side filter excludes the anchor's own id even if the API returns it anyway", !defended.some((c) => c.providerId === "777"));
+  check("client-side filter still keeps the genuinely different game", defended.some((c) => c.providerId === "778"));
+}
+
 // ---- anchor metadata-completeness preference (best-effort, no-op without a store) ---------------
 // Without TASTEMAKE_DATABASE_URL configured, the preference is a pure no-op: retrieval order and
 // candidate output are unaffected, and no error surfaces even though the DB is unreachable.

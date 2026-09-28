@@ -17,6 +17,7 @@
 
 import { query as defaultQuery, isConfigured } from "../server/db.mjs";
 import { waitUntil } from "@vercel/functions";
+import { buildItemId } from "./item-id.mjs";
 
 const MEDIA_TYPES = new Set(["movie", "tv", "book", "game"]);
 
@@ -142,28 +143,16 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
   const provider = identifierNamespace(item, normalized.mediaType);
   const providerId = String(item.providerId);
 
+  // Common path first, unchanged: a cheap SELECT against the already-known-item case (the large
+  // majority of real calls -- the same popular items get re-upserted on every write-behind pass
+  // that encounters them), no speculative row ever created here.
   const existing = await runQuery(
     "select item_id from item_identifiers where provider = $1 and provider_id = $2",
     [provider, providerId]
   );
   let itemId = existing?.[0]?.item_id ?? null;
 
-  if (!itemId) {
-    const inserted = await runQuery(
-      `insert into items (media_type, canonical_title, year, factual, metadata_completeness)
-       values ($1, $2, $3, $4::jsonb, $5)
-       returning id`,
-      [normalized.mediaType, normalized.canonicalTitle, normalized.year, JSON.stringify(normalized.factual), normalized.completeness]
-    );
-    itemId = inserted?.[0]?.id ?? null;
-    if (!itemId) return null;
-    await runQuery(
-      `insert into item_identifiers (item_id, provider, provider_id)
-       values ($1, $2, $3)
-       on conflict (provider, provider_id) do nothing`,
-      [itemId, provider, providerId]
-    );
-  } else {
+  if (itemId) {
     // Merge factual fields (never overwrite traits — this statement never touches that column) and
     // refresh completeness/title/year from the freshest provider fetch.
     await runQuery(
@@ -176,6 +165,59 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
        where id = $1`,
       [itemId, normalized.canonicalTitle, normalized.year, JSON.stringify(normalized.factual), normalized.completeness]
     );
+  } else {
+    // Real bug (QA sweep, 2026-09-28), fixed here: the SELECT above found nothing, meaning this
+    // item is new to us -- but two concurrent write-behind calls for the same not-yet-canonicalized
+    // item (e.g. two evidence anchors in one request both surfacing the same new movie) could both
+    // reach this exact branch and both INSERT into items, producing two canonical rows for one real
+    // item, with the second item_identifiers insert silently no-opping on conflict and permanently
+    // orphaning one row. This CTE makes identity resolution atomic from here on: it speculatively
+    // inserts a candidate items row, but only ONE concurrent caller's item_identifiers insert can
+    // win the (provider, provider_id) unique constraint -- the loser's own new row is simply never
+    // referenced by any identifier (an orphan row, wasted storage, not a correctness bug), and
+    // coalesce() always resolves to the single winning item_id, so both callers converge on the same
+    // canonical item. Deliberately only reached in this "not found yet" branch, not on every
+    // re-upsert of an already-known item, so the common path stays exactly as cheap as before.
+    // NOT YET VERIFIED against a real Postgres database (no TASTEMAKE_DATABASE_URL in this sandbox)
+    // -- covered by an updated fake-DB offline test, but this needs a real-DB check before being
+    // trusted, per this session's own standing rule for infra changes.
+    const resolved = await runQuery(
+      `with new_item as (
+         insert into items (media_type, canonical_title, year, factual, metadata_completeness)
+         values ($1, $2, $3, $4::jsonb, $5)
+         returning id
+       ), ident as (
+         insert into item_identifiers (item_id, provider, provider_id)
+         select id, $6, $7 from new_item
+         on conflict (provider, provider_id) do nothing
+         returning item_id
+       )
+       select
+         coalesce(
+           (select item_id from ident),
+           (select item_id from item_identifiers where provider = $6 and provider_id = $7)
+         ) as item_id,
+         (select item_id from ident) is not null as is_new`,
+      [normalized.mediaType, normalized.canonicalTitle, normalized.year, JSON.stringify(normalized.factual), normalized.completeness, provider, providerId]
+    );
+    itemId = resolved?.[0]?.item_id ?? null;
+    if (!itemId) return null;
+
+    // Lost the race: another concurrent caller's insert won identity resolution first. Our own
+    // values are still real/freshly-fetched data, so merge them into the winning row the same way
+    // the common re-upsert path above does, rather than discarding them.
+    if (!resolved[0].is_new) {
+      await runQuery(
+        `update items
+           set canonical_title = $2,
+               year = coalesce($3, year),
+               factual = factual || $4::jsonb,
+               metadata_completeness = $5,
+               updated_at = now()
+         where id = $1`,
+        [itemId, normalized.canonicalTitle, normalized.year, JSON.stringify(normalized.factual), normalized.completeness]
+      );
+    }
   }
 
   for (const field of normalized.fields) {
@@ -194,15 +236,6 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
 const FIELD_BY_MEDIA_TYPE = { book: "subjects", movie: "genres", tv: "genres", game: "genres" };
 const DOMAIN_BY_MEDIA_TYPE = { movie: ["watch"], tv: ["watch"], book: ["read"], game: ["play"] };
 
-// Reconstructs the same `id` convention providers.mjs uses (tmdbItem/openLibraryItem/igdbItem), so
-// a store-sourced candidate dedupes against a live-provider candidate for the same real item by a
-// plain `.id` equality check, with no separate merge-time identity logic needed.
-function reconstructId(provider, providerId, mediaType) {
-  if (provider === "openlibrary") return `openlibrary-book-${String(providerId).replace(/[^A-Za-z0-9_-]/g, "")}`;
-  if (provider === "tmdb") return `tmdb-${mediaType}-${providerId}`;
-  if (provider === "igdb") return `igdb-game-${providerId}`;
-  return null;
-}
 
 // #144: expands a related-candidate pool with items Tastemake has already canonicalized (from any
 // past search/related call, not just this one), matched by genre/subject overlap with the anchor.
@@ -242,7 +275,7 @@ export async function relatedCanonicalItems(anchor, subjects, { env = process.en
     for (const row of rows ?? []) {
       if (row.provider === anchorProvider && row.provider_id === anchorProviderId) continue;
       const provider = row.provider?.split(":")[0] ?? null;
-      const id = reconstructId(provider, row.provider_id, mediaType);
+      const id = buildItemId(provider, mediaType, row.provider_id);
       if (!id || seen.has(id)) continue;
       seen.add(id);
       const matched = row.factual?.[field] ?? [];

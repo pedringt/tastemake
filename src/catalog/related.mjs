@@ -4,6 +4,23 @@ import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupMetadataCompleteness, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 
+// Deliberately NOT imported from model/evidence.js: this module sits in a real circular import
+// chain (taste.js -> evidence.js -> starters.js -> search.js -> taste.js), and adding related.mjs
+// as a new entry point into that cycle threw a real "Cannot access before initialization" ReferenceError
+// (taste.js's top-level `export const isPositiveExperience = isExperiencedPositive` executes before
+// evidence.js's exports are live, under this module's specific import ordering). This mirrors
+// evidence.js's own evidenceKind()/isExperienced() rule exactly (rating "more"+"loved-before" or
+// "liked-before", or rating "less"+"tried-disliked" -- everything else, including a bare reaction
+// with no detail, "not-tried"/bookmarked, or "not-interested", is intent, not experience) -- keep
+// this in sync with evidenceKind() in model/evidence.js if that rule table ever changes.
+function isExperienced(feedback) {
+  if (!feedback) return false;
+  const { rating, detail } = feedback;
+  if (rating === "more") return detail === "loved-before" || detail === "liked-before";
+  if (rating === "less") return detail === "tried-disliked";
+  return false;
+}
+
 const uniq = (items) => {
   const seen = new Set();
   return items.filter((item) => item?.id && !seen.has(item.id) && seen.add(item.id));
@@ -44,10 +61,20 @@ function balanceDomains(items, mode) {
 // starter favorites and no other anchors ever accruing, "more recommendations" drains a small fixed
 // pool fast -- exactly the real-usage report this fixes. customItems still wins when both exist (it
 // tends to be the fresher/canonical copy for a searched-and-favorited item).
+// Real bug (QA sweep, 2026-09-28): this used every key of feedbackByRecommendation regardless of
+// rating class, so a bookmark or "Not interested" reaction (intent, never taste evidence per
+// model/evidence.js) could become a live-provider anchor -- "find things related to X" for an X the
+// user never actually experienced. Harmless-looking before today's anchor-rotation fix (deterministic
+// sort tended to keep low-signal items out of the top-6), but the shuffle now gives every item in the
+// pool, intent-only included, a real chance of being picked each round. selectedFavorites is exempt
+// from the filter: choosing a Favorite means the user already tried and loved it (see
+// EVIDENCE_KINDS.starter-favorite in model/evidence.js), it was never a feedback-rating action.
 function externalEvidenceItems(state) {
   const ids = new Set([
     ...(state.selectedFavorites ?? []),
-    ...Object.keys(state.feedbackByRecommendation ?? {})
+    ...Object.entries(state.feedbackByRecommendation ?? {})
+      .filter(([, feedback]) => isExperienced(feedback))
+      .map(([id]) => id)
   ]);
   const byId = new Map();
   for (const item of Object.values(state.customItems ?? {})) {
@@ -222,6 +249,15 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
   if (item.provider !== "igdb") return [];
   const genreIds = item.providerMeta?.genreIds ?? [];
   if (!genreIds.length) return [];
+  // QA sweep real bug: `Number(item.providerId) || 0` silently fell back to excluding "id != 0" when
+  // providerId was missing/non-numeric (e.g. a canonical-store-reconstructed candidate) -- real IGDB
+  // ids are never 0, so that clause excluded nothing and let the anchor game reappear as its own
+  // "related" result. Only add the exclusion clause when providerId genuinely parses as a real id;
+  // the client-side filter below (never returning the anchor's own id) is the actual guarantee
+  // either way, so a missing/invalid providerId now just means one fewer server-side optimization,
+  // not a hole in the guarantee.
+  const anchorId = Number(item.providerId);
+  const excludeClause = Number.isInteger(anchorId) && anchorId > 0 ? ` & id != ${anchorId}` : "";
   const load = async () => {
     const token = await igdbToken(env, fetchImpl);
     if (!token) return [];
@@ -232,10 +268,10 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
         authorization: `Bearer ${token}`,
         "content-type": "text/plain"
       },
-      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where genres = (${genreIds.slice(0, 3).join(",")}) & id != ${Number(item.providerId) || 0}; sort total_rating_count desc; limit 12;`
+      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where genres = (${genreIds.slice(0, 3).join(",")})${excludeClause}; sort total_rating_count desc; limit 12;`
     });
     if (!response.ok) return [];
-    return (await response.json()).map(igdbItem);
+    return (await response.json()).map(igdbItem).filter((row) => row.providerId !== item.providerId);
   };
   const live = fetchImpl !== fetch ? await load() : await cachedValue(`related:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
   // #144: store items canonicalized with IGDB genre *names* (see canonical-store.mjs), so overlap
