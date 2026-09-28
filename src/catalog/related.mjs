@@ -34,13 +34,32 @@ function balanceDomains(items, mode) {
   return interleave([...buckets.values()].filter((bucket) => bucket.length));
 }
 
+// Real bug (2026-09-28): reacting Loved it/Liked it directly on a recommendation card only ever
+// wrote the item into feedbackByRecommendation[id].item (see saveQuickFeedback in
+// actions/recommendations.js) -- it was never copied into state.customItems, which only search-added
+// favorites/browse picks populate. This function used to source anchor item data from customItems
+// alone, so every reacted-to pick that wasn't also separately search-added silently could never
+// become a future retrieval anchor: it displayed correctly in Library (libraryItems() in
+// model/library.js already reads feedback.item directly) but was invisible here. With a handful of
+// starter favorites and no other anchors ever accruing, "more recommendations" drains a small fixed
+// pool fast -- exactly the real-usage report this fixes. customItems still wins when both exist (it
+// tends to be the fresher/canonical copy for a searched-and-favorited item).
 function externalEvidenceItems(state) {
   const ids = new Set([
     ...(state.selectedFavorites ?? []),
     ...Object.keys(state.feedbackByRecommendation ?? {})
   ]);
-  return Object.values(state.customItems ?? {})
-    .filter((item) => item?.provider && ids.has(item.id))
+  const byId = new Map();
+  for (const item of Object.values(state.customItems ?? {})) {
+    if (item?.provider) byId.set(item.id, item);
+  }
+  for (const feedback of Object.values(state.feedbackByRecommendation ?? {})) {
+    const item = feedback?.item;
+    if (item?.provider && !byId.has(item.id)) byId.set(item.id, item);
+  }
+  return [...ids]
+    .map((id) => byId.get(id))
+    .filter(Boolean)
     .map((item) => ({
       ...item,
       seriesExperience: state.feedbackByRecommendation?.[item.id]?.seriesExperience ?? null
