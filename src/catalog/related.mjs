@@ -306,8 +306,17 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   // #120 follow-up: recommendationSets arrives over the wire as arrays of ids, not full item objects
   // (see serializeAiState in ai/live-client.js) -- this was the only thing ever read from them here.
   // Accepts a bare id or a full object (still the shape several test fixtures construct directly).
+  // Real bug (2026-09-28): this used to block only `evidenceItems`, the <=6-item subset actually
+  // queried as anchors this round -- fine back when a user's whole real evidence set was roughly
+  // that small, but once #150 correctly widened externalEvidenceItems() to surface a user's entire
+  // Library history, `allEvidence` regularly holds far more than 6 items. Anything not competitively
+  // selected as an anchor this round (e.g. an already-loved favorite that just didn't win one of the
+  // 6 anchor slots) fell through every exclusion check here and could resurface as a "new"
+  // recommendation -- confirmed for real: a user's own already-marked favorite (Crouching Tiger,
+  // Hidden Dragon) came back as a pick. Blocking the full allEvidence set (not just this round's
+  // anchor subset) fixes it regardless of how many anchors get used to actually fetch candidates.
   const blocked = new Set([
-    ...evidenceItems.map((item) => item.id),
+    ...allEvidence.map((item) => item.id),
     ...Object.keys(state.feedbackByRecommendation ?? {}),
     ...(state.recommendationSets ?? []).flat().map((entry) => (typeof entry === "string" ? entry : entry?.id))
   ]);
