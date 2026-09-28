@@ -333,8 +333,19 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
 
     started = Date.now();
     const validated = validatePicks(model.json, ctx);
+    // #120 follow-up: minAccepted is intentionally every candidate offered -- one flawed pick among
+    // up to 6 discards the whole batch, even when the other 5 were fine. That all-or-nothing bar is
+    // a real, frequent cause of the catalog fallback, separate from whether the model call itself
+    // succeeded. Logging the validator's own rule-violation strings (static rule descriptions from
+    // validate.js, never the model's actual pick text or itemId) makes that visible instead of
+    // guessing from an aggregate accepted/rejected count.
     const result = acceptOrFallback(validated, candidates, { minAccepted: candidates.length });
-    logStage("validation", Date.now() - started, { accepted: result.source === "model" });
+    logStage("validation", Date.now() - started, {
+      accepted: result.source === "model",
+      acceptedCount: validated.accepted?.length ?? 0,
+      rejectedCount: validated.rejected?.length ?? 0,
+      rejectionReasons: (validated.rejected ?? []).flatMap((entry) => entry.reasons)
+    });
 
     if (result.source !== "model") {
       return fallbackPayload(candidates, state, result.reason || "model output did not pass validation", {

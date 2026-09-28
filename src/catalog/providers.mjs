@@ -1,5 +1,6 @@
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind } from "./canonical-store.mjs";
+import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
@@ -66,8 +67,8 @@ async function searchTmdb(query, env, fetchImpl) {
   const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
   const q = encodeURIComponent(query);
   const [movies, tv] = await Promise.all([
-    fetchImpl(`https://api.themoviedb.org/3/search/movie?query=${q}&include_adult=false&language=en-US&page=1`, { headers }),
-    fetchImpl(`https://api.themoviedb.org/3/search/tv?query=${q}&include_adult=false&language=en-US&page=1`, { headers })
+    fetchWithTimeout(fetchImpl, `https://api.themoviedb.org/3/search/movie?query=${q}&include_adult=false&language=en-US&page=1`, { headers }),
+    fetchWithTimeout(fetchImpl, `https://api.themoviedb.org/3/search/tv?query=${q}&include_adult=false&language=en-US&page=1`, { headers })
   ]);
   if (!movies.ok && !tv.ok) throw new Error(`tmdb ${movies.status || ""}/${tv.status || ""}`);
 
@@ -111,7 +112,7 @@ function openLibraryItem(row) {
 
 async function searchOpenLibrary(query, env, fetchImpl) {
   const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key";
-  const response = await fetchImpl(`${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&fields=${fields}`, {
+  const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
@@ -122,7 +123,7 @@ async function igdbToken(env, fetchImpl) {
   if (!env.IGDB_CLIENT_ID || !env.IGDB_CLIENT_SECRET) return null;
   const load = async () => {
     const url = `${TWITCH_TOKEN}?client_id=${encodeURIComponent(env.IGDB_CLIENT_ID)}&client_secret=${encodeURIComponent(env.IGDB_CLIENT_SECRET)}&grant_type=client_credentials`;
-    const response = await fetchImpl(url, { method: "POST" });
+    const response = await fetchWithTimeout(fetchImpl, url, { method: "POST" });
     if (!response.ok) throw new Error(`twitch ${response.status}`);
     return (await response.json()).access_token ?? null;
   };
@@ -157,7 +158,7 @@ function igdbItem(row) {
 async function searchIgdb(query, env, fetchImpl) {
   const token = await igdbToken(env, fetchImpl);
   if (!token) return [];
-  const response = await fetchImpl(IGDB_GAMES, {
+  const response = await fetchWithTimeout(fetchImpl, IGDB_GAMES, {
     method: "POST",
     headers: {
       "client-id": env.IGDB_CLIENT_ID,
@@ -188,7 +189,7 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
   if (!token) return {};
   const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
   const kind = type === "tv" ? "tv" : "movie";
-  const response = await fetchImpl(
+  const response = await fetchWithTimeout(fetchImpl,
     `https://api.themoviedb.org/3/${kind}/${encodeURIComponent(providerId)}?append_to_response=credits&language=en-US`,
     { headers }
   );
@@ -218,7 +219,7 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
 async function igdbDetail(providerId, env, fetchImpl) {
   const token = await igdbToken(env, fetchImpl);
   if (!token) return {};
-  const response = await fetchImpl(IGDB_GAMES, {
+  const response = await fetchWithTimeout(fetchImpl, IGDB_GAMES, {
     method: "POST",
     headers: {
       "client-id": env.IGDB_CLIENT_ID,
