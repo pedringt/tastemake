@@ -32,6 +32,12 @@ partial.feedbackByRecommendation[itemA.id] = { item: itemA, rating: "more", deta
 eq("only one of two cards rated", currentRoundComplete(partial), false);
 check("another batch can still be requested without finishing the current one", canKeepDiscovering(partial));
 
+// (1b) 2026-09-28: a set with zero reactions can also request more -- a user should not have to
+// react to anything before asking for another batch (previously required one reaction, #93).
+const unrated = mk();
+eq("zero cards rated in the current set", currentRoundComplete(unrated), false);
+check("another batch can be requested with zero reactions to the current set", canKeepDiscovering(unrated));
+
 // (2) round two's retrieval carries round-one feedback: the reacted-to item is excluded, and its
 // provider evidence (once experienced) is what the next request is grounded in.
 const state = {

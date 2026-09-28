@@ -134,11 +134,11 @@ export function currentRoundComplete(state) {
   return active.length > 0 && currentRoundRatedCount(state) === active.length;
 }
 
-// One explicit reaction is enough to ask the real catalog for another set. The endpoint is responsible
-// for deciding whether more eligible candidates exist.
+// A user should not have to react to anything before asking for another set (product decision,
+// 2026-09-28 -- previously required one reaction first, #93). The endpoint is responsible for
+// deciding whether more eligible candidates exist.
 export function canKeepDiscovering(state) {
   return activeRecommendations(state).length > 0
-    && currentRoundRatedCount(state) > 0
     && state.recommendationExhausted !== true;
 }
 

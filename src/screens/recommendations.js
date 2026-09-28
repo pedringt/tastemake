@@ -380,9 +380,8 @@ function renderAiStatus() {
   if (state.aiSource === "catalog") return `<p class="ai-inline-status"><strong>Catalog fallback:</strong> live AI was not used for this set.</p>`;
   return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> no demo picks were substituted.</p>`;
 }
-// #93: the ongoing-loop action. Deliberately available the moment there is at least one reaction
-// (canKeepDiscovering), not gated behind rating every card in the current set — the issue is explicit
-// that a user should not have to react to every card before requesting another batch.
+// #93/2026-09-28: the ongoing-loop action. Available as soon as a set exists — not gated behind
+// rating any card, let alone every card, in the current set (see canKeepDiscovering).
 function renderKeepDiscoveringBar() {
   if (!canKeepDiscovering(state)) return "";
   const disabled = state.aiStatus === "loading";
