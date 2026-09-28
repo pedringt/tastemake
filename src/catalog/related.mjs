@@ -1,7 +1,7 @@
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { cachedValue } from "../server/cache.mjs";
-import { canonicalizeWriteBehind, lookupMetadataCompleteness } from "./canonical-store.mjs";
+import { canonicalizeWriteBehind, lookupMetadataCompleteness, relatedCanonicalItems } from "./canonical-store.mjs";
 
 const uniq = (items) => {
   const seen = new Set();
@@ -46,7 +46,30 @@ function externalEvidenceItems(state) {
     }));
 }
 
-async function tmdbRelated(item, env, fetchImpl) {
+// #144: appends related candidates Tastemake has already canonicalized (genre overlap with the
+// anchor) that this live call didn't happen to return. Store lookup failures/timeouts already
+// resolve to [] inside relatedCanonicalItems, so this never affects the live-provider pool passed
+// in as `live`. Capped at 20 total, matching openLibraryRelated's pool cap below.
+async function mergeCanonicalCandidates(live, anchor, subjects, { env, queryImpl, buildProviderMeta }) {
+  const storeItems = await relatedCanonicalItems(anchor, subjects, { env, query: queryImpl });
+  if (!storeItems.length) return live;
+  const seen = new Set(live.map((row) => row.id));
+  const merged = [...live];
+  for (const storeItem of storeItems) {
+    if (seen.has(storeItem.id)) continue;
+    seen.add(storeItem.id);
+    merged.push({
+      ...storeItem,
+      artwork: null,
+      about: "From Tastemake's canonical store.",
+      sourceUrl: null,
+      providerMeta: buildProviderMeta(storeItem)
+    });
+  }
+  return merged.slice(0, 20);
+}
+
+async function tmdbRelated(item, env, fetchImpl, queryImpl) {
   if (!env.TASTEMAKE_TMDB_TOKEN || item.provider !== "tmdb") return [];
   const load = async () => {
     const kind = item.type === "tv" ? "tv" : "movie";
@@ -56,8 +79,12 @@ async function tmdbRelated(item, env, fetchImpl) {
     if (!response.ok) return [];
     return ((await response.json()).results ?? []).slice(0, 12).map((row) => tmdbItem(row, kind));
   };
-  if (fetchImpl !== fetch) return load();
-  return cachedValue(`related:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+  const live = fetchImpl !== fetch ? await load() : await cachedValue(`related:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+  return mergeCanonicalCandidates(live, item, item.genres ?? [], {
+    env,
+    queryImpl,
+    buildProviderMeta: (storeItem) => ({ genreIds: storeItem.genres ?? [], collectionId: null })
+  });
 }
 
 const GENERIC_BOOK_SUBJECT = /^(fiction|literature|books?|reading|bestsellers?|new york times bestsellers?|nyt bestsellers?|protected daisy|accessible book)$/i;
@@ -115,7 +142,7 @@ async function openLibrarySubjectSearch(subject, env, fetchImpl) {
 // once the post-#130 overlap gate ran (#131). Results across queries are merged/deduped by Open
 // Library work key, then ranked by overlap strength (see openLibraryOverlapStrength above) so the
 // combined pool stays large without readmitting the Atomic-Habits-style false positive #130 fixed.
-async function openLibraryRelated(item, env, fetchImpl) {
+async function openLibraryRelated(item, env, fetchImpl, queryImpl) {
   if (item.provider !== "openlibrary") return [];
   const sourceSubjects = meaningfulBookSubjects(item.genres ?? []);
   const querySubjects = sourceSubjects.slice(0, 3);
@@ -123,6 +150,8 @@ async function openLibraryRelated(item, env, fetchImpl) {
 
   const rows = (await Promise.all(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl)))).flat();
 
+  // Keyed by the raw Open Library work key (the real identity), so a live result and a
+  // store-canonicalized result for the same book collapse into one entry either way.
   const byKey = new Map();
   for (const row of rows) {
     const key = String(row?.key ?? "");
@@ -132,13 +161,44 @@ async function openLibraryRelated(item, env, fetchImpl) {
     byKey.set(key, { row, strength });
   }
 
+  // #144: also consider books Tastemake has already canonicalized with overlapping subjects, run
+  // through the same overlap-strength grading as live results, so the pool isn't limited to what
+  // this one live subject search happens to return. relatedCanonicalItems degrades to [] on any
+  // store failure/timeout, so this never affects the live rows already collected above.
+  const storeItems = await relatedCanonicalItems(item, querySubjects, { env, query: queryImpl });
+  for (const storeItem of storeItems) {
+    const key = String(storeItem.providerId ?? "");
+    if (!key || byKey.has(key)) continue;
+    const strength = openLibraryOverlapStrength(sourceSubjects, storeItem.subject ?? []);
+    if (!strength) continue;
+    byKey.set(key, { storeItem, strength });
+  }
+
   return [...byKey.values()]
     .sort((a, b) => (a.strength === b.strength ? 0 : a.strength === "strong" ? -1 : 1))
     .slice(0, 20)
-    .map(({ row, strength }) => ({ ...openLibraryItem(row), relationStrength: strength }));
+    .map(({ row, storeItem, strength }) => (row
+      ? { ...openLibraryItem(row), relationStrength: strength }
+      : {
+          id: storeItem.id,
+          provider: "openlibrary",
+          providerId: storeItem.providerId,
+          title: storeItem.title,
+          type: "book",
+          domains: ["read"],
+          by: storeItem.by,
+          about: storeItem.year ? `First published ${storeItem.year}.` : "Book from Open Library.",
+          year: storeItem.year,
+          artwork: null,
+          genres: storeItem.genres ?? [],
+          providerMeta: { seriesKey: null },
+          sourceUrl: storeItem.providerId ? `https://openlibrary.org/works/${storeItem.providerId}` : "https://openlibrary.org/",
+          relationStrength: strength,
+          fromCanonicalStore: true
+        }));
 }
 
-async function igdbRelated(item, env, fetchImpl) {
+async function igdbRelated(item, env, fetchImpl, queryImpl) {
   if (item.provider !== "igdb") return [];
   const genreIds = item.providerMeta?.genreIds ?? [];
   if (!genreIds.length) return [];
@@ -157,8 +217,14 @@ async function igdbRelated(item, env, fetchImpl) {
     if (!response.ok) return [];
     return (await response.json()).map(igdbItem);
   };
-  if (fetchImpl !== fetch) return load();
-  return cachedValue(`related:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+  const live = fetchImpl !== fetch ? await load() : await cachedValue(`related:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+  // #144: store items canonicalized with IGDB genre *names* (see canonical-store.mjs), so overlap
+  // is matched against genre names here, not the numeric genreIds used for the live query above.
+  return mergeCanonicalCandidates(live, item, item.genres ?? [], {
+    env,
+    queryImpl,
+    buildProviderMeta: (storeItem) => ({ genreIds: [], collectionId: null, franchiseId: null })
+  });
 }
 
 // #135 "prefer anchors with richer metadata": a best-effort reorder of evidence items by their
@@ -177,7 +243,7 @@ async function preferRicherAnchors(items, { env, fetchImpl }) {
   }
 }
 
-export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30 } = {}) {
+export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
   const mode = state.recommendationFilter ?? "all";
   const allEvidence = await preferRicherAnchors(externalEvidenceItems(state), { env, fetchImpl });
   const evidenceItems = (mode === "all"
@@ -194,9 +260,9 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     const startedAt = Date.now();
     try {
       let related = [];
-      if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl);
-      else if (item.provider === "openlibrary") related = await openLibraryRelated(item, env, fetchImpl);
-      else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl);
+      if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
+      else if (item.provider === "openlibrary") related = await openLibraryRelated(item, env, fetchImpl, queryImpl);
+      else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl, queryImpl);
       console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: related.length }));
       // #135 foundation: write-behind canonicalization of real related candidates (see the same
       // note in providers.mjs's searchCatalog). Not awaited, never throws, no-op when
