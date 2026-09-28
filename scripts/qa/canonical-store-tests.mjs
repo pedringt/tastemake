@@ -57,10 +57,23 @@ function makeFakeDb() {
 
   const query = async (text, params = []) => {
     const sql = text.replace(/\s+/g, " ").trim();
-    if (sql.startsWith("select item_id from item_identifiers")) {
+    if (sql.startsWith("select item_id from item_identifiers where provider = $1 and provider_id = $2")) {
       const [provider, providerId] = params;
       const itemId = identifiers.get(`${provider}::${providerId}`);
       return itemId ? [{ item_id: itemId }] : [];
+    }
+    // Simulates the atomic "resolve identity" CTE in upsertCanonicalItem's not-found branch: always
+    // creates a speculative items row, then only actually claims the (provider, provider_id)
+    // identifier if nobody else already holds it -- an unclaimed speculative row is simply left as
+    // an orphan (matching real Postgres's ON CONFLICT DO NOTHING semantics), never returned.
+    if (sql.startsWith("with new_item as (")) {
+      const [mediaType, canonicalTitle, year, factualJson, completeness, provider, providerId] = params;
+      const id = String(nextId++);
+      items.set(id, { id, media_type: mediaType, canonical_title: canonicalTitle, year, factual: JSON.parse(factualJson), metadata_completeness: completeness, traits: {} });
+      const key = `${provider}::${providerId}`;
+      if (identifiers.has(key)) return [{ item_id: identifiers.get(key), is_new: false }];
+      identifiers.set(key, id);
+      return [{ item_id: id, is_new: true }];
     }
     if (sql.startsWith("insert into items")) {
       const [mediaType, canonicalTitle, year, factualJson, completeness] = params;
@@ -135,6 +148,20 @@ check("null item normalizes to null", normalizeCanonicalItem(null) === null);
   check("re-upsert does not create a second items row", db.items.size === 1);
 }
 
+// ---- QA sweep real bug: two concurrent first-time upserts of the same new item must converge -----
+// on one canonical item, not create two. Fires both calls before either resolves (Promise.all),
+// simulating two evidence anchors in one request both surfacing the same brand-new movie.
+
+{
+  const db = makeFakeDb();
+  const [raceIdA, raceIdB] = await Promise.all([
+    upsertCanonicalItem(dune, { query: db.query }),
+    upsertCanonicalItem(dune, { query: db.query })
+  ]);
+  check("two concurrent first-time upserts of the same item converge on one canonical id", raceIdA === raceIdB, `${raceIdA} vs ${raceIdB}`);
+  check("both concurrent callers' item_identifiers ends up pointing at the same row", db.identifiers.get("tmdb:movie::438631") === raceIdA);
+}
+
 // ---- same-title-different-media-type must stay distinct -----------------------------------------
 
 {
@@ -200,6 +227,17 @@ check("null item normalizes to null", normalizeCanonicalItem(null) === null);
   // can assert it really writes, not just that it doesn't throw.
   await new Promise((resolve) => setTimeout(resolve, 0));
   check("write-behind eventually persists all three fixture items", db.items.size === 3);
+}
+
+// ---- QA sweep efficiency fix: a duplicate item in one write-behind batch is only upserted once ----
+// The same real item commonly appears twice in one batch (e.g. related to two different anchors);
+// this must never fire two independent upserts for it.
+
+{
+  const db = makeFakeDb();
+  canonicalizeWriteBehind([dune, dune, wayOfKings], { query: db.query });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  check("a duplicate item in the same batch is upserted only once", db.items.size === 2, `got ${db.items.size}`);
 }
 
 // ---- searchCatalog / retrieveCatalogCandidates keep working with no DB configured ----------------

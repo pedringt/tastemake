@@ -137,7 +137,12 @@ export function validatePicks(response, ctx) {
       const cited = p.cites.map((ref) => evidence.get(ref));
       if (!cited.length) reasons.push("no evidence cited");
       else if (cited.some((r) => !r)) reasons.push("cites evidence that does not exist");
-      else if (cited.every((r) => r.class !== "experienced")) reasons.push("rests only on intent, not on anything the user experienced");
+      // Real bug (QA sweep, 2026-09-28): this used .every(), so a pick citing one experienced item
+      // plus one intent-only item (a bookmark, an untried reaction) still passed -- the ai-contract
+      // rule ("Support cites intent -> Rejected: interest is not experience") is an outright ban on
+      // citing intent as support, not a majority-vote. validateHypotheses already gets this right
+      // with .some() at line 73; this brings picks in line with the same rule.
+      else if (cited.some((r) => r.class !== "experienced")) reasons.push("cites intent (not something experienced), which can never count as support");
       if (CIRCULAR_PATTERNS.some((re) => re.test(p.why))) reasons.push("circular reasoning");
       if (IDENTITY_PATTERNS.some((re) => re.test(p.why))) reasons.push("states a single identity or aesthetic about the user");
       if (p.kind === "curveball") {

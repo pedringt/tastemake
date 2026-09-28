@@ -204,6 +204,52 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
   );
 }
 
+// (6) QA sweep real bug: a bookmark or "Not interested" reaction (intent, never taste evidence)
+// could become a live-provider anchor. Anchor A is a real Loved reaction (must be usable); anchor B
+// is only bookmarked (must never be queried as an anchor at all).
+{
+  const lovedAnchor = { id: "tmdb-movie-loved", provider: "tmdb", providerId: "500", title: "Loved Anchor", type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } };
+  const bookmarkedOnly = { id: "tmdb-movie-bookmarked", provider: "tmdb", providerId: "501", title: "Bookmarked Only", type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } };
+  const intentState = {
+    selectedFavorites: new Set(),
+    feedbackByRecommendation: {
+      [lovedAnchor.id]: { item: lovedAnchor, rating: "more", detail: "loved-before" },
+      [bookmarkedOnly.id]: { item: bookmarkedOnly, rating: "not-tried", detail: "bookmarked" }
+    },
+    recommendationSets: [],
+    customItems: {},
+    areas: { watch: true, read: true, play: true }
+  };
+  const queriedProviderIds = new Set();
+  const intentFetch = async (url) => {
+    const match = String(url).match(/\/movie\/(\d+)\/recommendations/);
+    if (match) queriedProviderIds.add(match[1]);
+    return { ok: true, json: async () => ({ results: [] }) };
+  };
+  await retrieveCatalogCandidates(intentState, { env: { TASTEMAKE_TMDB_TOKEN: "tok" }, fetchImpl: intentFetch });
+  check("a real Loved reaction is used as a retrieval anchor", queriedProviderIds.has("500"));
+  check("a bookmark-only (intent, not experience) reaction is never used as a retrieval anchor", !queriedProviderIds.has("501"));
+}
+
+// (7) QA sweep real bug: feedbackByRecommendation and customItems have the same unbounded-growth
+// shape as recommendationSets did (#151) -- full item objects (about/artwork are the biggest fields)
+// stored forever, resent on every request. Unlike recommendationSets, real item data is genuinely
+// needed server-side, so the fix trims the display-only fields rather than going all the way to ids.
+{
+  const heavyItem = { id: "tmdb-movie-98", provider: "tmdb", providerId: "98", title: "Heavy Item", type: "movie", domains: ["watch"], about: "Y".repeat(2000), artwork: "https://example.test/" + "z".repeat(500), sourceUrl: "https://example.test/movie/98", providerMeta: { genreIds: [18] } };
+  const heavyState = {
+    selectedFavorites: new Set(),
+    feedbackByRecommendation: { [heavyItem.id]: { item: heavyItem, rating: "more", detail: "loved-before" } },
+    customItems: { [heavyItem.id]: heavyItem },
+    recommendationSets: []
+  };
+  const serialized = serializeAiState(heavyState);
+  check("about/artwork/sourceUrl are dropped from feedbackByRecommendation items", !("about" in serialized.feedbackByRecommendation[heavyItem.id].item) && !("artwork" in serialized.feedbackByRecommendation[heavyItem.id].item) && !("sourceUrl" in serialized.feedbackByRecommendation[heavyItem.id].item));
+  check("about/artwork/sourceUrl are dropped from customItems", !("about" in serialized.customItems[heavyItem.id]) && !("artwork" in serialized.customItems[heavyItem.id]) && !("sourceUrl" in serialized.customItems[heavyItem.id]));
+  check("functionally-needed fields survive the trim", serialized.customItems[heavyItem.id].provider === "tmdb" && serialized.customItems[heavyItem.id].providerId === "98" && serialized.customItems[heavyItem.id].title === "Heavy Item" && JSON.stringify(serialized.customItems[heavyItem.id].providerMeta) === JSON.stringify({ genreIds: [18] }));
+  check("the rating/detail on the feedback entry itself survives the trim", serialized.feedbackByRecommendation[heavyItem.id].rating === "more" && serialized.feedbackByRecommendation[heavyItem.id].detail === "loved-before");
+}
+
 console.log(`recommendation-loop tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);

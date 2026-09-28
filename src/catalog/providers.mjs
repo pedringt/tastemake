@@ -1,6 +1,7 @@
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
+import { buildItemId } from "./item-id.mjs";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
@@ -43,7 +44,7 @@ function tmdbItem(row, type) {
   const title = type === "tv" ? row.name : row.title;
   const date = type === "tv" ? row.first_air_date : row.release_date;
   return {
-    id: `tmdb-${type}-${row.id}`,
+    id: buildItemId("tmdb", type, row.id),
     provider: "tmdb",
     providerId: String(row.id),
     title: clean(title, 100),
@@ -89,7 +90,7 @@ async function searchTmdb(query, env, fetchImpl) {
 function openLibraryItem(row) {
   const key = String(row.key ?? "").replace("/works/", "");
   return {
-    id: `openlibrary-book-${key.replace(/[^A-Za-z0-9_-]/g, "")}`,
+    id: buildItemId("openlibrary", "book", key),
     provider: "openlibrary",
     providerId: key,
     title: clean(row.title, 120),
@@ -134,7 +135,7 @@ async function igdbToken(env, fetchImpl) {
 function igdbItem(row) {
   const cover = row.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big_2x/${row.cover.image_id}.jpg` : null;
   return {
-    id: `igdb-game-${row.id}`,
+    id: buildItemId("igdb", "game", row.id),
     provider: "igdb",
     providerId: String(row.id),
     title: clean(row.name, 120),

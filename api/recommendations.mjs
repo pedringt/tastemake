@@ -19,7 +19,11 @@ function parseBody(req) {
   return {};
 }
 
-function hydrateState(raw = {}) {
+// Exported so api/hypotheses.mjs can share this instead of maintaining its own hand-copied version
+// (QA sweep finding: the two had already drifted -- hypotheses.mjs's copy was missing blindSpots,
+// blindSpotDrafts, and recommendationFilter, silently defaulting them wherever a reader happened to
+// tolerate a missing field instead of visibly breaking).
+export function hydrateState(raw = {}) {
   return {
     ...raw,
     selectedFavorites: new Set(raw.selectedFavorites ?? []),
@@ -235,10 +239,16 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
   }
 }
 
+// QA sweep real bug: rank used to be the raw array index + 1, so a curveball anywhere but last (the
+// model's picks array order is whatever it returned -- nothing sorts curveballs to the end first)
+// left a gap in the visible rank sequence for the real (non-curveball) picks, e.g. 1, [curveball], 3
+// instead of 1, [curveball], 2. rank is now a running counter over non-curveball picks only, so it
+// always reads as a dense 1..N regardless of where the curveball lands in the array.
 function clientPicks(validated) {
-  return validated.map((pick, index) => ({
+  let rank = 0;
+  return validated.map((pick) => ({
     ...pick.item,
-    rank: pick.kind === "curveball" ? null : index + 1,
+    rank: pick.kind === "curveball" ? null : (rank += 1),
     fit: pick.kind === "curveball" ? "Exploratory fit" : "Promising fit",
     prediction: "Worth testing",
     surprise: pick.kind === "curveball",
@@ -349,13 +359,15 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
 
     started = Date.now();
     const validated = validatePicks(model.json, ctx);
-    // #120 follow-up: minAccepted is intentionally every candidate offered -- one flawed pick among
-    // up to 6 discards the whole batch, even when the other 5 were fine. That all-or-nothing bar is
-    // a real, frequent cause of the catalog fallback, separate from whether the model call itself
-    // succeeded. Logging the validator's own rule-violation strings (static rule descriptions from
-    // validate.js, never the model's actual pick text or itemId) makes that visible instead of
-    // guessing from an aggregate accepted/rejected count.
-    const result = acceptOrFallback(validated, candidates, { minAccepted: candidates.length });
+    // #120/QA-sweep follow-up (Paige's explicit call, 2026-09-28): this used to require every
+    // candidate offered (up to 6) to individually pass validation, or the whole batch fell back to
+    // catalog picks -- one flawed pick discarded five good ones, and #148's logging confirmed this
+    // was the dominant real cause of fallback. Accepting any valid subset (minAccepted: 1, the
+    // acceptOrFallback default) means a user sees however many real, validated live-AI picks
+    // actually passed -- sometimes fewer than 6 -- instead of silently losing all of them to one
+    // bad pick. Logging the validator's own rule-violation strings (static rule descriptions from
+    // validate.js, never the model's actual pick text or itemId) for whatever still gets rejected.
+    const result = acceptOrFallback(validated, candidates);
     logStage("validation", Date.now() - started, {
       accepted: result.source === "model",
       acceptedCount: validated.accepted?.length ?? 0,

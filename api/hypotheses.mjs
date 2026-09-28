@@ -1,24 +1,16 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { validateHypotheses } from "../src/ai/validate.js";
-import { callAnthropic, liveConfig } from "./recommendations.mjs";
+import { callAnthropic, hydrateState as hydrateBaseState, liveConfig } from "./recommendations.mjs";
 
 const MAX_BODY_BYTES = 160_000;
 
+// QA sweep real bug (fixed here): this used to be a second, hand-maintained copy of
+// recommendations.mjs's hydrateState -- it had already drifted (missing blindSpots,
+// blindSpotDrafts, recommendationFilter). Sharing the base function means the two endpoints can
+// never drift again; modelHypotheses is the one field genuinely unique to this endpoint.
 function hydrateState(raw = {}) {
-  return {
-    ...raw,
-    selectedFavorites: new Set(raw.selectedFavorites ?? []),
-    libraryFavorites: new Set(raw.libraryFavorites ?? []),
-    blindSpotDismissed: new Set(raw.blindSpotDismissed ?? []),
-    feedbackByRecommendation: raw.feedbackByRecommendation ?? {},
-    recommendationSets: Array.isArray(raw.recommendationSets) ? raw.recommendationSets : [],
-    customItems: raw.customItems ?? {},
-    patternStatements: raw.patternStatements ?? [],
-    modelHypotheses: raw.modelHypotheses ?? [],
-    areas: raw.areas ?? {},
-    curveball: raw.curveball !== false
-  };
+  return { ...hydrateBaseState(raw), modelHypotheses: raw.modelHypotheses ?? [] };
 }
 
 export function hypothesisConfig(env = process.env) {
