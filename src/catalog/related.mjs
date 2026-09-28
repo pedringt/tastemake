@@ -303,10 +303,13 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   const rows = await loadEvidence(firstWave);
   console.info("[tastemake-related]", JSON.stringify({ wave: "first", items: firstWave.length, ms: Date.now() - waveStarted }));
 
+  // #120 follow-up: recommendationSets arrives over the wire as arrays of ids, not full item objects
+  // (see serializeAiState in ai/live-client.js) -- this was the only thing ever read from them here.
+  // Accepts a bare id or a full object (still the shape several test fixtures construct directly).
   const blocked = new Set([
     ...evidenceItems.map((item) => item.id),
     ...Object.keys(state.feedbackByRecommendation ?? {}),
-    ...(state.recommendationSets ?? []).flat().map((item) => item.id)
+    ...(state.recommendationSets ?? []).flat().map((entry) => (typeof entry === "string" ? entry : entry?.id))
   ]);
   let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
   const guardStarted = Date.now();

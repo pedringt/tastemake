@@ -6,7 +6,15 @@ export function serializeAiState(state) {
   return {
     selectedFavorites: [...state.selectedFavorites],
     feedbackByRecommendation: state.feedbackByRecommendation,
-    recommendationSets: state.recommendationSets,
+    // #120 follow-up, real bug: server-side, every historical set is only ever read for its item ids
+    // (the "already shown" exclusion set in related.mjs/context.js) -- never full item data. The
+    // full objects (title, artwork URL, synopsis, provider metadata, AI reasoning text) were being
+    // resent on every single request, forever, growing linearly with real usage until it exceeded
+    // the server's 160KB body cap and every request started failing with a silent 413 -- which reads
+    // to a user as "stuck on the same recommendations," since the client keeps whatever was last
+    // successfully rendered. Sending ids only cuts this payload by roughly two orders of magnitude
+    // with zero behavior change server-side.
+    recommendationSets: state.recommendationSets.map((set) => set.map((item) => item.id)),
     libraryFavorites: [...(state.libraryFavorites ?? [])],
     customItems: state.customItems ?? {},
     blindSpots: state.blindSpots ?? {},
