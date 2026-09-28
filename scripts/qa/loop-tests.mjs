@@ -98,6 +98,40 @@ check(
   feedbackOnlyResult.some((c) => c.relatedTo === itemB.title)
 );
 
+// (2c) real bug (2026-09-28): with more than 6 real experienced items (now realistic since #150
+// widened evidence to a user's whole Library), an already-loved item that simply doesn't win one of
+// the 6 anchor slots this round must still never resurface as a "new" recommendation -- confirmed
+// for real: a user's own already-marked favorite came back as a pick. `alreadyLoved` here is
+// deliberately the 7th item, guaranteed to lose the anchor-slot cutoff, and the fake TMDb response
+// deliberately "recommends" it back (a real provider plausibly would, if it's genuinely related to
+// another anchor) to prove it's still excluded downstream.
+{
+  // Deliberately a plain favorite-star toggle (selectedFavorites only, like app.js's `data-favorite`
+  // handler), never an explicit Loved it/Liked it rating -- so it has NO feedbackByRecommendation
+  // entry at all. That's the real shape: it's excluded from candidates only by being recognized as
+  // evidence, not by any rating-based path.
+  const alreadyLoved = { id: "tmdb-movie-100", provider: "tmdb", providerId: "100", title: "Already Loved", type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } };
+  const fillers = Array.from({ length: 6 }, (_, i) => ({ id: `tmdb-movie-${i}`, provider: "tmdb", providerId: String(i), title: `Anchor ${i}`, type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } }));
+  // Insertion order matters: externalEvidenceItems() preserves it, and the 6-anchor cap takes the
+  // first 6 -- fillers first, alreadyLoved last, so alreadyLoved is guaranteed to lose the cutoff.
+  const manyEvidenceState = {
+    selectedFavorites: new Set([...fillers.map((f) => f.id), alreadyLoved.id]),
+    feedbackByRecommendation: {},
+    recommendationSets: [],
+    customItems: Object.fromEntries([...fillers, alreadyLoved].map((item) => [item.id, item])),
+    areas: { watch: true, read: true, play: true }
+  };
+  const manyEvidenceFetch = async (url) => ({
+    ok: true,
+    json: async () => ({ results: [{ id: 100, title: "Already Loved", overview: "New.", release_date: "2021-01-01", poster_path: "/x.jpg", genre_ids: [18] }] })
+  });
+  const manyEvidenceResult = await retrieveCatalogCandidates(manyEvidenceState, { env: { TASTEMAKE_TMDB_TOKEN: "tok" }, fetchImpl: manyEvidenceFetch });
+  check(
+    "an already-loved item never resurfaces as a candidate, even when it loses the 6-anchor-slot cutoff",
+    !manyEvidenceResult.some((c) => c.id === alreadyLoved.id)
+  );
+}
+
 // (3) Saved (bookmarked/untried) intent is a weaker, non-taste signal compared to an experienced reaction.
 const saved = { item: itemA, rating: "not-tried", detail: "bookmarked" };
 const experienced = { item: itemA, rating: "more", detail: "liked-before" };
