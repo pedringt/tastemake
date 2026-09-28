@@ -191,6 +191,82 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
   return itemId;
 }
 
+const FIELD_BY_MEDIA_TYPE = { book: "subjects", movie: "genres", tv: "genres", game: "genres" };
+const DOMAIN_BY_MEDIA_TYPE = { movie: ["watch"], tv: ["watch"], book: ["read"], game: ["play"] };
+
+// Reconstructs the same `id` convention providers.mjs uses (tmdbItem/openLibraryItem/igdbItem), so
+// a store-sourced candidate dedupes against a live-provider candidate for the same real item by a
+// plain `.id` equality check, with no separate merge-time identity logic needed.
+function reconstructId(provider, providerId, mediaType) {
+  if (provider === "openlibrary") return `openlibrary-book-${String(providerId).replace(/[^A-Za-z0-9_-]/g, "")}`;
+  if (provider === "tmdb") return `tmdb-${mediaType}-${providerId}`;
+  if (provider === "igdb") return `igdb-game-${providerId}`;
+  return null;
+}
+
+// #144: expands a related-candidate pool with items Tastemake has already canonicalized (from any
+// past search/related call, not just this one), matched by genre/subject overlap with the anchor.
+// Same injectable-query pattern as lookupMetadataCompleteness/upsertCanonicalItem above -- degrades
+// to an empty array (never throws) on missing config, no useful anchor genres/subjects, a query
+// error, or a timeout, so a store outage or thin anchor never breaks the live-provider retrieval
+// path this only ever augments.
+export async function relatedCanonicalItems(anchor, subjects, { env = process.env, query: queryImpl, timeoutMs = 250 } = {}) {
+  const runQuery = queryImpl ?? ((text, params) => defaultQuery(text, params, { env }));
+  if (!queryImpl && !isConfigured(env)) return [];
+
+  const mediaType = anchor?.type;
+  if (!mediaType || !MEDIA_TYPES.has(mediaType)) return [];
+  const field = FIELD_BY_MEDIA_TYPE[mediaType];
+  const values = [...new Set((subjects ?? []).map((value) => String(value ?? "").trim()).filter(Boolean))];
+  if (!values.length) return [];
+
+  const anchorProvider = anchor.provider ? identifierNamespace(anchor, mediaType) : null;
+  const anchorProviderId = anchor.providerId != null ? String(anchor.providerId) : null;
+
+  try {
+    const withTimeout = (promise) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("related canonical items lookup timed out")), timeoutMs))
+    ]);
+    const rows = await withTimeout(runQuery(
+      `select i.canonical_title, i.year, i.factual, ii.provider, ii.provider_id
+         from items i
+         join item_identifiers ii on ii.item_id = i.id
+        where i.media_type = $1
+          and i.factual -> $2 ?| $3::text[]`,
+      [mediaType, field, values]
+    ));
+
+    const seen = new Set();
+    const results = [];
+    for (const row of rows ?? []) {
+      if (row.provider === anchorProvider && row.provider_id === anchorProviderId) continue;
+      const provider = row.provider?.split(":")[0] ?? null;
+      const id = reconstructId(provider, row.provider_id, mediaType);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      const matched = row.factual?.[field] ?? [];
+      results.push({
+        id,
+        provider,
+        providerId: row.provider_id,
+        title: row.canonical_title,
+        type: mediaType,
+        domains: DOMAIN_BY_MEDIA_TYPE[mediaType] ?? [],
+        year: row.year,
+        by: row.factual?.author ?? null,
+        genres: matched,
+        subject: matched,
+        fromCanonicalStore: true
+      });
+    }
+    return results;
+  } catch (error) {
+    console.info("[tastemake-canonical]", JSON.stringify({ error: error?.message || "related lookup failed" }));
+    return [];
+  }
+}
+
 // Fire-and-forget write-behind: canonicalizes each item without ever throwing and without adding
 // latency to the caller's response path (nothing here is awaited by callers; failures are logged in
 // the same sanitized style used elsewhere and swallowed). A no-op when TASTEMAKE_DATABASE_URL isn't
