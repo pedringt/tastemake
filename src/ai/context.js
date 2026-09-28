@@ -6,7 +6,11 @@ import { evidenceRecords } from "../model/evidence.js";
 // what counts as evidence, what was already seen, or which areas are on.
 
 export function eligibleCandidates(state, extraCandidates = []) {
-  const shown = new Set(state.recommendationSets.flat().map((item) => item.id));
+  // #120 follow-up: the wire payload now sends recommendationSets as arrays of ids, not full item
+  // objects (see serializeAiState in ai/live-client.js) -- this was the only thing ever read from
+  // them server-side anyway. Accepts a bare id or a full object (still the shape several test
+  // fixtures construct directly).
+  const shown = new Set(state.recommendationSets.flat().map((entry) => (typeof entry === "string" ? entry : entry?.id)));
   const reacted = new Set(Object.keys(state.feedbackByRecommendation));
   const pool = [...extraCandidates];
   const seen = new Set();

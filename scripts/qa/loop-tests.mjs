@@ -10,6 +10,7 @@
 
 import { canKeepDiscovering, currentRoundComplete, isBookmarked, recommendationDelta, tasteDelta } from "../../src/model/taste.js";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
+import { serializeAiState } from "../../src/ai/live-client.js";
 
 let passed = 0;
 const failures = [];
@@ -105,6 +106,32 @@ check("an experienced reaction IS taste evidence", tasteDelta(experienced) !== 0
 check("saved intent still lightly steers what comes next (a weaker signal, not zero)", recommendationDelta(saved) > 0 && recommendationDelta(saved) < recommendationDelta(experienced));
 check("isBookmarked recognizes the saved-but-untried state", isBookmarked(saved));
 check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarked(experienced));
+
+// (4) real bug (2026-09-28): recommendationSets grows by one full-object array every single
+// "More recommendations" click, forever, and the client resent the whole thing on every future
+// request -- server-side, only .id was ever read from it (see the blocked-set fix above). With real
+// usage this payload eventually exceeded the server's MAX_BODY_BYTES cap and every subsequent
+// request started silently failing with a 413, which read to a user as "stuck on the same
+// recommendations forever" since the client just keeps showing the last successfully rendered set.
+{
+  const bigItem = { id: "tmdb-movie-99", title: "X".repeat(2000), about: "Y".repeat(2000), artwork: "https://example.test/" + "z".repeat(500) };
+  const heavyState = {
+    selectedFavorites: new Set(),
+    feedbackByRecommendation: {},
+    recommendationSets: Array.from({ length: 40 }, () => [bigItem, bigItem, bigItem, bigItem, bigItem, bigItem])
+  };
+  const serialized = serializeAiState(heavyState);
+  const wireBytes = Buffer.byteLength(JSON.stringify(serialized), "utf8");
+  check(
+    "40 real rounds of full-size picks stay well under the server's 160KB cap once serialized",
+    wireBytes < 160_000,
+    `got ${wireBytes} bytes`
+  );
+  check(
+    "recommendationSets is sent as ids only, not full item objects",
+    serialized.recommendationSets.every((set) => set.every((entry) => typeof entry === "string"))
+  );
+}
 
 console.log(`recommendation-loop tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
