@@ -71,6 +71,28 @@ export function announceReaction(itemId, announce) {
   announce(`${feedback.item.title}: ${reactionLabel(feedback)}.${bookmarkPart}${offer}`);
 }
 
+// #120: perceived latency. Real production timing shows the live-AI call commonly runs 8-16s
+// (dominated by output-token generation time, not prompt size -- see #120). The skeleton/banner
+// already rule out a blank/frozen page, but one unchanging message across that whole span can
+// itself start reading as "stuck" well before the request actually fails or times out. Staging the
+// message forward twice, only while this exact request is still the current, non-stale one, keeps
+// showing new true-progress language instead of one static sentence -- no change to actual latency,
+// just to how the wait reads.
+const LOADING_STAGE_DELAYS_MS = [3000, 7000];
+const LOADING_STAGE_MESSAGES = [
+  "Checking real catalog candidates against what you have actually tried.",
+  "Ranking picks and double-checking each one against your evidence."
+];
+
+function scheduleLoadingStages(request, { render }) {
+  const timers = LOADING_STAGE_DELAYS_MS.map((delay, index) => setTimeout(() => {
+    if (state.aiRequest?.id !== request.id || state.aiStatus !== "loading") return;
+    state.aiMessage = LOADING_STAGE_MESSAGES[index];
+    render();
+  }, delay));
+  return () => timers.forEach(clearTimeout);
+}
+
 // Recommendation request orchestration. Both the first set and later sets now come from the
 // real catalog pipeline; there is no local hand-written fallback.
 async function runRecommendationRequest({ render, updateStepper, announce, navigate, initial = false }) {
@@ -88,6 +110,8 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
   render();
   updateStepper();
   announce(initial ? "Tastemake is finding your first recommendations." : "Tastemake is finding a new set.");
+
+  const clearLoadingStages = scheduleLoadingStages(request, { render });
 
   try {
     const result = await requestRecommendations(state, { signal: request.controller?.signal });
@@ -138,6 +162,8 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
     state.recommendationExhausted = false;
     navigate("recommendations", { replace: true });
     announce("Recommendations are temporarily unavailable.");
+  } finally {
+    clearLoadingStages();
   }
 }
 
