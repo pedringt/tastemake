@@ -2,6 +2,7 @@ import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs"
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupMetadataCompleteness, relatedCanonicalItems } from "./canonical-store.mjs";
+import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 
 const uniq = (items) => {
   const seen = new Set();
@@ -73,7 +74,7 @@ async function tmdbRelated(item, env, fetchImpl, queryImpl) {
   if (!env.TASTEMAKE_TMDB_TOKEN || item.provider !== "tmdb") return [];
   const load = async () => {
     const kind = item.type === "tv" ? "tv" : "movie";
-    const response = await fetchImpl(`https://api.themoviedb.org/3/${kind}/${item.providerId}/recommendations?language=en-US&page=1`, {
+    const response = await fetchWithTimeout(fetchImpl, `https://api.themoviedb.org/3/${kind}/${item.providerId}/recommendations?language=en-US&page=1`, {
       headers: { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" }
     });
     if (!response.ok) return [];
@@ -125,7 +126,7 @@ function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
 async function openLibrarySubjectSearch(subject, env, fetchImpl) {
   const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key";
   const load = async () => {
-    const response = await fetchImpl(`https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
+    const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
     });
     if (!response.ok) return [];
@@ -205,7 +206,7 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
   const load = async () => {
     const token = await igdbToken(env, fetchImpl);
     if (!token) return [];
-    const response = await fetchImpl("https://api.igdb.com/v4/games", {
+    const response = await fetchWithTimeout(fetchImpl, "https://api.igdb.com/v4/games", {
       method: "POST",
       headers: {
         "client-id": env.IGDB_CLIENT_ID,
