@@ -229,6 +229,17 @@ check("null item normalizes to null", normalizeCanonicalItem(null) === null);
   check("write-behind eventually persists all three fixture items", db.items.size === 3);
 }
 
+// ---- QA sweep efficiency fix: a duplicate item in one write-behind batch is only upserted once ----
+// The same real item commonly appears twice in one batch (e.g. related to two different anchors);
+// this must never fire two independent upserts for it.
+
+{
+  const db = makeFakeDb();
+  canonicalizeWriteBehind([dune, dune, wayOfKings], { query: db.query });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  check("a duplicate item in the same batch is upserted only once", db.items.size === 2, `got ${db.items.size}`);
+}
+
 // ---- searchCatalog / retrieveCatalogCandidates keep working with no DB configured ----------------
 
 {

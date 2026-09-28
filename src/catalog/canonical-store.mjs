@@ -313,9 +313,25 @@ export async function relatedCanonicalItems(anchor, subjects, { env = process.en
 // function's lifetime for background work like this. Outside an actual Vercel request context (this
 // sandbox, local scripts, the test suite) it safely no-ops rather than throwing, so nothing here
 // needed to change for tests.
+// QA sweep efficiency finding (Paige's call, 2026-09-28): full cross-item query batching (a single
+// multi-row insert/update covering the whole write-behind batch) was considered but not done here --
+// it would require reshaping upsertCanonicalItem's contract (currently directly tested and just
+// fixed for a real race condition), and can't be verified against a real Postgres database from this
+// sandbox. Deduping the batch first is the safe slice of the same fix: the same real item commonly
+// appears twice in one write-behind call (e.g. related to two different anchors in the same
+// request), which previously fired two fully independent upserts -- each internally safe after the
+// race-condition fix, but still double the real work for one real item. Keyed on the same provider
+// identity upsertCanonicalItem itself resolves by, so this never changes which items get written,
+// only how many times the identical (provider, providerId) is processed in one batch.
 export function canonicalizeWriteBehind(items, { env = process.env, query: queryImpl } = {}) {
   if (!queryImpl && !isConfigured(env)) return;
+  const seen = new Set();
   for (const item of items ?? []) {
+    const key = item?.provider && item?.providerId != null ? `${item.provider}::${item.providerId}` : null;
+    if (key) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
     const task = Promise.resolve()
       .then(() => upsertCanonicalItem(item, { env, query: queryImpl }))
       .catch((error) => {

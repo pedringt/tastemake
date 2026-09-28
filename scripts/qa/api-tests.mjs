@@ -197,18 +197,35 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
   check("timing logs never include prompt/candidate text", [...timingLines, ...relatedLines].every((line) => !line.includes("Favorite Film") && !line.includes(candidateTitles[0])));
 }
 
-// Invalid model output never invents a replacement.
+// A fully-invalid model response never invents a replacement -- falls back to real catalog picks.
 const invalidCases=[
-  ["invented id",goodPicks().map((p,i)=>i? p:{...p,itemId:"made-up"})],
-  ["missing citation",goodPicks().map((p,i)=>i? p:{...p,cites:[]})],
-  ["bad citation",goodPicks().map((p,i)=>i? p:{...p,cites:["ev:nope"]})],
-  ["circular why",goodPicks().map((p,i)=>i? p:{...p,why:"This matches your taste."})],
-  ["duplicate",goodPicks().map(p=>({...p,itemId:goodPicks()[0].itemId}))],
-  ["too few",goodPicks().slice(0,1)]
+  ["all invented ids",goodPicks().map(p=>({...p,itemId:"made-up"}))],
+  ["all missing citations",goodPicks().map(p=>({...p,cites:[]}))],
+  ["all bad citations",goodPicks().map(p=>({...p,cites:["ev:nope"]}))],
+  ["all circular why",goodPicks().map(p=>({...p,why:"This matches your taste."}))]
 ];
 for(const [name,picks] of invalidCases){
   const result=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(modelSays(picks))});
   check(`${name}: falls back to real catalog`,result.source==="catalog"&&result.picks.every(p=>p.provider==="tmdb"),result.source);
+}
+
+// #120/QA-sweep (Paige's explicit call, 2026-09-28): one flawed pick among several good ones no
+// longer discards the whole batch -- the valid subset is shown instead of falling back entirely.
+const partialCases=[
+  ["one invented id",goodPicks().map((p,i)=>i? p:{...p,itemId:"made-up"}),5],
+  ["one missing citation",goodPicks().map((p,i)=>i? p:{...p,cites:[]}),5],
+  ["one bad citation",goodPicks().map((p,i)=>i? p:{...p,cites:["ev:nope"]}),5],
+  ["one circular why",goodPicks().map((p,i)=>i? p:{...p,why:"This matches your taste."}),5],
+  // every pick shares the first pick's itemId: only the first occurrence is a real (non-duplicate) pick.
+  ["all duplicates of one id",goodPicks().map(p=>({...p,itemId:goodPicks()[0].itemId})),1],
+  // the model simply returned fewer picks than offered -- no longer treated as a failure on its own.
+  ["fewer picks than requested",goodPicks().slice(0,1),1]
+];
+for(const [name,picks,expectedCount] of partialCases){
+  const result=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(modelSays(picks))});
+  check(`${name}: accepted as a partial model result, not a full fallback`,result.source==="model",result.source);
+  eq(`${name}: shows exactly the valid picks`,result.picks.length,expectedCount);
+  check(`${name}: every shown pick is a real, validated item`,result.picks.every(p=>p.provider==="tmdb"));
 }
 
 // QA sweep (2026-09-28) real bug: validatePicks used .every() instead of .some() for the
@@ -220,7 +237,11 @@ for(const [name,picks] of invalidCases){
   const mixedState=rawState({feedbackByRecommendation:{[bookmarked.id]:{item:bookmarked,rating:"not-tried",detail:"bookmarked"}}});
   const mixedCitationPicks=goodPicks().map((p,i)=>i?p:{...p,cites:[...p.cites,`ev:${bookmarked.id}`]});
   const result=await produceRecommendations({rawState:mixedState,env:ON,fetchImpl:routedFetch(modelSays(mixedCitationPicks))});
-  check("a pick citing intent evidence alongside real evidence is rejected, not accepted",result.source==="catalog"&&result.picks.every(p=>p.provider==="tmdb"),result.source);
+  // Partial-accept semantics (Paige's call, 2026-09-28): the one pick citing intent is excluded, but
+  // the other 5 valid picks are still shown as a real model result rather than falling back entirely.
+  check("the pick citing intent evidence is excluded from the result",!result.picks.some(p=>p.id===mixedCitationPicks[0].itemId));
+  eq("the other 5 valid picks are still accepted",result.picks.length,5);
+  check("still a real model result, not a full fallback",result.source==="model",result.source);
 }
 // QA sweep real bug: rank used to be the raw array index + 1, so a curveball landing anywhere but
 // last left a gap in the visible rank sequence for the real picks (e.g. 1, null, 3 instead of
