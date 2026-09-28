@@ -1,4 +1,4 @@
-# Tastemake handoff — Sept. 27, 2026
+# Tastemake handoff — Sept 28, 2026
 
 This is the current continuation guide for Tastemake. If older notes conflict with this file, issue #16, newer issue-specific acceptance criteria, or current `main`, trust the newer material.
 
@@ -6,24 +6,19 @@ This is the current continuation guide for Tastemake. If older notes conflict wi
 
 - Repo: https://github.com/pedringt/tastemake
 - Production: https://tastemake.vercel.app
-- Current `main`: **3826a96558741b7c15f1388895040d1e35eddbcb**
-- PR #130 is merged and deployed to production.
-- PR #130 title: **Shrink recommendation context and hide internal evidence refs (#120 #129)**.
-- Vercel production deployment for that merge completed successfully.
-- PR #130 required CI was green before merge.
-- Temporary eval PRs #132, #133 and #134 were closed and must not be merged.
-- Old draft PR #104 predates several later changes. Do not merge it blindly. Rebuild/cherry-pick only still-relevant pieces against current main.
+- Current `main`: **d2f12c907296cae6cc6304ed92efa4fa7c9fbaf8**
+- Vercel production deployment for that commit is Ready, confirmed directly (not just via GitHub's own status).
+- Required CI was green on every PR before merge this session.
+- Draft PR #101 ("Refresh Claude Code handoff") is unrelated/stale from an earlier session — inspect before touching, don't assume it's still relevant.
+- Old draft PR #104 (metadata/Profile/Library/Favorites) was reconciled and closed in an earlier session — its useful pieces shipped as #116/#118/#119. Nothing outstanding there.
 
 ## Product north star
 
 Tastemake helps people understand patterns in what they are drawn to, then uses those patterns to discover and test more things they may like.
 
-The strongest product idea is not merely “better recommendations.”
+> Most recommenders let you react to items. Tastemake also lets you react to the model it builds from those reactions.
 
-> **Most recommenders let you react to items. Tastemake also lets you react to the model it builds from those reactions.**
-
-Core authority model:
-
+Core authority model (unchanged, do not re-litigate without new evidence):
 - software owns evidence, state, eligibility and mutation;
 - AI interprets, ranks and explains;
 - only experienced items become taste evidence;
@@ -37,336 +32,85 @@ Core authority model:
 ## Current product model
 
 - **Recommendations = discovery**
-- **Library = ongoing relationship management**
-- **Saved = might try / intent**
-- **Tried = experienced history**
-- **Favorite = strongest explicit experienced-positive signal**
-- **Disliked / Not for me = experienced negative evidence**
+- **Library = ongoing relationship management** (Saved / Tried / Favorite / Disliked)
+- **Favorite = strongest explicit experienced-positive signal** — as of this session, Library is the *single* durable source of truth for this (see "Post-onboarding IA" below). There is no longer a second parallel Favorite representation.
 - **Taste Profile = inspectable/correctable working model of taste**
 
-Post-onboarding IA direction is tracked in #117.
+## Post-onboarding IA — done (#117, closed)
 
-Expected first-run:
-1. choose Look;
-2. pick at least 4 Favorites through Search/Browse;
-3. brief “enough to start” transition;
-4. Recommendations.
+Implemented and verified live across three PRs (#118, #119, #116):
+- Root-path routing bug fixed: a returning (onboarded) user hitting `/` lands on Recommendations, not the Look picker. A fresh visitor still starts at Look.
+- Favorites/Browse hidden from the persistent top nav once onboarding completes (still directly reachable by URL, from Library, or from the new in-Recommendations link). Reuses the existing `.is-onboarding` CSS class — no new state.
+- "Browse by genre instead" added inside Recommendations as Browse's permanent post-onboarding home.
+- **Library is now the durable source of truth for Favorites.** Onboarding's `selectedFavorites` is migrated into the real Library model (a `loved-before` reaction + `libraryFavorites` flag) the instant onboarding completes, then cleared. `app.js`'s `hasEnoughFavorites()` and `browse.js`'s equivalent now also accept `state.onboarded` since the Set they used to check gets cleared. A former starter Favorite is now a normal, fully correctable Library item (reaction-correction UI, "Remove from Favorites" keeps the Tried record) — verified live end-to-end.
+- Per-media-type metadata (director/cast, creator/cast, developer/publisher/platforms) added via a lazy on-demand detail fetch (`api/catalog-detail.mjs`), plus the "Storm Riders" expanded-Library-card wrap/overflow fix.
 
-Expected returning use:
-- onboarding screens should no longer dominate;
-- chosen Look persists;
-- Favorites setup is not a permanent primary surface;
-- Library is where ongoing item relationships are managed;
-- Browse remains available as alternate discovery;
-- likely primary nav trends toward Recommendations / Taste Profile / Library / Look or Settings.
+Related follow-ups already closed this session: #106/#107/#108/#109 (search ranking, recommendation style, Saved-removal cleanup, cross-media dedup — all merged as #110, confirmed live for #106 specifically), #111 (Browse v1 + its post-onboarding role), #121 (card clipping/status-chip alignment), #122 (state-aware Library search), #92 (franchise-continuation regression, root cause: the novelty guard's comparison set was narrowed to only a candidate's direct `relatedTo` anchor instead of the full accumulated evidence set).
 
-## Real catalog
+## Recommendation latency (#120) — instrumented, root cause found, still open
 
-Current providers:
+Real production timing data (Vercel runtime logs, not guessed):
+- Median total request time was ~11.7s, with the **live Anthropic call itself consistently 85–95% of total time** (11.8s of 13.3s in one fully-instrumented sample). Candidate retrieval/validation/novelty guard were all under 2s combined — never the bottleneck.
+- Confirmed: prompt size was genuinely large before optimization — 25,163 chars / 10,840 input tokens on one real request.
+- **Fixed in #130** (by a prior ChatGPT-assisted session, verified with a real before/after paid eval): capped model-visible evidence at 18 records (full history still kept for deterministic use), stripped unneeded fields. Measured: 25,163→5,468 prompt chars (−78%), 10,840→2,265 input tokens (−79%), ~10.31s→~8.25s median live-call time (−20%), 2/3→3/3 validation pass rate. Honest caveat: candidate pool sizes differed between the before/after test runs, so the full latency gain isn't purely attributable to context-shrinking.
+- Also fixed in #130: internal `ev:...` evidence refs were leaking into user-facing recommendation text (#129, closed).
+- **Remaining ~8–9.5s is flagged as likely inherent model generation time**, not something context-trimming alone will fix further. #120 stays open — the next real step (per the issue itself) is measuring whether shorter output requirements, a different model/task split, or progressive UI reveal helps, not another round of prompt-shrinking. Token/prompt-size logging (`[tastemake-recommendations-timing]` with `promptSize`/`evidenceChars`/`candidatesChars` breakdown) is already live for whoever picks this up next.
+- No paid-model verification should happen without stating call count + cost and getting Paige's explicit approval first — this was followed carefully throughout (every real call this session was approved individually before running).
 
-- TMDb: movies + TV
-- Open Library: books
-- IGDB: games
+## Canonical item store (#135) — foundation built, two real bugs found and fixed, one algorithm improvement shipped
 
-Current related-candidate behavior in `src/catalog/related.mjs`:
+A dedicated Neon Postgres project ("Tastemake", id `icy-scene-02345609`) now exists, fully isolated from the separate "State" projects on the same account. Connection string lives only in Vercel's `TASTEMAKE_DATABASE_URL` env var (production/preview/development) — never in code or git.
 
-### Movies / TV
-For each usable TMDb-backed evidence item:
-- call TMDb's recommendations endpoint;
-- request up to 12 candidates.
+Schema (do not recreate, do not change without a clear reason):
+- `items` — canonical identity + media-specific `factual` JSONB + separate `traits` JSONB (AI-inferred, never merged into `factual`) + `metadata_completeness` score
+- `item_identifiers` — multi-provider-ID resolution, namespaced by media type inside `canonical-store.mjs` (e.g. `"tmdb:movie"` vs `"tmdb:tv"`) since TMDb movie/TV ids can collide numerically
+- `item_field_provenance` — source/timestamp/trust per field
 
-This is currently the strongest retrieval path because TMDb provides provider-generated recommendations rather than Tastemake inferring relation from one genre.
+Built (`src/server/db.mjs`, `src/catalog/canonical-store.mjs`): an injectable Neon client and `normalizeCanonicalItem()`/`upsertCanonicalItem()`, wired into `searchCatalog()` and `retrieveCatalogCandidates()` as a fire-and-forget write-behind — **not yet a read path**. Candidate retrieval still hits live provider APIs every time; nothing reads from this store yet. That swap is explicitly deferred to a future PR once the store has accumulated real coverage.
 
-### Games
-For each usable IGDB-backed item:
-- take up to 3 genre IDs;
-- query IGDB for up to 12 games;
-- order by popularity/ratings in the provider query.
+**Two real bugs shipped with the first version and were only caught by verifying against production directly, not by trusting green tests:**
+1. (#139) Write-behind promises were never awaited by design (to avoid response latency), but Vercel can freeze a serverless function's execution environment the instant its response is sent — so they had no guarantee of ever completing. Fixed with `waitUntil` from `@vercel/functions` (already a dependency, already used for the runtime cache), which safely no-ops outside a real Vercel request context.
+2. (#140) `db.mjs` called `sql.query(text, params)`, but `neon()`'s returned client is itself the callable query function with no `.query()` method — every real write was throwing, silently swallowed by the write-behind's own catch handler. One-line fix, plus a new test seam (`sqlImpl` param) and a regression test shaped exactly like the real driver, since the existing tests all mocked one level too high to catch this class of bug.
 
-This is workable but coarse.
+Verified live after both fixes: triggered a real request, confirmed no error in runtime logs, queried Neon directly, confirmed real rows landing (8 books from one query, correct `metadata_completeness` scores).
 
-### Books
-For each usable Open Library-backed item:
-- choose a meaningful subject;
-- query Open Library for up to 12 rows;
-- filter candidates using meaningful-subject overlap.
+**One real production call surfaced two more findings while verifying #131's fix:**
+- Confirmed #131 fixed for real: 19 candidates vs. the documented collapse to 4, live Anthropic call succeeded cleanly.
+- Also surfaced #142 (new): the direct sequel to a loved book could still occupy a primary recommendation slot, because `openLibraryItem()` never carried a `providerMeta` relationship signal at all (unlike movies/TV/games). Investigated directly against Open Library's real API before writing a fix — confirmed it does support `series_key` (works for e.g. Harry Potter) but genuinely lacks it for the exact book pair that surfaced this (Way of Kings / Words of Radiance). Partial fix shipped (#143): wired `series_key` into the novelty guard wherever Open Library actually has it. Left open — the residual gap (books Open Library has no series data for) is real and documented as an accepted test case, not silently claimed as fixed.
 
-The conservative filter shipped in #130 prevents broad/noisy labels such as “New York Times bestseller” from creating absurd relationships.
+### Candidate-generation quality (#131) — fixed
 
-However, it is now known to be **too narrow in some cases**. The post-merge large-history test reduced a 12-row book candidate pool to 4. #131 now owns balancing precision vs pool health.
+`openLibraryRelated()` redesigned: was one query against `sourceSubjects[0]` with a hard pass/fail overlap gate; now queries the top 2-3 meaningful subjects concurrently, merges/dedupes by Open Library work key, and grades overlap strength (2+ overlaps = strong, exactly 1 against a richer source = weak-but-kept, 0 = rejected) instead of a single gate. Real before/after (live Open Library network call, no mocks): 4 → 19 candidates for the exact regression scenario, while the original Atomic-Habits-style false positive stays correctly excluded.
 
-### Multiple anchors
+Movies/TV (`tmdbRelated()`) and games (`igdbRelated()`) were audited for the same brittle-single-query failure mode and found already healthy — no change made to either, reported honestly rather than forcing an unnecessary change.
 
-Overall retrieval can use up to 6 provider-backed evidence items:
-- first 4 are loaded concurrently;
-- the remaining 2 are only used if the first wave cannot produce a healthy pool.
+Also added: `lookupMetadataCompleteness()` in `canonical-store.mjs` — a best-effort, 250ms-timeout, fail-silent batch read used to prefer richer-metadata anchors within the existing domain-balancing scheme. Scoped down deliberately; does not change which domains are represented, never blocks retrieval.
 
-Important limitation:
+## What's genuinely still open, in rough priority order
 
-> a user can have a rich taste history while candidate retrieval still revolves around only the few items that have strong provider metadata.
+1. **#120** — recommendation latency. Instrumentation and one real context-shrinking round done; remaining ~8-9.5s needs a different kind of investigation (inherent model generation time vs. further prompt work vs. perceived-loading UX). See above for exactly what's already measured.
+2. **#135** — canonical store foundation is live and writing real data; the actual "read candidates from the store instead of live provider calls" swap, and the web-enrichment fallback for thin metadata, are both still unbuilt. Don't start either without re-reading the full issue — there are real constraints (no AI-invented facts, lazy growth only, provenance required).
+3. **#142** — book sequel-suppression residual gap (Open Library has no series data for some real books). No further action planned without new direction; flagged as a known limitation.
+4. **#103** — broader metadata/Profile/Library/post-onboarding cleanup umbrella. Its post-onboarding pieces are done (see above); it's intentionally kept open as a pointer to #135 for the remaining database/enrichment/retrieval pieces. Don't treat it as separately actionable — work through #135 instead.
+5. **#100** — enable Vercel Web Analytics/Speed Insights, establish a latency baseline using the new timing logs. Not started.
+6. **#29** — Library IA validation at larger real history sizes. Not urgent; revisit if Paige's own real usage grows enough to matter.
+7. **#115** — exact-match search ranking (from #106's fix) can promote an obscure title over a well-known one with a longer official title (e.g. a companion web series over a flagship film). Two real reproductions on file. Not started.
+8. Long-tail future/idea issues, parked, no new signal to revisit: #6, #7, #9, #10, #11, #14, #15, #17, #19, #28, #37, #48, #69.
 
-That limitation is now a first-class architecture concern in #135.
+## Standing workflow rules (all followed carefully this session, keep following them)
 
-## New architecture direction: canonical metadata + enrichment
+- Feedback/QA requests are read-only unless Paige separately authorizes fixes.
+- Only merge to `main` on Paige's explicit instruction, every time — passing CI is never permission.
+- Before any *intentional* paid Anthropic call: state expected call count + cost estimate, get explicit approval, every time. Ordinary user testing in the production UI is not authorization for an agent-initiated paid call.
+- Do not weaken validation/grounding/novelty-suppression to make a metric look better.
+- No seeded/demo data, ever, in any of this work.
+- When background agents are used for parallel work, expect real merge conflicts when their branches land close together (happened this session between #116/#118/#119, and independently between #92's/#120's/#131's PRs touching `related.mjs`/`novelty.mjs`) — rebase and resolve carefully rather than force-picking one side; these were all genuinely additive, non-overlapping changes that just needed a clean rebase.
+- **When something claims to fix a backend/infra bug, verify it against the real deployed system before believing it — not just green tests.** This session's clearest lesson: the canonical-store foundation had 33/33 passing tests and shipped with two bugs that only a real production check (trigger a request, then query the database directly) revealed. Do this same discipline for any future infra/persistence work.
 
-Issue **#135** is the source of truth for the next recommendation-data architecture.
+## Suggested next sequence
 
-Desired flow:
-
-> external providers / authoritative web sources → Tastemake canonical item store → deterministic candidate retrieval/scoring → AI ranking/explanation
-
-### Persistence
-
-Use **Neon Postgres** as the preferred persistent item/catalog store.
-
-Reuse the infrastructure pattern already familiar from State, but keep products isolated:
-- Tastemake gets its own database/project/schema and credentials;
-- do not share State's application tables/data;
-- Vercel remains the Tastemake app/serverless layer;
-- Render is not needed merely to add a database.
-
-### Canonical item data
-
-The database should grow lazily around items users actually encounter. Do not attempt to pre-load every work in every medium.
-
-Useful stored data includes:
-
-- canonical Tastemake item ID;
-- provider IDs / stable external IDs;
-- media type/domain;
-- title;
-- creator/author/director/developer;
-- year;
-- series/franchise/collection;
-- genres/subjects/themes where factual/provider-supplied;
-- description;
-- media-specific fields such as platforms, publisher, selected cast, page count, runtime;
-- metadata provenance;
-- retrieval/update timestamps;
-- metadata completeness.
-
-Keep **AI-inferred traits** separate from factual catalog metadata.
-
-Examples of inferred traits:
-- atmospheric
-- melancholy
-- slow-burn
-- visually stylized
-- politically intricate
-
-Those can support taste reasoning, but they must never silently overwrite product truth.
-
-### Enrichment
-
-When an item is important and its metadata is thin:
-
-1. normalize what the current provider already supplies;
-2. detect missing high-value fields;
-3. prefer structured/authoritative sources first;
-4. use targeted web search only as fallback for specific missing facts;
-5. store provenance with the enriched field;
-6. cache/reuse it rather than repeating the same lookup every recommendation request.
-
-Do not ask the model to simply “fill in” factual catalog metadata from memory.
-
-## Candidate-generation direction
-
-The target candidate pipeline is:
-
-> several strong anchors → several meaningful retrieval queries → union/dedupe → deterministic relevance/quality scoring → novelty guard → AI shortlist ranking/explanation
-
-Key design goals:
-
-- prefer strong/rich anchors, not simply the first provider-backed item;
-- enrich thin anchors when useful;
-- use multiple meaningful retrieval traits where possible;
-- treat relationship strength as graded, not always a brittle exact-match gate;
-- reject candidates whose only relation is generic/noisy metadata;
-- aim for roughly 10–20 credible candidates when providers can support it;
-- do not force-fill garbage to hit a number;
-- keep franchise/sequel suppression deterministic and downstream;
-- keep full taste history available to software even when the model receives only a compact working set.
-
-Do **not** solve candidate quality by stuffing huge metadata blobs into the model prompt.
-
-Embeddings/vector search may be useful later, but are not required for the first version of this architecture.
-
-## PR #130: recommendation context + internal-ref cleanup
-
-PR #130 shipped three important changes.
-
-### 1. Compact recommendation evidence
-
-The server keeps full evidence for deterministic software/validation but sends the model a curated working set.
-
-Current cap:
-- maximum **18** experienced evidence records in the model prompt.
-
-Selection:
-- only experienced evidence;
-- prioritizes strong positive, negative and positive signals;
-- attempts to represent candidate domains;
-- Saved/intent-only rows are not model taste evidence.
-
-Compact prompt evidence sends only fields the model needs rather than full stored records.
-
-### 2. Never expose internal evidence refs
-
-Internal refs such as:
-
-`ev:openlibrary-book-...`
-`ev:tmdb-movie-...`
-`ev:igdb-game-...`
-
-remain available for structured grounding/citation validation but must never appear in user-facing prose.
-
-Defense in depth:
-- prompt instruction;
-- server-side sanitizer;
-- UI/render-boundary sanitizer;
-- regression coverage.
-
-Issue #129 is closed as completed.
-
-### 3. Initial Open Library false-positive guard
-
-The first #131 fix filters generic/noisy subjects and requires stronger subject overlap for rich book metadata.
-
-That prevented the original Atomic-Habits-from-Way-of-Kings class of error, but the filter is now known to be too aggressive for candidate-pool health. Do not treat the current exact-overlap rule as the final book architecture.
-
-## Performance measurements from #120 / #130
-
-A controlled large-history production test used **59 total evidence records**.
-
-### Before #130
-
-- prompt: **25,163 chars**
-- evidence payload: **18,756 chars**
-- Anthropic input: **10,840 tokens**
-- live model time: roughly **10.18–10.62s**
-- median live call: roughly **10.31s**
-- 2/3 model responses passed validation
-- 1/3 made the paid call but was rejected and fell back
-
-### After #130 on production
-
-- prompt: **5,468 chars**
-- evidence payload: **2,359 chars**
-- model prompt evidence: **18 of 59** full-history rows
-- Anthropic input: **2,265 tokens**
-- live model calls: **8.25s, 8.12s, 9.47s**
-- median live call: roughly **8.25s**
-- 3/3 model responses passed validation
-- no internal `ev:...` refs leaked into user-facing reasons
-
-Observed reductions:
-- prompt chars: about **78%**
-- actual model input tokens: about **79%**
-- median live-model latency: about **20%** in this small sample
-
-### Important caveat
-
-The after run had only 4 eligible book candidates because of the current #131 filter, while the before run had a larger candidate pool.
-
-Therefore:
-- the **token reduction is directly demonstrated**;
-- the latency improvement is real for that run;
-- do **not** attribute the full latency gain solely to context compaction.
-
-The remaining ~8–9.5s model call means giant context was wasteful but not the whole latency problem.
-
-## Current performance question
-
-#120 remains open.
-
-The next useful performance investigation is:
-
-- how much of the remaining latency is inherent model generation latency;
-- whether shorter output requirements materially help;
-- whether recommendation rationales can be generated differently;
-- whether a different model/task split is justified;
-- whether the UI can reveal useful progress/results progressively;
-- whether candidate retrieval and model ranking can be staged without weakening quality.
-
-Measure before redesigning.
-
-## Current issues Claude should read
-
-### Highest relevance
-
-- **#135** canonical metadata/enrichment layer + healthier candidate generation
-- **#131** improve Open Library quality without collapsing the candidate pool
-- **#120** recommendation latency/context measurement
-- **#117** post-onboarding IA / returning-user behavior
-- **#103** metadata / Taste Profile / Library state cleanup
-
-### Related completed work
-
-- **#129** internal evidence refs: closed, completed by #130
-- **#121** recommendation card clipping/status alignment: closed
-- **#122** Library search/state-aware add flow: closed
-- **#92** deterministic sequel/franchise suppression: closed
-
-### Stale overlapping PR warning
-
-Draft PR **#104** predates several later changes to main. It contains some potentially useful work around metadata/Profile/Library, but assumptions about permanent Favorites management were superseded by #117.
-
-Do not raw-merge #104.
-
-## Recommended next sequence for Claude
-
-1. Sync with current `main` at **3826a96558741b7c15f1388895040d1e35eddbcb**.
-2. Read:
-   - this file;
-   - issue #16;
-   - #135;
-   - #131;
-   - #120;
-   - #117;
-   - #103.
-3. Inspect the current item/provider normalization before designing database tables.
-4. Audit which useful TMDb/Open Library/IGDB fields are already fetched but discarded.
-5. Propose the smallest coherent canonical-item schema in Neon.
-6. Keep Tastemake persistence isolated from State.
-7. Design lazy metadata enrichment with field-level provenance.
-8. Redesign book retrieval so Atomic-Habits-like weak matches remain blocked without collapsing the candidate pool.
-9. Audit movies/TV and games for equivalent small-pool or coarse-metadata failure modes.
-10. Add deterministic retrieval tests before any paid model eval.
-11. If paid Anthropic verification is useful, state the expected call count/cost and get Paige's explicit approval first.
-12. Do not merge to main or production without Paige explicitly naming that destination in the current instruction.
-
-## QA / eval policy
-
-Default release check:
-1. green required CI;
-2. focused automated tests for changed behavior;
-3. short live smoke of the affected flow;
-4. desktop + representative mobile for UI work;
-5. alternate Look only when the change is theme-sensitive.
-
-The full every-Look/every-width sweep is optional unless a broad CSS/system change or a concrete regression justifies it.
-
-Commands:
-
-```bash
-npm install
-npm test
-npm run test:full
-node scripts/evals/run.mjs
-node scripts/evals/run.mjs --producer endpoint --dry-run
-node scripts/evals/run.mjs --producer endpoint --yes
-```
-
-Paid-model rule:
-- state expected calls;
-- estimate cost;
-- get Paige's explicit approval;
-- do not infer authorization from ordinary product testing.
-
-## Workflow protection
-
-- feedback/review is read-only until Paige closes the feedback round;
-- implement only accepted scope;
-- preserve unrelated work;
-- no opportunistic refactors;
-- never merge/push to `main`, production, staging or another shared environment unless Paige explicitly names that destination in the current instruction.
+1. Sync with current `main` at `d2f12c907296cae6cc6304ed92efa4fa7c9fbaf8`.
+2. Read this file, then issue #16, then whichever of #120/#135/#142/#115 you're picking up.
+3. If continuing #135's read-path swap: audit exactly how much real coverage the canonical store has accumulated so far (query `select media_type, count(*) from items group by media_type`) before deciding whether reading from it is viable yet, or whether it needs more write-behind traffic first.
+4. If continuing #120: this needs a different kind of investigation now (model generation time, output-length experiments, perceived-loading UX), not another prompt-shrinking pass.
+5. Any paid-model verification: state count + cost, wait for explicit approval, exactly like every call this session.
