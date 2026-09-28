@@ -1,3 +1,4 @@
+import { inject } from "@vercel/analytics";
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
@@ -770,6 +771,9 @@ initSearch({
   announce,
   goTo(screen) { navigate(screen); }
 });
+
+// Initialize Vercel Web Analytics
+inject();
 
 // First visit is deliberately short: choose a look -> basic setup -> choose Favorites.
 // Direct links still open their requested screen when accessible. #117: a returning user hitting
