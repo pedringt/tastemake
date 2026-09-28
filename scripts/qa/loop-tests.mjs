@@ -167,6 +167,43 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
   );
 }
 
+// (5) real bug (2026-09-28): "only got 1 [pick]" despite 73 real evidence items logged. Root cause:
+// anchor selection sorted deterministically (by metadata completeness, or plain insertion order when
+// that lookup times out, which real logs show is common) and always took the top 6 -- with a real
+// evidence pool much bigger than 6, the same handful of anchors won every single round, forever, so
+// their live-provider pools drained fast while the rest of a user's real evidence (67 of 73 items,
+// in the real report) was never explored as anchors at all. Proves real rotation: 20 real evidence
+// items, only 6 used as anchors per call, but across many calls, meaningfully more than 6 distinct
+// items actually get used.
+{
+  const words = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango"];
+  const bigEvidence = words.map((word, i) => ({
+    id: `tmdb-movie-${i}`, provider: "tmdb", providerId: String(i), title: `${word} Evidence`, type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] }
+  }));
+  const rotationState = {
+    selectedFavorites: new Set(bigEvidence.map((item) => item.id)),
+    feedbackByRecommendation: {},
+    recommendationSets: [],
+    customItems: Object.fromEntries(bigEvidence.map((item) => [item.id, item])),
+    areas: { watch: true, read: true, play: true }
+  };
+  const rotationFetch = async (url) => {
+    const match = String(url).match(/\/movie\/(\d+)\/recommendations/);
+    const word = match ? words[Number(match[1])] : null;
+    return { ok: true, json: async () => ({ results: word ? [{ id: 1000 + Number(match[1]), title: `${word} Related Discovery`, overview: "x", release_date: "2021-01-01", poster_path: null, genre_ids: [18] }] : [] }) };
+  };
+  const usedAnchors = new Set();
+  for (let round = 0; round < 15; round += 1) {
+    const results = await retrieveCatalogCandidates(rotationState, { env: { TASTEMAKE_TMDB_TOKEN: "tok" }, fetchImpl: rotationFetch });
+    for (const candidate of results) if (candidate.relatedToId) usedAnchors.add(candidate.relatedToId);
+  }
+  check(
+    "anchor selection rotates across the real evidence pool instead of always picking the same 6",
+    usedAnchors.size > 6,
+    `only ever used ${usedAnchors.size} distinct anchors across 15 rounds`
+  );
+}
+
 console.log(`recommendation-loop tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);

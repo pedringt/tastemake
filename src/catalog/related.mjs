@@ -252,14 +252,35 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
 // applies (this only changes ORDER within a domain, never which domains are represented). Scoped
 // down per #135's own caveat -- a short-timeout, no-op-on-any-failure lookup, not a rearchitecture
 // of anchor selection. A missing/unconfigured/slow store, or any error, leaves input order intact.
+function shuffled(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// Real bug (2026-09-28): with a real evidence pool much bigger than the 6-anchor cap (73 items in
+// one real report), this used to sort deterministically by metadata completeness -- and completeness
+// lookups frequently time out in practice (see the store's own 250ms cap), in which case it fell
+// back to plain insertion order. Either way, the exact same 6 items won every single round, so the
+// other ~67 real experienced items were never explored as anchors at all -- a user with substantial
+// real usage could still exhaust the live-provider pool fast, because retrieval was only ever
+// drawing from a fixed handful of anchors regardless of how much real evidence existed. Shuffling
+// first preserves "prefer richer anchors" as a real signal when completeness data is available (a
+// stable sort keeps items tied on completeness in their shuffled relative order, so ties rotate
+// between rounds instead of being pinned), and gives genuine rotation across the whole evidence pool
+// when completeness data isn't available, which real logs show is common.
 async function preferRicherAnchors(items, { env, fetchImpl }) {
   if (!items.length) return items;
+  const pool = shuffled(items);
   try {
-    const completeness = await lookupMetadataCompleteness(items, { env });
-    if (!completeness.size) return items;
-    return [...items].sort((a, b) => (completeness.get(b.id) ?? -1) - (completeness.get(a.id) ?? -1));
+    const completeness = await lookupMetadataCompleteness(pool, { env });
+    if (!completeness.size) return pool;
+    return [...pool].sort((a, b) => (completeness.get(b.id) ?? -1) - (completeness.get(a.id) ?? -1));
   } catch {
-    return items;
+    return pool;
   }
 }
 
