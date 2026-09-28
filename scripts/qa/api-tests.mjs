@@ -193,6 +193,16 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
       && parsed.evidenceCount === 1;
   }));
   check("per-provider related-catalog timing is logged", relatedLines.some((line) => line.includes('"provider":"tmdb"')));
+  // Real report (2026-09-28): "after a few rounds I'm getting mostly books now" -- nothing logged
+  // what the model actually picked, only the candidate pool it picked from. Sanitized domain counts
+  // (never titles/ids) make a real skew visible instead of guessed.
+  check("timing logs cover the actual picks' domain mix", stages.includes("picksDomains"), stages.join(","));
+  check("picksDomains reports sanitized counts, not titles/ids", timingLines.some((line) => {
+    const parsed = JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim());
+    return parsed.stage === "picksDomains" && parsed.domains && typeof parsed.domains === "object"
+      && Object.values(parsed.domains).every((count) => typeof count === "number")
+      && !line.includes("Amber Harbor") && !line.includes(candidateTitles[0]);
+  }));
   check("timing logs never include the API key", [...timingLines, ...relatedLines].every((line) => !line.includes("fake-key") && !line.includes(ON.ANTHROPIC_API_KEY)));
   check("timing logs never include prompt/candidate text", [...timingLines, ...relatedLines].every((line) => !line.includes("Favorite Film") && !line.includes(candidateTitles[0])));
 }
