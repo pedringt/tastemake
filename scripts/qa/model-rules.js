@@ -18,7 +18,7 @@ export async function run() {
 
   const favorite={
     id:"tmdb-movie-1",provider:"tmdb",providerId:"1",title:"Favorite Film",type:"movie",
-    domains:["watch"],about:"Favorite",artwork:"https://example.invalid/f.jpg"
+    domains:["movies"],about:"Favorite",artwork:"https://example.invalid/f.jpg"
   };
   const book={
     id:"openlibrary-book-2",provider:"openlibrary",providerId:"2",title:"Favorite Book",type:"book",
@@ -27,11 +27,11 @@ export async function run() {
   const pattern={
     id:"ai-structured-weirdness",title:"Structure makes strangeness land",label:"Structure makes strangeness land",
     claim:"Unusual material seems to work better when a clear structure keeps the experience moving.",
-    supports:[`ev:${favorite.id}`],counters:[],domains:["watch"],strength:"Supported",status:"supported",
+    supports:[`ev:${favorite.id}`],counters:[],domains:["movies"],strength:"Supported",status:"supported",
     crossDomain:"untested",provenance:"Live AI interpretation, validated against your experienced evidence."
   };
   const pick={
-    id:"tmdb-movie-20",provider:"tmdb",providerId:"20",title:"Candidate",type:"movie",domains:["watch"],
+    id:"tmdb-movie-20",provider:"tmdb",providerId:"20",title:"Candidate",type:"movie",domains:["movies"],
     about:"Candidate",prediction:"Likely to fit",ai:{tests:pattern.id,cites:[`ev:${favorite.id}`],kind:"pick"}
   };
   const base=()=>({
@@ -43,7 +43,7 @@ export async function run() {
     customItems:{[favorite.id]:favorite,[book.id]:book},
     blindSpots:{},blindSpotDrafts:{},blindSpotDismissed:new Set(),
     patternStatements:[],modelHypotheses:[pattern],
-    areas:{watch:true,read:true,play:true},curveball:true
+    areas:{movies:true,tv:true,read:true,play:true},curveball:true
   });
 
   // Taste vs intent.

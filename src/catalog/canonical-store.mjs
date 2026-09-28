@@ -234,7 +234,7 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
 }
 
 const FIELD_BY_MEDIA_TYPE = { book: "subjects", movie: "genres", tv: "genres", game: "genres" };
-const DOMAIN_BY_MEDIA_TYPE = { movie: ["watch"], tv: ["watch"], book: ["read"], game: ["play"] };
+const DOMAIN_BY_MEDIA_TYPE = { movie: ["movies"], tv: ["tv"], book: ["read"], game: ["play"] };
 
 
 // #144: expands a related-candidate pool with items Tastemake has already canonicalized (from any

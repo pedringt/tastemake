@@ -21,7 +21,7 @@ const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(
 // Synthetic provider-style fixtures, following the same shape real catalog results carry
 // (provider/providerId/type), matching the convention used elsewhere for movie/game fixtures since
 // this sandbox has no TMDb/IGDB credentials to hit live.
-const movie = { id: "tmdb-movie-42", title: "Arrival Point", type: "movie", provider: "tmdb", providerId: "42", domains: ["watch"] };
+const movie = { id: "tmdb-movie-42", title: "Arrival Point", type: "movie", provider: "tmdb", providerId: "42", domains: ["movies"] };
 const book = { id: "openlibrary-book-arrival-point", title: "Arrival Point", type: "book", provider: "openlibrary", providerId: "OL42W", domains: ["read"], by: "J. Some Author" };
 const game = { id: "igdb-game-7", title: "Signal Loss", type: "game", provider: "igdb", providerId: "7", domains: ["play"] };
 

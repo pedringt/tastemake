@@ -46,7 +46,7 @@ eq("a direct link to /favorites still resolves for a returning visitor (still re
 // Saved -> Tried transition is explicit (only on an explicit "I tried it" action) and does not
 // duplicate or lose the item: it moves, it doesn't copy.
 const state2 = fresh();
-const item = { id: "tmdb-movie-1", title: "Some Movie", type: "movie", domains: ["watch"] };
+const item = { id: "tmdb-movie-1", title: "Some Movie", type: "movie", domains: ["movies"] };
 state2.feedbackByRecommendation[item.id] = { item, rating: "not-tried", detail: "bookmarked" };
 eq("starts as exactly one Saved item", bookmarkedFeedback(state2).length, 1);
 check("saving alone is not taste evidence", !isPositiveExperience(state2.feedbackByRecommendation[item.id]));
@@ -63,7 +63,7 @@ check("it no longer registers as Saved (no duplication across tabs)", !isBookmar
 
 // #108: removing from Saved returns the item to unknown instead of leaving a hidden neutral blocker.
 const state3 = fresh();
-const savedItem = { id: "tmdb-movie-9", provider: "tmdb", providerId: "9", title: "Saved Movie", type: "movie", domains: ["watch"] };
+const savedItem = { id: "tmdb-movie-9", provider: "tmdb", providerId: "9", title: "Saved Movie", type: "movie", domains: ["movies"] };
 state3.feedbackByRecommendation[savedItem.id] = { item: savedItem, rating: "not-tried", detail: "bookmarked" };
 state3.customItems[savedItem.id] = savedItem;
 check("Saved -> Remove action succeeds", saveBookmarkAction(savedItem.id, "remove"));
@@ -73,7 +73,7 @@ eq("Saved -> Remove leaves zero bookmarks", bookmarkedFeedback(state3).length, 0
 
 // #109: duplicate protection must distinguish same-title works across media/provider identity.
 const state4 = fresh();
-const movie = { id: "tmdb-movie-1", provider: "tmdb", providerId: "1", title: "Piranesi", type: "movie", domains: ["watch"] };
+const movie = { id: "tmdb-movie-1", provider: "tmdb", providerId: "1", title: "Piranesi", type: "movie", domains: ["movies"] };
 const book = { id: "openlibrary-book-OL1W", provider: "openlibrary", providerId: "OL1W", title: "Piranesi", type: "book", domains: ["read"] };
 state4.customItems[movie.id] = movie;
 eq("same provider identity finds the existing item", findExisting(state4, { ...movie })?.id, movie.id);
@@ -88,7 +88,7 @@ eq("state carries no persistence schema/version field (nothing is persisted)", t
 // true. Favorite is a flag layered onto an experienced-positive reaction, not a separate collection,
 // so correcting a reaction to "disliked" automatically clears any Favorite flag on it.
 const state5 = fresh();
-const lovedItem = { id: "tmdb-movie-2", title: "Loved Thing", type: "movie", domains: ["watch"] };
+const lovedItem = { id: "tmdb-movie-2", title: "Loved Thing", type: "movie", domains: ["movies"] };
 state5.feedbackByRecommendation[lovedItem.id] = { item: lovedItem, rating: "more", detail: "loved-before" };
 
 check("favoriting a Loved item succeeds", saveLibraryAction(lovedItem.id, "favorite"));
@@ -112,7 +112,7 @@ check("correcting to 'disliked' clears Favorite (no Disliked+Favorite state)", !
 check("it no longer counts as a positive experience", !isPositiveExperience(state5.feedbackByRecommendation[lovedItem.id]));
 
 // Favorite can never be set directly on a merely-liked (not loved) or untried item.
-const likedItem = { id: "tmdb-movie-3", title: "Liked Thing", type: "movie", domains: ["watch"] };
+const likedItem = { id: "tmdb-movie-3", title: "Liked Thing", type: "movie", domains: ["movies"] };
 state5.feedbackByRecommendation[likedItem.id] = { item: likedItem, rating: "more", detail: "liked-before" };
 check("favoriting a merely-liked (not loved) item is refused", !saveLibraryAction(likedItem.id, "favorite"));
 
@@ -120,8 +120,8 @@ check("favoriting a merely-liked (not loved) item is refused", !saveLibraryActio
 // selectedFavorites into the ongoing Library model (feedbackByRecommendation + libraryFavorites).
 // Library is the durable source of truth after onboarding; selectedFavorites is onboarding-only.
 const state6 = fresh();
-const starter1 = { id: "tmdb-movie-10", title: "Starter One", type: "movie", domains: ["watch"] };
-const starter2 = { id: "tmdb-movie-11", title: "Starter Two", type: "movie", domains: ["watch"] };
+const starter1 = { id: "tmdb-movie-10", title: "Starter One", type: "movie", domains: ["movies"] };
+const starter2 = { id: "tmdb-movie-11", title: "Starter Two", type: "movie", domains: ["movies"] };
 state6.customItems[starter1.id] = starter1;
 state6.customItems[starter2.id] = starter2;
 state6.selectedFavorites.add(starter1.id);

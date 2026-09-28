@@ -53,7 +53,7 @@ function fresh() {
     libraryFilter: "all",
     // Browse is a presentation/discovery surface. Browsing alone is never evidence and these fields
     // are intentionally transient rather than persisted.
-    browseDomain: "watch",
+    browseDomain: "movies",
     browseGenre: "drama",
     browseItems: [],
     browsePage: 0,
