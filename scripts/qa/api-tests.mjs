@@ -126,6 +126,23 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
   check("prompt excludes saved-only evidence", !prompt.includes("ev:intent-only"));
 }
 
+// #120 follow-up: soft domain-spread nudge, "All" filter only (Paige's explicit call: soft nudge,
+// not a hard per-domain quota -- real, strongly-evidenced clustering in one domain should still be
+// allowed to stand).
+{
+  const baseCtx = {
+    evidence: [], candidates: [{id:"c1",title:"C1",type:"movie",domains:["watch"],about:"x",hypotheses:[],provider:"tmdb",providerId:"1",year:2020,genres:[]}],
+    curveball:true, statements:[], contexts:[]
+  };
+  const allPrompt = buildPickPrompt({ ...baseCtx, recommendationFilter: "all" }, 1);
+  const watchPrompt = buildPickPrompt({ ...baseCtx, recommendationFilter: "watch" }, 1);
+  const defaultPrompt = buildPickPrompt(baseCtx, 1); // recommendationFilter unset -- must default to "all"'s behavior
+  check("the domain-spread nudge appears when the filter is All", allPrompt.includes("Prefer a spread across the domains"));
+  check("the domain-spread nudge is absent for a single-domain filter (nothing to spread across)", !watchPrompt.includes("Prefer a spread across the domains"));
+  check("an unset recommendationFilter defaults to All's behavior", defaultPrompt.includes("Prefer a spread across the domains"));
+  check("the nudge is explicitly soft, not a hard quota", allPrompt.includes("do not force in a weaker candidate"));
+}
+
 // #129: structured cites stay intact, but an internal evidence id echoed into natural-language why
 // must be stripped before the response reaches a card.
 {
