@@ -8,6 +8,7 @@
 import {
   normalizeCanonicalItem,
   upsertCanonicalItem,
+  upsertManyCanonicalItems,
   canonicalizeWriteBehind
 } from "../../src/catalog/canonical-store.mjs";
 import { isConfigured, query } from "../../src/server/db.mjs";
@@ -95,9 +96,36 @@ function makeFakeDb() {
       row.metadata_completeness = completeness;
       return [];
     }
+    // Batched lookup (upsertManyCanonicalItems): one query in place of N individual identifier SELECTs.
+    if (sql.startsWith("select ii.provider, ii.provider_id, ii.item_id")) {
+      const rows = [];
+      for (let i = 0; i < params.length; i += 2) {
+        const [provider, providerId] = [params[i], params[i + 1]];
+        const itemId = identifiers.get(`${provider}::${providerId}`);
+        if (itemId) rows.push({ provider, provider_id: providerId, item_id: itemId });
+      }
+      return rows;
+    }
+    // Batched multi-row UPDATE-via-VALUES (upsertManyCanonicalItems): 5 params per known item.
+    if (sql.startsWith("update items as i")) {
+      for (let i = 0; i < params.length; i += 5) {
+        const [itemId, canonicalTitle, year, factualJson, completeness] = params.slice(i, i + 5);
+        const row = items.get(itemId);
+        row.canonical_title = canonicalTitle;
+        row.year = year ?? row.year;
+        row.factual = { ...row.factual, ...JSON.parse(factualJson) };
+        row.metadata_completeness = completeness;
+      }
+      return [];
+    }
+    // insert into item_field_provenance: shared by both the single-row call (upsertCanonicalItem)
+    // and the batched multi-row call (upsertManyCanonicalItems) -- same 3-params-per-row shape either
+    // way, so one loop over params handles both.
     if (sql.startsWith("insert into item_field_provenance")) {
-      const [itemId, fieldName, source] = params;
-      provenance.set(`${itemId}::${fieldName}`, { item_id: itemId, field_name: fieldName, source, value_type: "provider_supplied" });
+      for (let i = 0; i < params.length; i += 3) {
+        const [itemId, fieldName, source] = params.slice(i, i + 3);
+        provenance.set(`${itemId}::${fieldName}`, { item_id: itemId, field_name: fieldName, source, value_type: "provider_supplied" });
+      }
       return [];
     }
     throw new Error(`unhandled fake query: ${sql}`);
@@ -160,6 +188,60 @@ check("null item normalizes to null", normalizeCanonicalItem(null) === null);
   ]);
   check("two concurrent first-time upserts of the same item converge on one canonical id", raceIdA === raceIdB, `${raceIdA} vs ${raceIdB}`);
   check("both concurrent callers' item_identifiers ends up pointing at the same row", db.identifiers.get("tmdb:movie::438631") === raceIdA);
+}
+
+// ---- QA sweep efficiency fix: upsertManyCanonicalItems batches the whole write-behind batch --------
+// (real-DB verified pieces: the tuple-IN identity lookup. Not live-tested: the UPDATE-via-VALUES and
+// provenance-INSERT-via-VALUES syntax -- a direct write test against the real shared database was
+// correctly refused; these are standard Postgres idioms but should be watched in real traffic.)
+
+{
+  const db = makeFakeDb();
+  const ids = await upsertManyCanonicalItems([dune, wayOfKings, hades], { query: db.query });
+  check("upsertManyCanonicalItems returns one id per real item, in order", ids.length === 3 && ids.every(Boolean));
+  check("three distinct items rows were created for three distinct new items", db.items.size === 3);
+  check("field provenance was written for all three items", db.provenance.has(`${ids[0]}::genres`) && db.provenance.has(`${ids[1]}::subjects`) && db.provenance.has(`${ids[2]}::genres`));
+}
+
+{
+  // A duplicate (same provider+providerId, e.g. related to two different anchors in one real batch)
+  // is only ever processed once, same guarantee canonicalizeWriteBehind's own dedup already gave --
+  // now enforced inside the batch function itself too.
+  const db = makeFakeDb();
+  const ids = await upsertManyCanonicalItems([dune, dune, wayOfKings], { query: db.query });
+  check("a duplicate item in one batch call is only ever upserted once", db.items.size === 2, `got ${db.items.size}`);
+  check("the duplicate resolves to the same id both times it appears in the input", ids[0] === ids[1]);
+}
+
+{
+  // Re-running the batch for already-known items goes through the batched UPDATE path, not the
+  // per-item atomic-insert CTE -- no new items rows, existing data refreshed.
+  const db = makeFakeDb();
+  await upsertManyCanonicalItems([dune, wayOfKings], { query: db.query });
+  const beforeCount = db.items.size;
+  const secondIds = await upsertManyCanonicalItems([dune, wayOfKings], { query: db.query });
+  check("re-running the batch for known items creates no new rows", db.items.size === beforeCount, `${beforeCount} -> ${db.items.size}`);
+  check("re-running the batch still resolves to the same ids", secondIds.length === 2 && secondIds.every(Boolean));
+}
+
+{
+  // A mixed batch (one already-known item, one genuinely new item) exercises both the batched UPDATE
+  // path and the per-item atomic-insert path in the same call.
+  const db = makeFakeDb();
+  await upsertCanonicalItem(dune, { query: db.query }); // pre-seed one known item
+  const beforeCount = db.items.size;
+  const ids = await upsertManyCanonicalItems([dune, wayOfKings], { query: db.query });
+  check("mixed batch: the already-known item gets no new row", db.items.size === beforeCount + 1, `${beforeCount} -> ${db.items.size}`);
+  check("mixed batch: both items resolve to real ids", ids.length === 2 && ids.every(Boolean));
+}
+
+{
+  // canonicalizeWriteBehind now calls the batched function instead of looping upsertCanonicalItem --
+  // confirm the real end-to-end write-behind path still actually persists everything.
+  const db = makeFakeDb();
+  canonicalizeWriteBehind([dune, wayOfKings, hades], { query: db.query });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  check("canonicalizeWriteBehind (now batched) still persists all three fixture items", db.items.size === 3);
 }
 
 // ---- same-title-different-media-type must stay distinct -----------------------------------------

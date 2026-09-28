@@ -178,9 +178,10 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
     // coalesce() always resolves to the single winning item_id, so both callers converge on the same
     // canonical item. Deliberately only reached in this "not found yet" branch, not on every
     // re-upsert of an already-known item, so the common path stays exactly as cheap as before.
-    // NOT YET VERIFIED against a real Postgres database (no TASTEMAKE_DATABASE_URL in this sandbox)
-    // -- covered by an updated fake-DB offline test, but this needs a real-DB check before being
-    // trusted, per this session's own standing rule for infra changes.
+    // Verified against the real Neon database (2026-09-28): real concurrent write-behind traffic
+    // produces exactly the orphan-row pattern this comment predicts (multiple items rows created in
+    // the same millisecond with no item_identifiers row pointing to them -- the losing side of a real
+    // race), while item_identifiers itself never has more than one row per (provider, provider_id).
     const resolved = await runQuery(
       `with new_item as (
          insert into items (media_type, canonical_title, year, factual, metadata_completeness)
@@ -313,30 +314,136 @@ export async function relatedCanonicalItems(anchor, subjects, { env = process.en
 // function's lifetime for background work like this. Outside an actual Vercel request context (this
 // sandbox, local scripts, the test suite) it safely no-ops rather than throwing, so nothing here
 // needed to change for tests.
-// QA sweep efficiency finding (Paige's call, 2026-09-28): full cross-item query batching (a single
-// multi-row insert/update covering the whole write-behind batch) was considered but not done here --
-// it would require reshaping upsertCanonicalItem's contract (currently directly tested and just
-// fixed for a real race condition), and can't be verified against a real Postgres database from this
-// sandbox. Deduping the batch first is the safe slice of the same fix: the same real item commonly
-// appears twice in one write-behind call (e.g. related to two different anchors in the same
-// request), which previously fired two fully independent upserts -- each internally safe after the
-// race-condition fix, but still double the real work for one real item. Keyed on the same provider
-// identity upsertCanonicalItem itself resolves by, so this never changes which items get written,
-// only how many times the identical (provider, providerId) is processed in one batch.
-export function canonicalizeWriteBehind(items, { env = process.env, query: queryImpl } = {}) {
-  if (!queryImpl && !isConfigured(env)) return;
+// QA sweep efficiency finding (Paige's call, 2026-09-28): a batch of up to ~20 related-candidate
+// items used to call upsertCanonicalItem once per item -- each doing its own identity SELECT, its
+// own UPDATE or atomic-insert CTE, and its own per-field provenance INSERTs -- up to ~100+ sequential
+// DB round trips for one write-behind fan-out. Real-DB verification (2026-09-28, against the real
+// isolated Neon project): a tuple-IN batched lookup (`where (provider, provider_id) in (...)`) works
+// exactly as the existing lookupMetadataCompleteness already relies on. The multi-row UPDATE-via-VALUES
+// and provenance-INSERT-via-VALUES below are standard Postgres idioms but were NOT live-tested against
+// the real database (a direct write test was correctly refused as a shared-resource mutation outside
+// this code's own tested path) -- covered by an extended offline fake-DB test instead. Verify these
+// specifically against real traffic before fully trusting them, same discipline as the CTE fix above.
+//
+// Identity resolution for genuinely NEW items still runs one at a time via the same atomic CTE
+// upsertCanonicalItem uses (correctness-critical, already real-DB verified) -- only the already-known
+// lookup, the already-known UPDATE, and the field-provenance writes are batched across the whole call.
+export async function upsertManyCanonicalItems(items, { env = process.env, query: queryImpl } = {}) {
+  const runQuery = queryImpl ?? ((text, params) => defaultQuery(text, params, { env }));
+  if (!queryImpl && !isConfigured(env)) return [];
+
+  const entries = [];
   const seen = new Set();
   for (const item of items ?? []) {
-    const key = item?.provider && item?.providerId != null ? `${item.provider}::${item.providerId}` : null;
-    if (key) {
-      if (seen.has(key)) continue;
-      seen.add(key);
-    }
-    const task = Promise.resolve()
-      .then(() => upsertCanonicalItem(item, { env, query: queryImpl }))
-      .catch((error) => {
-        console.info("[tastemake-canonical]", JSON.stringify({ error: error?.message || "upsert failed" }));
-      });
-    waitUntil(task);
+    const normalized = normalizeCanonicalItem(item);
+    if (!normalized || !item.provider || !item.providerId) continue;
+    const provider = identifierNamespace(item, normalized.mediaType);
+    const providerId = String(item.providerId);
+    const key = `${provider}::${providerId}`;
+    if (seen.has(key)) continue; // same real item related to two different anchors in one batch
+    seen.add(key);
+    entries.push({ item, normalized, provider, providerId, key });
   }
+  if (!entries.length) return [];
+
+  // 1. One batched lookup for the whole batch instead of one SELECT per item.
+  const existingRows = await runQuery(
+    `select ii.provider, ii.provider_id, ii.item_id
+       from item_identifiers ii
+      where (ii.provider, ii.provider_id) in (${entries.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(", ")})`,
+    entries.flatMap((e) => [e.provider, e.providerId])
+  );
+  const itemIdByKey = new Map((existingRows ?? []).map((r) => [`${r.provider}::${r.provider_id}`, r.item_id]));
+
+  const known = entries.filter((e) => itemIdByKey.has(e.key));
+  const unknown = entries.filter((e) => !itemIdByKey.has(e.key));
+
+  // 2. One batched UPDATE for every already-known item -- no race concern here (identity is already
+  // resolved), just different fresh values per row.
+  if (known.length) {
+    const valuesSql = known.map((_, i) => `($${i * 5 + 1}::uuid, $${i * 5 + 2}, $${i * 5 + 3}, $${i * 5 + 4}::jsonb, $${i * 5 + 5}::real)`).join(", ");
+    await runQuery(
+      `update items as i
+          set canonical_title = v.canonical_title,
+              year = coalesce(v.year, i.year),
+              factual = i.factual || v.factual,
+              metadata_completeness = v.completeness,
+              updated_at = now()
+         from (values ${valuesSql}) as v(id, canonical_title, year, factual, completeness)
+        where i.id = v.id`,
+      known.flatMap((e) => [itemIdByKey.get(e.key), e.normalized.canonicalTitle, e.normalized.year, JSON.stringify(e.normalized.factual), e.normalized.completeness])
+    );
+  }
+
+  // 3. Genuinely new items: same atomic CTE as upsertCanonicalItem, per item (real-DB verified).
+  for (const entry of unknown) {
+    const resolved = await runQuery(
+      `with new_item as (
+         insert into items (media_type, canonical_title, year, factual, metadata_completeness)
+         values ($1, $2, $3, $4::jsonb, $5)
+         returning id
+       ), ident as (
+         insert into item_identifiers (item_id, provider, provider_id)
+         select id, $6, $7 from new_item
+         on conflict (provider, provider_id) do nothing
+         returning item_id
+       )
+       select
+         coalesce(
+           (select item_id from ident),
+           (select item_id from item_identifiers where provider = $6 and provider_id = $7)
+         ) as item_id,
+         (select item_id from ident) is not null as is_new`,
+      [entry.normalized.mediaType, entry.normalized.canonicalTitle, entry.normalized.year, JSON.stringify(entry.normalized.factual), entry.normalized.completeness, entry.provider, entry.providerId]
+    );
+    const row = resolved?.[0];
+    if (!row?.item_id) continue;
+    itemIdByKey.set(entry.key, row.item_id);
+    if (!row.is_new) {
+      await runQuery(
+        `update items
+            set canonical_title = $2, year = coalesce($3, year), factual = factual || $4::jsonb,
+                metadata_completeness = $5, updated_at = now()
+          where id = $1`,
+        [row.item_id, entry.normalized.canonicalTitle, entry.normalized.year, JSON.stringify(entry.normalized.factual), entry.normalized.completeness]
+      );
+    }
+  }
+
+  // 4. One batched multi-row insert for every field-provenance row across the whole batch (up to
+  // ~4 fields x ~20 items = ~80 individual inserts before this, collapsed to one query).
+  const provenanceRows = [];
+  for (const entry of entries) {
+    const itemId = itemIdByKey.get(entry.key);
+    if (!itemId) continue;
+    for (const field of entry.normalized.fields) provenanceRows.push([itemId, field, entry.item.provider]);
+  }
+  if (provenanceRows.length) {
+    const valuesSql = provenanceRows.map((_, i) => `($${i * 3 + 1}::uuid, $${i * 3 + 2}, $${i * 3 + 3}, 'provider_supplied', now())`).join(", ");
+    await runQuery(
+      `insert into item_field_provenance (item_id, field_name, source, value_type, retrieved_at)
+       values ${valuesSql}
+       on conflict (item_id, field_name) do update
+         set source = excluded.source, value_type = excluded.value_type, retrieved_at = now()`,
+      provenanceRows.flat()
+    );
+  }
+
+  return (items ?? []).map((item) => {
+    const normalized = normalizeCanonicalItem(item);
+    if (!normalized || !item.provider || !item.providerId) return null;
+    const provider = identifierNamespace(item, normalized.mediaType);
+    const key = `${provider}::${String(item.providerId)}`;
+    return itemIdByKey.get(key) ?? null;
+  });
+}
+
+export function canonicalizeWriteBehind(items, { env = process.env, query: queryImpl } = {}) {
+  if (!queryImpl && !isConfigured(env)) return;
+  const task = Promise.resolve()
+    .then(() => upsertManyCanonicalItems(items, { env, query: queryImpl }))
+    .catch((error) => {
+      console.info("[tastemake-canonical]", JSON.stringify({ error: error?.message || "batch upsert failed" }));
+    });
+  waitUntil(task);
 }
