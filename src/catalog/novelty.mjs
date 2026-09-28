@@ -50,7 +50,11 @@ function stripSequenceTokens(words) {
 // they have experienced more of a series. Provider collection/franchise metadata wins. Otherwise
 // a subtitle prefix ("The Hobbit: ...") or a sequence-stripped title ("Uncharted 4") is used.
 export function seriesKey(item) {
-  const providerKey = item?.providerMeta?.collectionId ?? item?.providerMeta?.franchiseId ?? null;
+  // #142: Open Library's series_key lives in its own id space (a string like "/works/OL...S"),
+  // distinct from TMDb/IGDB's numeric collectionId/franchiseId -- keeping the `provider:` prefix
+  // on all three still guarantees no cross-provider collision even though the underlying values
+  // have different shapes.
+  const providerKey = item?.providerMeta?.collectionId ?? item?.providerMeta?.franchiseId ?? item?.providerMeta?.seriesKey ?? null;
   if (providerKey != null) return `provider:${item?.provider || "unknown"}:${providerKey}`;
   const prefix = titleSeriesPrefix(item?.title);
   if (prefix.length) return `title:${prefix.join(" ")}`;
@@ -62,10 +66,15 @@ export function hasSeriesSignal(item) {
   return Boolean(seriesKey(item));
 }
 
+// #142: Open Library's series_key (a string like "/works/OL...S") joins collectionId/franchiseId
+// as a real relationship signal for books, the same way those two already work for movies/TV/games.
+// Namespacing by provider (via `a.provider`/`b.provider`) means a numeric TMDb collectionId can
+// never collide with an Open Library series_key string just because two unrelated ids happened to
+// stringify the same way.
 function shareCollection(a, b) {
-  const aId = a.providerMeta?.collectionId ?? a.providerMeta?.franchiseId ?? null;
-  const bId = b.providerMeta?.collectionId ?? b.providerMeta?.franchiseId ?? null;
-  return Boolean(aId != null && bId != null && aId === bId);
+  const aId = a.providerMeta?.collectionId ?? a.providerMeta?.franchiseId ?? a.providerMeta?.seriesKey ?? null;
+  const bId = b.providerMeta?.collectionId ?? b.providerMeta?.franchiseId ?? b.providerMeta?.seriesKey ?? null;
+  return Boolean(aId != null && bId != null && a.provider === b.provider && aId === bId);
 }
 
 function isNearDuplicateTitle(candidate, evidenceItem) {

@@ -30,7 +30,7 @@ async function browseWatch(genre, page, env, fetchImpl) {
 }
 
 async function browseRead(genre, page, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject";
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key";
   const offset = (page - 1) * BROWSE_PAGE_SIZE;
   const url = `https://openlibrary.org/search.json?subject=${encodeURIComponent(genre.provider.value)}&limit=${BROWSE_PAGE_SIZE}&offset=${offset}&fields=${fields}`;
   const response = await fetchImpl(url, {
