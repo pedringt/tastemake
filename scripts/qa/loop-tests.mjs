@@ -64,6 +64,39 @@ const roundTwo = await retrieveCatalogCandidates(state, { env: { TASTEMAKE_TMDB_
 check("round-two retrieval is grounded in the round-one reaction (liked item A)", roundTwo.some((c) => c.relatedTo === itemA.title));
 check("round-one's shown items are excluded from round two", !roundTwo.some((c) => c.id === itemA.id) && !roundTwo.some((c) => c.id === itemB.id));
 
+// (2b) 2026-09-28 real bug: reacting Loved it/Liked it directly on a recommendation card only ever
+// wrote the item into feedbackByRecommendation[id].item (saveQuickFeedback), never into
+// state.customItems (only search-added favorites/browse picks populate that). Item B here is
+// deliberately absent from customItems -- exactly the real-usage shape -- to prove it still becomes
+// a retrieval anchor instead of silently being invisible to future candidate retrieval.
+const feedbackOnlyState = {
+  selectedFavorites: new Set(),
+  feedbackByRecommendation: {
+    [itemB.id]: {
+      item: { id: itemB.id, provider: "tmdb", providerId: "2", title: itemB.title, type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } },
+      rating: "more",
+      detail: "loved-before"
+    }
+  },
+  recommendationSets: [[itemA, itemB]],
+  customItems: {}, // deliberately empty -- item B was never search-added, only reacted to
+  areas: { watch: true, read: true, play: true }
+};
+const feedbackOnlyFetch = async (url) => {
+  if (String(url).includes("/movie/2/recommendations")) {
+    return {
+      ok: true,
+      json: async () => ({ results: [{ id: 4, title: "Grounded In A Reacted-Only Pick", overview: "New.", release_date: "2021-01-01", poster_path: "/r4.jpg", genre_ids: [18] }] })
+    };
+  }
+  throw new Error(`unexpected URL: ${url}`);
+};
+const feedbackOnlyResult = await retrieveCatalogCandidates(feedbackOnlyState, { env: { TASTEMAKE_TMDB_TOKEN: "tok" }, fetchImpl: feedbackOnlyFetch });
+check(
+  "an item loved/liked directly on a card (never added to customItems) still becomes a retrieval anchor",
+  feedbackOnlyResult.some((c) => c.relatedTo === itemB.title)
+);
+
 // (3) Saved (bookmarked/untried) intent is a weaker, non-taste signal compared to an experienced reaction.
 const saved = { item: itemA, rating: "not-tried", detail: "bookmarked" };
 const experienced = { item: itemA, rating: "more", detail: "liked-before" };
