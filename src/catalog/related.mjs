@@ -96,7 +96,7 @@ function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
 }
 
 async function openLibrarySubjectSearch(subject, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject";
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key";
   const load = async () => {
     const response = await fetchImpl(`https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }

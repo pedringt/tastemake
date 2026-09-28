@@ -151,6 +151,42 @@ check(
 );
 check("...and still fills the slot with the genuinely distinct candidate", repeatedRoundResult.some((x) => x.id === "tmdb-movie-3"));
 
+// #142: real production verification of #131's fix surfaced that a book's direct sequel could
+// still occupy a primary slot -- Open Library items never carried a providerMeta relationship
+// signal at all, unlike movies/TV/games. series_key (when Open Library actually has it) now closes
+// that gap the same way collectionId/franchiseId already work for other media types.
+const wayOfKings = { id: "openlibrary-book-1", title: "The Way of Kings", provider: "openlibrary", providerMeta: { seriesKey: "/works/OL123456S" } };
+const wordsOfRadiance = { id: "openlibrary-book-2", title: "Words of Radiance", provider: "openlibrary", providerMeta: { seriesKey: "/works/OL123456S" } };
+check(
+  "a book sequel with no title overlap is flagged when Open Library's own series_key links them",
+  isFranchiseContinuation(wordsOfRadiance, wayOfKings)
+);
+
+const unrelatedSeriesBook = { id: "openlibrary-book-3", title: "A Completely Different Story", provider: "openlibrary", providerMeta: { seriesKey: "/works/OL999999S" } };
+check(
+  "a different book with its own distinct series_key stays eligible",
+  !isFranchiseContinuation(unrelatedSeriesBook, wayOfKings)
+);
+
+// Honest documentation of the real, accepted residual gap from #142: when Open Library itself has
+// no series data for a book (confirmed true for real popular series against the live API), this
+// guard genuinely cannot catch it via provider metadata, and title heuristics don't help when the
+// titles share no common words. This is expected, not a bug to "fix" by inventing a relationship.
+const sparseMetadataSequel = { id: "openlibrary-book-4", title: "Words of Radiance", provider: "openlibrary" };
+check(
+  "known/accepted gap: a real sequel with no series_key and no title overlap is NOT flagged (residual limitation, not silently claimed as fixed)",
+  !isFranchiseContinuation(sparseMetadataSequel, wayOfKings)
+);
+
+// A numeric TMDb collectionId must never accidentally match an Open Library series_key string
+// (or vice versa) just because they happen to stringify the same -- provider namespacing prevents
+// a cross-media false positive.
+const tmdbWithNumericId = { id: "tmdb-movie-20", title: "Some Movie", provider: "tmdb", providerMeta: { collectionId: "/works/OL123456S" } };
+check(
+  "a coincidentally-matching id string across different providers is NOT flagged (namespaced by provider)",
+  !isFranchiseContinuation(tmdbWithNumericId, wayOfKings)
+);
+
 console.log(`novelty guard tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);
