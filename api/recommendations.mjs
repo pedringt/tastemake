@@ -383,10 +383,17 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
         catalogCandidates: retrieved.length
       });
     }
+    const picks = clientPicks(result.items);
+    // Real report (2026-09-28): "after a few rounds I'm getting mostly books now" -- the domain-spread
+    // nudge (#153) only shapes what the model is told to do; nothing has ever logged what it actually
+    // picked. Sanitized domain counts only (never titles/ids), so a real skew is visible without
+    // guessing, the same way rejectionReasons logging (#148) turned "tests a pattern..." from a guess
+    // into a confirmed, fixable cause.
+    logStage("picksDomains", 0, { domains: picks.reduce((counts, p) => { for (const d of p.domains ?? []) counts[d] = (counts[d] ?? 0) + 1; return counts; }, {}) });
     return {
       source: "model",
       reason: null,
-      picks: clientPicks(result.items),
+      picks,
       meta: { model: model.model, usage: model.usage, rejected: result.rejected ?? 0, paidCallMade: true, catalogCandidates: retrieved.length }
     };
   } catch (error) {
