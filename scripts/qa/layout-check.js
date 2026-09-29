@@ -236,10 +236,10 @@ export function checkCurrentScreen() {
 export async function runAll() {
   const { state } = await import("/src/state.js");
   const favorites = [
-    {id:"tmdb-movie-801",provider:"tmdb",providerId:"801",title:"A Very Long Favorite Film Title for Layout Testing",type:"movie",domains:["watch"],about:"A deliberately long but readable summary that checks card proportions in every look.",artwork:null},
+    {id:"tmdb-movie-801",provider:"tmdb",providerId:"801",title:"A Very Long Favorite Film Title for Layout Testing",type:"movie",domains:["movies"],about:"A deliberately long but readable summary that checks card proportions in every look.",artwork:null},
     {id:"openlibrary-book-802",provider:"openlibrary",providerId:"802",title:"Favorite Book",type:"book",domains:["read"],about:"Book.",artwork:null},
     {id:"igdb-game-803",provider:"igdb",providerId:"803",title:"Favorite Game",type:"game",domains:["play"],about:"Game.",artwork:null},
-    {id:"tmdb-tv-804",provider:"tmdb",providerId:"804",title:"Favorite Show",type:"tv",domains:["watch"],about:"Show.",artwork:null}
+    {id:"tmdb-tv-804",provider:"tmdb",providerId:"804",title:"Favorite Show",type:"tv",domains:["tv"],about:"Show.",artwork:null}
   ];
   state.customItems=Object.fromEntries(favorites.map(item=>[item.id,item]));
   state.selectedFavorites=new Set(favorites.map(item=>item.id));
@@ -264,12 +264,12 @@ export async function runAll() {
   ];
   const picks=Array.from({length:5},(_,i)=>({
     id:`tmdb-movie-${820+i}`,provider:"tmdb",providerId:String(820+i),title:titles[i],
-    type:"movie",domains:["watch"],about:i===1?"A real-catalog-style synopsis with enough copy to exercise the card layout and check that truncation ends cleanly instead of mid-sentence when the source text runs long.":"Short synopsis.",
+    type:"movie",domains:["movies"],about:i===1?"A real-catalog-style synopsis with enough copy to exercise the card layout and check that truncation ends cleanly instead of mid-sentence when the source text runs long.":"Short synopsis.",
     prediction:"Worth testing",fit:i===4?"Exploratory fit":"Catalog match",rank:i===4?null:i+1,surprise:i===4,
     reason:reasons[i],artwork:null,ai:null
   }));
   state.recommendationSets=[picks];
-  state.browseDomain="watch";
+  state.browseDomain="movies";
   state.browseGenre="drama";
   state.browseItems=[...picks];
   state.browsePage=1;
@@ -287,7 +287,7 @@ export async function runAll() {
   state.modelHypotheses=[{
     id:"ai-layout-one",title:"Structure supports experimentation",claim:"Unusual ideas seem stronger when a clear structure keeps them moving.",
     evidence:"Favorite Film, Catalog Recommendation 1",supports:[`ev:${favorites[0].id}`,`ev:${picks[0].id}`],counters:[],
-    domains:["watch"],strength:"Supported",status:"supported",crossDomain:"untested",provenance:"Live AI interpretation, validated against experienced evidence."
+    domains:["movies"],strength:"Supported",status:"supported",crossDomain:"untested",provenance:"Live AI interpretation, validated against experienced evidence."
   }];
   state.hypothesisAiStatus="loading";
 

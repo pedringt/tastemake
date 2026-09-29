@@ -59,7 +59,7 @@ const rankingFetch = async (url, init = {}) => {
   }
   throw new Error(`unexpected ranking URL: ${u}`);
 };
-const rankedWatch = await searchCatalog("Breaking Bad", { domain: "watch", env, fetchImpl: rankingFetch });
+const rankedWatch = await searchCatalog("Breaking Bad", { domain: "all", env, fetchImpl: rankingFetch });
 eq("exact TV match outranks weaker movie matches", rankedWatch.items[0]?.title, "Breaking Bad");
 const rankedPlay = await searchCatalog("Control", { domain: "play", env, fetchImpl: rankingFetch });
 eq("exact canonical game outranks partial/edition matches", rankedPlay.items[0]?.title, "Control");
@@ -72,10 +72,10 @@ const relatedState = {
   customItems: {
     "tmdb-movie-10": {
       id: "tmdb-movie-10", provider: "tmdb", providerId: "10", title: "Seed Movie",
-      type: "movie", domains: ["watch"], genres: ["18"], providerMeta: { genreIds: [18] }
+      type: "movie", domains: ["movies"], genres: ["18"], providerMeta: { genreIds: [18] }
     }
   },
-  areas: { watch: true, read: true, play: true }
+  areas: { movies: true, tv: true, read: true, play: true }
 };
 const relatedFetch = async (url) => {
   if (String(url).includes("/movie/10/recommendations")) {
@@ -100,7 +100,7 @@ check("grounded retrieval excludes the evidence item itself", !related.some((x) 
         type:"book",domains:["read"],genres:["New York Times bestseller","Fantasy","Epic fiction","Magic"]
       }
     },
-    areas:{watch:true,read:true,play:true},
+    areas:{movies:true,tv:true,read:true,play:true},
     recommendationFilter:"read"
   };
   const requestedUrls = [];
@@ -154,7 +154,7 @@ const mixedState = {
       type: "game", domains: ["play"], providerMeta: { genreIds: [31] }
     }
   },
-  areas: { watch: true, read: true, play: true },
+  areas: { movies: true, tv: true, read: true, play: true },
   recommendationFilter: "all"
 };
 const mixedFetch = async (url, init = {}) => {
@@ -166,7 +166,7 @@ const mixedFetch = async (url, init = {}) => {
   throw new Error(`unexpected mixed URL: ${u}`);
 };
 const mixed = await retrieveCatalogCandidates(mixedState, { env, fetchImpl: mixedFetch });
-check("All recommendation retrieval represents available domains", ["watch", "read", "play"].every((domain) => mixed.slice(0, 3).some((item) => item.domains?.includes(domain))), mixed.map((x) => x.domains?.[0]).join(","));
+check("All recommendation retrieval represents available domains", ["movies", "read", "play"].every((domain) => mixed.slice(0, 3).some((item) => item.domains?.includes(domain))), mixed.map((x) => x.domains?.[0]).join(","));
 const readOnly = await retrieveCatalogCandidates({ ...mixedState, recommendationFilter: "read" }, { env, fetchImpl: mixedFetch });
 check("category recommendation retrieval returns only that domain", readOnly.length > 0 && readOnly.every((item) => item.domains?.includes("read")), readOnly.map((x) => x.domains?.[0]).join(","));
 
@@ -195,7 +195,7 @@ const rawState = {
   blindSpots: {},
   blindSpotDismissed: [],
   patternStatements: [],
-  areas: { watch: true, read: true, play: true },
+  areas: { movies: true, tv: true, read: true, play: true },
   curveball: true,
   modelHypotheses: []
 };
@@ -229,7 +229,7 @@ eq("Favorite evidence can support a live hypothesis", live.hypotheses[0]?.level,
 check("accepted live hypotheses stay inferred/model authority", live.hypotheses.every((x) => x.authority === "inferred" && x.source === "model"));
 
 const historyState = { hypothesisHistory: [] };
-const entry = { hypothesisId: "ai-one", claim: "A specific working claim", supports: ["ev:a"], counters: [], domains: ["watch"], level: "supported", origin: "model", reason: "test" };
+const entry = { hypothesisId: "ai-one", claim: "A specific working claim", supports: ["ev:a"], counters: [], domains: ["movies"], level: "supported", origin: "model", reason: "test" };
 recordRevisionIfChanged(historyState, entry);
 recordRevisionIfChanged(historyState, { ...entry, reason: "same interpretation, refreshed" });
 eq("identical model interpretation does not create duplicate history", historyState.hypothesisHistory.length, 1);

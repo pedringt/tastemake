@@ -3,6 +3,7 @@ import { buildContext } from "../src/ai/context.js";
 import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
+import { recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 
 const MAX_BODY_BYTES = 160_000;
 const MAX_OUTPUT_TOKENS = 2000;   // the cap has to cover any thinking tokens as well as the JSON itself
@@ -151,7 +152,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     // (Paige's call): prefer spread when it's a reasonably close call, but a real, strongly-evidenced
     // cluster in one domain is still allowed to stand rather than be forced apart artificially.
     ...(recommendationFilter === "all" ? [
-      "The domain filter is \"All\": each candidate's domains field shows watch/read/play. Prefer a spread across the domains actually represented in candidates rather than clustering most or all picks in a single domain, unless the evidence genuinely and specifically favors that domain over the others -- do not force in a weaker candidate from another domain just to manufacture variety."
+      "The domain filter is \"All\": each candidate's domains field shows movies/tv/read/play. Prefer a spread across the domains actually represented in candidates rather than clustering most or all picks in a single domain, unless the evidence genuinely and specifically favors that domain over the others -- do not force in a weaker candidate from another domain just to manufacture variety."
     ] : []),
     // #120: live-call latency is proportional to output tokens (~11ms/token, measured directly from
     // real production timing across requests with very different prompt sizes -- see #120). "why"
@@ -357,14 +358,25 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     }));
     started = Date.now();
     const model = await callAnthropic({ prompt, env, fetchImpl });
-    // The live-AI call itself is the dominant cost in every measured production request (~85-95% of
-    // total time). Logging real token counts (not just wall-clock ms) so a large prompt/context can
-    // be told apart from "that's just how long this call takes" without guessing.
-    logStage("liveAiCall", Date.now() - started, {
+    const liveAiMs = Date.now() - started;
+    const aiMetric = {
       model: model.model,
+      durationMs: liveAiMs,
       inputTokens: model.usage?.input_tokens ?? null,
       outputTokens: model.usage?.output_tokens ?? null,
       cacheReadTokens: model.usage?.cache_read_input_tokens ?? null
+    };
+    // Persist only operational metadata for Project Health. No prompt, evidence, candidate,
+    // title, user-state, or generated recommendation content is stored by this telemetry path.
+    recordAiCallInBackground(aiMetric, { env });
+    // The live-AI call itself is the dominant cost in every measured production request (~85-95% of
+    // total time). Logging real token counts (not just wall-clock ms) so a large prompt/context can
+    // be told apart from "that's just how long this call takes" without guessing.
+    logStage("liveAiCall", liveAiMs, {
+      model: aiMetric.model,
+      inputTokens: aiMetric.inputTokens,
+      outputTokens: aiMetric.outputTokens,
+      cacheReadTokens: aiMetric.cacheReadTokens
     });
 
     started = Date.now();
@@ -425,6 +437,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "POST required" });
   }
   const contentLength = Number(req.headers?.["content-length"] || 0);
+  // Real bug, recurred three times: the wire payload grew unbounded until it silently 413'd, and
+  // every time this was only ever discovered from a live user report ("stuck on the same picks"),
+  // never from the logs -- nothing logged the size until it was already failing. Logging it on every
+  // request (rejected or not) means the next time trimming falls behind real usage again, it shows up
+  // as a rising number in [tastemake-recommendations-payload] well before any user hits a 413.
+  console.info("[tastemake-recommendations-payload]", JSON.stringify({ bytes: contentLength, capBytes: MAX_BODY_BYTES, pctOfCap: contentLength ? Math.round((contentLength / MAX_BODY_BYTES) * 100) : null }));
   if (contentLength > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
   if (typeof req.body === "string" && Buffer.byteLength(req.body, "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
   if (!underBestEffortRateLimit(clientIp(req))) return res.status(429).json({ error: "too many requests" });
@@ -441,7 +459,9 @@ export default async function handler(req, res) {
       picks: payload.picks?.length ?? 0,
       candidates: payload.meta?.catalogCandidates ?? null,
       paidCallMade: Boolean(payload.meta?.paidCallMade),
-      errorType: payload.meta?.errorType ?? null
+      errorType: payload.meta?.errorType ?? null,
+      feedbackCount: Object.keys(body.state.feedbackByRecommendation ?? {}).length,
+      customItemsCount: Object.keys(body.state.customItems ?? {}).length
     }));
     res.setHeader("cache-control", "no-store");
     return res.status(200).json(payload);

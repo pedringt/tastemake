@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "GET required" });
   }
 
-  const domain = ["watch", "read", "play"].includes(req.query?.domain) ? req.query.domain : null;
+  const domain = ["movies", "tv", "read", "play"].includes(req.query?.domain) ? req.query.domain : null;
   const genre = String(req.query?.genre ?? "");
   const page = Math.max(1, Math.min(20, Number(req.query?.page) || 1));
   if (!domain || !browseGenreById(domain, genre)) {

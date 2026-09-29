@@ -49,7 +49,7 @@ function tmdbItem(row, type) {
     providerId: String(row.id),
     title: clean(title, 100),
     type,
-    domains: ["watch"],
+    domains: [type === "tv" ? "tv" : "movies"],
     about: clean(row.overview || "No description available."),
     year: date ? String(date).slice(0, 4) : null,
     artwork: row.poster_path ? `${TMDB_IMAGE}${row.poster_path}` : null,
@@ -263,7 +263,7 @@ export async function searchCatalog(query, { domain = "all", env = process.env, 
   if (q.length < 2) return { items: [], providers: {}, degraded: false };
 
   const specs = [];
-  if (domainAllows(domain, "watch")) specs.push(["tmdb", Boolean(env.TASTEMAKE_TMDB_TOKEN), () => searchTmdb(q, env, fetchImpl)]);
+  if (domainAllows(domain, "movies") || domainAllows(domain, "tv")) specs.push(["tmdb", Boolean(env.TASTEMAKE_TMDB_TOKEN), () => searchTmdb(q, env, fetchImpl)]);
   if (domainAllows(domain, "read")) specs.push(["openlibrary", true, () => searchOpenLibrary(q, env, fetchImpl)]);
   if (domainAllows(domain, "play")) specs.push(["igdb", Boolean(env.IGDB_CLIENT_ID && env.IGDB_CLIENT_SECRET), () => searchIgdb(q, env, fetchImpl)]);
 

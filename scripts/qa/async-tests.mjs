@@ -22,7 +22,7 @@ const mk = () => ({
   screen: "recommendations", selectedFavorites: new Set(favorites.filter((f) => f.selected).map((f) => f.id)),
   feedbackByRecommendation: {}, recommendationSets: [recommendations], libraryFavorites: new Set(), customItems: {},
   blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(), patternStatements: [], modelHypotheses: hypotheses,
-  areas: { watch: true, read: true, play: true }, curveball: true, aiRequest: null, aiStatus: "idle"
+  areas: { movies: true, tv: true, read: true, play: true }, curveball: true, aiRequest: null, aiStatus: "idle"
 });
 
 // fingerprint: sensitive to everything a pick request depends on
@@ -39,7 +39,7 @@ const noCurveball = mk(); noCurveball.curveball = false;
 check("the curveball setting changes it", R.evidenceFingerprint(noCurveball) !== print);
 const said = mk(); setStatement(said, hypotheses[0].id, "says", "not-me");
 check("a pattern correction changes it", R.evidenceFingerprint(said) !== print);
-const looked = mk(); looked.look = "collage"; looked.profileView = "map"; looked.libraryFilter = "watch";
+const looked = mk(); looked.look = "collage"; looked.profileView = "map"; looked.libraryFilter = "movies";
 eq("presentation-only state does not change it", R.evidenceFingerprint(looked), print);
 
 // a quiet request is usable
