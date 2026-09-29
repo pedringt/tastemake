@@ -20,7 +20,7 @@ const ON={...BASE,TASTEMAKE_AI_ENABLED:"1",ANTHROPIC_API_KEY:"fake-key"};
 
 const favorite={
   id:"tmdb-movie-1",provider:"tmdb",providerId:"1",title:"Favorite Film",type:"movie",
-  domains:["watch"],about:"A favorite.",artwork:null,providerMeta:{genreIds:[18]}
+  domains:["movies"],about:"A favorite.",artwork:null,providerMeta:{genreIds:[18]}
 };
 const candidateTitles=["Amber Harbor","Glass Orchard","Night Signal","Paper Kingdom","Silent Atlas","Copper Sky"];
 const relatedRows=Array.from({length:6},(_,i)=>({
@@ -34,7 +34,7 @@ const rawState=(extra={})=>({
   libraryFavorites:[],
   customItems:{[favorite.id]:favorite},
   blindSpots:{},blindSpotDrafts:{},blindSpotDismissed:[],patternStatements:[],
-  areas:{watch:true,read:true,play:true},curveball:true,
+  areas:{movies:true,tv:true,read:true,play:true},curveball:true,
   ...extra
 });
 
@@ -95,7 +95,7 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
     itemId: `test-${i}`,
     title: `Evidence ${i}`,
     type: i % 2 ? "movie" : "book",
-    domains: [i % 2 ? "watch" : "read"],
+    domains: [i % 2 ? "movies" : "read"],
     kind: i % 7 === 0 ? "experienced-negative" : i % 5 === 0 ? "experienced-strong-positive" : "experienced-positive",
     class: "experienced",
     polarity: i % 7 === 0 ? -1 : 1,
@@ -106,13 +106,13 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
     source: "recommendations"
   }));
   manyEvidence.push({
-    ref:"ev:intent-only",itemId:"intent-only",title:"Saved only",type:"movie",domains:["watch"],
+    ref:"ev:intent-only",itemId:"intent-only",title:"Saved only",type:"movie",domains:["movies"],
     kind:"saved",class:"intent",polarity:1,countsAsTaste:false,weight:0,authority:"user",context:null,source:"recommendations"
   });
   const ctx = {
     evidence: manyEvidence,
     candidates: [
-      {id:"c1",title:"Candidate 1",type:"movie",domains:["watch"],about:"x",hypotheses:[],provider:"tmdb",providerId:"1",year:2020,genres:["Drama"]},
+      {id:"c1",title:"Candidate 1",type:"movie",domains:["movies"],about:"x",hypotheses:[],provider:"tmdb",providerId:"1",year:2020,genres:["Drama"]},
       {id:"c2",title:"Candidate 2",type:"book",domains:["read"],about:"x",hypotheses:[],provider:"openlibrary",providerId:"OL1W",year:2020,genres:["Fiction"]}
     ],
     curveball:true,statements:[],contexts:[]
@@ -120,7 +120,7 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
   const selected = selectPromptEvidence(ctx);
   check("prompt evidence is bounded", selected.length <= 18, String(selected.length));
   check("prompt evidence excludes intent-only history", selected.every((row) => row.class === "experienced"), selected.map((row) => row.kind).join(","));
-  check("prompt evidence keeps represented domains", selected.some((row) => row.domains.includes("watch")) && selected.some((row) => row.domains.includes("read")));
+  check("prompt evidence keeps represented domains", selected.some((row) => row.domains.includes("movies")) && selected.some((row) => row.domains.includes("read")));
   const prompt = buildPickPrompt(ctx, 2);
   check("prompt omits redundant evidence fields", !prompt.includes('"authority":"user"') && !prompt.includes('"countsAsTaste"') && !prompt.includes('"itemId":"test-'));
   check("prompt excludes saved-only evidence", !prompt.includes("ev:intent-only"));
@@ -131,11 +131,11 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
 // allowed to stand).
 {
   const baseCtx = {
-    evidence: [], candidates: [{id:"c1",title:"C1",type:"movie",domains:["watch"],about:"x",hypotheses:[],provider:"tmdb",providerId:"1",year:2020,genres:[]}],
+    evidence: [], candidates: [{id:"c1",title:"C1",type:"movie",domains:["movies"],about:"x",hypotheses:[],provider:"tmdb",providerId:"1",year:2020,genres:[]}],
     curveball:true, statements:[], contexts:[]
   };
   const allPrompt = buildPickPrompt({ ...baseCtx, recommendationFilter: "all" }, 1);
-  const watchPrompt = buildPickPrompt({ ...baseCtx, recommendationFilter: "watch" }, 1);
+  const watchPrompt = buildPickPrompt({ ...baseCtx, recommendationFilter: "movies" }, 1);
   const defaultPrompt = buildPickPrompt(baseCtx, 1); // recommendationFilter unset -- must default to "all"'s behavior
   check("the domain-spread nudge appears when the filter is All", allPrompt.includes("Prefer a spread across the domains"));
   check("the domain-spread nudge is absent for a single-domain filter (nothing to spread across)", !watchPrompt.includes("Prefer a spread across the domains"));
@@ -243,7 +243,7 @@ for(const [name,picks,expectedCount] of partialCases){
 // (a bookmark) still passed -- ai-contract.md bans citing intent as support outright, it isn't a
 // majority vote. A pick that cites intent evidence at all, even alongside real evidence, must fail.
 {
-  const bookmarked={id:"tmdb-movie-9",provider:"tmdb",providerId:"9",title:"Bookmarked Film",type:"movie",domains:["watch"]};
+  const bookmarked={id:"tmdb-movie-9",provider:"tmdb",providerId:"9",title:"Bookmarked Film",type:"movie",domains:["movies"]};
   const mixedState=rawState({feedbackByRecommendation:{[bookmarked.id]:{item:bookmarked,rating:"not-tried",detail:"bookmarked"}}});
   const mixedCitationPicks=goodPicks().map((p,i)=>i?p:{...p,cites:[...p.cites,`ev:${bookmarked.id}`]});
   const result=await produceRecommendations({rawState:mixedState,env:ON,fetchImpl:routedFetch(modelSays(mixedCitationPicks))});

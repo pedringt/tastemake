@@ -3,31 +3,20 @@ import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs"
 
 export const BROWSE_PAGE_SIZE = 12;
 
-function interleave(rows) {
-  const out = [];
-  const depth = Math.max(0, ...rows.map((bucket) => bucket.length));
-  for (let i = 0; i < depth; i += 1) {
-    for (const bucket of rows) if (bucket[i]) out.push(bucket[i]);
-  }
-  return out;
-}
-
-async function browseWatch(genre, page, env, fetchImpl) {
+async function browseTmdb(genre, page, env, fetchImpl, mediaType) {
   if (!env.TASTEMAKE_TMDB_TOKEN) return { items: [], configured: false };
+  const genreId = mediaType === "tv" ? genre.provider.tv : genre.provider.movie;
+  if (!genreId) return { items: [], configured: true, hasMore: false };
   const headers = { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" };
   const common = `sort_by=popularity.desc&include_adult=false&language=en-US&page=${page}`;
-  const movieGenre = genre.provider.movie;
-  const tvGenre = genre.provider.tv;
-  const [movies, tv] = await Promise.all([
-    movieGenre ? fetchImpl(`https://api.themoviedb.org/3/discover/movie?with_genres=${movieGenre}&${common}`, { headers }) : Promise.resolve(null),
-    tvGenre ? fetchImpl(`https://api.themoviedb.org/3/discover/tv?with_genres=${tvGenre}&${common}`, { headers }) : Promise.resolve(null)
-  ]);
-  if ((!movies || !movies.ok) && (!tv || !tv.ok)) throw new Error("tmdb browse unavailable");
-  const movieRows = movies?.ok ? ((await movies.json()).results ?? []).slice(0, 10).map((row) => tmdbItem(row, "movie")) : [];
-  const tvRows = tv?.ok ? ((await tv.json()).results ?? []).slice(0, 10).map((row) => tmdbItem(row, "tv")) : [];
-  const items = interleave([movieRows, tvRows]).slice(0, BROWSE_PAGE_SIZE);
-  return { items, configured: true, hasMore: movieRows.length >= 10 || tvRows.length >= 10 };
+  const response = await fetchImpl(`https://api.themoviedb.org/3/discover/${mediaType}?with_genres=${genreId}&${common}`, { headers });
+  if (!response.ok) throw new Error("tmdb browse unavailable");
+  const rows = ((await response.json()).results ?? []).slice(0, BROWSE_PAGE_SIZE).map((row) => tmdbItem(row, mediaType));
+  return { items: rows, configured: true, hasMore: rows.length >= BROWSE_PAGE_SIZE };
 }
+
+const browseMovies = (genre, page, env, fetchImpl) => browseTmdb(genre, page, env, fetchImpl, "movie");
+const browseTv = (genre, page, env, fetchImpl) => browseTmdb(genre, page, env, fetchImpl, "tv");
 
 async function browseRead(genre, page, env, fetchImpl) {
   const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key";
@@ -80,7 +69,8 @@ export async function browseCatalog({ domain, genreId, page = 1, env = process.e
 
   try {
     let result;
-    if (domain === "watch") result = await browseWatch(genre, safePage, env, fetchImpl);
+    if (domain === "movies") result = await browseMovies(genre, safePage, env, fetchImpl);
+    else if (domain === "tv") result = await browseTv(genre, safePage, env, fetchImpl);
     else if (domain === "read") result = await browseRead(genre, safePage, env, fetchImpl);
     else if (domain === "play") result = await browsePlay(genre, safePage, env, fetchImpl);
     else return { items: [], hasMore: false, degraded: true };

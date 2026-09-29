@@ -12,20 +12,20 @@ export async function run() {
   const type=async(s,value,wait=420)=>{const el=$(s);if(!el) throw new Error(`missing ${s}`);el.value=value;el.dispatchEvent(new Event("input",{bubbles:true}));await sleep(wait);};
 
   const favs=[
-    {id:"tmdb-movie-501",provider:"tmdb",providerId:"501",title:"Moon Garden",type:"movie",domains:["watch"],about:"A strange but structured film.",artwork:null},
+    {id:"tmdb-movie-501",provider:"tmdb",providerId:"501",title:"Moon Garden",type:"movie",domains:["movies"],about:"A strange but structured film.",artwork:null},
     {id:"openlibrary-book-502",provider:"openlibrary",providerId:"502",title:"Glass City",type:"book",domains:["read"],about:"A literary speculative novel.",artwork:null},
     {id:"igdb-game-503",provider:"igdb",providerId:"503",title:"Signal Room",type:"game",domains:["play"],about:"A deduction game.",artwork:null},
-    {id:"tmdb-tv-504",provider:"tmdb",providerId:"504",title:"Night Shift",type:"tv",domains:["watch"],about:"A dark comedy series.",artwork:null}
+    {id:"tmdb-tv-504",provider:"tmdb",providerId:"504",title:"Night Shift",type:"tv",domains:["tv"],about:"A dark comedy series.",artwork:null}
   ];
   const mixed=[
-    {id:"tmdb-movie-601",provider:"tmdb",providerId:"601",title:"Test Movie",type:"movie",domains:["watch"],about:"Movie.",artwork:null},
+    {id:"tmdb-movie-601",provider:"tmdb",providerId:"601",title:"Test Movie",type:"movie",domains:["movies"],about:"Movie.",artwork:null},
     {id:"openlibrary-book-602",provider:"openlibrary",providerId:"602",title:"Test Book",type:"book",domains:["read"],about:"Book.",artwork:null},
     {id:"igdb-game-603",provider:"igdb",providerId:"603",title:"Test Game",type:"game",domains:["play"],about:"Game.",artwork:null},
-    {id:"tmdb-tv-604",provider:"tmdb",providerId:"604",title:"Test Show",type:"tv",domains:["watch"],about:"Show.",artwork:null}
+    {id:"tmdb-tv-604",provider:"tmdb",providerId:"604",title:"Test Show",type:"tv",domains:["tv"],about:"Show.",artwork:null}
   ];
   const recSet=(offset)=>Array.from({length:5},(_,i)=>({
     id:`tmdb-movie-${offset+i}`,provider:"tmdb",providerId:String(offset+i),
-    title:`Catalog Pick ${offset+i}`,type:"movie",domains:["watch"],about:`Real catalog recommendation ${i+1}.`,
+    title:`Catalog Pick ${offset+i}`,type:"movie",domains:["movies"],about:`Real catalog recommendation ${i+1}.`,
     artwork:null,rank:i===4?null:i+1,fit:i===4?"Exploratory fit":"Catalog match",prediction:"Worth testing",
     surprise:i===4,reason:"Related to a favorite from the real catalog. Live AI did not rank this fallback set.",ai:null
   }));
@@ -51,8 +51,8 @@ export async function run() {
       return {ok:true,status:200,json:async()=>({
         source:"model",reason:null,
         hypotheses:[
-          {id:"ai-structured-weirdness",label:"Structure helps unusual ideas land",claim:"Unusual material seems to work better when a clear structure keeps it moving.",evidence,counter:[],domains:["watch"],crossDomain:"untested",level:"supported",conditional:false,context:null,authority:"inferred",source:"model"},
-          {id:"ai-dark-playfulness",label:"Darkness works with some playfulness",claim:"Darker material seems stronger when humor or play keeps it from becoming flat.",evidence,counter:[],domains:["watch"],crossDomain:"untested",level:"emerging",conditional:true,context:null,authority:"inferred",source:"model"}
+          {id:"ai-structured-weirdness",label:"Structure helps unusual ideas land",claim:"Unusual material seems to work better when a clear structure keeps it moving.",evidence,counter:[],domains:["movies"],crossDomain:"untested",level:"supported",conditional:false,context:null,authority:"inferred",source:"model"},
+          {id:"ai-dark-playfulness",label:"Darkness works with some playfulness",claim:"Darker material seems stronger when humor or play keeps it from becoming flat.",evidence,counter:[],domains:["movies"],crossDomain:"untested",level:"emerging",conditional:true,context:null,authority:"inferred",source:"model"}
         ],
         meta:{paidCallMade:false}
       })};

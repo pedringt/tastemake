@@ -9,7 +9,7 @@ import { esc } from "../lib/html.js";
 
 // Every preview renders the same neutral sample so the only variable is the skin. This is presentation
 // copy only, not product catalog data and never enters evidence or recommendations.
-const sample = { title: "A sample pick", type: "movie", domains: ["watch"] };
+const sample = { title: "A sample pick", type: "movie", domains: ["movies"] };
 
 function preview(id) {
   return `

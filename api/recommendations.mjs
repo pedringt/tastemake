@@ -152,7 +152,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     // (Paige's call): prefer spread when it's a reasonably close call, but a real, strongly-evidenced
     // cluster in one domain is still allowed to stand rather than be forced apart artificially.
     ...(recommendationFilter === "all" ? [
-      "The domain filter is \"All\": each candidate's domains field shows watch/read/play. Prefer a spread across the domains actually represented in candidates rather than clustering most or all picks in a single domain, unless the evidence genuinely and specifically favors that domain over the others -- do not force in a weaker candidate from another domain just to manufacture variety."
+      "The domain filter is \"All\": each candidate's domains field shows movies/tv/read/play. Prefer a spread across the domains actually represented in candidates rather than clustering most or all picks in a single domain, unless the evidence genuinely and specifically favors that domain over the others -- do not force in a weaker candidate from another domain just to manufacture variety."
     ] : []),
     // #120: live-call latency is proportional to output tokens (~11ms/token, measured directly from
     // real production timing across requests with very different prompt sizes -- see #120). "why"

@@ -6,14 +6,15 @@
 // hypothesis scope) but the product does not show or recommend them yet. Do not ship them from here.
 //
 // Terms:
-//   domain       broad grouping ("watch", later "home")
+//   domain       broad grouping ("movies", later "home")
 //   type         what kind of thing inside a domain ("movie", later "furniture")
 //   displayLabel how an item describes itself on a card ("Book + film"); optional, defaults to the type label
 // A few words per domain are kept for later UI copy (an experience is "watched" vs "worn" vs "lived with");
 // internal evidence semantics never depend on them (see src/model/evidence.js).
 
 export const DOMAINS = [
-  { id: "watch", label: "Watch", about: "Movies and TV", visible: true, experienced: "watched" },
+  { id: "movies", label: "Movies", about: "Movies", visible: true, experienced: "watched" },
+  { id: "tv", label: "TV", about: "TV shows", visible: true, experienced: "watched" },
   { id: "read", label: "Read", about: "Books", visible: true, experienced: "read" },
   { id: "play", label: "Play", about: "Games", visible: true, experienced: "played" },
   // future (not shown, not recommended)
@@ -25,8 +26,8 @@ export const DOMAINS = [
 ];
 
 export const TYPES = [
-  { id: "movie", label: "Movie", domain: "watch", addable: true },
-  { id: "tv", label: "TV", domain: "watch", addable: true },
+  { id: "movie", label: "Movie", domain: "movies", addable: true },
+  { id: "tv", label: "TV", domain: "tv", addable: true },
   { id: "book", label: "Book", domain: "read", addable: true },
   { id: "game", label: "Game", domain: "play", addable: true },
   // future

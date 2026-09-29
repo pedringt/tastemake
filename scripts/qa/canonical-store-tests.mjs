@@ -333,7 +333,7 @@ check("null item normalizes to null", normalizeCanonicalItem(null) === null);
     if (url.includes("search/tv")) return { ok: true, json: async () => ({ results: [] }) };
     return { ok: false, status: 404 };
   };
-  const result = await searchCatalog("dune", { domain: "watch", env: unsetEnv, fetchImpl });
+  const result = await searchCatalog("dune", { domain: "movies", env: unsetEnv, fetchImpl });
   check("searchCatalog still returns real results with no database configured", result.items.length === 1 && result.items[0].title === "Dune");
   check("searchCatalog is not marked degraded just because there's no database", result.degraded === false);
 }
