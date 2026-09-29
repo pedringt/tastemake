@@ -3,6 +3,7 @@ import { buildContext } from "../src/ai/context.js";
 import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
+import { recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 
 const MAX_BODY_BYTES = 160_000;
 const MAX_OUTPUT_TOKENS = 2000;   // the cap has to cover any thinking tokens as well as the JSON itself
@@ -347,14 +348,25 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     }));
     started = Date.now();
     const model = await callAnthropic({ prompt, env, fetchImpl });
-    // The live-AI call itself is the dominant cost in every measured production request (~85-95% of
-    // total time). Logging real token counts (not just wall-clock ms) so a large prompt/context can
-    // be told apart from "that's just how long this call takes" without guessing.
-    logStage("liveAiCall", Date.now() - started, {
+    const liveAiMs = Date.now() - started;
+    const aiMetric = {
       model: model.model,
+      durationMs: liveAiMs,
       inputTokens: model.usage?.input_tokens ?? null,
       outputTokens: model.usage?.output_tokens ?? null,
       cacheReadTokens: model.usage?.cache_read_input_tokens ?? null
+    };
+    // Persist only operational metadata for Project Health. No prompt, evidence, candidate,
+    // title, user-state, or generated recommendation content is stored by this telemetry path.
+    recordAiCallInBackground(aiMetric, { env });
+    // The live-AI call itself is the dominant cost in every measured production request (~85-95% of
+    // total time). Logging real token counts (not just wall-clock ms) so a large prompt/context can
+    // be told apart from "that's just how long this call takes" without guessing.
+    logStage("liveAiCall", liveAiMs, {
+      model: aiMetric.model,
+      inputTokens: aiMetric.inputTokens,
+      outputTokens: aiMetric.outputTokens,
+      cacheReadTokens: aiMetric.cacheReadTokens
     });
 
     started = Date.now();
