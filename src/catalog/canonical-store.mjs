@@ -25,10 +25,10 @@ const MEDIA_TYPES = new Set(["movie", "tv", "book", "game"]);
 // is made from that path today — detail like director/cast is fetched lazily elsewhere). Listing
 // them here, per media type, is what "metadata completeness" is a fraction of.
 const EXPECTED_FIELDS = {
-  movie: ["year", "genres", "collectionId"],
-  tv: ["year", "genres", "collectionId"],
-  book: ["year", "author", "subjects"],
-  game: ["year", "genres", "franchiseId"]
+  movie: ["year", "genres", "collectionId", "director", "cast", "runtime"],
+  tv: ["year", "genres", "creator", "cast", "yearsRun"],
+  book: ["year", "author", "subjects", "seriesKey", "description"],
+  game: ["year", "genres", "franchiseId", "developer", "publisher", "platforms"]
 };
 
 // Normalizes a provider item (from providers.mjs) into { mediaType, canonicalTitle, year, factual,
@@ -50,12 +50,25 @@ export function normalizeCanonicalItem(item) {
   if (mediaType === "book") {
     setField("author", item.by || null);
     setField("subjects", item.genres ?? []);
-  } else if (mediaType === "movie" || mediaType === "tv") {
+    setField("seriesKey", item.providerMeta?.seriesKey ?? item.seriesKey ?? null);
+    setField("description", item.description ?? null);
+  } else if (mediaType === "movie") {
     setField("genres", item.genres ?? []);
     setField("collectionId", item.providerMeta?.collectionId ?? null);
+    setField("director", item.director ?? null);
+    setField("cast", item.cast ?? null);
+    setField("runtime", item.runtime ?? null);
+  } else if (mediaType === "tv") {
+    setField("genres", item.genres ?? []);
+    setField("creator", item.creator ?? null);
+    setField("cast", item.cast ?? null);
+    setField("yearsRun", item.yearsRun ?? null);
   } else if (mediaType === "game") {
     setField("genres", item.genres ?? []);
     setField("franchiseId", item.providerMeta?.franchiseId ?? null);
+    setField("developer", item.developer ?? null);
+    setField("publisher", item.publisher ?? null);
+    setField("platforms", item.platforms ?? null);
   }
   setField("year", item.year || null);
 
@@ -83,6 +96,67 @@ export function normalizeCanonicalItem(item) {
 // convention inside this module, not a schema change.
 function identifierNamespace(item, mediaType) {
   return `${item.provider}:${mediaType}`;
+}
+
+// #135 lazy enrichment: merge provider-backed detail facts into an existing canonical item
+// without requiring the caller to send the whole display item again. This is used by on-demand
+// detail fetches and background anchor enrichment. It never creates an identity from partial data;
+// if the provider identity is not yet canonicalized, the caller's normal write-behind path will do
+// that separately. Traits are never touched.
+export async function mergeCanonicalFacts(item, facts, { env = process.env, query: queryImpl, source } = {}) {
+  const runQuery = queryImpl ?? ((text, params) => defaultQuery(text, params, { env }));
+  if (!queryImpl && !isConfigured(env)) return false;
+  if (!item?.provider || !item?.providerId || !MEDIA_TYPES.has(item.type)) return false;
+
+  const cleanFacts = {};
+  for (const [field, value] of Object.entries(facts ?? {})) {
+    if (value === null || value === undefined || value === "") continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    cleanFacts[field] = value;
+  }
+  const fields = Object.keys(cleanFacts);
+  if (!fields.length) return false;
+
+  const provider = identifierNamespace(item, item.type);
+  const providerId = String(item.providerId);
+  const rows = await runQuery(
+    `select ii.item_id, i.factual
+       from item_identifiers ii
+       join items i on i.id = ii.item_id
+      where ii.provider = $1 and ii.provider_id = $2
+      limit 1`,
+    [provider, providerId]
+  );
+  const itemId = rows?.[0]?.item_id;
+  if (!itemId) return false;
+
+  const mergedFactual = { ...(rows?.[0]?.factual ?? {}), ...cleanFacts };
+  const expected = EXPECTED_FIELDS[item.type] ?? [];
+  const completeness = expected.length
+    ? Math.round((expected.filter((name) => {
+        const value = mergedFactual[name];
+        return value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length > 0);
+      }).length / expected.length) * 1000) / 1000
+    : null;
+
+  await runQuery(
+    `update items
+        set factual = factual || $2::jsonb,
+            metadata_completeness = $3,
+            updated_at = now()
+      where id = $1`,
+    [itemId, JSON.stringify(cleanFacts), completeness]
+  );
+
+  const provenanceSource = source || item.provider;
+  await Promise.all(fields.map((field) => runQuery(
+    `insert into item_field_provenance (item_id, field_name, source, value_type, retrieved_at)
+     values ($1, $2, $3, 'provider_supplied', now())
+     on conflict (item_id, field_name) do update
+       set source = excluded.source, value_type = excluded.value_type, retrieved_at = now()`,
+    [itemId, field, provenanceSource]
+  )));
+  return true;
 }
 
 // #135 "prefer anchors with richer metadata": a best-effort batch lookup of previously-stored
