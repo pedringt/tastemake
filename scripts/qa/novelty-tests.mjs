@@ -58,10 +58,10 @@ const relatedState = {
   customItems: {
     "tmdb-movie-1": {
       id: "tmdb-movie-1", provider: "tmdb", providerId: "1", title: "The Lord of the Rings: The Fellowship of the Ring",
-      type: "movie", domains: ["watch"], genres: ["18"], providerMeta: { genreIds: [18] }
+      type: "movie", domains: ["movies"], genres: ["18"], providerMeta: { genreIds: [18] }
     }
   },
-  areas: { watch: true, read: true, play: true }
+  areas: { movies: true, tv: true, read: true, play: true }
 };
 const relatedFetch = async (url) => {
   if (String(url).includes("/movie/1/recommendations")) {
@@ -122,14 +122,14 @@ const repeatedRoundState = {
   customItems: {
     "tmdb-movie-1": {
       id: "tmdb-movie-1", provider: "tmdb", providerId: "1", title: "The Lord of the Rings: The Fellowship of the Ring",
-      type: "movie", domains: ["watch"], genres: ["18"], providerMeta: { genreIds: [18] }
+      type: "movie", domains: ["movies"], genres: ["18"], providerMeta: { genreIds: [18] }
     },
     "tmdb-movie-30": {
       id: "tmdb-movie-30", provider: "tmdb", providerId: "30", title: "The Hobbit: An Unexpected Journey",
-      type: "movie", domains: ["watch"], genres: ["18"], providerMeta: { genreIds: [18] }
+      type: "movie", domains: ["movies"], genres: ["18"], providerMeta: { genreIds: [18] }
     }
   },
-  areas: { watch: true, read: true, play: true }
+  areas: { movies: true, tv: true, read: true, play: true }
 };
 const repeatedRoundFetch = async (url) => {
   if (String(url).includes("/movie/1/recommendations")) {

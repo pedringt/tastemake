@@ -1,14 +1,20 @@
+// Movie and TV genre chips share TMDb's genre taxonomy (each entry carries both a movie and a tv
+// genre id, one of which may be null where TMDb has no equivalent on that side), so both domains
+// browse from the same WATCH_GENRES list -- only the discover query (browse.mjs) picks movie vs tv.
+const WATCH_GENRES = [
+  { id: "drama", label: "Drama", provider: { kind: "genre", movie: 18, tv: 18 } },
+  { id: "comedy", label: "Comedy", provider: { kind: "genre", movie: 35, tv: 35 } },
+  { id: "horror", label: "Horror", provider: { kind: "genre", movie: 27, tv: null } },
+  { id: "sci-fi", label: "Sci-fi", provider: { kind: "genre", movie: 878, tv: 10765 } },
+  { id: "fantasy", label: "Fantasy", provider: { kind: "genre", movie: 14, tv: 10765 } },
+  { id: "thriller", label: "Thriller", provider: { kind: "genre", movie: 53, tv: null } },
+  { id: "documentary", label: "Documentary", provider: { kind: "genre", movie: 99, tv: 99 } },
+  { id: "animation", label: "Animation", provider: { kind: "genre", movie: 16, tv: 16 } }
+];
+
 export const BROWSE_GENRES = {
-  watch: [
-    { id: "drama", label: "Drama", provider: { kind: "genre", movie: 18, tv: 18 } },
-    { id: "comedy", label: "Comedy", provider: { kind: "genre", movie: 35, tv: 35 } },
-    { id: "horror", label: "Horror", provider: { kind: "genre", movie: 27, tv: null } },
-    { id: "sci-fi", label: "Sci-fi", provider: { kind: "genre", movie: 878, tv: 10765 } },
-    { id: "fantasy", label: "Fantasy", provider: { kind: "genre", movie: 14, tv: 10765 } },
-    { id: "thriller", label: "Thriller", provider: { kind: "genre", movie: 53, tv: null } },
-    { id: "documentary", label: "Documentary", provider: { kind: "genre", movie: 99, tv: 99 } },
-    { id: "animation", label: "Animation", provider: { kind: "genre", movie: 16, tv: 16 } }
-  ],
+  movies: WATCH_GENRES,
+  tv: WATCH_GENRES,
   read: [
     { id: "fantasy", label: "Fantasy", provider: { kind: "subject", value: "fantasy" } },
     { id: "sci-fi", label: "Sci-fi", provider: { kind: "subject", value: "science_fiction" } },
@@ -32,7 +38,8 @@ export const BROWSE_GENRES = {
 };
 
 export const BROWSE_DOMAINS = [
-  { id: "watch", label: "Watch" },
+  { id: "movies", label: "Movies" },
+  { id: "tv", label: "TV" },
   { id: "read", label: "Read" },
   { id: "play", label: "Play" }
 ];

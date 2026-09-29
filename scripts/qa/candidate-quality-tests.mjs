@@ -28,7 +28,7 @@ const bookState = (genres) => ({
       title: "Way-of-Kings-like Seed", type: "book", domains: ["read"], genres
     }
   },
-  areas: { watch: true, read: true, play: true },
+  areas: { movies: true, tv: true, read: true, play: true },
   recommendationFilter: "read"
 });
 
@@ -109,9 +109,9 @@ const bookState = (genres) => ({
     selectedFavorites: new Set(["tmdb-movie-10"]),
     feedbackByRecommendation: {},
     recommendationSets: [],
-    customItems: { "tmdb-movie-10": { id: "tmdb-movie-10", provider: "tmdb", providerId: "10", title: "Seed Movie", type: "movie", domains: ["watch"], genres: ["18"] } },
-    areas: { watch: true, read: true, play: true },
-    recommendationFilter: "watch"
+    customItems: { "tmdb-movie-10": { id: "tmdb-movie-10", provider: "tmdb", providerId: "10", title: "Seed Movie", type: "movie", domains: ["movies"], genres: ["18"] } },
+    areas: { movies: true, tv: true, read: true, play: true },
+    recommendationFilter: "movies"
   };
   const neighborTitles = ["Amber Harbor", "Glass Orchard", "Night Signal", "Paper Kingdom", "Silent Atlas", "Copper Sky", "Velvet Transit", "Winter Circuit", "Crimson Static", "Moss Cathedral", "Silver Current", "Ivory Motel"];
   const rows = neighborTitles.map((title, i) => ({ id: 200 + i, title, overview: "x", release_date: "2020-01-01", genre_ids: [18] }));
@@ -132,7 +132,7 @@ const bookState = (genres) => ({
     feedbackByRecommendation: {},
     recommendationSets: [],
     customItems: { "igdb-game-12": { id: "igdb-game-12", provider: "igdb", providerId: "12", title: "Seed Game", type: "game", domains: ["play"], providerMeta: { genreIds: [31, 32] } } },
-    areas: { watch: true, read: true, play: true },
+    areas: { movies: true, tv: true, read: true, play: true },
     recommendationFilter: "play"
   };
   const gameTitles = ["Amber Harbor", "Glass Orchard", "Night Signal", "Paper Kingdom", "Silent Atlas", "Copper Sky", "Velvet Transit", "Winter Circuit", "Crimson Static", "Moss Cathedral", "Silver Current", "Ivory Motel"];
@@ -161,7 +161,7 @@ const bookState = (genres) => ({
     feedbackByRecommendation: {},
     recommendationSets: [],
     customItems: { "igdb-game-anchor": { id: "igdb-game-anchor", provider: "igdb", providerId, title: "Anchor Game", type: "game", domains: ["play"], providerMeta: { genreIds: [31] } } },
-    areas: { watch: true, read: true, play: true },
+    areas: { movies: true, tv: true, read: true, play: true },
     recommendationFilter: "play"
   });
 
@@ -204,7 +204,7 @@ const bookState = (genres) => ({
       "openlibrary-book-OL-A": { id: "openlibrary-book-OL-A", provider: "openlibrary", providerId: "OL-A", title: "Seed A", type: "book", domains: ["read"], genres: ["Fantasy"] },
       "openlibrary-book-OL-B": { id: "openlibrary-book-OL-B", provider: "openlibrary", providerId: "OL-B", title: "Seed B", type: "book", domains: ["read"], genres: ["Mystery"] }
     },
-    areas: { watch: true, read: true, play: true },
+    areas: { movies: true, tv: true, read: true, play: true },
     recommendationFilter: "read"
   };
   const related = await retrieveCatalogCandidates(mixedState, { env, fetchImpl: async (url) => {

@@ -126,10 +126,10 @@ export async function runAll() {
   const { state } = await import("/src/state.js");
   const search = await import("/src/model/search.js");
   const favorites=[
-    {id:"tmdb-movie-901",provider:"tmdb",providerId:"901",title:"Favorite Film",type:"movie",domains:["watch"],about:"Film."},
+    {id:"tmdb-movie-901",provider:"tmdb",providerId:"901",title:"Favorite Film",type:"movie",domains:["movies"],about:"Film."},
     {id:"openlibrary-book-902",provider:"openlibrary",providerId:"902",title:"Favorite Book",type:"book",domains:["read"],about:"Book."},
     {id:"igdb-game-903",provider:"igdb",providerId:"903",title:"Favorite Game",type:"game",domains:["play"],about:"Game."},
-    {id:"tmdb-tv-904",provider:"tmdb",providerId:"904",title:"Favorite Show",type:"tv",domains:["watch"],about:"Show."}
+    {id:"tmdb-tv-904",provider:"tmdb",providerId:"904",title:"Favorite Show",type:"tv",domains:["tv"],about:"Show."}
   ];
   state.customItems=Object.fromEntries(favorites.map(item=>[item.id,item]));
   state.selectedFavorites=new Set(favorites.map(item=>item.id));
@@ -137,11 +137,11 @@ export async function runAll() {
   state.displayName="QA";
   const picks=Array.from({length:5},(_,i)=>({
     id:`tmdb-movie-${920+i}`,provider:"tmdb",providerId:String(920+i),title:`Catalog Pick ${i+1}`,
-    type:"movie",domains:["watch"],about:"A catalog item.",prediction:"Worth testing",fit:"Catalog match",rank:i+1,
+    type:"movie",domains:["movies"],about:"A catalog item.",prediction:"Worth testing",fit:"Catalog match",rank:i+1,
     surprise:false,reason:"Related to a favorite.",ai:null
   }));
   state.recommendationSets=[picks];
-  state.browseDomain="watch";
+  state.browseDomain="movies";
   state.browseGenre="drama";
   state.browseItems=[...picks];
   state.browsePage=1;
@@ -154,7 +154,7 @@ export async function runAll() {
   search.applySearchAction(state,picks[3],"bookmark");
   state.modelHypotheses=[{
     id:"ai-a11y",title:"Structured experimentation",claim:"Unusual ideas seem stronger when a clear structure keeps them moving.",
-    evidence:"Favorite Film",supports:[`ev:${favorites[0].id}`],counters:[],domains:["watch"],strength:"Supported",status:"supported",
+    evidence:"Favorite Film",supports:[`ev:${favorites[0].id}`],counters:[],domains:["movies"],strength:"Supported",status:"supported",
     crossDomain:"untested",provenance:"Live AI interpretation, validated against experienced evidence."
   }];
   state.hypothesisAiStatus="loading";

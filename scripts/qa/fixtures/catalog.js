@@ -1,21 +1,21 @@
 // QA-only synthetic/demo fixtures. Production code must never import this file.
 
 export const favorites = [
-  { id: "lotr", title: "The Lord of the Rings", type: "book", displayLabel: "Book + film", domains: ["read", "watch"], note: "All-time favorite", selected: true },
+  { id: "lotr", title: "The Lord of the Rings", type: "book", displayLabel: "Book + film", domains: ["read", "movies"], note: "All-time favorite", selected: true },
   { id: "circe", title: "Circe", type: "book", domains: ["read"], note: "Mythic, adult, character-driven", selected: true },
   { id: "portal2", title: "Portal 2", type: "game", domains: ["play"], note: "Puzzle systems + specific humor", selected: true },
   { id: "alanwake2", title: "Alan Wake 2", type: "game", domains: ["play"], note: "Mystery + structure + tonal collision", selected: true },
-  { id: "thefall", title: "The Fall", type: "movie", domains: ["watch"], note: "Distinctive visual identity", selected: true },
-  { id: "buffy", title: "Buffy the Vampire Slayer", type: "tv", domains: ["watch"], note: "Genre mixing + character", selected: true },
-  { id: "starwars", title: "Original Star Wars trilogy", type: "movie", displayLabel: "Film", domains: ["watch"], note: "Adventure + worldbuilding", selected: false },
-  { id: "breakingbad", title: "Breaking Bad", type: "tv", domains: ["watch"], note: "Moral messiness", selected: false },
+  { id: "thefall", title: "The Fall", type: "movie", domains: ["movies"], note: "Distinctive visual identity", selected: true },
+  { id: "buffy", title: "Buffy the Vampire Slayer", type: "tv", domains: ["tv"], note: "Genre mixing + character", selected: true },
+  { id: "starwars", title: "Original Star Wars trilogy", type: "movie", displayLabel: "Film", domains: ["movies"], note: "Adventure + worldbuilding", selected: false },
+  { id: "breakingbad", title: "Breaking Bad", type: "tv", domains: ["tv"], note: "Moral messiness", selected: false },
   // #60: a wider first-run pool so a new visitor can find 4 meaningful favorites without every strong
   // choice already being pre-selected for them. Left unselected on purpose — see #59 on real first-run
   // favorites starting from the user's own choices.
   { id: "houseofleaves", title: "House of Leaves", type: "book", domains: ["read"], note: "Unreliable narrative, formal strangeness", selected: false },
   { id: "obradinn", title: "Return of the Obra Dinn", type: "game", domains: ["play"], note: "Structured deduction, procedural mystery", selected: false },
   { id: "annihilation", title: "Annihilation", type: "book", domains: ["read"], note: "Eerie, adult, formally strange", selected: false },
-  { id: "goodplace", title: "The Good Place", type: "tv", domains: ["watch"], note: "Philosophical comedy, twist-heavy structure", selected: false }
+  { id: "goodplace", title: "The Good Place", type: "tv", domains: ["tv"], note: "Philosophical comedy, twist-heavy structure", selected: false }
 ];
 
 export const hypotheses = [
@@ -68,7 +68,7 @@ export const recommendations = [
     rank: 1,
     title: "Everything Everywhere All at Once",
     type: "movie",
-    domains: ["watch"],
+    domains: ["movies"],
     fit: "Very strong fit",
     prediction: "Likely to like",
     hypotheses: ["H04", "H08", "H09"],
@@ -81,7 +81,7 @@ export const recommendations = [
     rank: 2,
     title: "Barry",
     type: "tv",
-    domains: ["watch"],
+    domains: ["movies"],
     fit: "Very strong fit",
     prediction: "Likely to like",
     hypotheses: ["H03", "H04", "H09"],
@@ -94,7 +94,7 @@ export const recommendations = [
     rank: 3,
     title: "What We Do in the Shadows",
     type: "tv",
-    domains: ["watch"],
+    domains: ["movies"],
     fit: "Strong fit",
     prediction: "Likely to like",
     hypotheses: ["H03", "H04", "H05"],
@@ -134,7 +134,7 @@ export const followUpPool = [
     id: "fargo",
     title: "Fargo",
     type: "tv",
-    domains: ["watch"],
+    domains: ["movies"],
     about: "A crime anthology series mixing violence, moral messiness, eccentric characters, and very dark humor.",
     hypotheses: ["H03", "H04"],
     reason: "Dark comedy and moral messiness give Tastemake two established signals to test together."
@@ -143,7 +143,7 @@ export const followUpPool = [
     id: "handmaiden",
     title: "The Handmaiden",
     type: "movie",
-    domains: ["watch"],
+    domains: ["movies"],
     about: "A stylized period thriller built around deception, shifting loyalties, and multiple reveals.",
     hypotheses: ["H03", "H01/H07"],
     reason: "Deception, morally complex characters, and structured reveals test whether mystery works best when it has strong narrative momentum."
@@ -170,7 +170,7 @@ export const followUpPool = [
     id: "lighthouse",
     title: "The Lighthouse",
     type: "movie",
-    domains: ["watch"],
+    domains: ["movies"],
     about: "A surreal black-and-white psychological drama about two lighthouse keepers unraveling in isolation.",
     hypotheses: ["H04", "H09"],
     reason: "Black comedy, surrealism, and tonal collision make this useful when those signals are holding up."
@@ -179,7 +179,7 @@ export const followUpPool = [
     id: "yellowjackets",
     title: "Yellowjackets",
     type: "tv",
-    domains: ["watch"],
+    domains: ["movies"],
     about: "A survival mystery following a girls soccer team after a crash and the adults they later become.",
     hypotheses: ["H03", "H09"],
     reason: "Messy characters, horror, and tonal shifts make this a broader cross-signal test."
@@ -188,7 +188,7 @@ export const followUpPool = [
     id: "dnd",
     title: "Dungeons & Dragons: Honor Among Thieves",
     type: "movie",
-    domains: ["watch"],
+    domains: ["movies"],
     about: "A fast-moving fantasy adventure about a mismatched group of thieves trying to fix a very bad mistake.",
     hypotheses: ["H05", "H04"],
     reason: "Fantasy plus comedy tests whether those signals still work when the tone is lighter and more conventional."
@@ -209,7 +209,7 @@ export const followUpPool = [
     id: "severance",
     title: "Severance",
     type: "tv",
-    domains: ["watch"],
+    domains: ["movies"],
     about: "A workplace thriller about employees who surgically split their memories between work and home.",
     hypotheses: ["H01/H07", "H09"],
     reason: "Heavily structured mystery plus tonal collision (corporate horror and dry comedy) tests both signals together."
@@ -227,7 +227,7 @@ export const followUpPool = [
     id: "bettercallsaul",
     title: "Better Call Saul",
     type: "tv",
-    domains: ["watch"],
+    domains: ["movies"],
     about: "A slow-burn character drama about a small-time lawyer's descent into compromise and rationalization.",
     hypotheses: ["H03"],
     reason: "Isolates moral messiness on its own, without comedy layered in."
@@ -245,7 +245,7 @@ export const followUpPool = [
     id: "spiderverse",
     title: "Spider-Man: Across the Spider-Verse",
     type: "movie",
-    domains: ["watch"],
+    domains: ["movies"],
     about: "A visually inventive animated superhero sequel juggling multiple universes, tones, and a large ensemble.",
     hypotheses: ["H09"],
     reason: "A more mainstream pick that still tests tonal collision — a near-fit check against pickier, weirder titles."
@@ -263,7 +263,7 @@ export const followUpPool = [
     id: "the-menu",
     title: "The Menu",
     type: "movie",
-    domains: ["watch"],
+    domains: ["movies"],
     about: "A dark satire about an exclusive dinner that turns into something much stranger and more dangerous.",
     hypotheses: ["H03", "H04"],
     reason: "Moral messiness and sharp, specific comedy together — a likely strong fit, useful as a confidence-check pick."
