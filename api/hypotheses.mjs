@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { validateHypotheses } from "../src/ai/validate.js";
+import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { callAnthropic, hydrateState as hydrateBaseState, liveConfig } from "./recommendations.mjs";
 
 const MAX_BODY_BYTES = 160_000;
@@ -51,27 +52,52 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
     return { source: "unavailable", reason: "live profile AI is not enabled", hypotheses: [], meta: { paidCallMade: false } };
   }
 
-  const model = await callAnthropic({ prompt: buildHypothesisPrompt(ctx, state.modelHypotheses), env, fetchImpl });
-  const validated = validateHypotheses(model.json, ctx);
-  if (!validated.accepted.length) {
-    // #86: a rejected/insufficient-evidence response returns 200 (it's a normal outcome, not an
-    // error), so nothing surfaced why the profile stayed empty. Log the real reason set so a blank
-    // Profile can be told apart from "not enough evidence yet" without guessing.
-    console.log("[tastemake-profile-ai]", "no hypotheses accepted", JSON.stringify({
-      fallback: validated.fallback ?? false,
-      proposedCount: Array.isArray(model.json?.hypotheses) ? model.json.hypotheses.length : 0,
-      rejectedCount: validated.rejected?.length ?? 0,
-      notes: validated.notes ?? [],
-      rejectedReasons: (validated.rejected ?? []).flatMap((r) => r.reasons ?? [])
-    }));
-    return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage } };
+  let started = Date.now();
+  try {
+    const model = await callAnthropic({ prompt: buildHypothesisPrompt(ctx, state.modelHypotheses), env, fetchImpl });
+    const durationMs = Math.max(1, Date.now() - started);
+    const baseMetric = {
+      operation: "taste_profile",
+      model: model.model,
+      durationMs,
+      inputTokens: model.usage?.input_tokens ?? null,
+      outputTokens: model.usage?.output_tokens ?? null,
+      cacheReadTokens: model.usage?.cache_read_input_tokens ?? null
+    };
+    const validated = validateHypotheses(model.json, ctx);
+    if (!validated.accepted.length) {
+      // #86: a rejected/insufficient-evidence response returns 200 (it's a normal outcome, not an
+      // error), so nothing surfaced why the profile stayed empty. Log the real reason set so a blank
+      // Profile can be told apart from "not enough evidence yet" without guessing.
+      console.log("[tastemake-profile-ai]", "no hypotheses accepted", JSON.stringify({
+        fallback: validated.fallback ?? false,
+        proposedCount: Array.isArray(model.json?.hypotheses) ? model.json.hypotheses.length : 0,
+        rejectedCount: validated.rejected?.length ?? 0,
+        notes: validated.notes ?? [],
+        rejectedReasons: (validated.rejected ?? []).flatMap((r) => r.reasons ?? [])
+      }));
+      recordAiCallInBackground({ ...baseMetric, outcome: "validation_fallback" }, { env });
+      return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage } };
+    }
+    recordAiCallInBackground({ ...baseMetric, outcome: "success" }, { env });
+    return {
+      source: "model",
+      reason: null,
+      hypotheses: validated.accepted,
+      meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, notes: validated.notes }
+    };
+  } catch (error) {
+    recordAiCallInBackground({
+      operation: "taste_profile",
+      outcome: aiOutcomeForError(error),
+      model: error?.model ?? config.model,
+      durationMs: Math.max(1, Date.now() - started),
+      inputTokens: error?.usage?.input_tokens ?? null,
+      outputTokens: error?.usage?.output_tokens ?? null,
+      cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null
+    }, { env });
+    throw error;
   }
-  return {
-    source: "model",
-    reason: null,
-    hypotheses: validated.accepted,
-    meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, notes: validated.notes }
-  };
 }
 
 export default async function handler(req, res) {
