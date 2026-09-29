@@ -15,8 +15,8 @@
 export const DOMAINS = [
   { id: "movies", label: "Movies", about: "Movies", visible: true, experienced: "watched" },
   { id: "tv", label: "TV", about: "TV shows", visible: true, experienced: "watched" },
-  { id: "read", label: "Read", about: "Books", visible: true, experienced: "read" },
-  { id: "play", label: "Play", about: "Games", visible: true, experienced: "played" },
+  { id: "read", label: "Books", about: "Books", visible: true, experienced: "read" },
+  { id: "play", label: "Games", about: "Games", visible: true, experienced: "played" },
   // future (not shown, not recommended)
   { id: "listen", label: "Listen", about: "Music and audio", visible: false, experienced: "listened to" },
   { id: "wear", label: "Wear", about: "Clothing and style", visible: false, experienced: "worn" },

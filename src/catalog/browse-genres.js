@@ -40,8 +40,8 @@ export const BROWSE_GENRES = {
 export const BROWSE_DOMAINS = [
   { id: "movies", label: "Movies" },
   { id: "tv", label: "TV" },
-  { id: "read", label: "Read" },
-  { id: "play", label: "Play" }
+  { id: "read", label: "Books" },
+  { id: "play", label: "Games" }
 ];
 
 export function browseGenresFor(domain) {
