@@ -332,7 +332,11 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   // #135: once an experienced item is important enough to become a live retrieval anchor, fill
   // high-value provider metadata in the background and persist it to the canonical store. This
   // never blocks candidate retrieval and does not change what the model sees on this request.
-  for (const item of evidenceItems) enrichCanonicalItemWriteBehind(item, { env, fetchImpl, query: queryImpl });
+  // Injected fetch implementations are test/offline paths; do not create extra hidden provider
+  // calls there. Production uses the native fetch and gets background enrichment normally.
+  if (fetchImpl === fetch) {
+    for (const item of evidenceItems) enrichCanonicalItemWriteBehind(item, { env, fetchImpl, query: queryImpl });
+  }
 
   // #120: per-item provider timing, logged in the sanitized style used elsewhere (never the
   // provider payload itself, just provider name/ms/result count) so a slow TMDb/Open
