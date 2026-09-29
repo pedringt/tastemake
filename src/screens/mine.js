@@ -16,16 +16,25 @@ function actionButton(id, action, label, pressed = false, extra = "") {
   return `<button class="button button-secondary mine-action ${extra}" type="button" data-mine-item="${id}" data-mine-action="${action}" aria-pressed="${pressed}">${label}</button>`;
 }
 
+// Real usability report (2026-09-29): "my profile is super long now" -- every told-Tastemake row
+// always rendered all four action buttons open, so a real history of any real size (dozens of
+// reacted-to picks) became a wall of repeated buttons. Library's own Tried cards solved the same
+// problem with a collapsed "Change" disclosure (library-reaction-edit in screens/library.js); this
+// mirrors that exact pattern rather than inventing a new one, so title/medium/status/source stay
+// visible at a glance and the buttons only appear once someone actually wants to change something.
 function row(entry) {
   const { id, item } = entry;
   const controls = entry.starter
     ? `<div class="mine-actions"><button class="button button-quiet mine-action" type="button" data-action="back-favorites">Edit favorites</button></div>`
-    : `<div class="mine-actions" role="group" aria-label="Change what you told Tastemake about ${esc(item.title)}">
-        ${actionButton(id, "loved", "Loved it", Boolean(entry.loved))}
-        ${actionButton(id, "liked", "Liked it", Boolean(entry.liked))}
-        ${actionButton(id, "disliked", "Didn't like it", Boolean(entry.disliked))}
-        ${actionButton(id, "remove", "Remove", false, "mine-remove")}
-      </div>`;
+    : `<details class="mine-row-edit">
+        <summary>Change</summary>
+        <div class="mine-actions" role="group" aria-label="Change what you told Tastemake about ${esc(item.title)}">
+          ${actionButton(id, "loved", "Loved it", Boolean(entry.loved))}
+          ${actionButton(id, "liked", "Liked it", Boolean(entry.liked))}
+          ${actionButton(id, "disliked", "Didn't like it", Boolean(entry.disliked))}
+          ${actionButton(id, "remove", "Remove", false, "mine-remove")}
+        </div>
+      </details>`;
   return `
     <li class="mine-row" data-mine-id="${id}">
       <div class="mine-row-main">

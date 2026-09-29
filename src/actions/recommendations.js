@@ -144,10 +144,14 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
     const picks = result.picks ?? [];
     const source = result.source ?? "catalog";
     const exhausted = Boolean(result.meta?.exhausted) || picks.length === 0;
+    // Real bug (2026-09-29): the exhausted case always showed this one generic sentence, ignoring
+    // result.reason entirely -- so a domain-filter dead end (e.g. filtering to TV with zero TV
+    // evidence, api/recommendations.mjs) looked identical to genuine exhaustion, with no path forward
+    // shown. Prefer the server's specific reason when it gave one.
     const message = source === "model"
       ? "Live AI ranked and explained real catalog candidates. Tastemake checked every pick and citation before showing it."
       : exhausted
-        ? "Tastemake could not find another eligible catalog match from your current evidence."
+        ? (result.reason || "Tastemake could not find another eligible catalog match from your current evidence.")
         : "These are real catalog matches. Live AI is off or its answer did not pass validation, so Tastemake kept the catalog-ranked set.";
 
     finishRequest(state, request, { source, message });
