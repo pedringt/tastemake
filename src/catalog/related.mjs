@@ -1,4 +1,4 @@
-import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
+import { enrichCanonicalItemWriteBehind, igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupMetadataCompleteness, relatedCanonicalItems } from "./canonical-store.mjs";
@@ -328,6 +328,11 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     : allEvidence.filter((item) => item.domains?.includes(mode))
   ).slice(0, 6);
   if (!evidenceItems.length) return [];
+
+  // #135: once an experienced item is important enough to become a live retrieval anchor, fill
+  // high-value provider metadata in the background and persist it to the canonical store. This
+  // never blocks candidate retrieval and does not change what the model sees on this request.
+  for (const item of evidenceItems) enrichCanonicalItemWriteBehind(item, { env, fetchImpl, query: queryImpl });
 
   // #120: per-item provider timing, logged in the sanitized style used elsewhere (never the
   // provider payload itself, just provider name/ms/result count) so a slow TMDb/Open
