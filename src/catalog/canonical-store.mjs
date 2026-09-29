@@ -27,7 +27,7 @@ const MEDIA_TYPES = new Set(["movie", "tv", "book", "game"]);
 const EXPECTED_FIELDS = {
   movie: ["year", "genres", "collectionId", "director", "cast", "runtime"],
   tv: ["year", "genres", "creator", "cast", "yearsRun"],
-  book: ["year", "author", "subjects", "seriesKey", "description"],
+  book: ["year", "author", "subjects", "seriesKey", "isbns", "description"],
   game: ["year", "genres", "franchiseId", "developer", "publisher", "platforms"]
 };
 
@@ -51,6 +51,7 @@ export function normalizeCanonicalItem(item) {
     setField("author", item.by || null);
     setField("subjects", item.genres ?? []);
     setField("seriesKey", item.providerMeta?.seriesKey ?? item.seriesKey ?? null);
+    setField("isbns", item.providerMeta?.isbns ?? item.isbns ?? []);
     setField("description", item.description ?? null);
   } else if (mediaType === "movie") {
     setField("genres", item.genres ?? []);
@@ -96,6 +97,26 @@ export function normalizeCanonicalItem(item) {
 // convention inside this module, not a schema change.
 function identifierNamespace(item, mediaType) {
   return `${item.provider}:${mediaType}`;
+}
+
+function stableIdentifiers(item, normalized) {
+  const identifiers = [{
+    provider: identifierNamespace(item, normalized.mediaType),
+    providerId: String(item.providerId)
+  }];
+  if (normalized.mediaType === "book") {
+    for (const isbn of normalized.factual.isbns ?? []) {
+      const value = String(isbn ?? "").replace(/[^0-9Xx]/g, "").toUpperCase();
+      if (value.length === 10 || value.length === 13) identifiers.push({ provider: "isbn:book", providerId: value });
+    }
+  }
+  const seen = new Set();
+  return identifiers.filter((entry) => {
+    const key = `${entry.provider}::${entry.providerId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // #135 lazy enrichment: merge provider-backed detail facts into an existing canonical item
@@ -214,17 +235,24 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
   if (!normalized) return null;
   if (!item.provider || !item.providerId) return null;
 
-  const provider = identifierNamespace(item, normalized.mediaType);
-  const providerId = String(item.providerId);
+  const identities = stableIdentifiers(item, normalized);
+  const provider = identities[0].provider;
+  const providerId = identities[0].providerId;
 
-  // Common path first, unchanged: a cheap SELECT against the already-known-item case (the large
-  // majority of real calls -- the same popular items get re-upserted on every write-behind pass
-  // that encounters them), no speculative row ever created here.
-  const existing = await runQuery(
-    "select item_id from item_identifiers where provider = $1 and provider_id = $2",
-    [provider, providerId]
+  // Resolve against every stable identity we know. This lets a second source attach to an existing
+  // book through a shared ISBN without title matching or AI inference.
+  const identityRows = await runQuery(
+    `select provider, provider_id, item_id
+       from item_identifiers
+      where (provider, provider_id) in (${identities.map((_, index) => `(${index * 2 + 1}, ${index * 2 + 2})`).join(", ")})`,
+    identities.flatMap((entry) => [entry.provider, entry.providerId])
   );
-  let itemId = existing?.[0]?.item_id ?? null;
+  const resolvedIds = [...new Set((identityRows ?? []).map((row) => row.item_id).filter(Boolean))];
+  if (resolvedIds.length > 1) {
+    console.info("[tastemake-canonical]", JSON.stringify({ error: "identity conflict", provider, providerId }));
+    return null;
+  }
+  let itemId = resolvedIds[0] ?? null;
 
   if (itemId) {
     // Merge factual fields (never overwrite traits — this statement never touches that column) and
@@ -295,6 +323,18 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
     }
   }
 
+  // Attach any additional stable aliases (currently ISBNs for books) to the resolved canonical item.
+  // ON CONFLICT is intentionally non-destructive: if an alias is already owned by another item we do
+  // not silently re-point it; the next read will surface that as an identity conflict instead.
+  for (const identity of identities.slice(1)) {
+    await runQuery(
+      `insert into item_identifiers (item_id, provider, provider_id)
+       values ($1, $2, $3)
+       on conflict (provider, provider_id) do nothing`,
+      [itemId, identity.provider, identity.providerId]
+    );
+  }
+
   // QA sweep finding: each field's provenance row is independent (a distinct (item_id, field_name)
   // key, idempotent via ON CONFLICT) with no ordering dependency between iterations, so awaiting them
   // one at a time inside this write-behind task (which runs inside a waitUntil-extended lifetime
@@ -356,6 +396,7 @@ export async function relatedCanonicalItems(anchor, subjects, { env = process.en
     for (const row of rows ?? []) {
       if (row.provider === anchorProvider && row.provider_id === anchorProviderId) continue;
       const provider = row.provider?.split(":")[0] ?? null;
+      if (!["tmdb", "openlibrary", "igdb"].includes(provider)) continue;
       const id = buildItemId(provider, mediaType, row.provider_id);
       if (!id || seen.has(id)) continue;
       seen.add(id);
