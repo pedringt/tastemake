@@ -10,9 +10,20 @@
 // provider/providerId/genres/providerMeta) -- confirmed by grep that .about/.artwork/.sourceUrl are
 // never read anywhere server-side (src/ai/context.js, src/model/evidence.js, src/catalog/related.mjs,
 // api/recommendations.mjs), so those three purely-display fields are the ones worth dropping.
+//
+// Real recurrence (2026-09-28): a live production request 413'd again despite the above trim --
+// "getting the same 3 recs no matter the filter" is exactly this failure mode (the client keeps
+// whatever was last successfully rendered; every subsequent request, including a filter change,
+// which also re-POSTs via runKeepDiscovering, throws before ever reaching the model). `reason`
+// (the AI's full rationale sentence, e.g. "Because you loved similar things...") and `ai`
+// (cites/tests/kind/contract -- validation/UI-popover metadata) are the same kind of pure display
+// field as about/artwork/sourceUrl and were never dropped: confirmed by grep that neither is read
+// anywhere server-side once an item comes back through feedbackByRecommendation/customItems on a
+// later request. Over a long session with many reacted-to picks, these two fields alone are enough
+// to grow the payload back past the body cap.
 function trimItemForWire(item) {
   if (!item) return item;
-  const { about, artwork, sourceUrl, ...rest } = item;
+  const { about, artwork, sourceUrl, reason, ai, ...rest } = item;
   return rest;
 }
 

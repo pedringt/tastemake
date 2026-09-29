@@ -236,7 +236,12 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
 // stored forever, resent on every request. Unlike recommendationSets, real item data is genuinely
 // needed server-side, so the fix trims the display-only fields rather than going all the way to ids.
 {
-  const heavyItem = { id: "tmdb-movie-98", provider: "tmdb", providerId: "98", title: "Heavy Item", type: "movie", domains: ["movies"], about: "Y".repeat(2000), artwork: "https://example.test/" + "z".repeat(500), sourceUrl: "https://example.test/movie/98", providerMeta: { genreIds: [18] } };
+  const heavyItem = {
+    id: "tmdb-movie-98", provider: "tmdb", providerId: "98", title: "Heavy Item", type: "movie", domains: ["movies"],
+    about: "Y".repeat(2000), artwork: "https://example.test/" + "z".repeat(500), sourceUrl: "https://example.test/movie/98",
+    reason: "X".repeat(400), ai: { cites: ["ev:a", "ev:b"], tests: "H04", kind: "curveball", contract: "v1" },
+    providerMeta: { genreIds: [18] }
+  };
   const heavyState = {
     selectedFavorites: new Set(),
     feedbackByRecommendation: { [heavyItem.id]: { item: heavyItem, rating: "more", detail: "loved-before" } },
@@ -246,6 +251,12 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
   const serialized = serializeAiState(heavyState);
   check("about/artwork/sourceUrl are dropped from feedbackByRecommendation items", !("about" in serialized.feedbackByRecommendation[heavyItem.id].item) && !("artwork" in serialized.feedbackByRecommendation[heavyItem.id].item) && !("sourceUrl" in serialized.feedbackByRecommendation[heavyItem.id].item));
   check("about/artwork/sourceUrl are dropped from customItems", !("about" in serialized.customItems[heavyItem.id]) && !("artwork" in serialized.customItems[heavyItem.id]) && !("sourceUrl" in serialized.customItems[heavyItem.id]));
+  // Real recurrence (2026-09-28): a live 413 happened again after the above trim shipped, because
+  // `reason` (the AI's full rationale sentence) and `ai` (cites/tests/kind/contract) are the same
+  // kind of purely-display field and were never dropped -- see live-client.js's comment for the grep
+  // confirming neither is read server-side.
+  check("reason/ai are dropped from feedbackByRecommendation items", !("reason" in serialized.feedbackByRecommendation[heavyItem.id].item) && !("ai" in serialized.feedbackByRecommendation[heavyItem.id].item));
+  check("reason/ai are dropped from customItems", !("reason" in serialized.customItems[heavyItem.id]) && !("ai" in serialized.customItems[heavyItem.id]));
   check("functionally-needed fields survive the trim", serialized.customItems[heavyItem.id].provider === "tmdb" && serialized.customItems[heavyItem.id].providerId === "98" && serialized.customItems[heavyItem.id].title === "Heavy Item" && JSON.stringify(serialized.customItems[heavyItem.id].providerMeta) === JSON.stringify({ genreIds: [18] }));
   check("the rating/detail on the feedback entry itself survives the trim", serialized.feedbackByRecommendation[heavyItem.id].rating === "more" && serialized.feedbackByRecommendation[heavyItem.id].detail === "loved-before");
 }
