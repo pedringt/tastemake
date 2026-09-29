@@ -9,7 +9,8 @@ import {
   normalizeCanonicalItem,
   upsertCanonicalItem,
   upsertManyCanonicalItems,
-  canonicalizeWriteBehind
+  canonicalizeWriteBehind,
+  mergeCanonicalFacts
 } from "../../src/catalog/canonical-store.mjs";
 import { isConfigured, query } from "../../src/server/db.mjs";
 import { tmdbItem, openLibraryItem, igdbItem } from "../../src/catalog/providers.mjs";
@@ -360,6 +361,55 @@ check("null item normalizes to null", normalizeCanonicalItem(null) === null);
   const realShapedFake = Object.assign(async (text, params) => [{ ok: true, text, params }], { /* no .query */ });
   check("query() works against a driver shaped exactly like the real neon() client (callable, no .query method)",
     (await query("select 2", [], { sqlImpl: realShapedFake }))[0]?.ok === true);
+}
+
+// ---- #135 lazy enrichment: richer provider facts merge into factual metadata only ---------------
+
+{
+  const base = normalizeCanonicalItem(dune);
+  const enriched = normalizeCanonicalItem({
+    ...dune,
+    director: "Denis Villeneuve",
+    cast: ["Timothée Chalamet", "Rebecca Ferguson"],
+    runtime: 155
+  });
+  check("movie detail fields raise canonical metadata completeness", enriched.completeness > base.completeness);
+  check("movie detail normalization includes director/cast/runtime", enriched.factual.director === "Denis Villeneuve"
+    && enriched.factual.cast?.length === 2 && enriched.factual.runtime === 155);
+
+  const statements = [];
+  const provenance = [];
+  let updateParams = null;
+  const enrichmentQuery = async (text, params = []) => {
+    statements.push(text);
+    if (/select ii\.item_id, i\.factual/i.test(text)) {
+      return [{ item_id: "11111111-1111-1111-1111-111111111111", factual: { year: "2021", genres: ["878", "12"] } }];
+    }
+    if (/update items\s+set factual = factual \|\|/i.test(text)) {
+      updateParams = params;
+      return [];
+    }
+    if (/insert into item_field_provenance/i.test(text)) {
+      provenance.push(params);
+      return [];
+    }
+    throw new Error(`unexpected enrichment query: ${text}`);
+  };
+
+  const merged = await mergeCanonicalFacts(dune, {
+    director: "Denis Villeneuve",
+    cast: ["Timothée Chalamet"],
+    runtime: 155
+  }, { query: enrichmentQuery, source: "tmdb" });
+
+  check("provider enrichment merges into an existing canonical item", merged === true);
+  check("provider enrichment writes only factual/completeness columns, never traits",
+    statements.every((text) => !/traits/i.test(text)));
+  check("provider enrichment persists all supplied factual fields",
+    JSON.parse(updateParams?.[1] ?? "{}").director === "Denis Villeneuve"
+      && JSON.parse(updateParams?.[1] ?? "{}").runtime === 155);
+  check("provider enrichment records provenance for each enriched field",
+    provenance.length === 3 && new Set(provenance.map((row) => row[1])).has("director"));
 }
 
 console.log(`canonical store tests: ${passed} passed, ${failures.length} failed`);
