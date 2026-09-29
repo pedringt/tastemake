@@ -54,6 +54,26 @@ check("fetchItemDetail resolves to {} instead of throwing on a provider failure"
 const detailNoId = await fetchItemDetail({ provider: "tmdb", type: "movie" }, { env: {}, fetchImpl: failing });
 check("fetchItemDetail resolves to {} when there is no providerId to look up", JSON.stringify(detailNoId) === "{}");
 
+// #135: Open Library work detail is authoritative provider enrichment, not AI inference.
+const openLibraryFetch = async (url) => {
+  check("book detail uses the Open Library work endpoint", String(url).includes("/works/OL262758W.json"), String(url));
+  return {
+    ok: true,
+    json: async () => ({
+      description: { value: "An epic fantasy novel about oaths and war." },
+      subjects: ["Epic fantasy", "Magic"],
+      series: ["The Stormlight Archive"]
+    })
+  };
+};
+const bookDetail = await fetchItemDetail(
+  { provider: "openlibrary", providerId: "OL262758W", type: "book" },
+  { env: {}, fetchImpl: openLibraryFetch }
+);
+check("Open Library detail returns description", /epic fantasy novel/.test(bookDetail.description ?? ""));
+check("Open Library detail returns subjects without inventing them", bookDetail.subjects?.includes("Epic fantasy"));
+check("Open Library detail preserves provider-supplied series when present", bookDetail.seriesKey === "The Stormlight Archive");
+
 console.log(`metadata tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);
