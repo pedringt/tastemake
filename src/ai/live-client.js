@@ -84,9 +84,13 @@ export function serializeAiState(state) {
     recommendationSets: state.recommendationSets.map((set) => set.map((item) => item.id)),
     libraryFavorites: [...(state.libraryFavorites ?? [])],
     customItems,
-    blindSpots: state.blindSpots ?? {},
-    blindSpotDrafts: state.blindSpotDrafts ?? {},
-    blindSpotDismissed: [...(state.blindSpotDismissed ?? [])],
+    // QA sweep finding (2026-09-28): blindSpots/blindSpotDrafts/blindSpotDismissed were being sent
+    // whole and unbounded, the same shape that caused three real 413s elsewhere in this function --
+    // confirmed by grep that neither api/recommendations.mjs nor api/hypotheses.mjs ever reads any of
+    // the three once hydrated (hydrateState only defaults them; nothing downstream consumes them).
+    // Server-side hydration already defaults all three when absent, so simply not sending them is a
+    // zero-behavior-change, zero-information-loss cut -- unlike feedbackByRecommendation/customItems,
+    // there is no real data here the server needs at all.
     patternStatements: state.patternStatements ?? [],
     areas: state.areas ?? {},
     curveball: state.curveball !== false,

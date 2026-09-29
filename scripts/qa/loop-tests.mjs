@@ -288,6 +288,26 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
   check("customItems drops an entry backing only an intent-only reaction, same as a fully orphaned one (neither is ever looked up server-side)", !(bookmarkedItem.id in serialized.customItems) && !(orphanCustomItem.id in serialized.customItems));
 }
 
+// (9) QA sweep finding: blindSpots/blindSpotDrafts/blindSpotDismissed were sent whole and unbounded --
+// the same shape as the three prior 413 incidents -- despite neither api/recommendations.mjs nor
+// api/hypotheses.mjs ever reading any of the three once hydrated. Not sending them at all is a
+// zero-behavior-change cut since server-side hydration already defaults all three when absent.
+{
+  const heavyBlindSpotState = {
+    selectedFavorites: new Set(),
+    feedbackByRecommendation: {},
+    customItems: {},
+    recommendationSets: [],
+    blindSpots: { "tmdb-movie-1": { note: "X".repeat(500) } },
+    blindSpotDrafts: { "tmdb-movie-2": "Y".repeat(500) },
+    blindSpotDismissed: new Set(["tmdb-movie-3"])
+  };
+  const serialized = serializeAiState(heavyBlindSpotState);
+  check("blindSpots is not sent on the wire at all", !("blindSpots" in serialized));
+  check("blindSpotDrafts is not sent on the wire at all", !("blindSpotDrafts" in serialized));
+  check("blindSpotDismissed is not sent on the wire at all", !("blindSpotDismissed" in serialized));
+}
+
 console.log(`recommendation-loop tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);
