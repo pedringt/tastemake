@@ -381,18 +381,21 @@ app.addEventListener("click", async (event) => {
       }
       state.recommendationFilter = nextMode;
       state.recommendationMediumFilter = "all";
-      // Real bug (2026-09-29): "these don't seem to be working at all" / "no button to get new
-      // recs" -- this used to only re-fetch when recommendationSets already had something in it, so
-      // a filter switch made after hitting a domain-evidence dead end (recommendationExhausted true,
-      // but recommendationSets itself still non-empty from before) should have retried fine... but
-      // any other path that left recommendationSets momentarily empty (a fresh visit, Start over)
-      // meant clicking a filter chip silently changed the selection with no fetch and no visible
-      // feedback that anything happened. Always retry on a genuine mode change instead of gating on
-      // pre-existing sets.
-      if (state.aiStatus !== AI_LOADING) {
-        await runKeepDiscovering({ render, updateStepper, announce, navigate });
-        return;
-      }
+      // Real root cause (2026-09-29), found from production logs: real requests routinely take
+      // 11-20+ seconds (candidate retrieval + the live model call). This handler used to skip
+      // re-fetching whenever `aiStatus === AI_LOADING` -- meaning any filter click made while a
+      // previous request was still in flight (trivially easy given how slow requests are) silently
+      // updated only the selected pill, fired no request at all, and left whatever was on screen
+      // unchanged. The in-flight request, once it finally resolved, WAS correctly caught as stale by
+      // staleReason's filter check (QA sweep, #167) and discarded with a "try again" message -- but
+      // that only undid the confusion one click later, and did nothing for the filter actually
+      // clicked, which never got a request of its own. This read exactly like "movies/tv/books/games
+      // don't work at all" for anyone who clicked through filters at a normal pace rather than
+      // waiting out a 20-second load each time. startRequest() (src/ai/requests.js) already cancels
+      // any in-flight request safely before starting a new one, so gating on AI_LOADING here was not
+      // just unnecessary but actively wrong -- always retry on a genuine mode change.
+      await runKeepDiscovering({ render, updateStepper, announce, navigate });
+      return;
     }
     if (scope === "library") state.libraryFilter = filter.dataset.domainFilter;
     if (scope === "map") state.mapFilter = filter.dataset.domainFilter;
