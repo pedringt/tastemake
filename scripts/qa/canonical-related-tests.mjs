@@ -141,6 +141,52 @@ function fakeQuery(rows) {
   check("a candidate present in both live and store results appears exactly once", matches.length === 1, `got ${matches.length}`);
 }
 
+// ---- canonical read latency: bounded longer read + provider parallelism ------------------------
+
+{
+  let queryText = "";
+  const delayedQuery = async (text) => {
+    queryText = text;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return [stormlightRow];
+  };
+  const results = await relatedCanonicalItems(wayOfKings, ["Epic fantasy fiction"], { query: delayedQuery });
+  check("default related-store budget survives a normal >250ms database hop", results.some((r) => r.providerId === "OL999W"));
+  check("related-store SQL caps the match set before materializing candidates", /limit 60/i.test(queryText), queryText);
+}
+
+{
+  let relatedReadStarted = false;
+  let providerSawRelatedRead = false;
+  const query = async (text) => {
+    if (/metadata_completeness/i.test(text) && !/i\.factual ->/i.test(text)) return [];
+    if (/i\.factual ->/i.test(text)) {
+      relatedReadStarted = true;
+      return [];
+    }
+    return [];
+  };
+  const fetchImpl = async (url) => {
+    if (String(url).includes("/recommendations")) {
+      providerSawRelatedRead = relatedReadStarted;
+      return {
+        ok: true,
+        json: async () => ({
+          results: [{ id: 9001, title: "Arrival", overview: "First contact.", release_date: "2016-11-11", genre_ids: [878] }]
+        })
+      };
+    }
+    throw new Error(`unexpected URL ${url}`);
+  };
+  const state = { customItems: { [dune.id]: dune }, selectedFavorites: [dune.id] };
+  await retrieveCatalogCandidates(state, {
+    env: { TASTEMAKE_TMDB_TOKEN: "token" },
+    fetchImpl,
+    query
+  });
+  check("canonical related read starts in parallel before the live provider request resolves", providerSawRelatedRead === true);
+}
+
 console.log(`canonical related tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);

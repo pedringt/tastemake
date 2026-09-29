@@ -97,8 +97,7 @@ function externalEvidenceItems(state) {
 // anchor) that this live call didn't happen to return. Store lookup failures/timeouts already
 // resolve to [] inside relatedCanonicalItems, so this never affects the live-provider pool passed
 // in as `live`. Capped at 20 total, matching openLibraryRelated's pool cap below.
-async function mergeCanonicalCandidates(live, anchor, subjects, { env, queryImpl, buildProviderMeta }) {
-  const storeItems = await relatedCanonicalItems(anchor, subjects, { env, query: queryImpl });
+async function mergeCanonicalCandidates(live, storeItems, { buildProviderMeta }) {
   if (!storeItems.length) return live;
   const seen = new Set(live.map((row) => row.id));
   const merged = [...live];
@@ -126,10 +125,12 @@ async function tmdbRelated(item, env, fetchImpl, queryImpl) {
     if (!response.ok) return [];
     return ((await response.json()).results ?? []).slice(0, 12).map((row) => tmdbItem(row, kind));
   };
-  const live = fetchImpl !== fetch ? await load() : await cachedValue(`related:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
-  return mergeCanonicalCandidates(live, item, item.genres ?? [], {
-    env,
-    queryImpl,
+  const storePromise = relatedCanonicalItems(item, item.genres ?? [], { env, query: queryImpl });
+  const livePromise = fetchImpl !== fetch
+    ? load()
+    : cachedValue(`related:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+  const [live, storeItems] = await Promise.all([livePromise, storePromise]);
+  return mergeCanonicalCandidates(live, storeItems, {
     buildProviderMeta: (storeItem) => ({ genreIds: storeItem.genres ?? [], collectionId: null })
   });
 }
@@ -195,6 +196,7 @@ async function openLibraryRelated(item, env, fetchImpl, queryImpl) {
   const querySubjects = sourceSubjects.slice(0, 3);
   if (!querySubjects.length) return [];
 
+  const storePromise = relatedCanonicalItems(item, querySubjects, { env, query: queryImpl });
   const rows = (await Promise.all(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl)))).flat();
 
   // Keyed by the raw Open Library work key (the real identity), so a live result and a
@@ -212,7 +214,7 @@ async function openLibraryRelated(item, env, fetchImpl, queryImpl) {
   // through the same overlap-strength grading as live results, so the pool isn't limited to what
   // this one live subject search happens to return. relatedCanonicalItems degrades to [] on any
   // store failure/timeout, so this never affects the live rows already collected above.
-  const storeItems = await relatedCanonicalItems(item, querySubjects, { env, query: queryImpl });
+  const storeItems = await storePromise;
   for (const storeItem of storeItems) {
     const key = String(storeItem.providerId ?? "");
     if (!key || byKey.has(key)) continue;
@@ -273,12 +275,14 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
     if (!response.ok) return [];
     return (await response.json()).map(igdbItem).filter((row) => row.providerId !== item.providerId);
   };
-  const live = fetchImpl !== fetch ? await load() : await cachedValue(`related:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+  const storePromise = relatedCanonicalItems(item, item.genres ?? [], { env, query: queryImpl });
+  const livePromise = fetchImpl !== fetch
+    ? load()
+    : cachedValue(`related:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+  const [live, storeItems] = await Promise.all([livePromise, storePromise]);
   // #144: store items canonicalized with IGDB genre *names* (see canonical-store.mjs), so overlap
   // is matched against genre names here, not the numeric genreIds used for the live query above.
-  return mergeCanonicalCandidates(live, item, item.genres ?? [], {
-    env,
-    queryImpl,
+  return mergeCanonicalCandidates(live, storeItems, {
     buildProviderMeta: (storeItem) => ({ genreIds: [], collectionId: null, franchiseId: null })
   });
 }
