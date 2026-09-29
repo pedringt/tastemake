@@ -3,7 +3,7 @@ import { buildContext } from "../src/ai/context.js";
 import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
-import { recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
+import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { domainById } from "../src/data/domains.js";
 
 const MAX_BODY_BYTES = 160_000;
@@ -226,7 +226,15 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
       err.anthropicDetail = detail;
       throw err;
     }
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      err.paidCallMade = true;
+      err.model = env.TASTEMAKE_AI_MODEL;
+      err.anthropicType = "malformed-response";
+      throw err;
+    }
     const text = data.content?.find((block) => block.type === "text")?.text;
     if (!text) {
       // Seen when the cap is spent before any text is produced: content holds no text block.
@@ -246,6 +254,7 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
       err.paidCallMade = true;
       err.model = data.model ?? env.TASTEMAKE_AI_MODEL;
       err.usage = data.usage ?? null;
+      err.anthropicType = "malformed-response";
       throw err;
     }
   } finally {
@@ -387,15 +396,13 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     const model = await callAnthropic({ prompt, env, fetchImpl });
     const liveAiMs = Date.now() - started;
     const aiMetric = {
+      operation: "recommendations",
       model: model.model,
       durationMs: liveAiMs,
       inputTokens: model.usage?.input_tokens ?? null,
       outputTokens: model.usage?.output_tokens ?? null,
       cacheReadTokens: model.usage?.cache_read_input_tokens ?? null
     };
-    // Persist only operational metadata for Project Health. No prompt, evidence, candidate,
-    // title, user-state, or generated recommendation content is stored by this telemetry path.
-    recordAiCallInBackground(aiMetric, { env });
     // The live-AI call itself is the dominant cost in every measured production request (~85-95% of
     // total time). Logging real token counts (not just wall-clock ms) so a large prompt/context can
     // be told apart from "that's just how long this call takes" without guessing.
@@ -425,6 +432,10 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     });
 
     if (result.source !== "model") {
+      // A paid provider call succeeded, but the model output did not meet Tastemake's product
+      // contract. Count this separately from transport/model failures so Project Health can show
+      // a true fallback rate.
+      recordAiCallInBackground({ ...aiMetric, outcome: "validation_fallback" }, { env });
       return fallbackPayload(candidates, state, result.reason || "model output did not pass validation", {
         model: model.model,
         usage: model.usage,
@@ -432,6 +443,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
         catalogCandidates: retrieved.length
       });
     }
+    recordAiCallInBackground({ ...aiMetric, outcome: "success" }, { env });
     const picks = clientPicks(result.items);
     // Real report (2026-09-28): "after a few rounds I'm getting mostly books now" -- the domain-spread
     // nudge (#153) only shapes what the model is told to do; nothing has ever logged what it actually
@@ -448,9 +460,19 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   } catch (error) {
     const timedOut = error?.name === "AbortError";
     const reason = timedOut ? "model request timed out" : "model unavailable";
+    const durationMs = Math.max(1, Date.now() - started);
+    recordAiCallInBackground({
+      operation: "recommendations",
+      outcome: aiOutcomeForError(error),
+      model: error?.model ?? config.model,
+      durationMs,
+      inputTokens: error?.usage?.input_tokens ?? null,
+      outputTokens: error?.usage?.output_tokens ?? null,
+      cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null
+    }, { env });
     console.error("[tastemake-ai]", reason, error?.status ?? "", error?.anthropicType ?? "", error?.anthropicDetail ?? error?.message ?? "");
     return fallbackPayload(candidates, state, reason, {
-      paidCallMade: !timedOut && !error?.status,
+      paidCallMade: Boolean(error?.paidCallMade),
       errorStatus: error?.status ?? null,
       errorType: error?.anthropicType ?? (timedOut ? "timeout" : "transport"),
       catalogCandidates: retrieved.length
