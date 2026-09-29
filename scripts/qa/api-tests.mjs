@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Free, no-network tests for the real-catalog recommendation endpoint.
 
-import handler, { buildPickPrompt, liveConfig, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
+import { readFileSync } from "node:fs";
+import handler, { buildPickPrompt, callAnthropic, liveConfig, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
 
 let passed=0;
 const failures=[];
@@ -47,6 +48,38 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   why:`Related to a film you explicitly chose as a favorite; this tests a nearby catalog match ${i+1}.`,
   cites:[`ev:${favorite.id}`],tests:null,kind:i===5?"curveball":"pick"
 }));
+
+// QA pass regression: a successful Anthropic HTTP response is still a paid call even when its text
+// cannot be parsed as JSON. Preserve that fact on the thrown error so callers can report cost/usage
+// accurately instead of turning a paid malformed response into paidCallMade:false.
+{
+  const malformedFetch=async()=>({
+    ok:true,status:200,json:async()=>({
+      content:[{type:"text",text:'{"picks":[{"itemId":"broken"}'}],
+      usage:{input_tokens:12,output_tokens:8},model:"claude-test"
+    })
+  });
+  let err=null;
+  try { await callAnthropic({prompt:"test",env:ON,fetchImpl:malformedFetch}); } catch (error) { err=error; }
+  check("malformed successful Anthropic response is marked as a paid call",err?.paidCallMade===true);
+  eq("malformed successful response preserves model for telemetry",err?.model,"claude-test");
+  eq("malformed successful response preserves usage for telemetry",err?.usage?.output_tokens,8);
+}
+
+// QA pass regression: every client-side router path that is intended to survive a reload/bookmark
+// must have a Vercel rewrite, and the static search shell should match the runtime domain registry
+// instead of shipping the retired Watch/Read/Play markup before JS initializes.
+{
+  const vercel=JSON.parse(readFileSync(new URL("../../vercel.json",import.meta.url),"utf8"));
+  const rewrites=new Set((vercel.rewrites??[]).map((row)=>row.source));
+  for(const route of ["/favorites","/browse","/setup","/recommendations","/taste-profile","/library","/bookmarks","/try-next","/look","/my-tastemake"]){
+    check(`Vercel rewrite exists for ${route}`,rewrites.has(route));
+  }
+  const html=readFileSync(new URL("../../index.html",import.meta.url),"utf8");
+  check("static search shell no longer ships retired Watch filter",!html.includes('data-search-filter="watch"'));
+  check("static search shell includes Movies and TV filters",html.includes('data-search-filter="movies"')&&html.includes('data-search-filter="tv"'));
+  check("static search shell labels Books and Games as nouns",html.includes('>Books</button>')&&html.includes('>Games</button>'));
+}
 
 function routedFetch(aiPayload=modelSays(goodPicks()),opts={}){
   return async (url)=>{
