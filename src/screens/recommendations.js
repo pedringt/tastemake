@@ -4,7 +4,7 @@ import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentR
 import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
-import { displayLabel } from "../data/domains.js";
+import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
 import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
@@ -437,15 +437,31 @@ function renderNextSteps() {
       </div>`;
   }
 
+  // Real bug (2026-09-29): "no button to get new recs" -- this checkpoint replaces the entire
+  // More-recommendations footer once recommendationExhausted is true (e.g. after filtering to a
+  // domain with no evidence in it), and its only actions were Change favorites/See profile. If the
+  // real, one-click fix was simply "switch back to All," there was no way to do that from here at
+  // all -- a genuine dead end, not just a confusing one. Reuses the exact data-domain-filter/
+  // data-filter-scope="recommendations" attributes the SHOW ME bar already uses, so this needs no
+  // new wiring in app.js's click handler.
+  const filter = state.recommendationFilter ?? "all";
+  const filterLabel = domainById(filter)?.label ?? filter;
+  const showAll = filter !== "all"
+    ? `<button class="button button-primary" type="button" data-domain-filter="all" data-filter-scope="recommendations">Show all instead</button>`
+    : "";
+
   return `
     <div class="refresh-banner is-finished">
       <div>
         <span class="refresh-kicker">Prototype checkpoint</span>
-        <strong>No more eligible catalog matches right now.</strong>
-        <p>Change your favorites or areas to give Tastemake a different starting point.</p>
+        <strong>No more eligible catalog matches right now${filter !== "all" ? ` for ${esc(filterLabel)}` : ""}.</strong>
+        <p>${filter !== "all"
+          ? `Tastemake doesn't have enough evidence in ${esc(filterLabel)} yet. Try All, or change your favorites or areas to give it a different starting point.`
+          : "Change your favorites or areas to give Tastemake a different starting point."}</p>
         ${bookmarkNote(bookmarks)}
       </div>
       <div class="action-group recommendation-footer-actions">
+        ${showAll}
         ${viewBookmarks}
         <button class="button button-secondary" type="button" data-action="view-model">See profile</button>
         <button class="button button-quiet" type="button" data-action="back-favorites">Change favorites</button>

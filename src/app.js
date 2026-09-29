@@ -381,7 +381,15 @@ app.addEventListener("click", async (event) => {
       }
       state.recommendationFilter = nextMode;
       state.recommendationMediumFilter = "all";
-      if (state.recommendationSets.length && state.aiStatus !== AI_LOADING) {
+      // Real bug (2026-09-29): "these don't seem to be working at all" / "no button to get new
+      // recs" -- this used to only re-fetch when recommendationSets already had something in it, so
+      // a filter switch made after hitting a domain-evidence dead end (recommendationExhausted true,
+      // but recommendationSets itself still non-empty from before) should have retried fine... but
+      // any other path that left recommendationSets momentarily empty (a fresh visit, Start over)
+      // meant clicking a filter chip silently changed the selection with no fetch and no visible
+      // feedback that anything happened. Always retry on a genuine mode change instead of gating on
+      // pre-existing sets.
+      if (state.aiStatus !== AI_LOADING) {
         await runKeepDiscovering({ render, updateStepper, announce, navigate });
         return;
       }
