@@ -1,7 +1,8 @@
 import { cachedValue } from "../server/cache.mjs";
-import { canonicalizeWriteBehind } from "./canonical-store.mjs";
+import { canonicalizeWriteBehind, mergeCanonicalFacts } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { buildItemId } from "./item-id.mjs";
+import { waitUntil } from "@vercel/functions";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
@@ -217,6 +218,24 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
   };
 }
 
+async function openLibraryDetail(providerId, env, fetchImpl) {
+  const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/works/${encodeURIComponent(providerId)}.json`, {
+    headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
+  });
+  if (!response.ok) throw new Error(`openlibrary detail ${response.status}`);
+  const row = await response.json();
+  const description = typeof row.description === "string"
+    ? clean(row.description, 1200)
+    : clean(row.description?.value ?? "", 1200);
+  const subjects = (row.subjects ?? []).slice(0, 20).map((x) => clean(x, 80)).filter(Boolean);
+  const seriesKey = (row.series ?? row.series_key ?? [])[0] ?? null;
+  return {
+    description: description || null,
+    subjects: subjects.length ? subjects : null,
+    seriesKey: seriesKey ? String(seriesKey) : null
+  };
+}
+
 async function igdbDetail(providerId, env, fetchImpl) {
   const token = await igdbToken(env, fetchImpl);
   if (!token) return {};
@@ -250,12 +269,37 @@ export async function fetchItemDetail(item, { env = process.env, fetchImpl = fet
   if (!item?.providerId) return {};
   try {
     if (item.provider === "tmdb") return await tmdbDetail(item.providerId, item.type, env, fetchImpl);
+    if (item.provider === "openlibrary") return await openLibraryDetail(item.providerId, env, fetchImpl);
     if (item.provider === "igdb") return await igdbDetail(item.providerId, env, fetchImpl);
   } catch {
     // Sparse/unavailable detail is expected (item 2): omit the fields rather than fail the card.
     return {};
   }
   return {};
+}
+
+// #135: provider-backed lazy enrichment. Detail fetching is cached separately from the canonical
+// write, so a transient DB failure can retry on the next encounter without re-fetching the provider.
+// This never blocks recommendation generation when called through enrichCanonicalItemWriteBehind.
+export async function fetchAndPersistItemDetail(item, { env = process.env, fetchImpl = fetch, query } = {}) {
+  if (!item?.provider || !item?.providerId || !item?.type) return {};
+  const cacheKey = `canonical-enrichment:v1:${item.provider}:${item.type}:${item.providerId}`;
+  const detail = fetchImpl !== fetch
+    ? await fetchItemDetail(item, { env, fetchImpl })
+    : await cachedValue(cacheKey, () => fetchItemDetail(item, { env, fetchImpl }), { ttl: 86400, tags: ["canonical-enrichment"] });
+  if (detail && Object.values(detail).some((value) => value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length))) {
+    await mergeCanonicalFacts(item, detail, { env, query, source: item.provider });
+  }
+  return detail ?? {};
+}
+
+export function enrichCanonicalItemWriteBehind(item, options = {}) {
+  const task = Promise.resolve()
+    .then(() => fetchAndPersistItemDetail(item, options))
+    .catch((error) => {
+      console.info("[tastemake-canonical]", JSON.stringify({ error: error?.message || "enrichment failed" }));
+    });
+  try { waitUntil(task); } catch { /* local/off-platform tests have no request context */ }
 }
 
 export async function searchCatalog(query, { domain = "all", env = process.env, fetchImpl = fetch } = {}) {
