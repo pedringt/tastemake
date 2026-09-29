@@ -2,6 +2,8 @@
 // The browser sends product-owned state. The server rebuilds the typed model context, validates model
 // output, and returns either accepted model picks or the deterministic fallback.
 
+import { isExperienced } from "../model/evidence.js";
+
 // #120 follow-up, QA sweep real bug: feedbackByRecommendation and customItems have the exact same
 // unbounded-growth shape that made recommendationSets 413 -- a full item object (about/artwork are
 // the biggest fields: full synopsis text, image URLs) stored forever per reaction/search/favorite,
@@ -27,13 +29,47 @@ function trimItemForWire(item) {
   return rest;
 }
 
+// Real bug, recurred three times now (recommendationSets ids-only, then about/artwork/sourceUrl,
+// then reason/ai): trimming a fixed list of fields only raises the ceiling -- a long enough session
+// still grows the payload back past it eventually. This bounds the *shape* of the by-far-largest
+// group instead: intent-only reactions (bookmarks, Not interested, not-tried -- never Loved/Liked/
+// Tried-disliked) vastly outnumber real taste evidence in normal use, and matter server-side for
+// exactly two things: staying in the "already reacted, don't recommend again" exclusion set
+// (eligibleCandidates in ai/context.js, keyed by id alone) and their evidenceKind/title/type/domains
+// in evidenceRecords() (model/evidence.js's record()) -- never their provider/providerId/genres/
+// providerMeta/year, which only externalEvidenceItems (catalog/related.mjs) reads, and it explicitly
+// only looks at *experienced* items. So an intent-only entry's id can never be dropped (that would
+// silently un-exclude an already-seen item -- the exact #152 bug class), but its item payload can
+// shrink to just what record() and displayLabel() actually use, independent of how large the original
+// catalog item was. Real taste evidence keeps its full (already-trimmed) item, since that's what the
+// model actually reasons from and what anchor selection needs.
+function stubItemForWire(item) {
+  if (!item) return item;
+  return { id: item.id, title: item.title, type: item.type ?? null, domains: item.domains ?? null, custom: item.custom || undefined };
+}
+
+function trimFeedbackItemForWire(feedback) {
+  return { ...feedback, item: isExperienced(feedback) ? trimItemForWire(feedback.item) : stubItemForWire(feedback.item) };
+}
+
+// customItems is only ever read server-side for ids already in selectedFavorites or carrying
+// experienced feedback (externalEvidenceItems, catalog/related.mjs) -- any other entry (a bookmarked
+// search result never reacted to, an old blind-spot draft item, etc.) is pure dead weight on the wire.
+function capCustomItemsForWire(customItems, feedbackByRecommendation, selectedFavorites) {
+  const neededIds = new Set([
+    ...(selectedFavorites ?? []),
+    ...Object.entries(feedbackByRecommendation ?? {}).filter(([, feedback]) => isExperienced(feedback)).map(([id]) => id)
+  ]);
+  return Object.fromEntries(
+    Object.entries(customItems ?? {}).filter(([id]) => neededIds.has(id)).map(([id, item]) => [id, trimItemForWire(item)])
+  );
+}
+
 export function serializeAiState(state) {
   const feedbackByRecommendation = Object.fromEntries(
-    Object.entries(state.feedbackByRecommendation ?? {}).map(([id, feedback]) => [id, { ...feedback, item: trimItemForWire(feedback.item) }])
+    Object.entries(state.feedbackByRecommendation ?? {}).map(([id, feedback]) => [id, trimFeedbackItemForWire(feedback)])
   );
-  const customItems = Object.fromEntries(
-    Object.entries(state.customItems ?? {}).map(([id, item]) => [id, trimItemForWire(item)])
-  );
+  const customItems = capCustomItemsForWire(state.customItems, state.feedbackByRecommendation, state.selectedFavorites);
   return {
     selectedFavorites: [...state.selectedFavorites],
     feedbackByRecommendation,

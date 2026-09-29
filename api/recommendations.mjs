@@ -415,6 +415,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "POST required" });
   }
   const contentLength = Number(req.headers?.["content-length"] || 0);
+  // Real bug, recurred three times: the wire payload grew unbounded until it silently 413'd, and
+  // every time this was only ever discovered from a live user report ("stuck on the same picks"),
+  // never from the logs -- nothing logged the size until it was already failing. Logging it on every
+  // request (rejected or not) means the next time trimming falls behind real usage again, it shows up
+  // as a rising number in [tastemake-recommendations-payload] well before any user hits a 413.
+  console.info("[tastemake-recommendations-payload]", JSON.stringify({ bytes: contentLength, capBytes: MAX_BODY_BYTES, pctOfCap: contentLength ? Math.round((contentLength / MAX_BODY_BYTES) * 100) : null }));
   if (contentLength > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
   if (typeof req.body === "string" && Buffer.byteLength(req.body, "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
   if (!underBestEffortRateLimit(clientIp(req))) return res.status(429).json({ error: "too many requests" });
@@ -431,7 +437,9 @@ export default async function handler(req, res) {
       picks: payload.picks?.length ?? 0,
       candidates: payload.meta?.catalogCandidates ?? null,
       paidCallMade: Boolean(payload.meta?.paidCallMade),
-      errorType: payload.meta?.errorType ?? null
+      errorType: payload.meta?.errorType ?? null,
+      feedbackCount: Object.keys(body.state.feedbackByRecommendation ?? {}).length,
+      customItemsCount: Object.keys(body.state.customItems ?? {}).length
     }));
     res.setHeader("cache-control", "no-store");
     return res.status(200).json(payload);
