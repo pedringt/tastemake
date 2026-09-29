@@ -1,4 +1,12 @@
-import { inject } from "@vercel/analytics";
+// Real production incident (2026-09-28/29): an automated PR (#162) added
+// `import { inject } from "@vercel/analytics"` here. This app has no build step -- app.js loads as
+// a native browser ES module, which cannot resolve a bare package-name specifier without an import
+// map. Every real page load threw "Failed to resolve module specifier" synchronously, which aborted
+// this entire module's evaluation before any of the app's own code ran -- the static HTML shell
+// (header/nav) still rendered, but nothing else did: no routing, no recommendations, nothing. This
+// was the exact cause of a live "black screen" report. If Web Analytics is wanted here, Vercel's own
+// non-framework guide uses a plain `<script defer src="/_vercel/insights/script.js">` tag in
+// index.html instead, which needs no module resolution.
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
@@ -771,9 +779,6 @@ initSearch({
   announce,
   goTo(screen) { navigate(screen); }
 });
-
-// Initialize Vercel Web Analytics
-inject();
 
 // First visit is deliberately short: choose a look -> basic setup -> choose Favorites.
 // Direct links still open their requested screen when accessible. #117: a returning user hitting
