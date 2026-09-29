@@ -261,6 +261,53 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
   check("the rating/detail on the feedback entry itself survives the trim", serialized.feedbackByRecommendation[heavyItem.id].rating === "more" && serialized.feedbackByRecommendation[heavyItem.id].detail === "loved-before");
 }
 
+// (8) QA sweep real bug, recurrence #3: trimming a fixed field list only raises the payload ceiling.
+// Intent-only reactions (bookmarks, Not interested, not-tried) vastly outnumber real taste evidence in
+// normal use and are the actual bulk, so they're now stubbed down to only what record()/the "already
+// reacted" exclusion set need -- but their id must survive intact, or an already-seen item could
+// silently resurface (the #152 bug class). customItems entries nobody server-side will ever look up
+// (not a favorite, no experienced reaction) are dropped entirely.
+{
+  const lovedItem = { id: "tmdb-movie-1", provider: "tmdb", providerId: "1", title: "Loved Movie", type: "movie", domains: ["watch"], genres: ["18"], providerMeta: { genreIds: [18] } };
+  const bookmarkedItem = { id: "tmdb-movie-2", provider: "tmdb", providerId: "2", title: "Bookmarked Movie", type: "movie", domains: ["watch"], genres: ["18"], providerMeta: { genreIds: [18] }, custom: true };
+  const orphanCustomItem = { id: "tmdb-movie-3", provider: "tmdb", providerId: "3", title: "Never Reacted To", type: "movie", domains: ["watch"] };
+  const stubState = {
+    selectedFavorites: new Set(),
+    feedbackByRecommendation: {
+      [lovedItem.id]: { item: lovedItem, rating: "more", detail: "loved-before" },
+      [bookmarkedItem.id]: { item: bookmarkedItem, rating: "not-tried", detail: "bookmarked" }
+    },
+    customItems: { [bookmarkedItem.id]: bookmarkedItem, [orphanCustomItem.id]: orphanCustomItem },
+    recommendationSets: []
+  };
+  const serialized = serializeAiState(stubState);
+  check("an experienced (Loved) reaction keeps its full trimmed item", serialized.feedbackByRecommendation[lovedItem.id].item.providerId === "1" && JSON.stringify(serialized.feedbackByRecommendation[lovedItem.id].item.providerMeta) === JSON.stringify({ genreIds: [18] }));
+  check("an intent-only (bookmarked) reaction's id is never dropped, so it stays excluded from future picks", bookmarkedItem.id in serialized.feedbackByRecommendation);
+  check("an intent-only reaction's item is stubbed down to id/title/type/domains only", !("provider" in serialized.feedbackByRecommendation[bookmarkedItem.id].item) && !("providerId" in serialized.feedbackByRecommendation[bookmarkedItem.id].item) && !("genres" in serialized.feedbackByRecommendation[bookmarkedItem.id].item) && !("providerMeta" in serialized.feedbackByRecommendation[bookmarkedItem.id].item));
+  check("the stub still carries what evidenceRecords() and displayLabel() need", serialized.feedbackByRecommendation[bookmarkedItem.id].item.id === bookmarkedItem.id && serialized.feedbackByRecommendation[bookmarkedItem.id].item.title === "Bookmarked Movie" && serialized.feedbackByRecommendation[bookmarkedItem.id].item.type === "movie" && serialized.feedbackByRecommendation[bookmarkedItem.id].item.custom === true);
+  check("customItems drops an entry backing only an intent-only reaction, same as a fully orphaned one (neither is ever looked up server-side)", !(bookmarkedItem.id in serialized.customItems) && !(orphanCustomItem.id in serialized.customItems));
+}
+
+// (9) QA sweep finding: blindSpots/blindSpotDrafts/blindSpotDismissed were sent whole and unbounded --
+// the same shape as the three prior 413 incidents -- despite neither api/recommendations.mjs nor
+// api/hypotheses.mjs ever reading any of the three once hydrated. Not sending them at all is a
+// zero-behavior-change cut since server-side hydration already defaults all three when absent.
+{
+  const heavyBlindSpotState = {
+    selectedFavorites: new Set(),
+    feedbackByRecommendation: {},
+    customItems: {},
+    recommendationSets: [],
+    blindSpots: { "tmdb-movie-1": { note: "X".repeat(500) } },
+    blindSpotDrafts: { "tmdb-movie-2": "Y".repeat(500) },
+    blindSpotDismissed: new Set(["tmdb-movie-3"])
+  };
+  const serialized = serializeAiState(heavyBlindSpotState);
+  check("blindSpots is not sent on the wire at all", !("blindSpots" in serialized));
+  check("blindSpotDrafts is not sent on the wire at all", !("blindSpotDrafts" in serialized));
+  check("blindSpotDismissed is not sent on the wire at all", !("blindSpotDismissed" in serialized));
+}
+
 console.log(`recommendation-loop tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);
