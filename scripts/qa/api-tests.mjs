@@ -319,6 +319,16 @@ out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:noCandida
 eq("no real candidates returns zero picks",out.picks.length,0);
 eq("no real candidates marks exhausted",out.meta.exhausted,true);
 
+// Real bug (2026-09-29): filtering to a domain with zero evidence in it (e.g. TV, when every real
+// reaction is a movie) used to return the exact same generic "no eligible catalog picks remain"
+// reason as genuine exhaustion -- no way to tell "you're out of picks" from "you've never rated a
+// TV show," so the filter looked permanently broken instead of explaining what to do about it.
+const tvFilterState=rawState({recommendationFilter:"tv"});
+const tvNoAnchors=async(url)=>{throw new Error(`should not fetch with zero tv anchors: ${url}`);};
+const tvOut=await produceRecommendations({rawState:tvFilterState,env:ON,fetchImpl:tvNoAnchors});
+eq("filtering to a domain with zero evidence returns zero picks",tvOut.picks.length,0);
+check("the reason names the real cause (no evidence in that domain), not a generic dead end",/haven't rated any TV/.test(tvOut.reason||""),tvOut.reason);
+
 // HTTP shell.
 const res=()=>{const r={code:null,body:null,headers:{}};r.status=(code)=>{r.code=code;return r;};r.json=(body)=>{r.body=body;return r;};r.setHeader=(k,v)=>{r.headers[k]=v;};return r;};
 let rr=res(); await handler({method:"GET",headers:{}},rr); eq("GET refused",rr.code,405);

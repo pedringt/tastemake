@@ -4,6 +4,7 @@ import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
 import { recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
+import { domainById } from "../src/data/domains.js";
 
 const MAX_BODY_BYTES = 160_000;
 const MAX_OUTPUT_TOKENS = 2000;   // the cap has to cover any thinking tokens as well as the JSON itself
@@ -332,7 +333,21 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
 
   const candidates = ctx.candidates.slice(0, 6);
   if (!candidates.length) {
-    return { source: "catalog", reason: "no eligible catalog picks remain", picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length } };
+    // Real bug (2026-09-29): retrieveCatalogCandidates narrows anchor selection to only evidence
+    // already tagged with the active domain filter (related.mjs's `evidenceItems` filter) before it
+    // ever looks for candidates -- a real, common dead end now that Movies/TV are split, since most
+    // people have far more movie reactions than TV ones. With zero anchors in that domain it silently
+    // returns [] every time, which used to read as a generic, identical "no eligible picks" message
+    // whether the cause was genuine exhaustion or simply "you've never reacted to a TV show." Naming
+    // the actual cause when it's a domain-specific evidence gap (rather than real exhaustion) gives
+    // the user something actionable instead of a dead end that looks like a bug.
+    const filter = state.recommendationFilter ?? "all";
+    const hasDomainEvidence = filter === "all" || (ctx.evidence ?? []).some((record) => record.countsAsTaste && (record.domains ?? []).includes(filter));
+    const filterLabel = domainById(filter)?.label ?? filter;
+    const reason = hasDomainEvidence
+      ? "Tastemake could not find another eligible catalog match from your current evidence."
+      : `You haven't rated any ${filterLabel} yet, so Tastemake has nothing to base ${filterLabel} picks on. Try Browse or Search to react to a few first.`;
+    return { source: "catalog", reason, picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length } };
   }
   // QA sweep real bug: every downstream use of ctx (the prompt payload, the prompt-size log, and
   // validatePicks' "itemId must come from candidates" check) read ctx.candidates directly -- the full,

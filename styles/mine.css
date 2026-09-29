@@ -48,6 +48,18 @@
 .mine-source { color:var(--muted); font-size:12px; }
 .mine-chips { list-style:none; margin:8px 0 0; padding:0; display:flex; flex-wrap:wrap; gap:6px; }
 .mine-chips li { padding:3px 10px; border:1.5px solid var(--line); border-radius:99px; background:var(--tint-warm,#fff9e6); color:var(--navy); font-size:13px; font-weight:600; }
+.mine-row-edit summary {
+  cursor:pointer;
+  color:var(--note-ink,#5749bf);
+  font-size:12px;
+  font-weight:700;
+  text-decoration:underline;
+  text-underline-offset:3px;
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+}
+.mine-row-edit .mine-actions { margin-top:10px; }
 .mine-actions { display:flex; flex-wrap:wrap; gap:8px; }
 .mine-action { min-height:38px; min-width:0; padding:6px 12px; font-size:13px; box-shadow:none; }
 .mine-action[aria-pressed="true"] { background:var(--navy); color:#fff; }
