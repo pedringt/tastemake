@@ -103,6 +103,15 @@ export default async function handler(req, res) {
     return res.status(200).json(payload);
   } catch (error) {
     console.error("[tastemake-profile-ai]", error?.status ?? "", error?.anthropicType ?? "", error?.message ?? "");
-    return res.status(200).json({ source: "unavailable", reason: "live profile AI unavailable", hypotheses: [], meta: { paidCallMade: false } });
+    return res.status(200).json({
+      source: "unavailable",
+      reason: "live profile AI unavailable",
+      hypotheses: [],
+      meta: {
+        paidCallMade: Boolean(error?.paidCallMade),
+        model: error?.model ?? null,
+        usage: error?.usage ?? null
+      }
+    });
   }
 }

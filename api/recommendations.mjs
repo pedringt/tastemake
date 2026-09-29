@@ -233,9 +233,21 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
       const err = new Error(`Anthropic returned no text block (stop_reason ${data.stop_reason ?? "?"}, blocks: ${(data.content ?? []).map((b) => b.type).join(",") || "none"})`);
       err.anthropicType = "no-text-block";
       err.anthropicDetail = `stop_reason=${data.stop_reason ?? "?"} blocks=${(data.content ?? []).map((b) => b.type).join(",") || "none"} out_tokens=${data.usage?.output_tokens ?? "?"}`;
+      err.paidCallMade = true;
+      err.model = data.model ?? env.TASTEMAKE_AI_MODEL;
+      err.usage = data.usage ?? null;
       throw err;
     }
-    return { json: parseModelJson(text), usage: data.usage ?? null, model: data.model ?? env.TASTEMAKE_AI_MODEL };
+    try {
+      return { json: parseModelJson(text), usage: data.usage ?? null, model: data.model ?? env.TASTEMAKE_AI_MODEL };
+    } catch (err) {
+      // The provider already returned a successful model response, so this was a paid call even if
+      // Tastemake cannot parse the model's text into valid JSON.
+      err.paidCallMade = true;
+      err.model = data.model ?? env.TASTEMAKE_AI_MODEL;
+      err.usage = data.usage ?? null;
+      throw err;
+    }
   } finally {
     clearTimeout(timer);
   }

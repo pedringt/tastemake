@@ -16,6 +16,14 @@
       "destination": "/index.html"
     },
     {
+      "source": "/browse",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/setup",
+      "destination": "/index.html"
+    },
+    {
       "source": "/taste-profile",
       "destination": "/index.html"
     },
@@ -29,6 +37,10 @@
     },
     {
       "source": "/bookmarks",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/try-next",
       "destination": "/index.html"
     },
     {
