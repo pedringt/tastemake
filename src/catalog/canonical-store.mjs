@@ -321,7 +321,7 @@ const DOMAIN_BY_MEDIA_TYPE = { movie: ["movies"], tv: ["tv"], book: ["read"], ga
 // to an empty array (never throws) on missing config, no useful anchor genres/subjects, a query
 // error, or a timeout, so a store outage or thin anchor never breaks the live-provider retrieval
 // path this only ever augments.
-export async function relatedCanonicalItems(anchor, subjects, { env = process.env, query: queryImpl, timeoutMs = 250 } = {}) {
+export async function relatedCanonicalItems(anchor, subjects, { env = process.env, query: queryImpl, timeoutMs = 750 } = {}) {
   const runQuery = queryImpl ?? ((text, params) => defaultQuery(text, params, { env }));
   if (!queryImpl && !isConfigured(env)) return [];
 
@@ -333,6 +333,7 @@ export async function relatedCanonicalItems(anchor, subjects, { env = process.en
 
   const anchorProvider = anchor.provider ? identifierNamespace(anchor, mediaType) : null;
   const anchorProviderId = anchor.providerId != null ? String(anchor.providerId) : null;
+  const startedAt = Date.now();
 
   try {
     const withTimeout = (promise) => Promise.race([
@@ -344,7 +345,9 @@ export async function relatedCanonicalItems(anchor, subjects, { env = process.en
          from items i
          join item_identifiers ii on ii.item_id = i.id
         where i.media_type = $1
-          and i.factual -> $2 ?| $3::text[]`,
+          and i.factual -> $2 ?| $3::text[]
+        order by i.metadata_completeness desc nulls last, i.updated_at desc
+        limit 60`,
       [mediaType, field, values]
     ));
 
@@ -373,7 +376,12 @@ export async function relatedCanonicalItems(anchor, subjects, { env = process.en
     }
     return results;
   } catch (error) {
-    console.info("[tastemake-canonical]", JSON.stringify({ error: error?.message || "related lookup failed" }));
+    console.info("[tastemake-canonical]", JSON.stringify({
+      operation: "related-read",
+      ms: Date.now() - startedAt,
+      timeoutMs,
+      error: error?.message || "related lookup failed"
+    }));
     return [];
   }
 }
