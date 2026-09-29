@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "GET required" });
   }
   const query = String(req.query?.q ?? "").trim();
-  const domain = ["all", "watch", "read", "play"].includes(req.query?.domain) ? req.query.domain : "all";
+  const domain = ["all", "movies", "tv", "read", "play"].includes(req.query?.domain) ? req.query.domain : "all";
   if (query.length < 2) return res.status(200).json({ items: [], providers: {} });
   try {
     const started = Date.now();

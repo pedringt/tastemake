@@ -34,7 +34,7 @@ const state = {
   recommendationFilter: "read",
   libraryFilter: "all",
   expandedFeedback: {},
-  areas: { watch: true, read: true, play: true },
+  areas: { movies: true, tv: true, read: true, play: true },
   curveball: true,
   displayName: "Tester",
   setupAreas: new Set(["all"]),

@@ -35,9 +35,9 @@ export function react(state, item, how) {
 // Synthetic items for scale tests: realistic shape, deterministic, never shown to users.
 let seed = 7;
 const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
-export function syntheticItems(n, { domains = ["watch", "read", "play"], seedValue = 7 } = {}) {
+export function syntheticItems(n, { domains = ["movies", "tv", "read", "play"], seedValue = 7 } = {}) {
   seed = seedValue;
-  const typeFor = { watch: ["movie", "tv"], read: ["book"], play: ["game"] };
+  const typeFor = { movies: ["movie"], tv: ["tv"], read: ["book"], play: ["game"] };
   return Array.from({ length: n }, (_, i) => {
     const domain = domains[Math.floor(rnd() * domains.length)];
     const types = typeFor[domain];
@@ -99,8 +99,8 @@ export const FIXTURES = [
     purpose: "A pattern backed once in Watch and once in Play is at most a tentative cross-domain link.",
     build: () => {
       const s = emptyState();
-      const play = catalogItems.find((i) => i.domains.includes("play") && !i.domains.includes("watch") && i.hypotheses.includes("H04"));
-      const watch = catalogItems.find((i) => i.domains.includes("watch") && !i.domains.includes("play") && i.hypotheses.includes("H04"));
+      const play = catalogItems.find((i) => i.domains.includes("play") && !i.domains.includes("movies") && i.hypotheses.includes("H04"));
+      const watch = catalogItems.find((i) => i.domains.includes("movies") && !i.domains.includes("play") && i.hypotheses.includes("H04"));
       react(s, watch, "loved"); if (play) react(s, play, "loved"); return s;
     },
     expect: { maxCrossDomain: "tentative" }
@@ -135,7 +135,7 @@ export function badResponses(ctx) {
     { name: "no evidence at all", h: { ...base, evidence: [] }, reason: /no supporting evidence/ },
     { name: "single-identity claim", h: { ...base, claim: "Your aesthetic is dark academia, through and through, in everything." }, reason: /identity/ },
     { name: "genre-only claim", h: { ...base, claim: "Likes fantasy." }, reason: /generic/ },
-    { name: "claims a domain with no evidence there", h: { ...base, domains: ["read", "watch", "play"] }, reason: /no cited support|overreach/ },
+    { name: "claims a domain with no evidence there", h: { ...base, domains: ["read", "movies", "play"] }, reason: /no cited support|overreach/ },
     { name: "cross-domain overreach", h: { ...base, crossDomain: "supported" }, reason: /overreach/ },
     { name: "invents a context", h: { ...base, context: "work outfits" }, reason: /context/ },
     { name: "malformed", h: { label: "x" }, reason: /missing|not a list/ }

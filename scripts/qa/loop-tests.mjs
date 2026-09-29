@@ -17,8 +17,8 @@ const failures = [];
 const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
 const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
 
-const itemA = { id: "tmdb-movie-1", title: "First Pick", type: "movie", domains: ["watch"] };
-const itemB = { id: "tmdb-movie-2", title: "Second Pick", type: "movie", domains: ["watch"] };
+const itemA = { id: "tmdb-movie-1", title: "First Pick", type: "movie", domains: ["movies"] };
+const itemB = { id: "tmdb-movie-2", title: "Second Pick", type: "movie", domains: ["movies"] };
 
 const mk = () => ({
   selectedFavorites: new Set(),
@@ -48,9 +48,9 @@ const state = {
   },
   recommendationSets: [[itemA, itemB]],
   customItems: {
-    [itemA.id]: { id: itemA.id, provider: "tmdb", providerId: "1", title: itemA.title, type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } }
+    [itemA.id]: { id: itemA.id, provider: "tmdb", providerId: "1", title: itemA.title, type: "movie", domains: ["movies"], providerMeta: { genreIds: [18] } }
   },
-  areas: { watch: true, read: true, play: true }
+  areas: { movies: true, tv: true, read: true, play: true }
 };
 const fetchImpl = async (url) => {
   if (String(url).includes("/movie/1/recommendations")) {
@@ -74,14 +74,14 @@ const feedbackOnlyState = {
   selectedFavorites: new Set(),
   feedbackByRecommendation: {
     [itemB.id]: {
-      item: { id: itemB.id, provider: "tmdb", providerId: "2", title: itemB.title, type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } },
+      item: { id: itemB.id, provider: "tmdb", providerId: "2", title: itemB.title, type: "movie", domains: ["movies"], providerMeta: { genreIds: [18] } },
       rating: "more",
       detail: "loved-before"
     }
   },
   recommendationSets: [[itemA, itemB]],
   customItems: {}, // deliberately empty -- item B was never search-added, only reacted to
-  areas: { watch: true, read: true, play: true }
+  areas: { movies: true, tv: true, read: true, play: true }
 };
 const feedbackOnlyFetch = async (url) => {
   if (String(url).includes("/movie/2/recommendations")) {
@@ -110,8 +110,8 @@ check(
   // handler), never an explicit Loved it/Liked it rating -- so it has NO feedbackByRecommendation
   // entry at all. That's the real shape: it's excluded from candidates only by being recognized as
   // evidence, not by any rating-based path.
-  const alreadyLoved = { id: "tmdb-movie-100", provider: "tmdb", providerId: "100", title: "Already Loved", type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } };
-  const fillers = Array.from({ length: 6 }, (_, i) => ({ id: `tmdb-movie-${i}`, provider: "tmdb", providerId: String(i), title: `Anchor ${i}`, type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } }));
+  const alreadyLoved = { id: "tmdb-movie-100", provider: "tmdb", providerId: "100", title: "Already Loved", type: "movie", domains: ["movies"], providerMeta: { genreIds: [18] } };
+  const fillers = Array.from({ length: 6 }, (_, i) => ({ id: `tmdb-movie-${i}`, provider: "tmdb", providerId: String(i), title: `Anchor ${i}`, type: "movie", domains: ["movies"], providerMeta: { genreIds: [18] } }));
   // Insertion order matters: externalEvidenceItems() preserves it, and the 6-anchor cap takes the
   // first 6 -- fillers first, alreadyLoved last, so alreadyLoved is guaranteed to lose the cutoff.
   const manyEvidenceState = {
@@ -119,7 +119,7 @@ check(
     feedbackByRecommendation: {},
     recommendationSets: [],
     customItems: Object.fromEntries([...fillers, alreadyLoved].map((item) => [item.id, item])),
-    areas: { watch: true, read: true, play: true }
+    areas: { movies: true, tv: true, read: true, play: true }
   };
   const manyEvidenceFetch = async (url) => ({
     ok: true,
@@ -178,14 +178,14 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
 {
   const words = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango"];
   const bigEvidence = words.map((word, i) => ({
-    id: `tmdb-movie-${i}`, provider: "tmdb", providerId: String(i), title: `${word} Evidence`, type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] }
+    id: `tmdb-movie-${i}`, provider: "tmdb", providerId: String(i), title: `${word} Evidence`, type: "movie", domains: ["movies"], providerMeta: { genreIds: [18] }
   }));
   const rotationState = {
     selectedFavorites: new Set(bigEvidence.map((item) => item.id)),
     feedbackByRecommendation: {},
     recommendationSets: [],
     customItems: Object.fromEntries(bigEvidence.map((item) => [item.id, item])),
-    areas: { watch: true, read: true, play: true }
+    areas: { movies: true, tv: true, read: true, play: true }
   };
   const rotationFetch = async (url) => {
     const match = String(url).match(/\/movie\/(\d+)\/recommendations/);
@@ -208,8 +208,8 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
 // could become a live-provider anchor. Anchor A is a real Loved reaction (must be usable); anchor B
 // is only bookmarked (must never be queried as an anchor at all).
 {
-  const lovedAnchor = { id: "tmdb-movie-loved", provider: "tmdb", providerId: "500", title: "Loved Anchor", type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } };
-  const bookmarkedOnly = { id: "tmdb-movie-bookmarked", provider: "tmdb", providerId: "501", title: "Bookmarked Only", type: "movie", domains: ["watch"], providerMeta: { genreIds: [18] } };
+  const lovedAnchor = { id: "tmdb-movie-loved", provider: "tmdb", providerId: "500", title: "Loved Anchor", type: "movie", domains: ["movies"], providerMeta: { genreIds: [18] } };
+  const bookmarkedOnly = { id: "tmdb-movie-bookmarked", provider: "tmdb", providerId: "501", title: "Bookmarked Only", type: "movie", domains: ["movies"], providerMeta: { genreIds: [18] } };
   const intentState = {
     selectedFavorites: new Set(),
     feedbackByRecommendation: {
@@ -218,7 +218,7 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
     },
     recommendationSets: [],
     customItems: {},
-    areas: { watch: true, read: true, play: true }
+    areas: { movies: true, tv: true, read: true, play: true }
   };
   const queriedProviderIds = new Set();
   const intentFetch = async (url) => {
@@ -236,7 +236,12 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
 // stored forever, resent on every request. Unlike recommendationSets, real item data is genuinely
 // needed server-side, so the fix trims the display-only fields rather than going all the way to ids.
 {
-  const heavyItem = { id: "tmdb-movie-98", provider: "tmdb", providerId: "98", title: "Heavy Item", type: "movie", domains: ["watch"], about: "Y".repeat(2000), artwork: "https://example.test/" + "z".repeat(500), sourceUrl: "https://example.test/movie/98", providerMeta: { genreIds: [18] } };
+  const heavyItem = {
+    id: "tmdb-movie-98", provider: "tmdb", providerId: "98", title: "Heavy Item", type: "movie", domains: ["movies"],
+    about: "Y".repeat(2000), artwork: "https://example.test/" + "z".repeat(500), sourceUrl: "https://example.test/movie/98",
+    reason: "X".repeat(400), ai: { cites: ["ev:a", "ev:b"], tests: "H04", kind: "curveball", contract: "v1" },
+    providerMeta: { genreIds: [18] }
+  };
   const heavyState = {
     selectedFavorites: new Set(),
     feedbackByRecommendation: { [heavyItem.id]: { item: heavyItem, rating: "more", detail: "loved-before" } },
@@ -246,6 +251,12 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
   const serialized = serializeAiState(heavyState);
   check("about/artwork/sourceUrl are dropped from feedbackByRecommendation items", !("about" in serialized.feedbackByRecommendation[heavyItem.id].item) && !("artwork" in serialized.feedbackByRecommendation[heavyItem.id].item) && !("sourceUrl" in serialized.feedbackByRecommendation[heavyItem.id].item));
   check("about/artwork/sourceUrl are dropped from customItems", !("about" in serialized.customItems[heavyItem.id]) && !("artwork" in serialized.customItems[heavyItem.id]) && !("sourceUrl" in serialized.customItems[heavyItem.id]));
+  // Real recurrence (2026-09-28): a live 413 happened again after the above trim shipped, because
+  // `reason` (the AI's full rationale sentence) and `ai` (cites/tests/kind/contract) are the same
+  // kind of purely-display field and were never dropped -- see live-client.js's comment for the grep
+  // confirming neither is read server-side.
+  check("reason/ai are dropped from feedbackByRecommendation items", !("reason" in serialized.feedbackByRecommendation[heavyItem.id].item) && !("ai" in serialized.feedbackByRecommendation[heavyItem.id].item));
+  check("reason/ai are dropped from customItems", !("reason" in serialized.customItems[heavyItem.id]) && !("ai" in serialized.customItems[heavyItem.id]));
   check("functionally-needed fields survive the trim", serialized.customItems[heavyItem.id].provider === "tmdb" && serialized.customItems[heavyItem.id].providerId === "98" && serialized.customItems[heavyItem.id].title === "Heavy Item" && JSON.stringify(serialized.customItems[heavyItem.id].providerMeta) === JSON.stringify({ genreIds: [18] }));
   check("the rating/detail on the feedback entry itself survives the trim", serialized.feedbackByRecommendation[heavyItem.id].rating === "more" && serialized.feedbackByRecommendation[heavyItem.id].detail === "loved-before");
 }

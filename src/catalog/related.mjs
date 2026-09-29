@@ -43,9 +43,9 @@ function interleave(rows) {
 
 function balanceDomains(items, mode) {
   if (mode !== "all") return items;
-  const buckets = new Map([["watch", []], ["read", []], ["play", []], ["other", []]]);
+  const buckets = new Map([["movies", []], ["tv", []], ["read", []], ["play", []], ["other", []]]);
   for (const item of items) {
-    const key = ["watch", "read", "play"].find((domain) => item.domains?.includes(domain)) ?? "other";
+    const key = ["movies", "tv", "read", "play"].find((domain) => item.domains?.includes(domain)) ?? "other";
     buckets.get(key).push(item);
   }
   return interleave([...buckets.values()].filter((bucket) => bucket.length));

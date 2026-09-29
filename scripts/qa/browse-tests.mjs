@@ -14,10 +14,10 @@ const failures = [];
 const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
 const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
 
-eq("Browse exposes Watch / Read / Play", BROWSE_DOMAINS.map((x) => x.id).join(","), "watch,read,play");
+eq("Browse exposes Movies / TV / Read / Play", BROWSE_DOMAINS.map((x) => x.id).join(","), "movies,tv,read,play");
 check("every Browse domain has genres", BROWSE_DOMAINS.every((domain) => browseGenresFor(domain.id).length >= 8));
-eq("Watch Horror maps to the TMDb movie genre", browseGenreById("watch", "horror")?.provider?.movie, 27);
-eq("Watch Sci-fi maps to TMDb's separate TV genre", browseGenreById("watch", "sci-fi")?.provider?.tv, 10765);
+eq("Movies Horror maps to the TMDb movie genre", browseGenreById("movies", "horror")?.provider?.movie, 27);
+eq("TV Sci-fi maps to TMDb's separate TV genre", browseGenreById("tv", "sci-fi")?.provider?.tv, 10765);
 eq("Play Horror maps to the provider horror theme", browseGenreById("play", "horror")?.provider?.value, 19);
 
 const env = {
@@ -26,22 +26,31 @@ const env = {
   IGDB_CLIENT_SECRET: "igdb-secret"
 };
 
-const watchFetch = async (url) => {
+const moviesFetch = async (url) => {
   const u = String(url);
   if (u.includes("/discover/movie")) {
-    check("Watch Sci-fi uses the movie genre id", u.includes("with_genres=878"), u);
-    return { ok: true, json: async () => ({ results: Array.from({ length: 10 }, (_, i) => ({ id: i + 1, title: `Movie ${i + 1}`, release_date: "2020-01-01", genre_ids: [878] })) }) };
+    check("Movies Sci-fi uses the movie genre id", u.includes("with_genres=878"), u);
+    return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: i + 1, title: `Movie ${i + 1}`, release_date: "2020-01-01", genre_ids: [878] })) }) };
   }
-  if (u.includes("/discover/tv")) {
-    check("Watch Sci-fi uses the TV genre id", u.includes("with_genres=10765"), u);
-    return { ok: true, json: async () => ({ results: Array.from({ length: 10 }, (_, i) => ({ id: 100 + i, name: `Show ${i + 1}`, first_air_date: "2021-01-01", genre_ids: [10765] })) }) };
-  }
-  throw new Error(`unexpected watch URL: ${u}`);
+  throw new Error(`unexpected movies URL: ${u}`);
 };
-const watch = await browseCatalog({ domain: "watch", genreId: "sci-fi", page: 1, env, fetchImpl: watchFetch });
-eq("Watch Browse returns the page size", watch.items.length, BROWSE_PAGE_SIZE);
-check("Watch Browse mixes movies and TV", watch.items.some((x) => x.type === "movie") && watch.items.some((x) => x.type === "tv"));
-check("Watch Browse keeps provider identities", watch.items.every((x) => x.provider === "tmdb"));
+const movies = await browseCatalog({ domain: "movies", genreId: "sci-fi", page: 1, env, fetchImpl: moviesFetch });
+eq("Movies Browse returns the page size", movies.items.length, BROWSE_PAGE_SIZE);
+check("Movies Browse returns only movies", movies.items.every((x) => x.type === "movie"));
+check("Movies Browse keeps provider identities", movies.items.every((x) => x.provider === "tmdb"));
+
+const tvFetch = async (url) => {
+  const u = String(url);
+  if (u.includes("/discover/tv")) {
+    check("TV Sci-fi uses the TV genre id", u.includes("with_genres=10765"), u);
+    return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: 100 + i, name: `Show ${i + 1}`, first_air_date: "2021-01-01", genre_ids: [10765] })) }) };
+  }
+  throw new Error(`unexpected tv URL: ${u}`);
+};
+const tv = await browseCatalog({ domain: "tv", genreId: "sci-fi", page: 1, env, fetchImpl: tvFetch });
+eq("TV Browse returns the page size", tv.items.length, BROWSE_PAGE_SIZE);
+check("TV Browse returns only TV shows", tv.items.every((x) => x.type === "tv"));
+check("TV Browse keeps provider identities", tv.items.every((x) => x.provider === "tmdb"));
 
 const readFetch = async (url) => {
   const u = String(url);
@@ -68,7 +77,7 @@ eq("Play Browse returns games", play.items[0]?.type, "game");
 check("Play Horror uses the horror theme filter", /where themes = \(19\)/.test(playBody), playBody);
 check("Play Browse paginates without repeats", /offset 12/.test(playBody), playBody);
 
-const invalid = await browseCatalog({ domain: "watch", genreId: "not-real", page: 1, env, fetchImpl: watchFetch });
+const invalid = await browseCatalog({ domain: "movies", genreId: "not-real", page: 1, env, fetchImpl: moviesFetch });
 check("invalid Browse genre fails closed", invalid.degraded && invalid.items.length === 0);
 
 const merged = mergeUniqueBrowseItems(
@@ -77,7 +86,7 @@ const merged = mergeUniqueBrowseItems(
 );
 eq("Show more de-duplicates already shown ids", merged.map((x) => x.id).join(","), "a,b,c");
 
-const item = { id: "tmdb-movie-9", provider: "tmdb", providerId: "9", title: "Known Film", type: "movie", domains: ["watch"] };
+const item = { id: "tmdb-movie-9", provider: "tmdb", providerId: "9", title: "Known Film", type: "movie", domains: ["movies"] };
 const makeState = () => ({
   selectedFavorites: new Set(),
   feedbackByRecommendation: {},
