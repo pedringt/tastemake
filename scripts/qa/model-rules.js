@@ -104,7 +104,7 @@ export async function run() {
 
   // Domain registry remains product-owned and complete.
   const filters=DOM.domainFilterOptions();
-  eq("domain filters are All Watch Read Play",filters.map(x=>x.id).join(","),"all,watch,read,play");
+  eq("domain filters are All Movies TV Read Play",filters.map(x=>x.id).join(","),"all,movies,tv,read,play");
 
   const failed=failures.length;
   return {passed:total-failed,failed,total,results:failed?failures:undefined};
