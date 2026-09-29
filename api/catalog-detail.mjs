@@ -1,4 +1,4 @@
-import { fetchItemDetail } from "../src/catalog/providers.mjs";
+import { fetchAndPersistItemDetail } from "../src/catalog/providers.mjs";
 import { cachedValue } from "../src/server/cache.mjs";
 
 // #103 item 1/2: on-demand per-media-type metadata (director/cast, creator/cast,
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
   try {
     const cacheKey = `catalog-detail:v1:${provider}:${type}:${providerId}`;
-    const detail = await cachedValue(cacheKey, () => fetchItemDetail({ provider, providerId, type }), { ttl: 3600, tags: ["catalog-detail"] });
+    const detail = await cachedValue(cacheKey, () => fetchAndPersistItemDetail({ provider, providerId, type }), { ttl: 3600, tags: ["catalog-detail"] });
     res.setHeader("cache-control", "public, max-age=300, stale-while-revalidate=3600");
     return res.status(200).json({ detail });
   } catch {
