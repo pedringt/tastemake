@@ -326,7 +326,7 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
   // Attach any additional stable aliases (currently ISBNs for books) to the resolved canonical item.
   // ON CONFLICT is intentionally non-destructive: if an alias is already owned by another item we do
   // not silently re-point it; the next read will surface that as an identity conflict instead.
-  for (const identity of identities.slice(1)) {
+  for (const identity of identities) {
     await runQuery(
       `insert into item_identifiers (item_id, provider, provider_id)
        values ($1, $2, $3)
