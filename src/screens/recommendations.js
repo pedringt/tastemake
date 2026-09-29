@@ -185,6 +185,25 @@ function seriesExperienceFeedback(item, feedback) {
     </div>`;
 }
 
+// #159: Loved/Liked on a rec card used to only ever write feedbackByRecommendation -- it never
+// offered a way to also make the pick a Favorite, so every reacted-to pick required a separate trip
+// to Library or Search to star it. Mirrors Library's own favorite/unfavorite button exactly (same
+// data-library-action/data-library-item attributes, same saveLibraryAction handler in app.js), so
+// this needs no new wiring -- it's gated the same way Library gates it, on isStrongPositive.
+function favoriteToggle(itemId, feedback) {
+  if (!isStrongPositive(feedback)) return "";
+  const isFavorite = state.libraryFavorites.has(itemId);
+  return `
+    <div class="rec-favorite-action">
+      <button
+        class="button button-quiet library-action"
+        type="button"
+        data-library-item="${itemId}"
+        data-library-action="${isFavorite ? "unfavorite" : "favorite"}"
+      >${isFavorite ? "Remove from Favorites" : "Add to Favorites"}</button>
+    </div>`;
+}
+
 function moreFeedbackToggle(itemId, expanded, panelId) {
   return `
     <button
@@ -320,6 +339,7 @@ function recommendationCard(item, index, total) {
         </div>
 
         ${saved ? detailChips(item.id, saved) : ""}
+        ${saved ? favoriteToggle(item.id, saved) : ""}
         ${saved ? seriesExperienceFeedback(item, saved) : ""}
         ${showQuality ? `
           <div class="tertiary-feedback-toggle">

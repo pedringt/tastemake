@@ -360,6 +360,7 @@
 .rating-button[aria-pressed="true"][data-rating="less"] { background:var(--navy); color:#fff; }
 .rating-button[aria-pressed="true"][data-rating="not-tried"] { background:var(--violet); color:#fff; border-color:var(--violet); }
 .feedback-details { margin-top:10px; padding-top:9px; border-top:1px dashed #c9c9dd; }
+.rec-favorite-action { margin-top:8px; }
 .feedback-detail-prompt { display:block; color:var(--muted); font-size:11px; margin-bottom:7px; }
 .detail-chip-row { display:flex; flex-wrap:wrap; gap:6px; }
 .detail-chip {
