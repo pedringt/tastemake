@@ -131,16 +131,21 @@ function costFromModelRows(rows = []) {
   let total = 0;
   let known = false;
   for (const row of rows) {
+    const tokens = Number(row.input_tokens || 0) + Number(row.output_tokens || 0) + Number(row.cache_read_tokens || 0);
     const cost = estimateCostUsd({
       model: row.model,
       inputTokens: row.input_tokens,
       outputTokens: row.output_tokens,
       cacheReadTokens: row.cache_read_tokens
     });
-    if (cost != null) {
-      total += cost;
-      known = true;
+    // Never present a partial total as if it were complete. Unknown-model rows with no usage
+    // (for example an early transport failure) do not make the known cost incomplete.
+    if (cost == null) {
+      if (tokens > 0) return null;
+      continue;
     }
+    total += cost;
+    known = true;
   }
   return known ? total : null;
 }
@@ -151,16 +156,25 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
 
   // Deliberately read-only: if the telemetry table has never been initialized, the endpoint's
   // outer handler reports telemetry unavailable instead of creating schema from a GET request.
+  // Legacy #166 tables do not yet have operation/outcome; detect that read-only so the endpoint
+  // stays available until the first new write migrates the schema.
+  const columns = await runQuery(
+    "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'ai_call_metrics'"
+  );
+  const columnNames = new Set((columns ?? []).map((row) => row.column_name));
+  const operationExpr = columnNames.has("operation") ? "coalesce(operation, 'recommendations')" : "'recommendations'";
+  const outcomeExpr = columnNames.has("outcome") ? "coalesce(outcome, 'success')" : "'success'";
+
   const summaryRows = await runQuery(
     `select
        count(*)::int as attempts,
-       count(*) filter (where coalesce(outcome, 'success') = 'success')::int as successes,
-       count(*) filter (where coalesce(outcome, 'success') = 'validation_fallback')::int as fallbacks,
-       count(*) filter (where coalesce(outcome, 'success') not in ('success','validation_fallback'))::int as failures,
+       count(*) filter (where ${outcomeExpr} = 'success')::int as successes,
+       count(*) filter (where ${outcomeExpr} = 'validation_fallback')::int as fallbacks,
+       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback'))::int as failures,
        percentile_cont(0.5) within group (order by duration_ms)
-         filter (where coalesce(outcome, 'success') = 'success')::double precision as p50_ms,
+         filter (where ${outcomeExpr} = 'success')::double precision as p50_ms,
        percentile_cont(0.95) within group (order by duration_ms)
-         filter (where coalesce(outcome, 'success') = 'success')::double precision as p95_ms,
+         filter (where ${outcomeExpr} = 'success')::double precision as p95_ms,
        coalesce(sum(input_tokens),0)::bigint as input_tokens,
        coalesce(sum(output_tokens),0)::bigint as output_tokens,
        coalesce(sum(cache_read_tokens),0)::bigint as cache_read_tokens,
@@ -172,44 +186,44 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
 
   const operationRows = await runQuery(
     `select
-       coalesce(operation, 'recommendations') as operation,
+       ${operationExpr} as operation,
        count(*)::int as attempts,
-       count(*) filter (where coalesce(outcome, 'success') = 'success')::int as successes,
-       count(*) filter (where coalesce(outcome, 'success') = 'validation_fallback')::int as fallbacks,
-       count(*) filter (where coalesce(outcome, 'success') not in ('success','validation_fallback'))::int as failures,
+       count(*) filter (where ${outcomeExpr} = 'success')::int as successes,
+       count(*) filter (where ${outcomeExpr} = 'validation_fallback')::int as fallbacks,
+       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback'))::int as failures,
        percentile_cont(0.5) within group (order by duration_ms)
-         filter (where coalesce(outcome, 'success') = 'success')::double precision as p50_ms,
+         filter (where ${outcomeExpr} = 'success')::double precision as p50_ms,
        percentile_cont(0.95) within group (order by duration_ms)
-         filter (where coalesce(outcome, 'success') = 'success')::double precision as p95_ms,
+         filter (where ${outcomeExpr} = 'success')::double precision as p95_ms,
        coalesce(sum(input_tokens),0)::bigint as input_tokens,
        coalesce(sum(output_tokens),0)::bigint as output_tokens,
        coalesce(sum(cache_read_tokens),0)::bigint as cache_read_tokens,
        max(occurred_at) as last_call_at
      from ai_call_metrics
      where occurred_at >= now() - ($1::int * interval '1 day')
-     group by coalesce(operation, 'recommendations')
+     group by ${operationExpr}
      order by operation`,
     [days]
   );
 
   const modelRows = await runQuery(
     `select
-       coalesce(operation, 'recommendations') as operation,
+       ${operationExpr} as operation,
        model,
        coalesce(sum(input_tokens),0)::bigint as input_tokens,
        coalesce(sum(output_tokens),0)::bigint as output_tokens,
        coalesce(sum(cache_read_tokens),0)::bigint as cache_read_tokens
      from ai_call_metrics
      where occurred_at >= now() - ($1::int * interval '1 day')
-     group by coalesce(operation, 'recommendations'), model`,
+     group by ${operationExpr}, model`,
     [days]
   );
 
   const outcomeRows = await runQuery(
-    `select coalesce(outcome, 'success') as outcome, count(*)::int as count
+    `select ${outcomeExpr} as outcome, count(*)::int as count
        from ai_call_metrics
       where occurred_at >= now() - ($1::int * interval '1 day')
-      group by coalesce(outcome, 'success')
+      group by ${outcomeExpr}
       order by outcome`,
     [days]
   );
