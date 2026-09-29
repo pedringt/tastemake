@@ -220,15 +220,18 @@ export async function upsertCanonicalItem(item, { env = process.env, query: quer
     }
   }
 
-  for (const field of normalized.fields) {
-    await runQuery(
-      `insert into item_field_provenance (item_id, field_name, source, value_type, retrieved_at)
-       values ($1, $2, $3, 'provider_supplied', now())
-       on conflict (item_id, field_name) do update
-         set source = excluded.source, value_type = excluded.value_type, retrieved_at = now()`,
-      [itemId, field, item.provider]
-    );
-  }
+  // QA sweep finding: each field's provenance row is independent (a distinct (item_id, field_name)
+  // key, idempotent via ON CONFLICT) with no ordering dependency between iterations, so awaiting them
+  // one at a time inside this write-behind task (which runs inside a waitUntil-extended lifetime
+  // Vercel bills/caps) just adds round trips for nothing. Not a correctness bug, just needless
+  // serialization -- fired in parallel instead.
+  await Promise.all(normalized.fields.map((field) => runQuery(
+    `insert into item_field_provenance (item_id, field_name, source, value_type, retrieved_at)
+     values ($1, $2, $3, 'provider_supplied', now())
+     on conflict (item_id, field_name) do update
+       set source = excluded.source, value_type = excluded.value_type, retrieved_at = now()`,
+    [itemId, field, item.provider]
+  )));
 
   return itemId;
 }

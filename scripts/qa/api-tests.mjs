@@ -275,6 +275,41 @@ for(const [name,opts] of [["timeout",{abort:true}],["network",{fail:"boom"}],["5
   check(`${name}: transport failure keeps real catalog picks`,result.source==="catalog"&&result.picks.length===6,result.source);
 }
 
+// QA sweep real bug: buildPickPrompt/validatePicks used to read ctx.candidates directly -- the full
+// unsliced eligible pool -- instead of the 6 candidates the product actually offers. With more than 6
+// eligible candidates, a model that picked an item outside the first 6 used to pass validation (the
+// candidates map was built from the same unsliced pool); it must now be rejected as "not one of the
+// eligible candidates" and the request must fall back to catalog picks.
+{
+  const manyTitles=["Amber Harbor","Glass Orchard","Night Signal","Paper Kingdom","Silent Atlas","Copper Sky","Velvet Transit","Winter Circuit","Crimson Static","Moss Cathedral"];
+  const manyRows=Array.from({length:10},(_,i)=>({
+    id:201+i,title:manyTitles[i],overview:`Catalog item ${i+1}.`,
+    release_date:`202${i%9}-01-01`,poster_path:`/mp${i}.jpg`,genre_ids:[18]
+  }));
+  const manyFetch=(aiPayload)=>async(url)=>{
+    const u=String(url);
+    if(u.includes("/movie/1/recommendations")) return {ok:true,status:200,json:async()=>({results:manyRows})};
+    if(u.includes("api.anthropic.com")) return {ok:true,status:200,json:async()=>aiPayload};
+    throw new Error(`unexpected many-candidates URL ${u}`);
+  };
+  const seventhItemPick=modelSays([{
+    itemId:`tmdb-movie-${manyRows[6].id}`,
+    why:"Related to a film you explicitly chose as a favorite; this reaches past the offered set.",
+    cites:[`ev:${favorite.id}`],tests:null,kind:"pick"
+  }]);
+  const outOfOffer=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:manyFetch(seventhItemPick)});
+  check("a pick outside the 6 actually offered is rejected, falls back to catalog",outOfOffer.source==="catalog",`${outOfOffer.source}: ${outOfOffer.reason}`);
+  check("the fallback never includes the out-of-offer item the model tried to pick",!outOfOffer.picks.some(p=>p.id===`tmdb-movie-${manyRows[6].id}`));
+
+  const firstSixPicks=modelSays(manyRows.slice(0,6).map((row,i)=>({
+    itemId:`tmdb-movie-${row.id}`,
+    why:`Related to a film you explicitly chose as a favorite; this tests a nearby catalog match ${i+1}.`,
+    cites:[`ev:${favorite.id}`],tests:null,kind:i===5?"curveball":"pick"
+  })));
+  const withinOffer=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:manyFetch(firstSixPicks)});
+  eq("a pick within the 6 actually offered still passes",withinOffer.source,"model");
+}
+
 // No provider candidates means an honest empty result, never a seed fallback.
 const noCandidates=async (url)=>{
   if(String(url).includes("/movie/1/recommendations")) return {ok:true,status:200,json:async()=>({results:[]})};
