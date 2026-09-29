@@ -79,6 +79,12 @@ export default async function handler(req, res) {
     res.setHeader("allow", "POST");
     return res.status(405).json({ error: "POST required" });
   }
+  // QA sweep real bug: unlike api/recommendations.mjs (hardened after a real production 413
+  // incident), this endpoint measured size only after fully parsing the body into memory. A
+  // content-length check up front rejects an oversized request before it's buffered/parsed at all,
+  // same as the sibling endpoint.
+  const contentLength = Number(req.headers?.["content-length"] || 0);
+  if (contentLength > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body ?? {};
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });

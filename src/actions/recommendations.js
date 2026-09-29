@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
-import { isExperiencedNegative } from "../model/evidence.js";
+import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
 import { cancelRequest, finishRequest, staleReason, startRequest } from "../ai/requests.js";
@@ -29,6 +29,13 @@ export function saveQuickFeedback(itemId, rating) {
     quality: existing?.quality === "surprised-me" ? null : existing?.quality || null,
     seriesExperience: rating === "not-tried" ? null : existing?.seriesExperience ?? null
   };
+  // QA sweep real bug: unlike src/actions/library.js's saveLibraryAction and src/model/search.js's
+  // applySearchAction, this never cleared libraryFavorites when a reaction moved away from strong-
+  // positive. A card can be reacted to here, favorited over in Library, then re-reacted to here (the
+  // round is still active and its chips stay editable) -- without this, the stale Favorite would
+  // silently survive a "Less" reaction and could resurrect itself with no explicit favorite action if
+  // the user later flipped back to "Loved it before".
+  if (!isStrongPositive(state.feedbackByRecommendation[itemId])) state.libraryFavorites.delete(itemId);
 
   return true;
 }
@@ -40,6 +47,10 @@ export function saveFeedbackDetail(itemId, detail) {
   existing.detail = existing.detail === detail ? null : detail;
   if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
   if (!isPositiveExperience(existing) && !isExperiencedNegative(existing)) existing.seriesExperience = null;
+  // Same Favorite<->reaction invariant as saveQuickFeedback above -- the detail chip (e.g. "Loved it
+  // before" -> "Liked it before") can move a reaction away from strong-positive just as much as the
+  // primary rating can.
+  if (!isStrongPositive(existing)) state.libraryFavorites.delete(itemId);
   return true;
 }
 

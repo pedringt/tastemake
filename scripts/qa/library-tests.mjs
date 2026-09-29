@@ -12,6 +12,7 @@ async function freshState() {
 }
 
 const { saveBookmarkAction, saveLibraryAction } = await import("../../src/actions/library.js");
+const { saveQuickFeedback, saveFeedbackDetail } = await import("../../src/actions/recommendations.js");
 const { bookmarkedFeedback, isBookmarked, isPositiveExperience } = await import("../../src/model/taste.js");
 const { libraryItems, migrateStarterFavorites } = await import("../../src/model/library.js");
 const { browseReadyForRecommendations } = await import("../../src/model/browse.js");
@@ -147,6 +148,35 @@ check("migrated starters still appear in Library's Favorites bucket", favoritesA
 // covered above, and it is no longer exempt from Search's normal reaction-correction flow.
 check("post-migration, Search can now correct the reaction on a former starter (no longer exempt)", applySearchAction(state6, starter1, "liked") !== null);
 check("correcting it away from Loved clears its Favorite flag (no Disliked/Liked + Favorite state)", !state6.libraryFavorites.has(starter1.id));
+
+// QA sweep real bug: saveLibraryAction (Library screen) and applySearchAction (Search) both clear
+// libraryFavorites when a reaction moves away from strong-positive, but the Recommendations-screen
+// reaction editors (saveQuickFeedback/saveFeedbackDetail) never did -- a card reacted to on
+// Recommendations, favorited over in Library, then re-reacted to on the still-active Recommendations
+// card, could leave a stale Favorite flag that silently resurrects if the reaction moves back to
+// Loved, with no explicit favorite action.
+{
+  const state7 = fresh();
+  const pick = { id: "tmdb-movie-77", title: "Recommendation Screen Pick", type: "movie", domains: ["watch"] };
+  state7.recommendationSets = [[pick]];
+
+  saveQuickFeedback(pick.id, "more");
+  saveFeedbackDetail(pick.id, "loved-before");
+  check("reacting Loved it before makes the reaction strong-positive", isStrongPositive(state7.feedbackByRecommendation[pick.id]));
+  state7.libraryFavorites.add(pick.id);
+  check("favoriting it (as Library/Search would) is reflected", state7.libraryFavorites.has(pick.id));
+
+  saveQuickFeedback(pick.id, "less");
+  check("switching the primary rating away from strong-positive clears the stale Favorite flag", !state7.libraryFavorites.has(pick.id));
+
+  saveQuickFeedback(pick.id, "more");
+  saveFeedbackDetail(pick.id, "loved-before");
+  check("flipping back to Loved it before does not silently resurrect the old Favorite (no explicit favorite action happened)", !state7.libraryFavorites.has(pick.id));
+
+  state7.libraryFavorites.add(pick.id);
+  saveFeedbackDetail(pick.id, "liked-before");
+  check("changing the detail chip from Loved to Liked also clears a stale Favorite flag", !state7.libraryFavorites.has(pick.id));
+}
 
 console.log(`library tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));

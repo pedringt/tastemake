@@ -334,17 +334,27 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   if (!candidates.length) {
     return { source: "catalog", reason: "no eligible catalog picks remain", picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length } };
   }
+  // QA sweep real bug: every downstream use of ctx (the prompt payload, the prompt-size log, and
+  // validatePicks' "itemId must come from candidates" check) read ctx.candidates directly -- the full,
+  // unsliced eligible pool (up to retrieveCatalogCandidates' limit of 30) -- not the 6 the product
+  // actually intends to offer. The model was shown and could validly pick from all 30+, which would
+  // then pass validation (candidates.has(p.itemId) checked the same unsliced ctx.candidates) even
+  // though every other part of this function (fallbackPayload, the exhaustion check above,
+  // clientPicks' rank/fit) only ever expects the first 6 to have been offered. promptCtx is the same
+  // context with candidates capped to the actual offered set, used everywhere the model's answer is
+  // built or checked.
+  const promptCtx = { ...ctx, candidates };
 
   const config = liveConfig(env);
   if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length });
 
   try {
-    const prompt = buildPickPrompt(ctx, candidates.length);
+    const prompt = buildPickPrompt(promptCtx, candidates.length);
     // #120 follow-up: known even if the call below errors/times out, so a large prompt isn't ruled
     // out as a cause just because we never got a usage.input_tokens back for a failed call.
     console.info("[tastemake-recommendations-timing]", JSON.stringify({
       stage: "promptSize",
-      ...promptSizeBreakdown(ctx, candidates.length, prompt)
+      ...promptSizeBreakdown(promptCtx, candidates.length, prompt)
     }));
     started = Date.now();
     const model = await callAnthropic({ prompt, env, fetchImpl });
@@ -370,7 +380,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     });
 
     started = Date.now();
-    const validated = validatePicks(model.json, ctx);
+    const validated = validatePicks(model.json, promptCtx);
     // #120/QA-sweep follow-up (Paige's explicit call, 2026-09-28): this used to require every
     // candidate offered (up to 6) to individually pass validation, or the whole batch fell back to
     // catalog picks -- one flawed pick discarded five good ones, and #148's logging confirmed this

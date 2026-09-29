@@ -60,6 +60,16 @@ const navRequest = R.startRequest(navState);
 navState.screen = "library";
 eq("leaving the page makes it stale", R.staleReason(navState, navRequest), "you moved to another page while it was thinking");
 
+// QA sweep real bug: switching the recommendation filter mid-flight used to go completely
+// undetected -- recommendationFilter was never part of the fingerprint, so an in-flight answer for
+// the OLD filter would land and render under the NEW filter selection with no indication anything
+// was dropped.
+const filterState = mk();
+const filterRequest = R.startRequest(filterState);
+filterState.recommendationFilter = "read";
+eq("changing the filter mid-flight makes the answer stale", R.staleReason(filterState, filterRequest), "you changed the filter while it was thinking");
+check("...and it must not be treated as current", !R.isCurrent(filterState, filterRequest));
+
 // a newer request supersedes the older one, and cancels it
 const twoState = mk();
 const first = R.startRequest(twoState);

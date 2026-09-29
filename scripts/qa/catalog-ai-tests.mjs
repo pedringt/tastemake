@@ -3,7 +3,7 @@
 // live hypothesis gating/validation, and append-only model revision history.
 
 import { searchCatalog } from "../../src/catalog/providers.mjs";
-import { produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
+import hypothesesHandler, { produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
@@ -236,6 +236,16 @@ eq("identical model interpretation does not create duplicate history", historySt
 recordRevisionIfChanged(historyState, { ...entry, claim: "A materially revised working claim", reason: "new evidence" });
 eq("material model revision is appended", historyState.hypothesisHistory.length, 2);
 eq("new revision supersedes the prior revision", historyState.hypothesisHistory[1].supersedes, historyState.hypothesisHistory[0].id);
+
+// QA sweep real bug: this endpoint used to measure body size only after fully parsing it into
+// memory, unlike api/recommendations.mjs's pre-parse content-length check (hardened after a real
+// production 413 incident). An oversized request should be rejected before it's buffered/parsed.
+{
+  const res = () => { const r = { code: null, body: null, headers: {} }; r.status = (code) => { r.code = code; return r; }; r.json = (body) => { r.body = body; return r; }; r.setHeader = (k, v) => { r.headers[k] = v; }; return r; };
+  const rr = res();
+  await hypothesesHandler({ method: "POST", headers: { "content-length": "999999" }, body: {} }, rr);
+  eq("oversized body is refused by content-length before parsing", rr.code, 413);
+}
 
 console.log(`catalog/AI tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));

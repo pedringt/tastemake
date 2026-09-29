@@ -27,7 +27,13 @@ export function evidenceFingerprint(state) {
   const areas = Object.entries(state.areas ?? {}).sort().map(([id, on]) => `${id}:${on}`).join("|");
   const shown = state.recommendationSets.flat().map((item) => item.id).join("|");
   const favorites = [...state.selectedFavorites].sort().join("|");
-  return [favorites, reactions, statements, areas, `curveball:${state.curveball !== false}`, shown].join("//");
+  // QA sweep real bug: recommendationFilter was missing here even though it's a real prompt input
+  // (buildContext/produceRecommendations use it to scope eligible candidates). Switching the filter
+  // while a request was in flight (app.js's domain-filter handler only restarts the request when
+  // aiStatus isn't already AI_LOADING, otherwise it just sets the filter and returns) went undetected
+  // by staleReason, so the in-flight, old-filter response would land and render under the new filter
+  // selection -- picks that don't match what's highlighted, with no indication anything was dropped.
+  return [favorites, reactions, statements, areas, `curveball:${state.curveball !== false}`, `filter:${state.recommendationFilter ?? "all"}`, shown].join("//");
 }
 
 let counter = 0;
@@ -39,6 +45,7 @@ export function startRequest(state, { screen = state.screen } = {}) {
     id: `ai-${++counter}`,
     fingerprint: evidenceFingerprint(state),
     screen,
+    filter: state.recommendationFilter ?? "all",
     startedAt: Date.now(),
     controller: typeof AbortController === "function" ? new AbortController() : null
   };
@@ -64,6 +71,7 @@ export function staleReason(state, request) {
   if (request.cancelled) return request.cancelled;
   if (state.aiRequest?.id !== request.id) return "a newer request replaced it";
   if (request.screen !== state.screen) return "you moved to another page while it was thinking";
+  if (request.filter !== (state.recommendationFilter ?? "all")) return "you changed the filter while it was thinking";
   if (evidenceFingerprint(state) !== request.fingerprint) return "your reactions changed while it was thinking";
   return null;
 }
