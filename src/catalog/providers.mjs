@@ -107,13 +107,13 @@ function openLibraryItem(row) {
     // already work for movies/TV/games. Genuinely absent on many real books (confirmed directly
     // against the API for two popular in-print series) -- this is a real, honest improvement where
     // the upstream data supports it, not a claim that book sequel-suppression is now complete.
-    providerMeta: { seriesKey: row.series_key ?? null },
+    providerMeta: { seriesKey: row.series_key ?? null, isbns: (row.isbn ?? []).slice(0, 24) },
     sourceUrl: key ? `https://openlibrary.org/works/${key}` : "https://openlibrary.org/"
   };
 }
 
 async function searchOpenLibrary(query, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key";
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,isbn";
   const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
