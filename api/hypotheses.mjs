@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
-import { validateHypotheses } from "../src/ai/validate.js";
+import { normalizeHypothesisResponse, validateHypotheses } from "../src/ai/validate.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { callAnthropic, hydrateState as hydrateBaseState, liveConfig } from "./recommendations.mjs";
 import { visibleDomains } from "../src/data/domains.js";
@@ -102,11 +102,12 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
       outputTokens: model.usage?.output_tokens ?? null,
       cacheReadTokens: model.usage?.cache_read_input_tokens ?? null
     };
-    const validated = validateHypotheses(model.json, ctx);
+    const normalizedResponse = normalizeHypothesisResponse(model.json, ctx);
+    const validated = validateHypotheses(normalizedResponse, ctx);
     const rejectionCategories = rejectionCategoryCounts(validated.rejected);
     if (validated.rejected.length) {
       console.info("[tastemake-profile-validation]", JSON.stringify({
-        proposedCount: Array.isArray(model.json?.hypotheses) ? model.json.hypotheses.length : 0,
+        proposedCount: Array.isArray(normalizedResponse?.hypotheses) ? normalizedResponse.hypotheses.length : 0,
         acceptedCount: validated.accepted.length,
         rejectedCount: validated.rejected.length,
         rejectionCategories
@@ -118,7 +119,7 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
       // Profile can be told apart from "not enough evidence yet" without guessing.
       console.log("[tastemake-profile-ai]", "no hypotheses accepted", JSON.stringify({
         fallback: validated.fallback ?? false,
-        proposedCount: Array.isArray(model.json?.hypotheses) ? model.json.hypotheses.length : 0,
+        proposedCount: Array.isArray(normalizedResponse?.hypotheses) ? normalizedResponse.hypotheses.length : 0,
         rejectedCount: validated.rejected?.length ?? 0,
         notes: validated.notes ?? [],
         rejectedReasons: (validated.rejected ?? []).flatMap((r) => r.reasons ?? [])
