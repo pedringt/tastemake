@@ -35,7 +35,7 @@ import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, runInitialRecommendations, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback, saveSeriesExperience, toggleExpandedFeedback } from "./actions/recommendations.js";
+import { announceReaction, runInitialRecommendations, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, toggleExpandedFeedback } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
@@ -607,6 +607,16 @@ app.addEventListener("click", async (event) => {
     if (saveFeedbackDetail(itemId, detail.dataset.feedbackDetail)) {
       renderPreservingCardPosition(itemId, focusSelector);
       announceReaction(itemId, announce);
+    }
+    return;
+  }
+
+  const refinement = event.target.closest("[data-feedback-refinement][data-feedback-item]");
+  if (refinement) {
+    const itemId = refinement.dataset.feedbackItem;
+    if (saveFeedbackRefinement(itemId, refinement.dataset.feedbackRefinement)) {
+      renderPreservingCardPosition(itemId, focusSelector);
+      announce("Taste detail updated.");
     }
     return;
   }
