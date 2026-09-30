@@ -86,6 +86,16 @@ function sayControls(item, said, record) {
   return `<div class="signal-say">${primary}</div>`;
 }
 
+export function partitionProfilePatterns(patterns = [], statements = []) {
+  const rejectedIds = new Set(
+    (statements ?? []).filter((entry) => entry?.says === "not-me").map((entry) => entry.hypothesisId)
+  );
+  return {
+    active: (patterns ?? []).filter((item) => !rejectedIds.has(item.id)),
+    corrected: (patterns ?? []).filter((item) => rejectedIds.has(item.id))
+  };
+}
+
 function hypothesisCard(item, index) {
   const update = { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." };
   const said = statementFor(state, item.id);
@@ -120,6 +130,25 @@ function hypothesisCard(item, index) {
         ${blindLine}
       </div>
     </article>`;
+}
+
+function correctedPatternsSection(items) {
+  if (!items.length) return "";
+  return `
+    <details class="corrected-patterns">
+      <summary>Corrected patterns <span class="corrected-pattern-count">${items.length}</span></summary>
+      <p class="corrected-patterns-note">Patterns you said do not fit you. They no longer shape recommendations, but you can revisit them.</p>
+      <div class="corrected-pattern-list">
+        ${items.map((item) => `
+          <div class="corrected-pattern-row" data-profile-pattern="${item.id}">
+            <div>
+              <strong>${esc(item.title)}</strong>
+              <span>You said this isn’t you.</span>
+            </div>
+            <button type="button" class="button button-quiet corrected-pattern-reconsider" data-statement-pattern="${item.id}" data-statement-field="says" data-statement-value="not-me">Reconsider</button>
+          </div>`).join("")}
+      </div>
+    </details>`;
 }
 
 function blindSpotSection() {
