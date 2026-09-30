@@ -411,6 +411,9 @@ app.addEventListener("pointerdown", (event) => {
   if (event.target.closest("button,a,summary,input,textarea,select")) return;
   const card = event.target.closest("[data-rec-id]");
   if (!card) return;
+  // Once the anchored feedback editor is open, gestures belong to the editor/card content.
+  // Do not let an incidental horizontal move silently Save / Not interested the same pick.
+  if (state.recommendationFeedbackItemId === card.dataset.recId || event.target.closest(".rec-feedback-popover")) return;
   recommendationSwipe = {
     itemId: card.dataset.recId,
     pointerId: event.pointerId,
@@ -425,6 +428,7 @@ app.addEventListener("pointerup", (event) => {
   const swipe = recommendationSwipe;
   recommendationSwipe = null;
   if (!swipe || swipe.pointerId !== event.pointerId) return;
+  if (state.recommendationFeedbackItemId === swipe.itemId) return;
 
   const dx = event.clientX - swipe.x;
   const dy = event.clientY - swipe.y;
