@@ -106,8 +106,8 @@ export async function run() {
 
   // React to one as experienced so profile has more than starter-favorite evidence.
   const firstId=state.recommendationSets[0][0].id;
-  await act(`[data-feedback-item="${firstId}"][data-rating="more"]`);
-  await act(`[data-feedback-item="${firstId}"][data-feedback-detail="loved-before"]`);
+  await act(`[data-feedback-item="${firstId}"][data-experience-path="tried"]`);
+  await act(`[data-feedback-item="${firstId}"][data-experience-outcome="loved"]`);
   check("experienced reaction is recorded",state.feedbackByRecommendation[firstId]?.detail==="loved-before",state.feedbackByRecommendation[firstId]?.detail);
 
   // Taste Profile may only show model output. No demo hypotheses.
