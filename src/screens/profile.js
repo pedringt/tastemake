@@ -151,6 +151,62 @@ function correctedPatternsSection(items) {
     </details>`;
 }
 
+function learningPanel(patterns = []) {
+  if (!patterns.length) return "";
+
+  const history = state.hypothesisHistory ?? [];
+  const changes = [];
+
+  for (const pattern of patterns) {
+    const revisions = history.filter((entry) => entry.hypothesisId === pattern.id);
+    if (revisions.length < 2) continue;
+    const previous = revisions[revisions.length - 2];
+    const current = revisions[revisions.length - 1];
+
+    let detail = "";
+    if (previous.level && current.level && previous.level !== current.level) {
+      detail = `Moved from ${previous.level} to ${current.level}.`;
+    } else if (String(previous.claim ?? "") !== String(current.claim ?? "")) {
+      detail = "Became more specific after your recent reactions.";
+    } else if ((current.supports?.length ?? 0) > (previous.supports?.length ?? 0)) {
+      detail = "Gained support from something you recently reacted to.";
+    } else if (JSON.stringify(previous.domains ?? []) !== JSON.stringify(current.domains ?? [])) {
+      detail = "Changed where this pattern seems to apply.";
+    } else {
+      continue;
+    }
+
+    changes.push({ title: pattern.title, detail });
+  }
+
+  const items = changes.length
+    ? changes.slice(0, 3)
+    : patterns.slice(0, 3).map((pattern) => ({ title: pattern.title, detail: pattern.claim }));
+
+  const heading = changes.length ? "What changed" : "What Tastemake learned";
+  const intro = changes.length
+    ? "Your recent reactions changed how Tastemake understands a few patterns."
+    : "A few patterns Tastemake is starting to see in what you love.";
+
+  return `
+    <section class="profile-learning" aria-labelledby="profile-learning-title">
+      <div class="profile-learning-head">
+        <div>
+          <p class="kicker">Learning out loud</p>
+          <h2 id="profile-learning-title">${heading}</h2>
+          <p>${intro}</p>
+        </div>
+      </div>
+      <div class="profile-learning-list">
+        ${items.map((item) => `
+          <article class="profile-learning-item">
+            <strong>${esc(item.title)}</strong>
+            <span>${esc(item.detail)}</span>
+          </article>`).join("")}
+      </div>
+    </section>`;
+}
+
 function blindSpotSection() {
   const spots = activeBlindSpots(state);
   if (!spots.length) return "";
@@ -193,7 +249,7 @@ export function renderProfile() {
           <p class="kicker">Taste Profile</p>
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
-          <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they are not taste evidence. Taste Profile patterns appear only when live AI has proposed them and Tastemake has validated every evidence citation.</p>
+          <p class="lede profile-evidence-note">React to things you’ve tried, then correct these patterns when they miss. Tastemake will keep adjusting.</p>
           ${state.hypothesisAiMessage ? `<div class="profile-ai-status ${state.hypothesisAiStatus === "loading" ? "is-loading" : ""}" role="status" aria-busy="${state.hypothesisAiStatus === "loading"}"><span class="profile-ai-status-dot" aria-hidden="true"></span><span>${esc(state.hypothesisAiMessage)}</span>${state.hypothesisAiStatus !== "loading" ? `<button class="button button-quiet profile-retry" type="button" data-action="retry-profile">${liveProfile ? "Refresh profile" : "Try again"}</button>` : ""}</div>` : ""}
           ${liveProfile ? `<details class="profile-legend">\n            <summary>What do the confidence labels mean?</summary>\n            <ul>\n              <li><strong>Emerging:</strong> an early pattern with limited support.</li>\n              <li><strong>Supported:</strong> experienced evidence backs it.</li>\n              <li><strong>Strong:</strong> several experienced items back it without stronger counterevidence.</li>\n              <li><strong>Still learning:</strong> the evidence is mixed.</li>\n              <li><strong>Less certain:</strong> repeated misses outweigh the support.</li>\n            </ul>\n          </details>` : ""}
         </div>
@@ -203,7 +259,9 @@ export function renderProfile() {
         </div>
       </div>
 
-      <div class="profile-evidence-strip">\n        <span class="profile-evidence-label">Your favorites</span>\n        <div class="profile-evidence-track">\n          ${visibleFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}\n          ${hiddenFavoriteTitles.length ? `<details class="profile-evidence-more"><summary>+${hiddenFavoriteTitles.length} more</summary><span class="profile-evidence-more-items">${hiddenFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${((index + visibleFavoriteTitles.length) % 4) + 1}">${esc(title)}</span>`).join("")}</span></details>` : ""}\n        </div>\n      </div>\n\n      ${liveProfile ? `\n      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>\n      <div class="profile-map">\n        <aside class="profile-map-aside">\n          <span class="profile-aside-number">${activeHypotheses.length}</span>\n          <p>patterns currently shaping your profile</p>\n          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>\n        </aside>\n        <div class="signal-stack">${activeHypotheses.length ? activeHypotheses.map(hypothesisCard).join("") : `<div class="profile-no-active-patterns">No active patterns right now. Tastemake will keep learning from what you try.</div>`}</div>\n      </div>` : `\n      <div class="profile-empty" role="status">\n        <strong>No generated patterns yet.</strong>\n        <p>Tastemake is not filling this page with demo hypotheses. When live profile AI is available, it will build patterns only from your real experienced evidence.</p>\n      </div>`}
+      ${liveProfile ? learningPanel(activeHypotheses) : ""}
+
+      <div class="profile-evidence-strip">\n        <span class="profile-evidence-label">Your favorites</span>\n        <div class="profile-evidence-track">\n          ${visibleFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}\n          ${hiddenFavoriteTitles.length ? `<details class="profile-evidence-more"><summary>+${hiddenFavoriteTitles.length} more</summary><span class="profile-evidence-more-items">${hiddenFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${((index + visibleFavoriteTitles.length) % 4) + 1}">${esc(title)}</span>`).join("")}</span></details>` : ""}\n        </div>\n      </div>\n\n      ${liveProfile ? `\n      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>\n      <div class="profile-map">\n        <aside class="profile-map-aside">\n          <span class="profile-aside-number">${activeHypotheses.length}</span>\n          <p>patterns currently shaping your profile</p>\n          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>\n        </aside>\n        <div class="signal-stack">${activeHypotheses.length ? activeHypotheses.map(hypothesisCard).join("") : `<div class="profile-no-active-patterns">No active patterns right now. Tastemake will keep learning from what you try.</div>`}</div>\n      </div>` : `\n      <div class="profile-empty" role="status">\n        <strong>No generated patterns yet.</strong>\n        <p>React to a few recommendations you’ve actually tried. Tastemake will build this page when it has enough to say something useful.</p>\n      </div>`}
 
       ${correctedPatternsSection(correctedHypotheses)}
       ${blindSpotSection()}
