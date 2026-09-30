@@ -13,7 +13,15 @@ export function bestExactMatch(items, title, type, creator = "") {
   const wantedCreator = normalize(creator);
   const exact = (items ?? []).filter((item) => item?.type === type && normalize(item.title) === wantedTitle);
   if (!exact.length) return { status: "not_found", item: null };
-  if (exact.length === 1) return { status: "resolved", item: exact[0] };
+  if (exact.length === 1) {
+    if (!wantedCreator) return { status: "resolved", item: exact[0] };
+    const candidateCreator = normalize(exact[0].by);
+    if (!candidateCreator) return { status: "ambiguous", item: null };
+    if (candidateCreator.includes(wantedCreator) || wantedCreator.includes(candidateCreator)) {
+      return { status: "resolved", item: exact[0] };
+    }
+    return { status: "not_found", item: null };
+  }
 
   if (wantedCreator) {
     const creatorMatches = exact.filter((item) => {
