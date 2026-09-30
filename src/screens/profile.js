@@ -182,6 +182,7 @@ export function renderProfile() {
   const visibleFavoriteTitles = favoriteTitles.slice(0, 12);
   const hiddenFavoriteTitles = favoriteTitles.slice(12);
   const workingHypotheses = state.modelHypotheses ?? [];
+  const { active: activeHypotheses, corrected: correctedHypotheses } = partitionProfilePatterns(workingHypotheses, state.patternStatements);
   const liveProfile = workingHypotheses.length > 0;
 
   return `
