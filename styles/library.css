@@ -8,21 +8,44 @@
 .library-search-open-hint { font-weight:400; font-size:0.82em; opacity:0.75; }
 
 /* #94: Saved / Tried tabs inside a single Library screen. Saved is the default view. */
-.library-tabs { display:flex; gap:8px; margin:0 0 18px; }
+.library-tabs {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin:0 0 18px;
+  max-width:720px;
+}
 .library-tab {
   appearance:none;
   border:2px solid var(--navy);
-  background:#fff;
+  background:rgba(255,255,255,.9);
   color:var(--navy);
-  border-radius:999px;
-  min-height:40px;
-  padding:8px 16px;
-  font-size:13px;
-  font-weight:700;
+  border-radius:14px;
+  min-height:58px;
+  padding:12px 18px;
+  font-size:17px;
+  font-weight:800;
   cursor:pointer;
+  box-shadow:3px 3px 0 rgb(var(--ink-rgb,17 26 75) / .12);
 }
-.library-tab[aria-selected="true"] { background:var(--navy); color:#fff; }
-.library-tab-count { opacity:.75; font-weight:600; }
+.library-tab[aria-selected="true"] {
+  background:var(--navy);
+  color:#fff;
+  box-shadow:4px 4px 0 var(--pink);
+}
+.library-tab-count {
+  display:inline-grid;
+  min-width:28px;
+  min-height:24px;
+  place-items:center;
+  margin-left:7px;
+  padding:1px 7px;
+  border-radius:999px;
+  background:rgb(255 255 255 / .18);
+  font-size:13px;
+  font-weight:800;
+}
+.library-tab[aria-selected="false"] .library-tab-count { background:var(--pink-soft); }
 .library-view-lede { margin:0 0 18px; color:var(--muted); font-size:14px; line-height:1.5; max-width:760px; }
 
 .library-section { margin-top:26px; }
