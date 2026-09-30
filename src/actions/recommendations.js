@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
-import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
+import { isDeclined, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { clearInvalidRefinements, refinablePolarity, toggleRefinement } from "../model/refinements.js";
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
@@ -39,6 +39,54 @@ export function saveQuickFeedback(itemId, rating) {
   // the user later flipped back to "Loved it before".
   if (!isStrongPositive(state.feedbackByRecommendation[itemId])) state.libraryFavorites.delete(itemId);
 
+  return true;
+}
+
+export function chooseExperiencePath(itemId, path) {
+  if (!["tried", "not-tried"].includes(path)) return false;
+  const item = activeRecommendations(state).find((rec) => rec.id === itemId);
+  if (!item) return false;
+  state.recommendationExperienceChoice[itemId] = path;
+  return true;
+}
+
+export function saveExperienceOutcome(itemId, outcome) {
+  const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.feedbackByRecommendation[itemId]?.item;
+  if (!item) return false;
+
+  const mapping = {
+    loved: ["more", "loved-before"],
+    liked: ["more", "liked-before"],
+    disliked: ["less", "tried-disliked"],
+    save: ["not-tried", "bookmarked"],
+    "not-interested": ["less", "not-interested"]
+  };
+  const next = mapping[outcome];
+  if (!next) return false;
+
+  const existing = state.feedbackByRecommendation[itemId];
+  const previousPolarity = refinablePolarity(existing);
+  const [rating, detail] = next;
+  state.feedbackByRecommendation[itemId] = {
+    item,
+    rating,
+    detail,
+    refinements: existing?.refinements ?? [],
+    quality: existing?.quality ?? null,
+    seriesExperience: existing?.seriesExperience ?? null,
+    wasBookmarked: existing?.wasBookmarked ?? false
+  };
+
+  const feedback = state.feedbackByRecommendation[itemId];
+  clearInvalidRefinements(feedback, previousPolarity);
+  if (feedback.quality === "surprised-me" && !isPositiveExperience(feedback)) feedback.quality = null;
+  if (!isPositiveExperience(feedback) && !isExperiencedNegative(feedback)) feedback.seriesExperience = null;
+  if (!isStrongPositive(feedback)) state.libraryFavorites.delete(itemId);
+
+  state.recommendationExperienceChoice[itemId] = isPositiveExperience(feedback) || isExperiencedNegative(feedback)
+    ? "tried"
+    : (isBookmarked(feedback) || isDeclined(feedback) ? "not-tried" : null);
   return true;
 }
 
