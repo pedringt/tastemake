@@ -4,7 +4,7 @@
 
 import { searchCatalog } from "../../src/catalog/providers.mjs";
 import hypothesesHandler, { buildHypothesisPrompt, produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
-import { selectPromptEvidence } from "../../api/recommendations.mjs";
+import { produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
 import { serializeAiState, selectExperiencedFeedbackForWire } from "../../src/ai/live-client.js";
@@ -94,6 +94,63 @@ const relatedFetch = async (url) => {
 const related = await retrieveCatalogCandidates(relatedState, { env, fetchImpl: relatedFetch });
 eq("grounded retrieval returns a real provider candidate", related[0]?.id, "tmdb-movie-22");
 check("grounded retrieval excludes the evidence item itself", !related.some((x) => x.id === "tmdb-movie-10"));
+
+{
+  // Strong positive evidence should dominate candidate generation. Likes can broaden retrieval,
+  // but dislikes are contrast/constraint evidence only and must never originate a positive branch.
+  const feedbackByRecommendation = {};
+  for (let i = 1; i <= 4; i += 1) {
+    const item = { id:`tmdb-movie-loved-${i}`, provider:"tmdb", providerId:`10${i}`, title:`Loved ${i}`, type:"movie", domains:["movies"], providerMeta:{genreIds:[18]} };
+    feedbackByRecommendation[item.id] = { item, rating:"more", detail:"loved-before" };
+  }
+  for (let i = 1; i <= 4; i += 1) {
+    const item = { id:`tmdb-movie-liked-${i}`, provider:"tmdb", providerId:`20${i}`, title:`Liked ${i}`, type:"movie", domains:["movies"], providerMeta:{genreIds:[18]} };
+    feedbackByRecommendation[item.id] = { item, rating:"more", detail:"liked-before" };
+  }
+  const disliked = { id:"tmdb-movie-disliked", provider:"tmdb", providerId:"999", title:"Disliked Anchor", type:"movie", domains:["movies"], providerMeta:{genreIds:[18]} };
+  feedbackByRecommendation[disliked.id] = { item:disliked, rating:"less", detail:"tried-disliked" };
+
+  const queried = [];
+  await retrieveCatalogCandidates({
+    selectedFavorites:new Set(),
+    feedbackByRecommendation,
+    recommendationSets:[],
+    customItems:{},
+    areas:{movies:true,tv:true,read:true,play:true},
+    recommendationFilter:"movies"
+  }, {
+    env,
+    fetchImpl:async (url) => {
+      const match = String(url).match(/\/movie\/(\d+)\/recommendations/);
+      if (match) queried.push(match[1]);
+      return { ok:true, json:async()=>({results:[]}) };
+    }
+  });
+
+  check("all four Loved anchors are queried before weaker Likes", ["101","102","103","104"].every((id)=>queried.includes(id)), queried.join(","));
+  check("only two Liked anchors fill the remaining six-anchor capacity", queried.filter((id)=>/^20/.test(id)).length === 2, queried.join(","));
+  check("a disliked item is never used as a positive retrieval anchor", !queried.includes("999"), queried.join(","));
+}
+
+{
+  const fallbackState = {
+    selectedFavorites:["tmdb-movie-10"],
+    feedbackByRecommendation:{},
+    recommendationSets:[],
+    libraryFavorites:[],
+    customItems:relatedState.customItems,
+    blindSpots:{},
+    blindSpotDismissed:[],
+    patternStatements:[],
+    areas:{movies:true,tv:true,read:true,play:true},
+    curveball:true,
+    recommendationFilter:"movies"
+  };
+  const result = await produceRecommendations({ rawState:fallbackState, env, fetchImpl:relatedFetch });
+  const text = result.picks.map((pick)=>pick.reason).join(" ");
+  check("catalog fallback uses user-facing explanations", !/catalog signals|provider relationship|catalog branch|catalog path|nearby metadata/i.test(text), text);
+}
+
 
 // #131: Open Library's raw subject arrays include broad/noisy labels. A bestseller tag alone should
 // not make a self-help book a meaningful neighbor of an epic-fantasy source.
