@@ -316,11 +316,11 @@ function recommendationCard(item, index, total) {
 
         <div class="editorial-title-row">
           <h3>${esc(item.title)}</h3>
+          ${favoriteToggle(item.id)}
         </div>
 
         <div class="editorial-status-row">
           <span class="reaction-status-slot">${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}</span>
-          ${favoriteToggle(item.id)}
         </div>
 
         <p class="editorial-rationale">${esc(truncateCopy(readableRecommendationCopy(item.reason, item), RATIONALE_MAX_CHARS))}</p>
