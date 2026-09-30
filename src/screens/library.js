@@ -5,6 +5,7 @@ import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filt
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { renderTastebreakPanel } from "../components/tastebreak.js";
+import { renderExperienceRefinement } from "../components/refinement.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { renderArtwork } from "../components/artwork.js";
@@ -153,6 +154,7 @@ function triedCard(entry) {
         <div class="library-detail-meta-slot" data-detail-slot="${item.id}">${renderDetailMeta(item)}</div>
         <p class="library-blurb">${esc(entry.blurb)}</p>
         ${controls}
+        ${tried ? renderExperienceRefinement(id, item, state.feedbackByRecommendation[id], { compact: true }) : ""}
         ${tried ? renderTastebreakPanel(id) : ""}
       </div>
     </details>`;
@@ -187,6 +189,7 @@ function dislikedBlock(items) {
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>
               </span>
             </div>
+            ${renderExperienceRefinement(id, item, state.feedbackByRecommendation[id], { compact: true })}
             ${renderBlindSpotPanel(id)}
             ${renderTastebreakPanel(id)}
           </li>`).join("")}
