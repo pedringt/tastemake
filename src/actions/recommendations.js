@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
 import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
+import { clearInvalidRefinements, refinablePolarity, toggleRefinement } from "../model/refinements.js";
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
 import { cancelRequest, finishRequest, staleReason, startRequest } from "../ai/requests.js";
@@ -25,6 +26,7 @@ export function saveQuickFeedback(itemId, rating) {
     item,
     rating,
     detail: null,
+    refinements: [],
     // "Surprised me" only makes sense after Loved/Liked it before, which a fresh rating clears.
     quality: existing?.quality === "surprised-me" ? null : existing?.quality || null,
     seriesExperience: rating === "not-tried" ? null : existing?.seriesExperience ?? null
@@ -44,7 +46,9 @@ export function saveFeedbackDetail(itemId, detail) {
   const existing = state.feedbackByRecommendation[itemId];
   if (!existing) return false;
 
+  const previousPolarity = refinablePolarity(existing);
   existing.detail = existing.detail === detail ? null : detail;
+  clearInvalidRefinements(existing, previousPolarity);
   if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
   if (!isPositiveExperience(existing) && !isExperiencedNegative(existing)) existing.seriesExperience = null;
   // Same Favorite<->reaction invariant as saveQuickFeedback above -- the detail chip (e.g. "Loved it
@@ -52,6 +56,12 @@ export function saveFeedbackDetail(itemId, detail) {
   // primary rating can.
   if (!isStrongPositive(existing)) state.libraryFavorites.delete(itemId);
   return true;
+}
+
+export function saveFeedbackRefinement(itemId, refinementId) {
+  const existing = state.feedbackByRecommendation[itemId];
+  if (!existing) return false;
+  return toggleRefinement(existing, refinementId);
 }
 
 export function saveSeriesExperience(itemId, value) {
