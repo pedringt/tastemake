@@ -189,3 +189,24 @@
   .mine-data-summary { align-items:flex-start; flex-direction:column; }
   .mine-data-counts { justify-content:flex-start; }
 }
+
+
+.mine-data-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:14px;
+}
+.mine-data-actions .button {
+  min-width:0;
+  min-height:38px;
+  padding:7px 11px;
+  font-size:12px;
+}
+.mine-data-note {
+  max-width:720px;
+  margin:10px 0 0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.45;
+}
