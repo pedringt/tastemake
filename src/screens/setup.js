@@ -19,27 +19,7 @@ function areaChoice(id, label) {
 
 export function renderSetup() {
   const editing = state.setupComplete;
-  return `
-    <section class="setup-screen">
-      <header class="setup-head">
-        <div>
-          <p class="kicker">Quick setup</p>
-          <h1>${editing ? "Your Tastemake setup." : "A couple basics, then the fun part."}</h1>
-          <p class="lede">These settings tell Tastemake how to serve you. They do not count as taste evidence.</p>
-        </div>
-        <button class="button button-primary setup-next" type="button" data-action="setup-done" ${state.displayName.trim() ? "" : "disabled"}>${editing ? "Save" : "Next"}</button>
-      </header>
-
-      <div class="setup-grid">
-        <section class="setup-card" aria-labelledby="setup-name-title">
-          <p class="setup-step">01</p>
-          <h2 id="setup-name-title">What should we call you?</h2>
-          <label class="setup-field">
-            <span>Display name</span>
-            <input type="text" data-setup-name maxlength="40" autocomplete="name" value="${esc(state.displayName)}" placeholder="Your name" />
-          </label>
-        </section>
-
+  const settingsCards = editing ? `
         <section class="setup-card" aria-labelledby="setup-area-title">
           <p class="setup-step">02</p>
           <h2 id="setup-area-title">What do you want recommendations for?</h2>
@@ -60,9 +40,31 @@ export function renderSetup() {
                 <span><strong>${label}</strong><small>${help}</small></span>
               </label>`).join("")}
           </div>
+        </section>` : "";
+
+  return `
+    <section class="setup-screen">
+      <header class="setup-head">
+        <div>
+          <p class="kicker">${editing ? "Settings" : "Quick setup"}</p>
+          <h1>${editing ? "Your Tastemake setup." : "What should Tastemake call you?"}</h1>
+          <p class="lede">${editing ? "Adjust what Tastemake recommends and how adventurous it gets." : "Then jump straight into a few things you love."}</p>
+        </div>
+        <button class="button button-primary setup-next" type="button" data-action="setup-done" ${state.displayName.trim() ? "" : "disabled"}>${editing ? "Save" : "Next"}</button>
+      </header>
+
+      <div class="setup-grid ${editing ? "" : "is-first-run"}">
+        <section class="setup-card" aria-labelledby="setup-name-title">
+          <p class="setup-step">01</p>
+          <h2 id="setup-name-title">Your name</h2>
+          <label class="setup-field">
+            <span>Display name</span>
+            <input type="text" data-setup-name maxlength="40" autocomplete="name" value="${esc(state.displayName)}" placeholder="Your name" />
+          </label>
         </section>
+        ${settingsCards}
       </div>
 
-      <p class="setup-note">Next: add four things you genuinely love. Those real examples, not this setup, are what start teaching Tastemake about your taste.</p>
+      <p class="setup-note">${editing ? "These settings change what Tastemake serves you, not what it thinks you like." : "Next: choose four favorites and get your first recommendations."}</p>
     </section>`;
 }
