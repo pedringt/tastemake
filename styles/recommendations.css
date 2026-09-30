@@ -279,16 +279,17 @@
   right:14px;
   bottom:14px;
   color:#fff;
-  /* #95: cards are narrower now (3-up) with a shorter art block, so this needs to fit a smaller box. */
-  font-size:clamp(18px,2.4vw,28px);
-  line-height:1;
+  /* Preserve the actual title. Long titles may wrap and scale down rather than silently dropping words. */
+  font-size:clamp(15px,2vw,26px);
+  line-height:1.02;
   font-weight:700;
   letter-spacing:-.04em;
   text-transform:uppercase;
   overflow:hidden;
+  overflow-wrap:anywhere;
   display:-webkit-box;
   -webkit-box-orient:vertical;
-  -webkit-line-clamp:2;
+  -webkit-line-clamp:3;
 }
 .art-corner { right:12px; top:14px; color:#fff; font-size:9px; font-weight:700; letter-spacing:.08em; }
 .art-pattern,.art-shape { position:absolute; inset:auto; pointer-events:none; }
