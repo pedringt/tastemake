@@ -47,6 +47,51 @@ const asRows = (records) => records.map((r) => ({ item: { id: r.itemId, domains:
 const hypothesisAliases = (id) => id === "H01/H07" ? ["H01", "H07", "H01/H07"] : [id];
 const sameHypothesis = (a, b) => hypothesisAliases(a).some((id) => hypothesisAliases(b).includes(id));
 
+export function normalizeHypothesisResponse(response, ctx) {
+  if (!response || !Array.isArray(response.hypotheses)) return response;
+
+  const evidence = new Map((ctx.evidence ?? []).map((row) => [row.ref, row]));
+  const contexts = new Set(ctx.contexts ?? []);
+  const normalized = response.hypotheses.map((proposal) => {
+    if (!proposal || typeof proposal !== "object") return proposal;
+
+    const supports = Array.isArray(proposal.evidence)
+      ? proposal.evidence
+        .map((ref) => evidence.get(ref))
+        .filter((row) => row?.class === "experienced" && row.polarity >= 0)
+      : [];
+    const counters = Array.isArray(proposal.counter)
+      ? proposal.counter
+        .map((ref) => evidence.get(ref))
+        .filter((row) => row?.class === "experienced" && row.polarity < 0)
+      : [];
+
+    const { scope, crossDomain } = domainScope({
+      supports: asRows(supports),
+      against: asRows(counters),
+      heldUp: []
+    });
+    const claimedDomains = Array.isArray(proposal.domains) ? proposal.domains : [];
+    const safeDomains = claimedDomains.filter((domain) => scope.supported.includes(domain));
+    const safeCrossDomain = CROSS_DOMAIN.includes(proposal.crossDomain)
+      ? CROSS_DOMAIN[Math.min(CROSS_DOMAIN.indexOf(proposal.crossDomain), CROSS_DOMAIN.indexOf(crossDomain))]
+      : "untested";
+
+    return {
+      ...proposal,
+      evidence: supports.map((row) => row.ref),
+      counter: counters.map((row) => row.ref),
+      domains: safeDomains.length ? safeDomains : scope.supported,
+      crossDomain: safeCrossDomain,
+      level: LEVELS.includes(proposal.level) ? proposal.level : "emerging",
+      conditional: typeof proposal.conditional === "boolean" ? proposal.conditional : false,
+      context: proposal.context && contexts.has(proposal.context) ? proposal.context : null
+    };
+  });
+
+  return { ...response, hypotheses: normalized };
+}
+
 export function validateHypotheses(response, ctx) {
   const evidence = new Map((ctx.evidence ?? []).map((r) => [r.ref, r]));
   const accepted = [];

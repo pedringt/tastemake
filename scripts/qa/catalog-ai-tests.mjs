@@ -10,6 +10,7 @@ import { serializeAiState } from "../../src/ai/live-client.js";
 import { bestExactMatch } from "../../api/resolve-item.mjs";
 import { applyResolvedCatalogItem, applySearchAction, findExisting, makeCustomItem } from "../../src/model/search.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
+import { normalizeHypothesisResponse, validateHypotheses } from "../../src/ai/validate.js";
 import { mergeHypotheses } from "../../src/ai/hypothesis-profile.js";
 
 let passed = 0;
@@ -236,7 +237,43 @@ check("Taste Profile prompt names the exact allowed domain ids", promptContract.
 check("Taste Profile prompt explicitly forbids the production 'watch' alias", promptContract.includes('Never use umbrella labels such as "watch"'));
 check("Taste Profile prompt explicitly forbids the production 'established' level", promptContract.includes("Never use established"));
 check("Taste Profile prompt refuses to invent facts for unresolved manual evidence", promptContract.includes("facts.resolved is false"));
-check("Taste Profile prompt asks for a smaller 2-4 pattern set", promptContract.includes("Use 2 to 4 hypotheses"));
+check("Taste Profile prompt asks for a fuller 4-6 pattern set", promptContract.includes("Use 4 to 6 concise hypotheses"));
+
+// Production regression: software should repair mechanical contract mistakes that it can resolve
+// safely from product-owned evidence rather than discarding an otherwise useful pattern.
+{
+  const ctx = {
+    evidence: [
+      { ref:"ev:book", itemId:"book", title:"Book", class:"experienced", polarity:1, domains:["read"], kind:"experienced-positive", weight:1.25 },
+      { ref:"ev:saved-movie", itemId:"saved-movie", title:"Saved Movie", class:"intent", polarity:1, domains:["movies"], kind:"saved", weight:0 }
+    ],
+    statements: [],
+    contexts: []
+  };
+  const raw = {
+    hypotheses:[{
+      id:"ai-recoverable",
+      label:"Atmosphere matters more than surface genre",
+      claim:"Dense atmosphere and a strong sense of place seem to matter more than a specific genre label.",
+      evidence:["ev:book","ev:saved-movie"],
+      counter:[],
+      domains:["read","movies"],
+      crossDomain:"supported",
+      level:"supported",
+      conditional:false,
+      context:"late-night"
+    }],
+    insufficientEvidence:false
+  };
+  const normalized = normalizeHypothesisResponse(raw, ctx);
+  const repaired = normalized.hypotheses[0];
+  eq("profile normalization strips intent-only support", repaired.evidence.join(","), "ev:book");
+  eq("profile normalization removes domains with no experienced support", repaired.domains.join(","), "read");
+  eq("profile normalization caps cross-domain status to the evidence", repaired.crossDomain, "untested");
+  eq("profile normalization removes invented context", repaired.context, null);
+  const validated = validateHypotheses(normalized, ctx);
+  eq("a safely repaired profile proposal survives final validation", validated.accepted.length, 1);
+}
 
 // Manual-item resolution stays conservative: exact title/type only, with optional creator to break ties.
 {
@@ -329,10 +366,9 @@ check("Taste Profile prompt asks for a smaller 2-4 pattern set", promptContract.
 {
   const invalid = {
     ...proposal.hypotheses[0],
-    id:"ai-bad-domain",
-    label:"Bad domain",
-    claim:"This sufficiently specific claim intentionally uses an unsupported domain for validation.",
-    domains:["movies"]
+    id:"ai-too-generic",
+    label:"Too generic",
+    claim:"Fantasy."
   };
   const mixedPayload = { hypotheses:[proposal.hypotheses[0], invalid], insufficientEvidence:false };
   const originalInfo = console.info;
@@ -357,8 +393,8 @@ check("Taste Profile prompt asks for a smaller 2-4 pattern set", promptContract.
     const parsed = JSON.parse(validationLine.split("[tastemake-profile-validation]")[1].trim());
     eq("partial validation telemetry counts accepted proposals", parsed.acceptedCount, 1);
     eq("partial validation telemetry counts rejected proposals", parsed.rejectedCount, 1);
-    check("partial validation telemetry categorizes unsupported domains", (parsed.rejectionCategories?.unsupported_domain ?? 0) >= 1);
-    check("partial validation telemetry contains no hypothesis text", !validationLine.includes("Bad domain") && !validationLine.includes("Favorite Book"));
+    check("partial validation telemetry categorizes semantic rejections", (parsed.rejectionCategories?.generic_claim ?? 0) >= 1);
+    check("partial validation telemetry contains no hypothesis text", !validationLine.includes("Too generic") && !validationLine.includes("Favorite Book"));
   }
 }
 
