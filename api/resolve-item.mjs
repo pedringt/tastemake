@@ -1,0 +1,50 @@
+import { searchCatalog } from "../src/catalog/providers.mjs";
+import { typeById } from "../src/data/domains.js";
+
+const normalize = (value) => String(value ?? "")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, " ")
+  .trim();
+
+function bestExactMatch(items, title, type, creator = "") {
+  const wantedTitle = normalize(title);
+  const wantedCreator = normalize(creator);
+  const exact = (items ?? []).filter((item) => item?.type === type && normalize(item.title) === wantedTitle);
+  if (!exact.length) return { status: "not_found", item: null };
+  if (exact.length === 1) return { status: "resolved", item: exact[0] };
+
+  if (wantedCreator) {
+    const creatorMatches = exact.filter((item) => normalize(item.by).includes(wantedCreator) || wantedCreator.includes(normalize(item.by)));
+    if (creatorMatches.length === 1) return { status: "resolved", item: creatorMatches[0] };
+  }
+  return { status: "ambiguous", item: null };
+}
+
+export default async function handler(req, res) {
+  if (req.method !== "GET") {
+    res.setHeader("allow", "GET");
+    return res.status(405).json({ error: "GET required" });
+  }
+
+  const title = String(req.query?.title ?? "").trim().slice(0, 120);
+  const type = String(req.query?.type ?? "").trim();
+  const creator = String(req.query?.creator ?? "").trim().slice(0, 120);
+  const typeInfo = typeById(type);
+  if (title.length < 2 || !typeInfo?.domain) return res.status(400).json({ error: "title and supported type are required" });
+
+  try {
+    const payload = await searchCatalog(title, { domain: typeInfo.domain });
+    const match = bestExactMatch(payload.items, title, type, creator);
+    res.setHeader("cache-control", "private, max-age=0, no-store");
+    return res.status(200).json({
+      status: match.status,
+      item: match.item,
+      degraded: Boolean(payload.degraded)
+    });
+  } catch {
+    res.setHeader("cache-control", "private, max-age=0, no-store");
+    return res.status(200).json({ status: "unavailable", item: null, degraded: true });
+  }
+}
