@@ -1,8 +1,8 @@
 import { state } from "../state.js";
-import { MEDIA, applySearchAction, findExisting, itemStatus, makeCustomItem, searchableItems } from "../model/search.js";
+import { MEDIA, applyResolvedCatalogItem, applySearchAction, findExisting, itemStatus, makeCustomItem, markCustomResolution, searchableItems } from "../model/search.js";
 import { displayLabel, domainFilterOptions } from "../data/domains.js";
 import { esc } from "../lib/html.js";
-import { searchExternalCatalog } from "../catalog/client.js";
+import { resolveCustomCatalogItem, searchExternalCatalog } from "../catalog/client.js";
 import { renderArtwork } from "./artwork.js";
 
 // Search dialog (#13). It lives outside #app, so re-rendering a screen never closes it.
@@ -23,12 +23,38 @@ export function initSearch({ onChange, announce, goTo }) {
   const opener = document.querySelector("#open-search");
   if (!dialog || !input || !view || !opener || typeof dialog.showModal !== "function") return;
 
-  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" };
+  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" };
   let catalogTimer = null;
   let catalogController = null;
   let catalogSeq = 0;
 
   const itemById = (id) => (ui.pending?.id === id ? ui.pending : [...searchableItems(state), ...ui.external].find((item) => item.id === id));
+
+  async function resolveAddedItem(item) {
+    if (!item?.custom || item.provider) return;
+    markCustomResolution(state, item.id, "resolving");
+    if (ui.pending?.id === item.id) ui.pending = state.customItems[item.id];
+    render();
+
+    const result = await resolveCustomCatalogItem(item);
+    let message = "";
+    if (result.status === "resolved" && result.item) {
+      const merged = applyResolvedCatalogItem(state, item.id, result.item);
+      if (ui.pending?.id === item.id) ui.pending = merged;
+      message = merged
+        ? `${item.title} matched to the catalog. Tastemake can now use its real metadata when learning and recommending.`
+        : "";
+    } else {
+      const status = result.status === "ambiguous" ? "ambiguous" : "unresolved";
+      const merged = markCustomResolution(state, item.id, status);
+      if (ui.pending?.id === item.id) ui.pending = merged;
+      message = result.status === "ambiguous"
+        ? `${item.title} has more than one plausible catalog match, so Tastemake kept your evidence without guessing.`
+        : `${item.title} is saved as evidence, but Tastemake still has limited factual metadata for it.`;
+    }
+    if (message) onChange(message);
+    render();
+  }
 
   // User-facing search is the real external catalog. The old seeded title inventory is gone;
   // only items the user has actually acted on remain in local product state (#89).
@@ -107,10 +133,19 @@ export function initSearch({ onChange, announce, goTo }) {
 
   function sheetHTML(item) {
     const status = itemStatus(state, item);
+    const resolution = item.custom
+      ? item.provider
+        ? "Matched to catalog"
+        : item.resolutionStatus === "resolving"
+          ? "Identifying this…"
+          : item.resolutionStatus === "ambiguous"
+            ? "Needs more detail to identify"
+            : "Limited metadata"
+      : "";
     const head = `
       <button type="button" class="search-back" data-search-back>&larr; Back to results</button>
       <h3 id="search-sheet-title" tabindex="-1">${esc(item.title)}</h3>
-      <p class="search-sheet-meta">${esc(displayLabel(item))} &middot; ${status.label}</p>`;
+      <p class="search-sheet-meta">${esc(displayLabel(item))} &middot; ${status.label}${resolution ? ` &middot; ${esc(resolution)}` : ""}</p>`;
 
     const starterSelected = state.selectedFavorites.has(item.id);
     const starterLabel = state.starterReplaceId
@@ -161,6 +196,9 @@ export function initSearch({ onChange, announce, goTo }) {
         <label class="search-field" for="search-add-name"><span>Title</span>
           <input id="search-add-name" type="text" maxlength="80" value="${esc(ui.addTitle)}" autocomplete="off" required />
         </label>
+        <label class="search-field" for="search-add-creator"><span>Creator / author <em>(optional)</em></span>
+          <input id="search-add-creator" type="text" maxlength="120" value="${esc(ui.addCreator)}" autocomplete="off" />
+        </label>
         <fieldset class="search-field"><legend>What is it?</legend>
           <div class="search-medium">
             ${Object.entries(MEDIA).map(([key, medium]) => `
@@ -168,7 +206,7 @@ export function initSearch({ onChange, announce, goTo }) {
           </div>
         </fieldset>
         <p class="search-error" role="alert" ${ui.addError ? "" : "hidden"}>${esc(ui.addError)}</p>
-        <p class="search-note">After you add it, you can make it a Favorite, put it in your Library, or save it for later. Searching and typing alone never teach Tastemake anything.</p>
+        <p class="search-note">After you act on it, Tastemake will try to identify an exact catalog match in the background. If it finds one confidently, it attaches real metadata without changing what you told it. If it cannot, your evidence stays and Tastemake will not guess.</p>
         <p><button type="submit" class="button button-primary">Continue</button></p>
       </form>`;
   }
@@ -199,7 +237,7 @@ export function initSearch({ onChange, announce, goTo }) {
   }
 
   function open() {
-    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" });
+    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" });
     input.value = "";
     syncFilters();
     render();
@@ -357,6 +395,7 @@ export function initSearch({ onChange, announce, goTo }) {
       input.value = "";
       onChange(`${item.title} added to your Favorites. ${state.selectedFavorites.size} of 4 selected.`);
       render();
+      if (item.custom && !item.provider) void resolveAddedItem(state.customItems[item.id] ?? item);
       input.focus();
       return;
     }
@@ -368,6 +407,7 @@ export function initSearch({ onChange, announce, goTo }) {
       const action = actionButton.dataset.searchAction;
       const message = applySearchAction(state, item, action);
       if (message) onChange(message);
+      if (message && action !== "remove" && item.custom && !item.provider) void resolveAddedItem(state.customItems[item.id] ?? item);
       // An item the user added by hand disappears entirely when removed: go back to the results.
       if (!itemById(ui.itemId)) {
         ui.mode = "results";
@@ -388,7 +428,9 @@ export function initSearch({ onChange, announce, goTo }) {
     event.preventDefault();
     const title = form.querySelector("#search-add-name").value.trim();
     const medium = form.querySelector('input[name="search-medium"]:checked')?.value ?? "movie";
+    const creator = form.querySelector("#search-add-creator")?.value.trim() ?? "";
     ui.addTitle = title;
+    ui.addCreator = creator;
     ui.addMedium = medium;
     if (title.length < 2) {
       ui.addError = "Give it a title first.";
@@ -412,7 +454,7 @@ export function initSearch({ onChange, announce, goTo }) {
       announce(`${existing.title} is already in Tastemake. Showing it instead of adding a copy.`);
       return;
     }
-    ui.pending = makeCustomItem(title, medium);
+    ui.pending = makeCustomItem(title, medium, creator);
     ui.itemId = ui.pending.id;
     ui.mode = "sheet";
     render();
