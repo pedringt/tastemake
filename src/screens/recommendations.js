@@ -181,11 +181,8 @@ function seriesExperienceFeedback(item, feedback) {
     </div>`;
 }
 
-// #159: Loved/Liked on a rec card used to only ever write feedbackByRecommendation -- it never
-// offered a way to also make the pick a Favorite, so every reacted-to pick required a separate trip
-// to Library or Search to star it. Mirrors Library's own favorite/unfavorite button exactly (same
-// data-library-action/data-library-item attributes, same saveLibraryAction handler in app.js), so
-// this needs no new wiring -- it's gated the same way Library gates it, on isStrongPositive.
+// Favorite is always available on a recommendation. Choosing it is shorthand for
+// “I know this and love it”: the action records Tried + Loved + Favorite in one step.
 function favoriteToggle(itemId) {
   const isFavorite = state.libraryFavorites.has(itemId);
   const label = isFavorite ? "Remove from Favorites" : "Add to Favorites";
