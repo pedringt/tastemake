@@ -339,9 +339,9 @@ function catalogFallbackReason(item, index) {
     () => genre ? `${item.title} may be worth trying${sourceCopy}; it also shares some ${genre.toLowerCase()} territory.` : `${item.title} may be worth trying${sourceCopy}.`,
     () => source ? `Because ${source} worked for you, Tastemake is testing ${item.title} as another possible fit.` : `${item.title} is a related pick Tastemake thinks is worth testing.`,
     () => genre ? `This is a ${genre.toLowerCase()}-leaning pick that may connect with things you've liked.` : `This is a related pick based on things you've liked before.`,
-    () => `${item.title} is a slightly more exploratory pick, but it still connects back to positive taste evidence.`,
+    () => `${item.title} is a slightly more exploratory pick, but it still connects back to things you've liked.`,
     () => source ? `If some of what you liked about ${source} carries over, ${item.title} could be a good next try.` : `${item.title} is a cautious test outside your strongest patterns.`,
-    () => source ? `Tastemake is trying ${item.title} from the same broad neighborhood as something you liked: ${source}.` : `Tastemake is trying ${item.title} as another plausible fit.`
+    () => source ? `Tastemake is trying ${item.title} as another possibility because you liked ${source}.` : `Tastemake is trying ${item.title} as another plausible fit.`
   ];
   return reasons[index % reasons.length]();
 }
@@ -354,7 +354,7 @@ function catalogPicks(candidates, state) {
     return {
       ...item,
       rank: curveball ? null : index + 1,
-      fit: curveball ? "Exploratory fit" : "Catalog match",
+      fit: curveball ? "Exploratory fit" : "Promising fit",
       prediction: "Worth testing",
       surprise: curveball,
       reason: basis,
