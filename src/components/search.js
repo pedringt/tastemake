@@ -150,17 +150,24 @@ export function initSearch({ onChange, announce, goTo }) {
     const starterSelected = state.selectedFavorites.has(item.id);
     const starterLabel = state.starterReplaceId
       ? `Replace with ${esc(item.title)}`
-      : starterSelected ? "Remove favorite" : "Add favorite";
-    const starterBlock = `
-      <div class="search-starter">
-        <span><strong>Favorites</strong><small>Things you have already tried and loved. Tastemake starts here.</small></span>
-        <button type="button" class="button ${starterSelected ? "button-quiet" : "button-primary"}" data-search-starter="${starterSelected ? "remove" : "add"}">${starterLabel}</button>
-      </div>`;
+      : starterSelected ? "Remove favorite" : "Add to Favorites";
+    const starterBlock = starterSelected
+      ? `<div class="search-starter is-selected">
+          <span><strong>Favorite</strong><small>This is already one of the things Tastemake should learn from most strongly.</small></span>
+          <button type="button" class="button button-quiet" data-search-starter="remove">${starterLabel}</button>
+        </div>`
+      : `<button type="button" class="search-starter search-starter-choice" data-search-starter="add">
+          <span>
+            <strong>You loved this?</strong>
+            <small>Add it to Favorites. Favorites are things you've already tried and loved, and they have the strongest influence on recommendations.</small>
+          </span>
+          <span class="search-starter-cta">${starterLabel}</span>
+        </button>`;
 
     if (!state.onboarded || status.key === "starter") {
       return `${head}${starterBlock}
-        <p class="search-note">Favorites are things you have already tried and loved. Add or replace one here, then keep searching.</p>
-        <p><button type="button" class="button button-primary" data-search-close>Done</button></p>`;
+        <p class="search-note search-favorite-note">Pick the things you really love, then keep searching for more.</p>
+        <p><button type="button" class="button button-primary" data-search-close>Done adding favorites</button></p>`;
     }
 
     const on = (key) => status.key === key;
