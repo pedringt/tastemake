@@ -38,13 +38,18 @@
 }
 .artwork-fallback-title {
   display:-webkit-box;
+  width:100%;
+  max-width:100%;
+  max-height:4.12em;
   overflow:hidden;
   -webkit-box-orient:vertical;
   -webkit-line-clamp:4;
   font-size:clamp(10px,1.15vw,14px);
   line-height:1.03;
   overflow-wrap:anywhere;
+  word-break:break-word;
 }
+.artwork-fallback > * { max-width:100%; }
 .artwork-fallback-meta {
   display:block;
   overflow:hidden;
