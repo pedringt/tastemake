@@ -63,7 +63,7 @@ function savedCard(feedback) {
   return `
     <details class="library-card library-card-compact ${item.artwork ? "has-artwork" : ""}" data-bookmark-id="${item.id}">
       <summary class="library-compact-summary">
-        ${item.artwork ? renderArtwork(item, "library-compact-artwork") : `<span class="library-compact-artwork is-empty" aria-hidden="true"></span>`}
+        ${renderArtwork(item, "library-compact-artwork")}
         <span class="library-compact-copy">
           <span class="library-compact-info">${esc(info)}</span>
           <strong>${esc(item.title)}</strong>
