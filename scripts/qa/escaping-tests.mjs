@@ -37,6 +37,14 @@ for (const ref of ["ev:openlibrary-book-OL8369445W", "ev:tmdb-movie-12345", "ev:
   check(`recommendation copy hides ${ref.split(":")[1].split("-")[0]} evidence ref`, cleaned === "A useful connection", cleaned);
 }
 check("citation-only copy becomes empty", sanitizeRecommendationCopy("**(ev:tmdb-movie-123).**") === "");
+for (const internal of [
+  "Anastasia shares 10751 catalog signals with Labyrinth.",
+  "Severance came from a separate provider relationship around Horizon Zero Dawn.",
+  "Willow is a distinct catalog branch away from Labyrinth.",
+  "From Agents of S.H.I.E.L.D., the next nearby catalog path leads to Alien: Earth."
+]) {
+  check("recommendation copy drops retrieval plumbing", sanitizeRecommendationCopy(internal) === "", internal);
+}
 
 // hostile data in every untrusted slot
 const nasty = makeCustomItem(`${PAYLOAD} Title`, "movie");
@@ -78,7 +86,10 @@ for (const [name, render] of Object.entries(screens)) {
   check(`${name}: the payload is present but escaped`, !html.includes(PAYLOAD) && (html.includes(ESCAPED) || !html.includes("onerror")), "");
   check(`${name}: no unescaped quote can break out of an attribute`, !html.includes(ATTR));
   check(`${name}: ordinary copy still renders`, html.length > 200);
-  if (name === "recommendations") check("recommendations: internal evidence refs never render", !html.includes("ev:tmdb-movie-999"), html);
+  if (name === "recommendations") {
+    check("recommendations: internal evidence refs never render", !html.includes("ev:tmdb-movie-999"), html);
+    check("recommendations: disliked reaction offers visible optional refinement", html.includes("Want to get more specific?") && html.includes("What didn’t work?"), html);
+  }
 }
 
 // profile remains safe when its presentation state changes

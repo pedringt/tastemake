@@ -9,17 +9,21 @@ export function renderExperienceRefinement(itemId, item, feedback, { compact = f
 
   const selected = normalizedRefinements(feedback);
   const prompt = positive ? "What worked for you?" : "What didn’t work for you?";
-  const summary = positive ? "Say what worked" : "Say what didn’t work";
+  const summary = positive ? "What worked?" : "What didn’t work?";
   const options = refinementOptionsFor(item);
 
   return `
     <details class="experience-refinement ${compact ? "is-compact" : ""}" ${selected.length ? "open" : ""}>
-      <summary>+ ${summary}${selected.length ? ` (${selected.length})` : ""}</summary>
+      <summary>
+        <span class="experience-refinement-invite">${compact ? summary : "Want to get more specific?"}</span>
+        <span class="experience-refinement-action">${compact ? "" : summary}${selected.length ? ` (${selected.length})` : ""}</span>
+      </summary>
       <div class="experience-refinement-body">
         <div class="experience-refinement-head">
-          <span class="feedback-detail-prompt"><strong>${prompt}</strong> Optional.</span>
+          <span class="feedback-detail-prompt"><strong>${prompt}</strong> Pick up to ${MAX_REFINEMENTS} that mattered most.</span>
           <span class="experience-refinement-limit">${selected.length}/${MAX_REFINEMENTS}</span>
         </div>
+        ${compact ? "" : `<p class="experience-refinement-help">Optional. This helps Tastemake understand your taste more precisely.</p>`}
         <div class="detail-chip-row" role="group" aria-label="${esc(prompt)}">
           ${options.map(({ id, label }) => {
             const pressed = selected.includes(id);

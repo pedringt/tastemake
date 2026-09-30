@@ -13,12 +13,12 @@ import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 // "liked-before", or rating "less"+"tried-disliked" -- everything else, including a bare reaction
 // with no detail, "not-tried"/bookmarked, or "not-interested", is intent, not experience) -- keep
 // this in sync with evidenceKind() in model/evidence.js if that rule table ever changes.
-function isExperienced(feedback) {
-  if (!feedback) return false;
+function positiveAnchorStrength(feedback) {
+  if (!feedback) return 0;
   const { rating, detail } = feedback;
-  if (rating === "more") return detail === "loved-before" || detail === "liked-before";
-  if (rating === "less") return detail === "tried-disliked";
-  return false;
+  if (rating === "more" && detail === "loved-before") return 3;
+  if (rating === "more" && detail === "liked-before") return 1;
+  return 0;
 }
 
 const uniq = (items) => {
@@ -70,12 +70,15 @@ function balanceDomains(items, mode) {
 // from the filter: choosing a Favorite means the user already tried and loved it (see
 // EVIDENCE_KINDS.starter-favorite in model/evidence.js), it was never a feedback-rating action.
 function externalEvidenceItems(state) {
-  const ids = new Set([
-    ...(state.selectedFavorites ?? []),
-    ...Object.entries(state.feedbackByRecommendation ?? {})
-      .filter(([, feedback]) => isExperienced(feedback))
-      .map(([id]) => id)
-  ]);
+  const selectedFavorites = new Set(state.selectedFavorites ?? []);
+  const strengthById = new Map();
+
+  for (const id of selectedFavorites) strengthById.set(id, 3);
+  for (const [id, feedback] of Object.entries(state.feedbackByRecommendation ?? {})) {
+    const strength = positiveAnchorStrength(feedback);
+    if (strength > 0) strengthById.set(id, Math.max(strengthById.get(id) ?? 0, strength));
+  }
+
   const byId = new Map();
   for (const item of Object.values(state.customItems ?? {})) {
     if (item?.provider) byId.set(item.id, item);
@@ -84,13 +87,18 @@ function externalEvidenceItems(state) {
     const item = feedback?.item;
     if (item?.provider && !byId.has(item.id)) byId.set(item.id, item);
   }
-  return [...ids]
-    .map((id) => byId.get(id))
-    .filter(Boolean)
-    .map((item) => ({
-      ...item,
-      seriesExperience: state.feedbackByRecommendation?.[item.id]?.seriesExperience ?? null
-    }));
+
+  return [...strengthById.entries()]
+    .map(([id, anchorStrength]) => {
+      const item = byId.get(id);
+      if (!item) return null;
+      return {
+        ...item,
+        anchorStrength,
+        seriesExperience: state.feedbackByRecommendation?.[item.id]?.seriesExperience ?? null
+      };
+    })
+    .filter(Boolean);
 }
 
 // #144: appends related candidates Tastemake has already canonicalized (genre overlap with the
@@ -330,10 +338,13 @@ async function preferRicherAnchors(items, { env, fetchImpl, query }) {
       }
       return item;
     });
-    if (!metadata.size) return hydrated;
-    return hydrated.sort((a, b) => (metadata.get(b.id)?.completeness ?? -1) - (metadata.get(a.id)?.completeness ?? -1));
+    if (!metadata.size) return hydrated.sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
+    return hydrated.sort((a, b) =>
+      (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0)
+      || (metadata.get(b.id)?.completeness ?? -1) - (metadata.get(a.id)?.completeness ?? -1)
+    );
   } catch {
-    return pool;
+    return pool.sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
   }
 }
 

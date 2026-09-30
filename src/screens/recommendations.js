@@ -124,7 +124,7 @@ function experienceChoices(itemId, feedback) {
 function qualityNote(itemId, feedback) {
   return `
     <div class="recommendation-quality-note">
-      <span class="feedback-detail-prompt">Discovery feedback. Optional.</span>
+      <span class="feedback-detail-prompt"><strong>Was this a useful discovery?</strong> Optional.</span>
       <div class="quality-note-row">
         <button
           class="detail-chip quality-chip"
@@ -132,22 +132,21 @@ function qualityNote(itemId, feedback) {
           data-feedback-item="${itemId}"
           data-feedback-quality="too-obvious"
           aria-pressed="${feedback.quality === "too-obvious"}"
-        >Good fit, but too obvious?</button>
-        ${isPositiveExperience(feedback) ? `
+        >Too obvious</button>
         <button
           class="detail-chip quality-chip"
           type="button"
           data-feedback-item="${itemId}"
           data-feedback-quality="surprised-me"
           aria-pressed="${feedback.quality === "surprised-me"}"
-        >Surprised me</button>` : ""}
-        <span class="quality-note-help">This changes how adventurous future picks are, not what Tastemake thinks you like.</span>
+        >Great discovery</button>
+        <span class="quality-note-help">This helps Tastemake balance familiar picks with more unexpected ones.</span>
       </div>
     </div>`;
 }
 
 function hasQualityNote(feedback) {
-  return isPositiveExperience(feedback) || isExperiencedNegative(feedback);
+  return isPositiveExperience(feedback);
 }
 
 // Defaults to open once there is an answer in it, closed otherwise; an explicit toggle click always
@@ -223,20 +222,13 @@ function mediaArt(item, index) {
       </div>`;
   }
 
-  const shortTitle = item.title
-    .replace(/\b(the|a|an|of|in|and|at|to)\b/gi, "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 3)
-    .join(" ");
-
   return `
     <div class="editorial-art art-${item.id} art-layout-${(index % 4) + 1}" aria-hidden="true">
       <span class="art-kicker">${esc(displayLabel(item))}</span>
       <span class="art-shape art-shape-a"></span>
       <span class="art-shape art-shape-b"></span>
       <span class="art-pattern"></span>
-      <span class="art-title">${item.surprise ? "SURPRISE ME" : esc(shortTitle)}</span>
+      <span class="art-title">${item.surprise ? "SURPRISE ME" : esc(item.title)}</span>
       <span class="art-corner">TM/${String(index + 1).padStart(2, "0")}</span>
     </div>`;
 }

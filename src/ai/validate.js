@@ -189,7 +189,13 @@ export function validatePicks(response, ctx) {
       // citing intent as support, not a majority-vote. validateHypotheses already gets this right
       // with .some() at line 73; this brings picks in line with the same rule.
       else if (cited.some((r) => r.class !== "experienced")) reasons.push("cites intent (not something experienced), which can never count as support");
+      else if (!cited.some((r) => r.polarity > 0)) reasons.push("cites no positive experienced evidence; dislikes can only be contrast, not the reason a pick fits");
       else {
+        const negativeTitles = cited.filter((r) => r.polarity < 0).map((r) => String(r.title ?? "").trim()).filter(Boolean);
+        const mentionsNegativeTitle = negativeTitles.some((title) => p.why.toLowerCase().includes(title.toLowerCase()));
+        if (mentionsNegativeTitle && !/\b(despite|unlike|contrast|rather than|while|although|but)\b/i.test(p.why)) {
+          reasons.push("uses a disliked item as the positive rationale instead of explicit contrast");
+        }
         for (const ref of new Set(p.cites)) {
           const record = evidence.get(ref);
           if (record?.polarity < 0 && (evidenceUse.get(ref) ?? 0) >= 1) {

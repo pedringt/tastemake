@@ -1,27 +1,47 @@
 .experience-refinement {
   margin-top:10px;
-  padding-top:9px;
-  border-top:1px dashed #c9c9dd;
+  padding:10px 11px;
+  border:1px dashed #c9c9dd;
+  border-radius:9px;
+  background:rgba(255,255,255,.55);
 }
 .experience-refinement > summary {
-  width:max-content;
-  max-width:100%;
   cursor:pointer;
   list-style:none;
-  color:var(--muted);
-  font-size:11px;
-  font-weight:700;
+  color:var(--navy);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-height:30px;
 }
 .experience-refinement > summary::-webkit-details-marker { display:none; }
-.experience-refinement[open] > summary { color:var(--navy); }
-.experience-refinement-body { margin-top:8px; }
+.experience-refinement-invite {
+  font-size:11px;
+  font-weight:800;
+}
+.experience-refinement-action {
+  color:var(--note-ink,#5749bf);
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.experience-refinement-action::before { content:"+ "; }
+.experience-refinement[open] .experience-refinement-action::before { content:"− "; }
+.experience-refinement-body { margin-top:9px; padding-top:9px; border-top:1px dotted #d6d6e7; }
 .experience-refinement-head {
   display:flex;
   align-items:baseline;
   justify-content:space-between;
   gap:10px;
 }
-.experience-refinement-head .feedback-detail-prompt { margin-bottom:7px; }
+.experience-refinement-head .feedback-detail-prompt { margin-bottom:5px; }
+.experience-refinement-help {
+  margin:0 0 8px;
+  color:var(--faint,#747994);
+  font-size:10px;
+  line-height:1.4;
+}
 .experience-refinement-limit {
   color:var(--faint,#747994);
   font-size:10px;
@@ -43,5 +63,12 @@
   opacity:.42;
   cursor:not-allowed;
 }
-.experience-refinement.is-compact { margin-top:12px; }
+.experience-refinement.is-compact {
+  margin-top:12px;
+  padding:8px 9px;
+  background:transparent;
+}
+.experience-refinement.is-compact > summary { justify-content:flex-start; }
+.experience-refinement.is-compact .experience-refinement-invite { color:var(--note-ink,#5749bf); }
+.experience-refinement.is-compact .experience-refinement-action { display:none; }
 .library-disliked .experience-refinement { margin:10px 0 4px; }
