@@ -9,7 +9,7 @@
 // index.html instead, which needs no module resolution.
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
-import { bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
 import { migrateStarterFavorites } from "./model/library.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderBrowse } from "./screens/browse.js";
