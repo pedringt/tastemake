@@ -74,4 +74,14 @@ assert.deepEqual(restored.feedbackByRecommendation[negative.item.id].refinements
 const html = buildHtmlExport(state, "2026-09-30T00:00:00.000Z");
 assert(html.includes("Gameplay") && html.includes("Difficulty / challenge"), "readable export includes refinement labels");
 
+const favoriteState = {
+  selectedFavorites: new Set(),
+  libraryFavorites: new Set([movie.id]),
+  feedbackByRecommendation: { [movie.id]: { item: movie, rating: "more", detail: "loved-before", refinements: [] } },
+  recommendationSets: [], seenItemIds: [], patternStatements: [], areas: {}, curveball: true, recommendationFilter: "all"
+};
+const favoriteEvidence = evidenceRecords(favoriteState)[0];
+assert.equal(favoriteEvidence.kind, "experienced-favorite", "post-onboarding Favorite remains distinct from Loved");
+assert(favoriteEvidence.weight > 2, "Favorite evidence weighs more than Loved");
+
 console.log("refinement tests passed");
