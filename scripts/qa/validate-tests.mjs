@@ -6,7 +6,7 @@
 //   node scripts/qa/validate-tests.mjs
 
 import { buildContext } from "../../src/ai/context.js";
-import { validateHypotheses } from "../../src/ai/validate.js";
+import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
 import { hypotheses, recommendations, followUpPool } from "./fixtures/catalog.js";
 import { emptyState, react } from "../evals/fixtures.mjs";
 
@@ -56,6 +56,47 @@ function proposal(refs) {
   const result = validateHypotheses({ hypotheses: [proposal(refs)] }, ctx);
   eq("'not me' rejects outright (context qualifier does not)", result.accepted.length, 0);
   check("'not me' rejection names the reason", result.rejected[0]?.reasons.some((r) => /not them/.test(r)), result.rejected[0]?.reasons.join(" | "));
+}
+
+
+{
+  const candidate = { id:"candidate", title:"Alien: Earth", type:"tv", domains:["tv"], hypotheses:[] };
+  const ctx = {
+    evidence:[
+      { ref:"ev:liked", itemId:"liked", title:"The X-Files", class:"experienced", polarity:1, domains:["tv"] },
+      { ref:"ev:disliked", itemId:"disliked", title:"Marvel's Agents of S.H.I.E.L.D.", class:"experienced", polarity:-1, domains:["tv"] }
+    ],
+    candidates:[candidate],
+    statements:[],
+    curveball:true
+  };
+
+  const negativeOnly = validatePicks({ picks:[{
+    itemId:"candidate",
+    why:"From Marvel's Agents of S.H.I.E.L.D., this is the next thing to try.",
+    cites:["ev:disliked"],
+    tests:null,
+    kind:"pick"
+  }]}, ctx);
+  eq("pick cannot use a dislike as its only positive support", negativeOnly.accepted.length, 0);
+
+  const negativeAsReason = validatePicks({ picks:[{
+    itemId:"candidate",
+    why:"Marvel's Agents of S.H.I.E.L.D. makes Alien: Earth a good fit.",
+    cites:["ev:liked","ev:disliked"],
+    tests:null,
+    kind:"pick"
+  }]}, ctx);
+  eq("pick cannot center a disliked title without explicit contrast", negativeAsReason.accepted.length, 0);
+
+  const explicitContrast = validatePicks({ picks:[{
+    itemId:"candidate",
+    why:"Unlike Marvel's Agents of S.H.I.E.L.D., this leans on the darker sci-fi you liked in The X-Files.",
+    cites:["ev:liked","ev:disliked"],
+    tests:null,
+    kind:"pick"
+  }]}, ctx);
+  eq("a dislike may appear as explicit contrast when positive evidence supports the pick", explicitContrast.accepted.length, 1);
 }
 
 console.log(`validate tests: ${passed} passed, ${failures.length} failed`);
