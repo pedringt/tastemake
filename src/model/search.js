@@ -114,17 +114,46 @@ export function findExisting(state, itemOrTitle) {
 
 const slug = (text) => normalize(text).replace(/ /g, "-").slice(0, 60);
 
-export function makeCustomItem(title, mediumKey) {
+export function makeCustomItem(title, mediumKey, creator = "") {
   const medium = MEDIA[mediumKey] ?? MEDIA.movie;
   const clean = String(title).trim().replace(/\s+/g, " ").slice(0, 80);
+  const cleanCreator = String(creator).trim().replace(/\s+/g, " ").slice(0, 120);
   return {
     id: `custom-${slug(clean)}-${mediumKey}`,
     title: clean,
     type: MEDIA[mediumKey] ? mediumKey : "movie",
     domains: medium.domains,
+    by: cleanCreator || null,
     about: "Added by you.",
-    custom: true
+    custom: true,
+    resolutionStatus: "pending"
   };
+}
+
+export function applyResolvedCatalogItem(state, customId, resolved) {
+  const current = state.customItems?.[customId] ?? state.feedbackByRecommendation?.[customId]?.item;
+  if (!current?.custom || !resolved?.provider || !resolved?.providerId) return null;
+  const merged = {
+    ...current,
+    ...resolved,
+    id: customId,
+    custom: true,
+    catalogId: resolved.id,
+    resolutionStatus: "resolved",
+    resolvedAt: Date.now()
+  };
+  state.customItems[customId] = merged;
+  if (state.feedbackByRecommendation?.[customId]) state.feedbackByRecommendation[customId].item = merged;
+  return merged;
+}
+
+export function markCustomResolution(state, customId, status) {
+  const current = state.customItems?.[customId] ?? state.feedbackByRecommendation?.[customId]?.item;
+  if (!current?.custom) return null;
+  const merged = { ...current, resolutionStatus: status };
+  state.customItems[customId] = merged;
+  if (state.feedbackByRecommendation?.[customId]) state.feedbackByRecommendation[customId].item = merged;
+  return merged;
 }
 
 // Where this item stands in Tastemake right now (shown in results and in the action sheet).
