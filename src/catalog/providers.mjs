@@ -42,7 +42,7 @@ function searchRelevance(title, query, popularity = 0) {
   // Within the same textual match class, prefer the provider's better-known/canonical result.
   // This is especially useful when a title exists as both a flagship show and a minor documentary,
   // or when a game search returns multiple editions of the same work.
-  return score - Math.max(0, gotWords.length - wantedWords.length) * 5 + Math.log10(Math.max(1, Number(popularity) || 0) + 1);
+  return score - Math.max(0, gotWords.length - wantedWords.length) * 0.25 + Math.log10(Math.max(1, Number(popularity) || 0) + 1);
 }
 
 const uniq = (items) => {
