@@ -1,4 +1,5 @@
 import { displayLabel } from "../data/domains.js";
+import { refinementRecords } from "./refinements.js";
 
 export const BACKUP_VERSION = 1;
 
@@ -88,9 +89,10 @@ function htmlEscape(value) {
     .replaceAll("'", "&#39;");
 }
 
-function itemRow(item, status = "") {
+function itemRow(item, status = "", refinementLabels = []) {
   const meta = [displayLabel(item), item?.year, item?.by].filter(Boolean).map(htmlEscape).join(" · ");
-  return `<li><strong>${htmlEscape(item?.title || "Untitled")}</strong>${meta ? `<span>${meta}</span>` : ""}${status ? `<em>${htmlEscape(status)}</em>` : ""}</li>`;
+  const why = refinementLabels.length ? `<span>Why: ${refinementLabels.map(htmlEscape).join(", ")}</span>` : "";
+  return `<li><strong>${htmlEscape(item?.title || "Untitled")}</strong>${meta ? `<span>${meta}</span>` : ""}${status ? `<em>${htmlEscape(status)}</em>` : ""}${why}</li>`;
 }
 
 function listSection(title, rows, emptyText) {
@@ -152,7 +154,7 @@ export function buildHtmlExport(state, generatedAt = new Date().toISOString()) {
 <main>
 <header><h1>My Tastemake</h1><p class="meta">Exported ${htmlEscape(exported)}</p></header>
 ${listSection("Saved", saved.map((entry) => itemRow(entry.item)), "Nothing saved.")}
-${listSection("Tried", tried.map((entry) => itemRow(entry.item, reactionLabel(entry))), "Nothing tried yet.")}
+${listSection("Tried", tried.map((entry) => itemRow(entry.item, reactionLabel(entry), refinementRecords(entry).map((row) => row.label))), "Nothing tried yet.")}
 ${listSection("Favorites", favorites.map((item) => itemRow(item)), "No favorites recorded.")}
 <section><h2>Taste Profile</h2>${patternHtml}</section>
 ${correctedHtml}
