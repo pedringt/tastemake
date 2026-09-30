@@ -9,6 +9,7 @@ import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
 import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
+import { pathForFeedback } from "../model/reaction-flow.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -60,9 +61,7 @@ export function reactionLabel(feedback) {
 function experiencePath(itemId, feedback) {
   const explicit = state.recommendationExperienceChoice?.[itemId];
   if (explicit) return explicit;
-  if (isExperienced(feedback)) return "tried";
-  if (isBookmarked(feedback) || isDeclined(feedback)) return "not-tried";
-  return null;
+  return pathForFeedback(feedback);
 }
 
 function experienceButton(itemId, value, label, pressed) {
