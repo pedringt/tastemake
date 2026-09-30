@@ -1,5 +1,4 @@
 import { displayLabel } from "../data/domains.js";
-import { evidenceKind, isExperienced, isSaved } from "./evidence.js";
 
 export const BACKUP_VERSION = 1;
 
@@ -47,8 +46,28 @@ export function parseBackupText(text) {
   return state;
 }
 
+function reactionKind(feedback) {
+  if (!feedback) return "unknown";
+  if (feedback.rating === "more" && feedback.detail === "loved-before") return "experienced-strong-positive";
+  if (feedback.rating === "more" && feedback.detail === "liked-before") return "experienced-positive";
+  if (feedback.rating === "less" && feedback.detail === "tried-disliked") return "experienced-negative";
+  if (feedback.rating === "not-tried" && feedback.detail === "bookmarked") return "saved";
+  if (feedback.rating === "less" && feedback.detail === "not-interested") return "intent-declined";
+  if (feedback.rating === "more") return "intent-positive";
+  if (feedback.rating === "less") return "intent-negative";
+  return "unknown";
+}
+
+function isExperienced(feedback) {
+  return ["experienced-strong-positive", "experienced-positive", "experienced-negative"].includes(reactionKind(feedback));
+}
+
+function isSaved(feedback) {
+  return reactionKind(feedback) === "saved";
+}
+
 function reactionLabel(feedback) {
-  const kind = evidenceKind(feedback);
+  const kind = reactionKind(feedback);
   return ({
     "experienced-strong-positive": "Loved",
     "experienced-positive": "Liked",
