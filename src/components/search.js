@@ -439,7 +439,7 @@ export function initSearch({ onChange, announce, goTo }) {
       return;
     }
     // Never create a second record for something already here (duplicate evidence): open the existing one.
-    const existing = findExisting(state, { title, type: medium });
+    const existing = findExisting(state, { title, type: medium, by: creator || null });
     const knownExisting = existing && (
       state.selectedFavorites.has(existing.id)
       || Boolean(state.feedbackByRecommendation[existing.id])
