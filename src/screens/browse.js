@@ -53,7 +53,7 @@ function browseCard(item) {
             <button type="button" class="button ${favorite ? "button-quiet" : "button-secondary"} browse-favorite" data-browse-favorite="${favorite ? "remove" : "add"}" data-browse-item="${item.id}" aria-pressed="${favorite}">
               ${favorite ? "★ Favorite" : "☆ Add to Favorites"}
             </button>
-            <span>Favorites are the strongest starting signal.</span>
+            <span>Favorites are the things you love most.</span>
           </div>` : ""}
       </div>
     </article>`;
@@ -71,7 +71,7 @@ export function renderBrowse() {
         <div>
           <p class="kicker">Browse</p>
           <h1>Need a little <span class="marker-word">inspiration?</span></h1>
-          <p class="lede">Browse things you might recognize, then tell Tastemake what you've actually tried. Looking around never counts as taste evidence.</p>
+          <p class="lede">Browse things you might recognize, then react when something is familiar.</p>
         </div>
         <div class="browse-progress" aria-live="polite">
           <strong>${state.onboarded ? `${count} favorites` : `${count} of 4 favorites`}</strong>
@@ -108,7 +108,7 @@ export function renderBrowse() {
 
       <div class="browse-results-head">
         <h2>${esc(genres.find((genre) => genre.id === state.browseGenre)?.label ?? "Browse")}</h2>
-        <p>Real catalog items. Nothing changes until you choose an action.</p>
+        <p>Real catalog items. React only when something is familiar.</p>
       </div>
 
       ${state.browseError && !state.browseItems.length ? `
