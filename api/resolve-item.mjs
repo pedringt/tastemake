@@ -8,7 +8,7 @@ const normalize = (value) => String(value ?? "")
   .replace(/[^a-z0-9]+/g, " ")
   .trim();
 
-function bestExactMatch(items, title, type, creator = "") {
+export function bestExactMatch(items, title, type, creator = "") {
   const wantedTitle = normalize(title);
   const wantedCreator = normalize(creator);
   const exact = (items ?? []).filter((item) => item?.type === type && normalize(item.title) === wantedTitle);
