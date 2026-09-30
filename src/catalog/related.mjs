@@ -1,7 +1,7 @@
 import { enrichCanonicalItemWriteBehind, igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { cachedValue } from "../server/cache.mjs";
-import { canonicalizeWriteBehind, lookupMetadataCompleteness, relatedCanonicalItems } from "./canonical-store.mjs";
+import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 
 // Deliberately NOT imported from model/evidence.js: this module sits in a real circular import
@@ -240,7 +240,7 @@ async function openLibraryRelated(item, env, fetchImpl, queryImpl) {
           year: storeItem.year,
           artwork: null,
           genres: storeItem.genres ?? [],
-          providerMeta: { seriesKey: null },
+          providerMeta: { seriesKey: storeItem.factual?.seriesKey ?? null, isbns: storeItem.factual?.isbns ?? [] },
           sourceUrl: storeItem.providerId ? `https://openlibrary.org/works/${storeItem.providerId}` : "https://openlibrary.org/",
           relationStrength: strength,
           fromCanonicalStore: true
@@ -312,13 +312,26 @@ function shuffled(items) {
 // stable sort keeps items tied on completeness in their shuffled relative order, so ties rotate
 // between rounds instead of being pinned), and gives genuine rotation across the whole evidence pool
 // when completeness data isn't available, which real logs show is common.
-async function preferRicherAnchors(items, { env, fetchImpl }) {
+async function preferRicherAnchors(items, { env, fetchImpl, query }) {
   if (!items.length) return items;
   const pool = shuffled(items);
   try {
-    const completeness = await lookupMetadataCompleteness(pool, { env });
-    if (!completeness.size) return pool;
-    return [...pool].sort((a, b) => (completeness.get(b.id) ?? -1) - (completeness.get(a.id) ?? -1));
+    const metadata = await lookupCanonicalAnchorMetadata(pool, { env, query });
+    const hydrated = pool.map((item) => {
+      const factual = metadata.get(item.id)?.factual ?? {};
+      if (item.type === "book" && factual.seriesKey) {
+        return { ...item, providerMeta: { ...(item.providerMeta ?? {}), seriesKey: factual.seriesKey, isbns: item.providerMeta?.isbns ?? factual.isbns ?? [] } };
+      }
+      if (item.type === "movie" && factual.collectionId) {
+        return { ...item, providerMeta: { ...(item.providerMeta ?? {}), collectionId: factual.collectionId } };
+      }
+      if (item.type === "game" && factual.franchiseId) {
+        return { ...item, providerMeta: { ...(item.providerMeta ?? {}), franchiseId: factual.franchiseId } };
+      }
+      return item;
+    });
+    if (!metadata.size) return hydrated;
+    return hydrated.sort((a, b) => (metadata.get(b.id)?.completeness ?? -1) - (metadata.get(a.id)?.completeness ?? -1));
   } catch {
     return pool;
   }
@@ -326,7 +339,7 @@ async function preferRicherAnchors(items, { env, fetchImpl }) {
 
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
   const mode = state.recommendationFilter ?? "all";
-  const allEvidence = await preferRicherAnchors(externalEvidenceItems(state), { env, fetchImpl });
+  const allEvidence = await preferRicherAnchors(externalEvidenceItems(state), { env, fetchImpl, query: queryImpl });
   const evidenceItems = (mode === "all"
     ? balanceDomains(allEvidence, "all")
     : allEvidence.filter((item) => item.domains?.includes(mode))
