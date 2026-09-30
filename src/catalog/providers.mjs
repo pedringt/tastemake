@@ -18,16 +18,24 @@ const normalizeSearch = (value) => String(value ?? "")
   .replace(/[^a-z0-9]+/g, " ")
   .trim();
 
+const stripLeadingArticle = (value) => normalizeSearch(value).replace(/^(the|a|an)\s+/, "");
+
 function searchRelevance(title, query, popularity = 0) {
   const wanted = normalizeSearch(query);
   const got = normalizeSearch(title);
+  const wantedCore = stripLeadingArticle(query);
+  const gotCore = stripLeadingArticle(title);
   if (!wanted || !got) return 0;
   const wantedWords = wanted.split(" ");
   const gotWords = got.split(" ");
   let score = 0;
-  if (got === wanted) score = 10_000;
-  else if (got.startsWith(wanted)) score = 7_000;
-  else if (got.includes(wanted)) score = 5_000;
+  if (got === wanted || (wantedCore && gotCore === wantedCore)) score = 10_000;
+  // Treat canonical title-family matches as near-exact. This puts things like
+  // "The Lord of the Rings: The Fellowship of the Ring" near a "lord of the rings"
+  // query instead of below obscure titles that merely happen to have a cleaner prefix.
+  else if (wantedCore && (gotCore.startsWith(`${wantedCore} `) || gotCore.startsWith(`${wantedCore}:`) || wantedCore.startsWith(`${gotCore} `))) score = 8_500;
+  else if (got.startsWith(wanted) || (wantedCore && gotCore.startsWith(wantedCore))) score = 7_000;
+  else if (got.includes(wanted) || (wantedCore && gotCore.includes(wantedCore))) score = 5_000;
   else if (wantedWords.every((word) => gotWords.some((candidate) => candidate.startsWith(word)))) score = 3_000;
   else if (wantedWords.every((word) => gotWords.includes(word))) score = 2_000;
 
@@ -393,17 +401,19 @@ export async function searchCatalog(query, { domain = "all", env = process.env, 
     if (available) buckets.push(rows);
   }
 
-  // Interleave provider results so "All" really shows Watch + Read + Play instead of
-  // filling the first page with the providers that happened to be concatenated first.
-  const interleaved = [];
-  const depth = Math.max(0, ...buckets.map((rows) => rows.length));
-  for (let i = 0; i < depth; i += 1) {
-    for (const rows of buckets) if (rows[i]) interleaved.push(rows[i]);
-  }
+  // "All" is a relevance-ranked search, not a provider carousel. Rank the combined
+  // result set globally so obvious/canonical matches rise to the top regardless of
+  // whether they came from TMDb, Open Library, or IGDB. Provider diversity still
+  // emerges naturally farther down instead of being forced ahead of stronger matches.
+  const combined = uniq(buckets.flat());
+  combined.sort((a, b) =>
+    searchRelevance(b.title, q) - searchRelevance(a.title, q)
+    || a.title.localeCompare(b.title)
+  );
 
   const configured = settled.filter(([, , , isConfigured]) => isConfigured);
   const degraded = configured.length === 0 || configured.every(([, , , , available]) => !available);
-  const results = uniq(interleaved).slice(0, 24);
+  const results = combined.slice(0, 24);
 
   // #135 foundation: start building up the canonical item store in the background from whatever
   // real provider items search already fetched. This is write-behind only (nothing here is
@@ -414,4 +424,4 @@ export async function searchCatalog(query, { domain = "all", env = process.env, 
   return { items: results, providers, degraded };
 }
 
-export { igdbToken, igdbItem, openLibraryItem, tmdbItem };
+export { igdbToken, igdbItem, openLibraryItem, tmdbItem, searchRelevance };
