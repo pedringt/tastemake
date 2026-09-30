@@ -15,10 +15,11 @@ import { refinementRecords } from "./refinements.js";
 // See docs/evidence-contract.md for the full table and the rules around it.
 
 export const EVIDENCE_KINDS = {
+  "experienced-favorite": { class: "experienced", polarity: 1, taste: 3 },
   "experienced-strong-positive": { class: "experienced", polarity: 1, taste: 2 },
   "experienced-positive": { class: "experienced", polarity: 1, taste: 1.25 },
   "experienced-negative": { class: "experienced", polarity: -1, taste: -2 },
-  "starter-favorite": { class: "experienced", polarity: 1, taste: 2 },   // choosing a Favorite means the user already tried and loved it
+  "starter-favorite": { class: "experienced", polarity: 1, taste: 3 },   // choosing a Favorite means the user already tried and loved it
   "intent-positive": { class: "intent", polarity: 1, taste: 0 },
   "intent-negative": { class: "intent", polarity: -1, taste: 0 },
   "intent-declined": { class: "intent", polarity: -1, taste: 0 },          // "Not interested": not a dislike
@@ -70,9 +71,9 @@ export const isDeclined = (feedback) => kindOf(feedback) === "intent-declined"; 
 
 // Whether a reaction counts as taste evidence at all (the #27 rule, in one place).
 export const countsAsTaste = (feedback) => tasteWeight(feedback) !== 0;
-// A record from evidenceRecords() additionally has a "starter-favorite" kind, which is experienced
-// (the user told Tastemake this) but never counts as taste by itself (weight 0). Records already carry
-// `countsAsTaste`/`class`; this predicate is for records, mirroring the feedback-level one above.
+// Records from evidenceRecords() can also be starter/durable Favorites. Those are experienced taste
+// evidence and deliberately carry more weight than an ordinary Loved reaction. Records already carry
+// `countsAsTaste`/`class`; this predicate mirrors the feedback-level one above.
 export const recordCountsAsTaste = (record) => record.weight !== 0;
 
 function sourceOf(feedback) {
@@ -89,12 +90,19 @@ export function evidenceRecords(state) {
     .map((item) => record(item, "starter-favorite", { source: "favorites" }));
   const reactions = Object.values(state.feedbackByRecommendation)
     .filter((feedback) => !state.selectedFavorites.has(feedback.item.id))
-    .map((feedback) => record(feedback.item, evidenceKind(feedback), {
+    .map((feedback) => {
+      // A starred Favorite is a stronger statement than Loved. Keep that distinction after
+      // onboarding migration instead of flattening both to experienced-strong-positive.
+      const kind = state.libraryFavorites?.has(feedback.item.id) && isStrongPositive(feedback)
+        ? "experienced-favorite"
+        : evidenceKind(feedback);
+      return record(feedback.item, kind, {
       source: sourceOf(feedback),
       wasSaved: Boolean(feedback.wasBookmarked),
       refinements: refinementRecords(feedback),
       note: feedback.quality ?? null   // discovery notes (Too predictable / Surprised me): never taste
-    }));
+      });
+    });
   return [...starters, ...reactions];
 }
 

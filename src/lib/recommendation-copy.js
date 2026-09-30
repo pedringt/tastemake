@@ -26,3 +26,13 @@ export function sanitizeRecommendationCopy(text) {
   if (!/[\p{L}\p{N}]/u.test(value)) return "";
   return value;
 }
+
+
+export function readableRecommendationCopy(reason, item = {}) {
+  const cleaned = sanitizeRecommendationCopy(reason);
+  if (cleaned) return cleaned;
+  if (item?.surprise || item?.ai?.kind === "curveball") {
+    return "A deliberate curveball to test the edges of what fits your taste.";
+  }
+  return "A recommendation based on the patterns in what you’ve loved, liked, and disliked so far.";
+}

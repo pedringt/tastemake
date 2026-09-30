@@ -7,7 +7,7 @@ import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
-import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
+import { readableRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
 
@@ -329,7 +329,7 @@ function recommendationCard(item, index, total) {
             ${favoriteToggle(item.id, saved)}
           </div>` : ""}
 
-        <p class="editorial-rationale">${esc(truncateCopy(sanitizeRecommendationCopy(item.reason), RATIONALE_MAX_CHARS))}</p>
+        <p class="editorial-rationale">${esc(truncateCopy(readableRecommendationCopy(item.reason, item), RATIONALE_MAX_CHARS))}</p>
         <p class="editorial-about">${esc(truncateCopy(item.about, ABOUT_MAX_CHARS))}</p>
 
         <div class="editorial-why">

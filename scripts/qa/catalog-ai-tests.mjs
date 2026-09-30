@@ -612,8 +612,8 @@ eq("new revision supersedes the prior revision", historyState.hypothesisHistory[
   const candidates = Array.from({length:4},(_,i)=>({id:`pick-${i}`,title:`Pick ${i}`,type:"tv",domains:["tv"],hypotheses:[]}));
   const validationCtx = {...baseCtx,candidates};
   const response = {picks:[
-    {itemId:"pick-0",why:"Positive reason one.",cites:["ev:tv-dislike-0"],tests:null,kind:"pick"},
-    {itemId:"pick-1",why:"Positive reason two.",cites:["ev:tv-dislike-0"],tests:null,kind:"pick"},
+    {itemId:"pick-0",why:"Positive reason one, unlike Disliked TV 0.",cites:["ev:tv-like-1","ev:tv-dislike-0"],tests:null,kind:"pick"},
+    {itemId:"pick-1",why:"Positive reason two, unlike Disliked TV 0.",cites:["ev:tv-like-2","ev:tv-dislike-0"],tests:null,kind:"pick"},
     {itemId:"pick-2",why:"Positive reason three.",cites:["ev:tv-like-0"],tests:null,kind:"pick"},
     {itemId:"pick-3",why:"Positive reason four.",cites:["ev:tv-like-0"],tests:null,kind:"pick"}
   ]};

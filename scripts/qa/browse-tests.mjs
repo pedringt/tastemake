@@ -116,6 +116,10 @@ eq("merely browsing creates no evidence", Object.keys(untouched.feedbackByRecomm
 for (const id of ["1", "2", "3", "4"]) untouched.selectedFavorites.add(id);
 check("four Favorites unlock the Browse recommendation CTA condition", browseReadyForRecommendations(untouched));
 
+const onboarded = makeState();
+onboarded.onboarded = true;
+check("onboarded Browse stays recommendation-ready after starter migration", browseReadyForRecommendations(onboarded));
+
 console.log(`browse tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((failure) => console.log(`  x ${failure}`));
 process.exit(failures.length ? 1 : 0);
