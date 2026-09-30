@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { buildBackup, buildMarkdownExport, parseBackupText } from "../../src/model/export.js";
+import { buildBackup, buildHtmlExport, htmlFileName, parseBackupText } from "../../src/model/export.js";
 import { renderArtwork } from "../../src/components/artwork.js";
 
 let passed = 0;
@@ -46,11 +46,14 @@ const restored=parseBackupText(JSON.stringify(backup));
 check("restore rebuilds Set fields",restored.selectedFavorites instanceof Set&&restored.selectedFavorites.has("movie-1")&&restored.setupAreas instanceof Set);
 check("restore keeps profile and library data",restored.modelHypotheses.length===2&&restored.feedbackByRecommendation["book-1"].detail==="bookmarked");
 
-const md=buildMarkdownExport(state,"2026-09-30T12:00:00.000Z");
-check("readable export includes Saved",md.includes("## Saved")&&md.includes("Saved Book"));
-check("readable export includes Tried and reaction",md.includes("## Tried")&&md.includes("Liked Movie")&&md.includes("**Liked**"));
-check("readable export includes active Taste Profile",md.includes("## Taste Profile")&&md.includes("Active pattern"));
-check("readable export includes corrected patterns",md.includes("## Corrected patterns")&&md.includes("Rejected pattern"));
+const html=buildHtmlExport(state,"2026-09-30T12:00:00.000Z");
+check("readable export is a standalone HTML document",html.startsWith("<!doctype html>")&&html.includes("<title>My Tastemake</title>"));
+check("readable export includes Saved",html.includes("<h2>Saved</h2>")&&html.includes("Saved Book"));
+check("readable export includes Tried and reaction",html.includes("<h2>Tried</h2>")&&html.includes("Liked Movie")&&html.includes(">Liked<"));
+check("readable export includes active Taste Profile",html.includes("<h2>Taste Profile</h2>")&&html.includes("Active pattern"));
+check("readable export includes corrected patterns",html.includes("<h2>Corrected patterns</h2>")&&html.includes("Rejected pattern"));
+check("readable export filename uses html",htmlFileName(new Date("2026-09-30T12:00:00.000Z"))==="my-tastemake-2026-09-30.html");
+check("readable export escapes user content",buildHtmlExport({...state,feedbackByRecommendation:{"x":{...saved,item:{...saved.item,title:"<script>alert(1)</script>"}}}}).includes("&lt;script&gt;alert(1)&lt;/script&gt;"));
 
 let invalid=false;
 try{parseBackupText('{"hello":"world"}');}catch{invalid=true;}
