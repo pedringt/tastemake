@@ -378,7 +378,7 @@ function renderPreservingPatternPosition(patternId, focusSelector = null) {
     if (afterNext) {
       const afterTop = afterNext.getBoundingClientRect().top;
       window.scrollBy({ top: afterTop - nextTop, left: 0, behavior: "auto" });
-      restoreFocus(afterNext.querySelector("button") || ".corrected-patterns summary");
+      restoreFocus(null, afterNext.querySelector("button") || afterNext);
       return;
     }
   }
