@@ -171,7 +171,7 @@ export function initSearch({ onChange, announce, goTo }) {
     }
 
     const on = (key) => status.key === key;
-    return `${head}${starterBlock}
+    return `${head}
       <div class="search-groups">
         <div class="search-group" role="group" aria-label="I've tried it">
           <span class="search-group-label">I've tried it</span>
