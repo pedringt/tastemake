@@ -942,11 +942,12 @@ initSearch({
   goTo(screen) { navigate(screen); }
 });
 
-// First visit is deliberately short: choose a look -> basic setup -> choose Favorites.
+// First visit is deliberately short: name -> Favorites -> Recommendations.
+// Look stays available as an optional preference instead of competing with the taste-learning path.
 // Direct links still open their requested screen when accessible. #117: a returning user hitting
 // "/" (or an unrecognized path) lands in the ongoing product, not back through first-run setup.
 const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
-state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "look");
+state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "setup");
 if (state.screen === "library") state.libraryView = "saved";
 markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });

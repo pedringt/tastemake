@@ -27,7 +27,7 @@ function normalizeHypothesis(h, index, state) {
     crossDomain: h.crossDomain ?? "none",
     context: h.context ?? null,
     aiGenerated: true,
-    provenance: "Live AI interpretation, validated against your experienced evidence."
+    provenance: "Based on your reactions so far."
   };
 }
 

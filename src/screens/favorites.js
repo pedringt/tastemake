@@ -45,7 +45,7 @@ export function renderFavorites() {
         <div>
           <p class="kicker">Choose your favorites</p>
           <h1>Start with something you <span class="marker-word">love.</span></h1>
-          <p class="lede">Pick books, movies, shows, or games you've already tried and loved. Four favorites are enough for Tastemake to make its first guesses.</p>
+          <p class="lede">Pick four books, movies, shows, or games you genuinely love. That is enough to get your first recommendations.</p>
           <button class="button button-primary starter-search" type="button" data-action="open-search">Search for something you love</button>
           <p class="starter-browse-row"><button class="button starter-browse-button" type="button" data-action="browse">Can't think of one? Browse instead →</button></p>
         </div>
@@ -58,7 +58,7 @@ export function renderFavorites() {
 
       <div class="starter-progress" aria-live="polite">
         <strong>${count} of 4</strong>
-        <span>${count >= 4 ? "Enough to start." : "Add a few favorites to teach Tastemake where to begin."}</span>
+        <span>${count >= 4 ? "Enough to start." : "Add a few favorites to give Tastemake a starting point."}</span>
       </div>
 
       <h2 class="visually-hidden">Your favorites</h2>

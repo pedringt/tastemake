@@ -4,6 +4,7 @@
 .setup-head h1 { margin-bottom:12px; }
 .setup-next { flex:none; min-width:120px; position:sticky; top:12px; z-index:4; }
 .setup-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+.setup-grid.is-first-run { grid-template-columns:minmax(0,520px); }
 .setup-card { min-width:0; padding:20px; border:2px solid var(--navy); border-radius:16px; background:#fff; box-shadow:calc(5px * var(--hard)) calc(5px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12)); }
 .setup-step { margin:0 0 8px; color:var(--accent-text,var(--pink)); font-size:11px; font-weight:700; letter-spacing:.12em; }
 .setup-card h2 { margin:0 0 14px; font-size:clamp(22px,2.5vw,30px); }

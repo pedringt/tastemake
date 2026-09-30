@@ -36,10 +36,10 @@ eq("/library still maps to the library screen", screenFromPath("/library"), "lib
 eq("legacy /try-next link still resolves (into Library, which defaults to Saved)", screenFromPath("/try-next"), "library");
 eq("legacy /bookmarks link still resolves", screenFromPath("/bookmarks"), "library");
 
-// #117: a fresh (not-yet-onboarded) visitor hitting "/" still starts at Look/setup; a returning
-// (already-onboarded) visitor hitting "/" lands in the ongoing product instead of first-run setup.
-eq("fresh visit to \"/\" still starts at Look", screenFromPath("/"), "look");
-eq("returning visit to \"/\" lands on Recommendations, not Look", screenFromPath("/", { onboarded: true }), "recommendations");
+// #117/#197: a fresh visitor starts at the lightweight setup; a returning visitor lands in
+// the ongoing product instead of first-run setup.
+eq("fresh visit to \"/\" starts at Setup", screenFromPath("/"), "setup");
+eq("returning visit to \"/\" lands on Recommendations, not Setup", screenFromPath("/", { onboarded: true }), "recommendations");
 eq("an unrecognized path for a fresh visitor still falls back to Favorites (onboarding)", screenFromPath("/nonsense"), "favorites");
 eq("an unrecognized path for a returning visitor falls back to Recommendations, not Favorites", screenFromPath("/nonsense", { onboarded: true }), "recommendations");
 eq("a direct link to /favorites still resolves for a returning visitor (still reachable, just not the default)", screenFromPath("/favorites", { onboarded: true }), "favorites");

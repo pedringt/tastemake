@@ -110,7 +110,7 @@ function experienceChoices(itemId, feedback) {
         ${outcomeButton(itemId, "save", "Save", isBookmarked(feedback))}
         ${outcomeButton(itemId, "not-interested", "Not interested", isDeclined(feedback))}
       </div>
-      <span class="quality-note-help">These are intent only. They do not become Taste Profile evidence.</span>
+      <span class="quality-note-help">Save it for later, or skip it.</span>
     </div>`;
 }
 
@@ -394,14 +394,14 @@ function renderAiStatus() {
         <div>
           <span class="refresh-kicker">Checking the evidence</span>
           <strong>Tastemake is building the next set.</strong>
-          <p>${state.aiMessage || "Looking at what you have actually tried, not just what caught your eye."}</p>
+          <p>${state.aiMessage || "Finding a fresh set from what you have told Tastemake so far."}</p>
         </div>
       </div>`;
   }
   if (!state.aiMessage) return "";
-  if (state.aiSource === "model") return `<p class="ai-inline-status"><strong>Live AI:</strong> ranked this set and passed validation.</p>`;
-  if (state.aiSource === "catalog") return `<p class="ai-inline-status"><strong>Catalog fallback:</strong> live AI was not used for this set.</p>`;
-  return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> no demo picks were substituted.</p>`;
+  if (state.aiSource === "model") return "";
+  if (state.aiSource === "catalog") return `<p class="ai-inline-status">Using catalog matches for this set.</p>`;
+  return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> Tastemake could not build a trustworthy set.</p>`;
 }
 // #93/2026-09-28: the ongoing-loop action. Available as soon as a set exists — not gated behind
 // rating any card, let alone every card, in the current set (see canKeepDiscovering).
@@ -486,8 +486,8 @@ export function renderRecommendations() {
           <p class="kicker">${roundTwo ? "Fresh picks" : "For you right now"}</p>
           <h1>${roundTwo ? "Okay, that changed things." : "Things worth your time."}</h1>
           <p class="lede">${roundTwo
-            ? "A new set shaped by what you just told Tastemake. Each pick is still a test, including the misses."
-            : "Movies, shows, books, games, and the occasional curveball — Tastemake's current best guesses at what fits, and a way to test them. React in one tap; a miss teaches it as much as a hit."}</p>
+            ? "A new set shaped by your recent reactions."
+            : "Movies, shows, books, games, and the occasional curveball. Try the ones that interest you and react naturally."}</p>
         </div>
 
         <div class="rec-progress-card">
@@ -496,14 +496,14 @@ export function renderRecommendations() {
             <span>rated</span>
           </div>
           <div class="progress-track" aria-hidden="true">${segments}</div>
-          <div class="progress-note">${currentRoundComplete(state) ? (outOfPicks(state) ? "prototype checkpoint" : "new set unlocked") : "teach it by using it"}</div>
+          <div class="progress-note">${currentRoundComplete(state) ? (outOfPicks(state) ? "prototype checkpoint" : "new set unlocked") : "react as you go"}</div>
         </div>
       </div>
 
       <div class="filter-band recommendation-filter-band">
         <span class="filter-band-label">Show me</span>
         ${renderDomainFilter({ selected: state.recommendationFilter, scope: "recommendations", label: "Generate recommendations by type" })}
-        <span class="filter-context">Choose the kind of recommendation set you want next. This does not change your Taste Profile.</span>
+        <span class="filter-context">Choose the kind of recommendation set you want next.</span>
       </div>
       <!-- #117: Browse's post-onboarding home is here, as an alternate discovery mode, not a permanent
            top-level nav item. Looking around is still never taste evidence on its own. -->

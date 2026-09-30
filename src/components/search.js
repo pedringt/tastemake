@@ -92,7 +92,7 @@ export function initSearch({ onChange, announce, goTo }) {
 
     let list = "";
     if (!query) {
-      list = '<p class="search-hint">Search movies, shows, books, and games. Looking something up never teaches Tastemake anything.</p>';
+      list = '<p class="search-hint">Search movies, shows, books, and games.</p>';
     } else if (!readyToSearch) {
       list = '<p class="search-hint">Keep typing to search the catalog.</p>';
     } else if (ui.catalogLoading) {
@@ -153,13 +153,13 @@ export function initSearch({ onChange, announce, goTo }) {
       : starterSelected ? "Remove favorite" : "Add to Favorites";
     const starterBlock = starterSelected
       ? `<div class="search-starter is-selected">
-          <span><strong>Favorite</strong><small>This is already one of the things Tastemake should learn from most strongly.</small></span>
+          <span><strong>Favorite</strong><small>This is one of your strongest Favorites.</small></span>
           <button type="button" class="button button-quiet" data-search-starter="remove">${starterLabel}</button>
         </div>`
       : `<button type="button" class="search-starter search-starter-choice" data-search-starter="add">
           <span>
             <strong>You loved this?</strong>
-            <small>Add it to Favorites. Favorites are things you've already tried and loved, and they have the strongest influence on recommendations.</small>
+            <small>Add it to Favorites if it is one of the things you love most.</small>
           </span>
           <span class="search-starter-cta">${starterLabel}</span>
         </button>`;
@@ -191,7 +191,7 @@ export function initSearch({ onChange, announce, goTo }) {
           : ""}
         ${status.key !== "none" ? `<button type="button" class="button button-quiet search-action" data-search-action="remove">Remove from Tastemake</button>` : ""}
       </div>
-      <p class="search-note">Nothing changes until you choose one of these. Looking something up never teaches Tastemake anything.</p>
+      <p class="search-note">Choose an action only when you want to save or react to this.</p>
       <p><button type="button" class="button button-primary" data-search-close>Done</button></p>`;
   }
 
