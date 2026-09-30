@@ -87,7 +87,17 @@
 .mine-toggle input:focus-visible { outline:3px solid var(--pink); outline-offset:2px; }
 .mine-toggle-name { grid-area:name; font-weight:700; color:var(--navy); }
 .mine-toggle-about { grid-area:about; color:var(--muted); font-size:13px; line-height:1.35; }
-.mine-back { margin-top:8px; }
+.mine-back { margin:0 0 14px; }
+.mine-back-button {
+  min-width:0;
+  min-height:38px;
+  padding:7px 10px;
+  border-color:transparent;
+  color:var(--navy);
+  box-shadow:none;
+  font-size:13px;
+}
+.mine-back-button:hover:not(:disabled) { box-shadow:none; }
 
 @media (max-width: 960px) {
   .mine-columns { grid-template-columns:minmax(0,1fr); }
