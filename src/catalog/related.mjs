@@ -387,6 +387,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   // anchor subset) fixes it regardless of how many anchors get used to actually fetch candidates.
   const blocked = new Set([
     ...allEvidence.map((item) => item.id),
+    ...(state.seenItemIds ?? []),
     ...Object.keys(state.feedbackByRecommendation ?? {}),
     ...(state.recommendationSets ?? []).flat().map((entry) => (typeof entry === "string" ? entry : entry?.id))
   ]);
