@@ -4,11 +4,20 @@ import { evidenceRecords } from "../../src/model/evidence.js";
 import { evidenceFingerprint } from "../../src/ai/requests.js";
 import { hypothesisEvidenceKey } from "../../src/ai/hypothesis-profile.js";
 import { buildBackup, buildHtmlExport, parseBackupText } from "../../src/model/export.js";
+import { pathForFeedback, storedReactionForOutcome } from "../../src/model/reaction-flow.js";
 
 const movie = { id: "movie-1", title: "Movie", type: "movie", domains: ["movies"] };
 const game = { id: "game-1", title: "Game", type: "game", domains: ["play"] };
 
+assert.deepEqual(storedReactionForOutcome("loved"), { rating: "more", detail: "loved-before" });
+assert.deepEqual(storedReactionForOutcome("liked"), { rating: "more", detail: "liked-before" });
+assert.deepEqual(storedReactionForOutcome("disliked"), { rating: "less", detail: "tried-disliked" });
+assert.deepEqual(storedReactionForOutcome("save"), { rating: "not-tried", detail: "bookmarked" });
+assert.deepEqual(storedReactionForOutcome("not-interested"), { rating: "less", detail: "not-interested" });
+assert.equal(storedReactionForOutcome("tried"), null, "choosing the first-step Tried path alone is not evidence");
+
 const positive = { item: movie, rating: "more", detail: "liked-before", refinements: [] };
+assert.equal(pathForFeedback(positive), "tried");
 assert.equal(toggleRefinement(positive, "characters"), true);
 assert.equal(toggleRefinement(positive, "humor"), true);
 assert.equal(toggleRefinement(positive, "pacing"), true);
@@ -23,6 +32,8 @@ assert.deepEqual(normalizedRefinements(negative), ["gameplay", "difficulty-chall
 assert(refinementOptionsFor(game).some((option) => option.id === "exploration"));
 
 const intent = { item: movie, rating: "less", detail: "not-interested", refinements: ["humor"] };
+assert.equal(pathForFeedback(intent), "not-tried");
+assert.equal(pathForFeedback({ item: movie, rating: "not-tried", detail: null }), null, "first-step choice without outcome does not imply stored intent");
 assert.deepEqual(normalizedRefinements(intent), [], "intent-only feedback cannot carry experiential refinement");
 assert.equal(toggleRefinement(intent, "humor"), false);
 
