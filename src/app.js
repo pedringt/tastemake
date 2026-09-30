@@ -35,7 +35,7 @@ import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, runInitialRecommendations, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, toggleExpandedFeedback } from "./actions/recommendations.js";
+import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackQuality, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, toggleExpandedFeedback } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
@@ -587,6 +587,28 @@ app.addEventListener("click", async (event) => {
       const left = bookmarkedFeedback(state).length;
       const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "removed from Saved" })[outcome];
       announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Saved.`);
+    }
+    return;
+  }
+
+  const experiencePath = event.target.closest("[data-experience-path][data-feedback-item]");
+  if (experiencePath) {
+    const itemId = experiencePath.dataset.feedbackItem;
+    if (chooseExperiencePath(itemId, experiencePath.dataset.experiencePath)) {
+      renderPreservingCardPosition(itemId, focusSelector);
+      announce(experiencePath.dataset.experiencePath === "tried"
+        ? "Tried it selected. Choose how it landed."
+        : "Not tried selected. Choose Save or Not interested.");
+    }
+    return;
+  }
+
+  const experienceOutcome = event.target.closest("[data-experience-outcome][data-feedback-item]");
+  if (experienceOutcome) {
+    const itemId = experienceOutcome.dataset.feedbackItem;
+    if (saveExperienceOutcome(itemId, experienceOutcome.dataset.experienceOutcome)) {
+      renderPreservingCardPosition(itemId, focusSelector);
+      announceReaction(itemId, announce);
     }
     return;
   }
