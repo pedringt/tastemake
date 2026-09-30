@@ -31,7 +31,7 @@ function normalizeHypothesis(h, index, state) {
   };
 }
 
-function mergeHypotheses(existing = [], incoming = [], limit = 6) {
+export function mergeHypotheses(existing = [], incoming = [], limit = 6) {
   const byId = new Map();
   for (const item of incoming) byId.set(item.id, item);
   for (const item of existing) if (!byId.has(item.id)) byId.set(item.id, item);
