@@ -3,6 +3,7 @@ import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExpe
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
 import { isDeclined, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { clearInvalidRefinements, refinablePolarity, toggleRefinement } from "../model/refinements.js";
+import { pathForFeedback, storedReactionForOutcome } from "../model/reaction-flow.js";
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
 import { cancelRequest, finishRequest, staleReason, startRequest } from "../ai/requests.js";
@@ -55,19 +56,12 @@ export function saveExperienceOutcome(itemId, outcome) {
     ?? state.feedbackByRecommendation[itemId]?.item;
   if (!item) return false;
 
-  const mapping = {
-    loved: ["more", "loved-before"],
-    liked: ["more", "liked-before"],
-    disliked: ["less", "tried-disliked"],
-    save: ["not-tried", "bookmarked"],
-    "not-interested": ["less", "not-interested"]
-  };
-  const next = mapping[outcome];
+  const next = storedReactionForOutcome(outcome);
   if (!next) return false;
 
   const existing = state.feedbackByRecommendation[itemId];
   const previousPolarity = refinablePolarity(existing);
-  const [rating, detail] = next;
+  const { rating, detail } = next;
   state.feedbackByRecommendation[itemId] = {
     item,
     rating,
@@ -84,9 +78,7 @@ export function saveExperienceOutcome(itemId, outcome) {
   if (!isPositiveExperience(feedback) && !isExperiencedNegative(feedback)) feedback.seriesExperience = null;
   if (!isStrongPositive(feedback)) state.libraryFavorites.delete(itemId);
 
-  state.recommendationExperienceChoice[itemId] = isPositiveExperience(feedback) || isExperiencedNegative(feedback)
-    ? "tried"
-    : (isBookmarked(feedback) || isDeclined(feedback) ? "not-tried" : null);
+  state.recommendationExperienceChoice[itemId] = pathForFeedback(feedback);
   return true;
 }
 
