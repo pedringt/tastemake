@@ -1,5 +1,3 @@
-import { isExperiencedNegative, isExperiencedPositive } from "./evidence.js";
-
 export const MAX_REFINEMENTS = 3;
 
 const COMMON = [
@@ -36,8 +34,8 @@ export function refinementOptionsFor(item) {
 }
 
 export function refinablePolarity(feedback) {
-  if (isExperiencedPositive(feedback)) return "positive";
-  if (isExperiencedNegative(feedback)) return "negative";
+  if (feedback?.rating === "more" && ["loved-before", "liked-before"].includes(feedback?.detail)) return "positive";
+  if (feedback?.rating === "less" && feedback?.detail === "tried-disliked") return "negative";
   return null;
 }
 
