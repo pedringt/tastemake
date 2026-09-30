@@ -790,10 +790,16 @@ app.addEventListener("click", async (event) => {
       const feedback = state.feedbackByRecommendation[itemId];
       if (!isStrongPositive(feedback)) return;
       state.customItems[item.id] = item;
-      state.selectedFavorites.add(itemId);
-      announce(`${item.title} added to Favorites. ${state.selectedFavorites.size} of 4 selected.`);
+      if (state.onboarded) {
+        state.libraryFavorites.add(itemId);
+        announce(`${item.title} added to Favorites.`);
+      } else {
+        state.selectedFavorites.add(itemId);
+        announce(`${item.title} added to Favorites. ${state.selectedFavorites.size} of 4 selected.`);
+      }
     } else {
-      state.selectedFavorites.delete(itemId);
+      if (state.onboarded) state.libraryFavorites.delete(itemId);
+      else state.selectedFavorites.delete(itemId);
       announce(`${item.title} removed from Favorites.`);
     }
     render();
