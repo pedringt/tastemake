@@ -1,10 +1,24 @@
-import { resetState, state } from "../state.js";
+import { resetState, restoreStateFromBackupText, state } from "../state.js";
 import { applySearchAction } from "../model/search.js";
 import { clearStatement } from "../model/statements.js";
 import { removeBlindSpot } from "../model/blindspots.js";
 import { AREAS } from "../model/taste.js";
+import { backupFileName, buildBackup, buildMarkdownExport, markdownFileName } from "../model/export.js";
 
 // ---- My Tastemake (#8) ----
+
+function downloadText(filename, type, text) {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 
 export function openMine(navigate) {
   if (state.screen !== "mine") state.mineReturn = state.screen;
@@ -24,6 +38,23 @@ export function mineRemoveFocusAfter(rowEl) {
 export function handleMineClick(event, { render, updateStepper, restoreFocus, announce, navigate, canAccess }) {
   const button = event.target.closest("button");
   if (!button) return;
+
+  if (button.dataset.mineExport === "markdown") {
+    downloadText(markdownFileName(), "text/markdown;charset=utf-8", buildMarkdownExport(state));
+    announce("Downloaded a readable copy of your Tastemake data.");
+    return;
+  }
+
+  if (button.dataset.mineExport === "backup") {
+    downloadText(backupFileName(), "application/json;charset=utf-8", JSON.stringify(buildBackup(state), null, 2));
+    announce("Downloaded your Tastemake backup.");
+    return;
+  }
+
+  if (button.dataset.mineRestore) {
+    document.querySelector("[data-mine-restore-file]")?.click();
+    return;
+  }
 
   if (button.dataset.mineItem) {
     const id = button.dataset.mineItem;
@@ -83,7 +114,28 @@ export function handleMineClick(event, { render, updateStepper, restoreFocus, an
   }
 }
 
-export function handleMineChange(event, { render, restoreFocus, announce }) {
+export async function handleMineChange(event, { render, restoreFocus, announce, updateStepper }) {
+  const restoreFile = event.target.closest("[data-mine-restore-file]");
+  if (restoreFile?.files?.[0]) {
+    try {
+      const text = await restoreFile.files[0].text();
+      if (!window.confirm("Restore this Tastemake backup? This replaces your current Tastemake data.")) {
+        restoreFile.value = "";
+        announce("Restore cancelled.");
+        return;
+      }
+      restoreStateFromBackupText(text);
+      render();
+      updateStepper?.();
+      restoreFocus("[data-mine-restore]");
+      announce("Your Tastemake backup was restored.");
+    } catch (error) {
+      restoreFile.value = "";
+      announce(error?.message || "Tastemake could not restore that backup.");
+    }
+    return;
+  }
+
   const area = event.target.closest("[data-mine-area]");
   if (area) {
     const id = area.dataset.mineArea;
