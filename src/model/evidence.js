@@ -71,9 +71,9 @@ export const isDeclined = (feedback) => kindOf(feedback) === "intent-declined"; 
 
 // Whether a reaction counts as taste evidence at all (the #27 rule, in one place).
 export const countsAsTaste = (feedback) => tasteWeight(feedback) !== 0;
-// A record from evidenceRecords() additionally has a "starter-favorite" kind, which is experienced
-// (the user told Tastemake this) but never counts as taste by itself (weight 0). Records already carry
-// `countsAsTaste`/`class`; this predicate is for records, mirroring the feedback-level one above.
+// Records from evidenceRecords() can also be starter/durable Favorites. Those are experienced taste
+// evidence and deliberately carry more weight than an ordinary Loved reaction. Records already carry
+// `countsAsTaste`/`class`; this predicate mirrors the feedback-level one above.
 export const recordCountsAsTaste = (record) => record.weight !== 0;
 
 function sourceOf(feedback) {
