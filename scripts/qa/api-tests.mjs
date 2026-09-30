@@ -58,6 +58,20 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   cites:[`ev:${favorite.id}`],tests:null,kind:i===5?"curveball":"pick"
 }));
 
+{
+  const promptEvidence = selectPromptEvidence({
+    evidence: [
+      { ref:"ev:fav", title:"Favorite", domains:["movies"], class:"experienced", polarity:1, kind:"experienced-favorite", weight:3 },
+      { ref:"ev:loved", title:"Loved", domains:["movies"], class:"experienced", polarity:1, kind:"experienced-strong-positive", weight:2 },
+      { ref:"ev:liked", title:"Liked", domains:["movies"], class:"experienced", polarity:1, kind:"experienced-positive", weight:1.25 }
+    ],
+    candidates:[{ id:"candidate", domains:["movies"] }],
+    evidenceRotation:0
+  }, 2);
+  eq("prompt evidence keeps Favorite ahead of Loved", promptEvidence[0]?.ref, "ev:fav");
+  eq("prompt evidence keeps Loved ahead of Liked", promptEvidence[1]?.ref, "ev:loved");
+}
+
 // QA pass regression: a successful Anthropic HTTP response is still a paid call even when its text
 // cannot be parsed as JSON. Preserve that fact on the thrown error so callers can report cost/usage
 // accurately instead of turning a paid malformed response into paidCallMade:false.
