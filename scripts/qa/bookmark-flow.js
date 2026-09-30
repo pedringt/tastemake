@@ -102,8 +102,8 @@ export async function run() {
   check("first recommendation request happened",recCalls===1,recCalls);
   check("first set has five real-catalog QA ids",state.recommendationSets[0]?.length===5&&state.recommendationSets[0].every(x=>x.id.startsWith("tmdb-movie-7")),JSON.stringify(state.recommendationSets[0]?.map(x=>x.id)));
   check("legacy seeded recommendation is absent",!document.body.textContent.includes("Everything Everywhere All at Once"));
-  check("five recommendation cards render",$(".editorial-rec").length===5,$(".editorial-rec").length);
-  check("every recommendation exposes a Favorite star",$("[data-rec-favorite]").length===5,$("[data-rec-favorite]").length);
+  check("five recommendation cards render",$$(".editorial-rec").length===5,$$(".editorial-rec").length);
+  check("every recommendation exposes a Favorite star",$$("[data-rec-favorite]").length===5,$$("[data-rec-favorite]").length);
 
   // Favorite is a one-tap Tried + Loved shortcut and should collapse the large binary controls.
   const favoriteShortcutId=state.recommendationSets[0][1].id;
