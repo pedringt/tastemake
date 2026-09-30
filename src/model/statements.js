@@ -42,10 +42,17 @@ export function setStatement(state, hypothesisId, field, value) {
   if (!pattern || !["says", "weight", "context"].includes(field)) return null;
   state.patternStatements ??= [];
   let entry = statementFor(state, hypothesisId);
+
+  // Follow-ups are meaningful only after the matching primary fit answer.
+  if (field === "weight" && entry?.says !== "accurate") return null;
+  if (field === "context" && !["accurate", "partial"].includes(entry?.says)) return null;
+  if (field === "context" && entry?.says === "partial" && value === "broad") return null;
+
   if (!entry) {
     entry = { hypothesisId, label: pattern.title, says: null, weight: null, context: null, authority: "user-confirmed" };
     state.patternStatements.push(entry);
   }
+
   const next = entry[field] === value ? null : value;
   entry[field] = next;
 
@@ -59,16 +66,11 @@ export function setStatement(state, hypothesisId, field, value) {
       if (entry.context === "broad") entry.context = null;
     }
   }
-  if (field === "weight" && entry.says !== "accurate") return null;
-  if (field === "context" && !["accurate", "partial"].includes(entry.says)) return null;
-  if (field === "context" && entry.says === "partial" && next === "broad") return null;
 
   if (!entry.says && !entry.weight && !entry.context && !(entry.excludedDomains?.length)) {
     state.patternStatements = state.patternStatements.filter((s) => s !== entry);
   }
   const message = MESSAGE[field](pattern, entry[field]);
-  // A user correction outranks model inference (#31) and is its own kind of revision (#37):
-  // record it as "user-confirmed" so it stays distinguishable from anything Tastemake infers.
   recordRevision(state, { hypothesisId: pattern.id, claim: pattern.claim, origin: "user-confirmed", reason: message });
   return message;
 }
@@ -89,11 +91,8 @@ export function toggleDomainExclusion(state, hypothesisId, domainId) {
   if (!pattern) return null;
   state.patternStatements ??= [];
   let entry = statementFor(state, hypothesisId);
-  if (!entry) {
-    entry = { hypothesisId, label: pattern.title, says: null, weight: null, excludedDomains: [], authority: "user-confirmed" };
-    state.patternStatements.push(entry);
-  }
-  if (entry.says !== "partial") return null;
+  if (entry?.says !== "partial") return null;
+
   entry.excludedDomains ??= [];
   const excluding = !entry.excludedDomains.includes(domainId);
   entry.excludedDomains = excluding
