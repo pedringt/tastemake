@@ -133,7 +133,8 @@
    reaction stamp — the last child — gets pushed out over the neighboring card. flex-wrap is a second
    safety net: if the two still don't fit on one line, the stamp drops to its own line instead of
    overflowing sideways. */
-.editorial-title-row { display:flex; align-items:flex-start; gap:10px; margin-top:12px; }
+.editorial-favorite-row { display:flex; justify-content:flex-end; align-items:center; min-height:36px; margin-top:8px; }
+.editorial-title-row { display:flex; align-items:flex-start; margin-top:8px; }
 /* #95: a fixed clamp range that reads fine at three-per-row width, whatever the title length —
    no separate "wide layout" font size to keep in sync. */
 .editorial-title-row h3 { flex:1 1 auto; min-width:0; min-height:2.16em; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
