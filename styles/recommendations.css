@@ -90,10 +90,11 @@
   display:grid;
   grid-template-columns:repeat(12,minmax(0,1fr));
   gap:20px;
-  align-items:start;
+  align-items:stretch;
 }
 .editorial-rec {
   position:relative;
+  height:100%;
   overflow:visible;
   overflow-anchor:none;
   background:#fff;
@@ -116,7 +117,7 @@
   background:var(--tint-cool,#fbffff);
 }
 .editorial-rec.is-rated { box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--pink); }
-.editorial-rec-body { padding:14px 16px 16px; display:flex; flex-direction:column; min-width:0; }
+.editorial-rec-body { padding:14px 16px 16px; display:flex; flex:1 1 auto; flex-direction:column; min-width:0; }
 .editorial-rec-meta {
   display:flex;
   justify-content:space-between;
@@ -140,7 +141,8 @@
    so one-line vs. two/three-line titles never shift the chip's vertical position and a row of cards
    stays level even when only some of them carry a status. min-height is sized to the chip's own
    rendered height (padding + line height + border) so the empty state reserves the same space. */
-.editorial-status-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px; }
+.editorial-status-row { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:38px; margin-top:8px; }
+.reaction-status-slot { display:flex; align-items:center; min-width:0; min-height:34px; }
 .reaction-stamp {
   flex:0 0 auto;
   max-width:100%;
@@ -162,13 +164,22 @@
   height:36px;
   display:grid;
   place-items:center;
-  border:2px solid var(--line);
+  padding:0;
+  border:1.5px solid var(--line);
   border-radius:50%;
-  background:#fff;
+  background:rgba(255,255,255,.72);
   color:var(--navy);
-  font-size:22px;
+  font:inherit;
+  font-size:20px;
   line-height:1;
   cursor:pointer;
+  box-shadow:none;
+}
+.rec-favorite-star:hover { border-color:var(--navy); background:var(--tint-warm,#fff9e6); }
+.rec-favorite-star.is-favorite {
+  border-color:var(--accent-text,var(--pink));
+  background:var(--pink-soft);
+  color:var(--accent-text,var(--pink));
 }
 .rec-favorite-star:hover { border-color:var(--navy); transform:translateY(-1px); }
 .rec-favorite-star.is-favorite { border-color:var(--navy); background:var(--yellow); }
@@ -521,6 +532,35 @@
 .experience-button { font-size:12px; }
 .experience-outcomes { margin-top:9px; }
 .outcome-chip { min-height:34px; padding-inline:11px; }
+.rec-interaction {
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  min-height:92px;
+  margin-top:auto;
+  padding-top:12px;
+}
+.reaction-complete {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-height:62px;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+}
+.reaction-complete > span {
+  color:var(--navy);
+  font-size:13px;
+  font-weight:800;
+}
+.reaction-change {
+  min-width:0;
+  min-height:36px;
+  padding:5px 10px;
+  box-shadow:none;
+}
+
 .rec-feedback-popover {
   position:absolute;
   z-index:80;
