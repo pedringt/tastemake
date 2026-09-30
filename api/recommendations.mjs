@@ -88,7 +88,8 @@ function compactEvidenceRecord(record) {
 }
 
 function promptEvidencePriority(record) {
-  if (record.kind === "starter-favorite" || record.kind === "experienced-strong-positive") return 3;
+  if (record.kind === "experienced-favorite" || record.kind === "starter-favorite") return 4;
+  if (record.kind === "experienced-strong-positive") return 3;
   if (record.kind === "experienced-negative") return 2;
   if (record.kind === "experienced-positive") return 1;
   return 0;
