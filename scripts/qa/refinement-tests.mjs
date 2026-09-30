@@ -3,6 +3,7 @@ import { clearInvalidRefinements, normalizedRefinements, refinementOptionsFor, t
 import { evidenceRecords } from "../../src/model/evidence.js";
 import { evidenceFingerprint } from "../../src/ai/requests.js";
 import { hypothesisEvidenceKey } from "../../src/ai/hypothesis-profile.js";
+import { buildBackup, buildHtmlExport, parseBackupText } from "../../src/model/export.js";
 
 const movie = { id: "movie-1", title: "Movie", type: "movie", domains: ["movies"] };
 const game = { id: "game-1", title: "Game", type: "game", domains: ["play"] };
@@ -55,5 +56,11 @@ assert.notEqual(evidenceFingerprint(state), beforeFingerprint, "refinement chang
 const key1 = hypothesisEvidenceKey(state);
 negative.refinements = ["gameplay", "difficulty-challenge"];
 assert.notEqual(hypothesisEvidenceKey(state), key1, "refinement changes invalidate Taste Profile evidence key");
+
+const backup = buildBackup(state, "2026-09-30T00:00:00.000Z");
+const restored = parseBackupText(JSON.stringify(backup));
+assert.deepEqual(restored.feedbackByRecommendation[negative.item.id].refinements, ["gameplay", "difficulty-challenge"], "backup/restore preserves refinements");
+const html = buildHtmlExport(state, "2026-09-30T00:00:00.000Z");
+assert(html.includes("Gameplay") && html.includes("Difficulty / challenge"), "readable export includes refinement labels");
 
 console.log("refinement tests passed");
