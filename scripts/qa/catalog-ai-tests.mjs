@@ -234,15 +234,18 @@ const promptContract = buildHypothesisPrompt({
 check("Taste Profile prompt names the exact allowed domain ids", promptContract.includes("movies, tv, read, play"));
 check("Taste Profile prompt explicitly forbids the production 'watch' alias", promptContract.includes('Never use umbrella labels such as "watch"'));
 check("Taste Profile prompt explicitly forbids the production 'established' level", promptContract.includes("Never use established"));
+check("Taste Profile prompt refuses to invent facts for unresolved manual evidence", promptContract.includes("facts.resolved is false"));
 
 // Manual-item resolution stays conservative: exact title/type only, with optional creator to break ties.
 {
   const matches = [
     { id:"openlibrary-book-1", provider:"openlibrary", providerId:"1", title:"Same Title", type:"book", by:"Author One", domains:["read"], genres:["Fantasy"] },
-    { id:"openlibrary-book-2", provider:"openlibrary", providerId:"2", title:"Same Title", type:"book", by:"Author Two", domains:["read"], genres:["Mystery"] }
+    { id:"openlibrary-book-2", provider:"openlibrary", providerId:"2", title:"Same Title", type:"book", by:"Author Two", domains:["read"], genres:["Mystery"] },
+    { id:"openlibrary-book-3", provider:"openlibrary", providerId:"3", title:"Same Title", type:"book", by:null, domains:["read"], genres:["History"] }
   ];
   eq("manual resolution refuses an ambiguous exact-title match", bestExactMatch(matches, "Same Title", "book").status, "ambiguous");
   eq("manual resolution uses creator to disambiguate", bestExactMatch(matches, "Same Title", "book", "Author Two").item?.providerId, "2");
+  eq("missing provider creator never counts as a creator match", bestExactMatch(matches, "Same Title", "book", "No Such Author").status, "ambiguous");
   eq("manual resolution never crosses media types", bestExactMatch(matches, "Same Title", "movie", "Author Two").status, "not_found");
 }
 
