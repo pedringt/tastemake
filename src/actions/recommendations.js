@@ -69,7 +69,7 @@ export function saveExperienceOutcome(itemId, outcome) {
     refinements: existing?.refinements ?? [],
     quality: existing?.quality ?? null,
     seriesExperience: existing?.seriesExperience ?? null,
-    wasBookmarked: existing?.wasBookmarked ?? false
+    wasBookmarked: Boolean(existing?.wasBookmarked || isBookmarked(existing))
   };
 
   const feedback = state.feedbackByRecommendation[itemId];
