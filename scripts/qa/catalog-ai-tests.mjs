@@ -3,10 +3,13 @@
 // live hypothesis gating/validation, and append-only model revision history.
 
 import { searchCatalog } from "../../src/catalog/providers.mjs";
-import hypothesesHandler, { produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
+import hypothesesHandler, { buildHypothesisPrompt, produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
+import { bestExactMatch } from "../../api/resolve-item.mjs";
+import { applyResolvedCatalogItem, applySearchAction, makeCustomItem } from "../../src/model/search.js";
+import { evidenceRecords } from "../../src/model/evidence.js";
 
 let passed = 0;
 const failures = [];
@@ -223,6 +226,45 @@ const anthroFetch = async () => ({
     model: "claude-test"
   })
 });
+const promptContract = buildHypothesisPrompt({
+  evidence: [{ ref:"ev:x", title:"X", type:"movie", domains:["movies"], kind:"experienced-positive", polarity:1, weight:1.25, facts:{resolved:true,year:2020,creator:null,genres:["Drama"]} }],
+  statements: [],
+  contexts: []
+}, []);
+check("Taste Profile prompt names the exact allowed domain ids", promptContract.includes("movies, tv, read, play"));
+check("Taste Profile prompt explicitly forbids the production 'watch' alias", promptContract.includes('Never use umbrella labels such as "watch"'));
+check("Taste Profile prompt explicitly forbids the production 'established' level", promptContract.includes("Never use established"));
+
+// Manual-item resolution stays conservative: exact title/type only, with optional creator to break ties.
+{
+  const matches = [
+    { id:"openlibrary-book-1", provider:"openlibrary", providerId:"1", title:"Same Title", type:"book", by:"Author One", domains:["read"], genres:["Fantasy"] },
+    { id:"openlibrary-book-2", provider:"openlibrary", providerId:"2", title:"Same Title", type:"book", by:"Author Two", domains:["read"], genres:["Mystery"] }
+  ];
+  eq("manual resolution refuses an ambiguous exact-title match", bestExactMatch(matches, "Same Title", "book").status, "ambiguous");
+  eq("manual resolution uses creator to disambiguate", bestExactMatch(matches, "Same Title", "book", "Author Two").item?.providerId, "2");
+  eq("manual resolution never crosses media types", bestExactMatch(matches, "Same Title", "movie", "Author Two").status, "not_found");
+}
+
+// A resolved manual item keeps the user's stable evidence id while gaining provider facts that both
+// deterministic retrieval and Taste Profile inference can use.
+{
+  const manual = makeCustomItem("Obscure Book", "book", "A. Writer");
+  const state = {
+    selectedFavorites:new Set(), feedbackByRecommendation:{}, recommendationSets:[],
+    libraryFavorites:new Set(), customItems:{}, areas:{movies:true,tv:true,read:true,play:true}
+  };
+  applySearchAction(state, manual, "loved");
+  const merged = applyResolvedCatalogItem(state, manual.id, {
+    id:"openlibrary-book-OLX", provider:"openlibrary", providerId:"OLX", title:"Obscure Book",
+    type:"book", domains:["read"], by:"A. Writer", year:"2019", genres:["Speculative fiction"]
+  });
+  eq("resolved manual evidence keeps its original stable item id", merged?.id, manual.id);
+  eq("resolved manual evidence gains a provider id", state.feedbackByRecommendation[manual.id]?.item?.providerId, "OLX");
+  const record = evidenceRecords(state).find((row) => row.itemId === manual.id);
+  check("resolved manual evidence exposes structured facts to Taste Profile", record?.facts?.resolved === true && record?.facts?.genres?.includes("Speculative fiction"));
+}
+
 const live = await produceHypotheses({ rawState, env: AI_ENV, fetchImpl: anthroFetch });
 eq("validated live hypothesis output is accepted", live.source, "model");
 eq("Favorite evidence can support a live hypothesis", live.hypotheses[0]?.level, "supported");
