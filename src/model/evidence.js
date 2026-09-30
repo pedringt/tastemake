@@ -1,5 +1,6 @@
 import { starterItems } from "./starters.js";
 import { displayLabel, domainsOf } from "../data/domains.js";
+import { refinementRecords } from "./refinements.js";
 
 // Evidence (#35, #27): what the user actually did or explicitly said about an item.
 //
@@ -91,6 +92,7 @@ export function evidenceRecords(state) {
     .map((feedback) => record(feedback.item, evidenceKind(feedback), {
       source: sourceOf(feedback),
       wasSaved: Boolean(feedback.wasBookmarked),
+      refinements: refinementRecords(feedback),
       note: feedback.quality ?? null   // discovery notes (Too predictable / Surprised me): never taste
     }));
   return [...starters, ...reactions];

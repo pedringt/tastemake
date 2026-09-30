@@ -5,7 +5,7 @@ import { recordRevisionIfChanged } from "../model/history.js";
 const slug = (text) => String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
 export function hypothesisEvidenceKey(state) {
-  const evidence = evidenceRecords(state).map(({ ref, kind, polarity, weight, facts }) => ({ ref, kind, polarity, weight, facts }));
+  const evidence = evidenceRecords(state).map(({ ref, kind, polarity, weight, facts, refinements }) => ({ ref, kind, polarity, weight, facts, refinements }));
   const statements = (state.patternStatements ?? []).map(({ hypothesisId, says, weight, context, excludedDomains }) => ({ hypothesisId, says, weight, context, excludedDomains }));
   return JSON.stringify({ evidence, statements });
 }

@@ -26,7 +26,7 @@ export function hypothesisConfig(env = process.env) {
 export function buildHypothesisPrompt(ctx, existing = []) {
   const allowedDomains = visibleDomains().map((domain) => domain.id);
   const safe = {
-    evidence: (ctx.evidence ?? []).filter((row) => row?.class === "experienced").map(({ ref, title, type, domains, kind, polarity, weight, facts }) => ({ ref, title, type, domains, kind, polarity, weight, facts })),
+    evidence: (ctx.evidence ?? []).filter((row) => row?.class === "experienced").map(({ ref, title, type, domains, kind, polarity, weight, facts, refinements }) => ({ ref, title, type, domains, kind, polarity, weight, facts, refinements: refinements ?? [] })),
     statements: ctx.statements,
     contexts: ctx.contexts,
     existing: existing.map(({ id, title, claim, domains, strength }) => ({ id, label: title, claim, domains, level: strength }))
@@ -41,6 +41,7 @@ export function buildHypothesisPrompt(ctx, existing = []) {
     "Use 4 to 6 concise hypotheses when the evidence supports that many. Prefer distinct, well-grounded patterns over repeating the same idea. Reuse an existing ai-* id when revising the same underlying idea; create a new ai-* id only for a genuinely new pattern.",
     "Every supporting/counter reference must exist. Intent, saved items, browsing and untried reactions are not taste evidence. User-confirmed corrections outrank inference. A says=not-me statement rejects that pattern; says=partial means do not broaden it beyond the user's context/domain refinements; says=unsure is not confirmation. Do not assign one global aesthetic or identity. Do not claim a domain without cited support in that domain. Prefer specific testable patterns over genres.",
     "Each evidence row may include facts. If facts.resolved is false, do not supply missing genres, themes, creator, series, or other properties from model memory; use only the title/type/reaction that the product actually knows. Specific claims should lean on resolved factual metadata or multiple independent evidence rows.",
+    "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. They describe that one experience and are not independent evidence. Do not turn one refinement into a global preference; when refinements conflict across experienced items, prefer a narrower or conditional hypothesis and preserve uncertainty.",
     "The first character must be { and the last must be }. No markdown or prose outside JSON.",
     `CONTEXT\n${JSON.stringify(safe)}`
   ].join("\n\n");

@@ -27,7 +27,7 @@ import { firstBrowseGenre } from "./catalog/browse-genres.js";
 import { fetchBrowsePage } from "./catalog/browse-client.js";
 import { mergeUniqueBrowseItems } from "./model/browse.js";
 import { applyResolvedCatalogItem, applySearchAction, markCustomResolution, searchableItems } from "./model/search.js";
-import { isStrongPositive } from "./model/evidence.js";
+import { isExperienced, isStrongPositive } from "./model/evidence.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
 import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
@@ -35,7 +35,7 @@ import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, runInitialRecommendations, runKeepDiscovering, saveFeedbackDetail, saveFeedbackQuality, saveQuickFeedback, saveSeriesExperience, toggleExpandedFeedback } from "./actions/recommendations.js";
+import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackQuality, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, toggleExpandedFeedback } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
@@ -404,6 +404,40 @@ function toggleWhyPopover(trigger) {
   trigger.setAttribute("aria-expanded", String(shouldPin));
 }
 
+let recommendationSwipe = null;
+
+app.addEventListener("pointerdown", (event) => {
+  if (event.pointerType !== "touch") return;
+  if (event.target.closest("button,a,summary,input,textarea,select")) return;
+  const card = event.target.closest("[data-rec-id]");
+  if (!card) return;
+  recommendationSwipe = {
+    itemId: card.dataset.recId,
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY
+  };
+});
+
+app.addEventListener("pointercancel", () => { recommendationSwipe = null; });
+
+app.addEventListener("pointerup", (event) => {
+  const swipe = recommendationSwipe;
+  recommendationSwipe = null;
+  if (!swipe || swipe.pointerId !== event.pointerId) return;
+
+  const dx = event.clientX - swipe.x;
+  const dy = event.clientY - swipe.y;
+  if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+
+  const existing = state.feedbackByRecommendation[swipe.itemId];
+  if (isExperienced(existing)) return;
+  const outcome = dx > 0 ? "save" : "not-interested";
+  if (!saveExperienceOutcome(swipe.itemId, outcome)) return;
+  renderPreservingCardPosition(swipe.itemId);
+  announceReaction(swipe.itemId, announce);
+});
+
 app.addEventListener("click", async (event) => {
   const focusSelector = focusSelectorFor(event.target.closest("button"));
 
@@ -591,6 +625,28 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const experiencePath = event.target.closest("[data-experience-path][data-feedback-item]");
+  if (experiencePath) {
+    const itemId = experiencePath.dataset.feedbackItem;
+    if (chooseExperiencePath(itemId, experiencePath.dataset.experiencePath)) {
+      renderPreservingCardPosition(itemId, focusSelector);
+      announce(experiencePath.dataset.experiencePath === "tried"
+        ? "Tried it selected. Choose how it landed."
+        : "Not tried selected. Choose Save or Not interested.");
+    }
+    return;
+  }
+
+  const experienceOutcome = event.target.closest("[data-experience-outcome][data-feedback-item]");
+  if (experienceOutcome) {
+    const itemId = experienceOutcome.dataset.feedbackItem;
+    if (saveExperienceOutcome(itemId, experienceOutcome.dataset.experienceOutcome)) {
+      renderPreservingCardPosition(itemId, focusSelector);
+      announceReaction(itemId, announce);
+    }
+    return;
+  }
+
   const rating = event.target.closest("[data-rating][data-feedback-item]");
   if (rating) {
     const itemId = rating.dataset.feedbackItem;
@@ -607,6 +663,16 @@ app.addEventListener("click", async (event) => {
     if (saveFeedbackDetail(itemId, detail.dataset.feedbackDetail)) {
       renderPreservingCardPosition(itemId, focusSelector);
       announceReaction(itemId, announce);
+    }
+    return;
+  }
+
+  const refinement = event.target.closest("[data-feedback-refinement][data-feedback-item]");
+  if (refinement) {
+    const itemId = refinement.dataset.feedbackItem;
+    if (saveFeedbackRefinement(itemId, refinement.dataset.feedbackRefinement)) {
+      renderPreservingCardPosition(itemId, focusSelector);
+      announce("Taste detail updated.");
     }
     return;
   }

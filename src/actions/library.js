@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { isStrongPositive } from "../model/evidence.js";
+import { clearInvalidRefinements, refinablePolarity } from "../model/refinements.js";
 
 // Trying a bookmarked item turns it into a real reaction (and only then can it teach the model).
 // wasBookmarked keeps a record that it was saved first, so the pre-try bookmark can later be
@@ -25,7 +26,7 @@ export function saveBookmarkAction(itemId, action) {
   const outcome = triedOutcomes[action];
   if (!outcome) return false;
   const [rating, detail] = outcome;
-  state.feedbackByRecommendation[itemId] = { item: existing.item, rating, detail, quality: existing.quality, wasBookmarked: true };
+  state.feedbackByRecommendation[itemId] = { item: existing.item, rating, detail, refinements: [], quality: existing.quality, wasBookmarked: true };
   return true;
 }
 
@@ -53,7 +54,9 @@ export function saveLibraryAction(itemId, action) {
 
   const outcome = libraryOutcomes[action];
   if (!outcome) return false;
+  const previousPolarity = refinablePolarity(existing);
   [existing.rating, existing.detail] = outcome;
+  clearInvalidRefinements(existing, previousPolarity);
   if (!isStrongPositive(existing)) state.libraryFavorites.delete(itemId);
   // "Surprised me" only makes sense after Loved / Liked it before.
   if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;

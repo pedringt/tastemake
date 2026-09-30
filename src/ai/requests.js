@@ -17,7 +17,7 @@ export const AI_READY = "ready";
 // prompt (a new setting, a new kind of evidence), add it here too or staleness will miss it.
 export function evidenceFingerprint(state) {
   const reactions = Object.entries(state.feedbackByRecommendation)
-    .map(([id, feedback]) => `${id}:${feedback.rating}:${feedback.detail ?? ""}`)
+    .map(([id, feedback]) => `${id}:${feedback.rating}:${feedback.detail ?? ""}:${[...(feedback.refinements ?? [])].sort().join(",")}`)
     .sort()
     .join("|");
   const statements = (state.patternStatements ?? [])

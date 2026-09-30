@@ -2,6 +2,8 @@ import { state } from "../state.js";
 import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
 import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
+import { clearInvalidRefinements, refinablePolarity, toggleRefinement } from "../model/refinements.js";
+import { pathForFeedback, storedReactionForOutcome } from "../model/reaction-flow.js";
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
 import { cancelRequest, finishRequest, staleReason, startRequest } from "../ai/requests.js";
@@ -25,6 +27,7 @@ export function saveQuickFeedback(itemId, rating) {
     item,
     rating,
     detail: null,
+    refinements: [],
     // "Surprised me" only makes sense after Loved/Liked it before, which a fresh rating clears.
     quality: existing?.quality === "surprised-me" ? null : existing?.quality || null,
     seriesExperience: rating === "not-tried" ? null : existing?.seriesExperience ?? null
@@ -40,11 +43,52 @@ export function saveQuickFeedback(itemId, rating) {
   return true;
 }
 
+export function chooseExperiencePath(itemId, path) {
+  if (!["tried", "not-tried"].includes(path)) return false;
+  const item = activeRecommendations(state).find((rec) => rec.id === itemId);
+  if (!item) return false;
+  state.recommendationExperienceChoice[itemId] = path;
+  return true;
+}
+
+export function saveExperienceOutcome(itemId, outcome) {
+  const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.feedbackByRecommendation[itemId]?.item;
+  if (!item) return false;
+
+  const next = storedReactionForOutcome(outcome);
+  if (!next) return false;
+
+  const existing = state.feedbackByRecommendation[itemId];
+  const previousPolarity = refinablePolarity(existing);
+  const { rating, detail } = next;
+  state.feedbackByRecommendation[itemId] = {
+    item,
+    rating,
+    detail,
+    refinements: existing?.refinements ?? [],
+    quality: existing?.quality ?? null,
+    seriesExperience: existing?.seriesExperience ?? null,
+    wasBookmarked: Boolean(existing?.wasBookmarked || isBookmarked(existing))
+  };
+
+  const feedback = state.feedbackByRecommendation[itemId];
+  clearInvalidRefinements(feedback, previousPolarity);
+  if (feedback.quality === "surprised-me" && !isPositiveExperience(feedback)) feedback.quality = null;
+  if (!isPositiveExperience(feedback) && !isExperiencedNegative(feedback)) feedback.seriesExperience = null;
+  if (!isStrongPositive(feedback)) state.libraryFavorites.delete(itemId);
+
+  state.recommendationExperienceChoice[itemId] = pathForFeedback(feedback);
+  return true;
+}
+
 export function saveFeedbackDetail(itemId, detail) {
   const existing = state.feedbackByRecommendation[itemId];
   if (!existing) return false;
 
+  const previousPolarity = refinablePolarity(existing);
   existing.detail = existing.detail === detail ? null : detail;
+  clearInvalidRefinements(existing, previousPolarity);
   if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
   if (!isPositiveExperience(existing) && !isExperiencedNegative(existing)) existing.seriesExperience = null;
   // Same Favorite<->reaction invariant as saveQuickFeedback above -- the detail chip (e.g. "Loved it
@@ -52,6 +96,12 @@ export function saveFeedbackDetail(itemId, detail) {
   // primary rating can.
   if (!isStrongPositive(existing)) state.libraryFavorites.delete(itemId);
   return true;
+}
+
+export function saveFeedbackRefinement(itemId, refinementId) {
+  const existing = state.feedbackByRecommendation[itemId];
+  if (!existing) return false;
+  return toggleRefinement(existing, refinementId);
 }
 
 export function saveSeriesExperience(itemId, value) {

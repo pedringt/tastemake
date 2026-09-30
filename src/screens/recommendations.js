@@ -1,13 +1,15 @@
 import { state } from "../state.js";
 import { renderDomainFilter } from "../components/domain-filter.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
-import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
+import { isDeclined, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
 import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
+import { renderExperienceRefinement } from "../components/refinement.js";
+import { pathForFeedback } from "../model/reaction-flow.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -49,77 +51,72 @@ export function ratingLabel(value) {
 
 export function reactionLabel(feedback) {
   if (!feedback) return "";
-  if (isStrongPositive(feedback)) return "Loved it before";
-  if (isPositiveExperience(feedback)) return "Liked it before";
-  if (isExperiencedNegative(feedback)) return "Disliked it before";
+  if (isStrongPositive(feedback)) return "Loved it";
+  if (isPositiveExperience(feedback)) return "Liked it";
+  if (isExperiencedNegative(feedback)) return "Didn’t like it";
   if (isBookmarked(feedback)) return "Saved";
+  if (isDeclined(feedback)) return "Not interested";
   return ratingLabel(feedback.rating);
 }
 
-function ratingButton(itemId, value, label, icon, saved) {
-  const pressed = saved?.rating === value;
+function experiencePath(itemId, feedback) {
+  const explicit = state.recommendationExperienceChoice?.[itemId];
+  if (explicit) return explicit;
+  return pathForFeedback(feedback);
+}
+
+function experienceButton(itemId, value, label, pressed) {
   return `
     <button
-      class="rating-button"
+      class="rating-button experience-button"
       type="button"
       data-feedback-item="${itemId}"
-      data-rating="${value}"
+      data-experience-path="${value}"
       aria-pressed="${pressed}"
-    ><span aria-hidden="true">${icon}</span><span>${label}</span></button>`;
+    ><span>${label}</span></button>`;
 }
 
-function detailOptionsFor(feedback) {
-  if (!feedback) return [];
-
-  if (feedback.rating === "more") {
-    return [
-      ["loved-before", "Loved it before"],
-      ["liked-before", "Liked it before"]
-    ];
-  }
-
-  if (feedback.rating === "less") {
-    return [
-      ["tried-disliked", "Tried it and disliked it"],
-      ["not-interested", "Not interested"]
-    ];
-  }
-
-  return [["bookmarked", "Save for later"]];
+function outcomeButton(itemId, value, label, pressed = false) {
+  return `
+    <button
+      class="detail-chip outcome-chip"
+      type="button"
+      data-feedback-item="${itemId}"
+      data-experience-outcome="${value}"
+      aria-pressed="${pressed}"
+    >${label}</button>`;
 }
 
-// #52/#53: three layers, not one block. Primary (More/Less/Not tried) is always visible. Secondary — which
-// specific thing happened — appears the moment a primary reaction exists, because it's still answering the
-// same question ("did this fit?"). Tertiary — discovery-quality feedback — is about the *recommendation
-// strategy*, not taste, and stays collapsed by default behind "More feedback" so it never reads as competing
-// with More/Less. It auto-expands once there's already an answer in it, so nothing already told to Tastemake
-// is hidden. The Blind Spot panel (#20) is left alone: it already manages its own offer/quiet/draft/saved
-// progression, which is its own, already-designed, form of progressive disclosure.
+function experienceChoices(itemId, feedback) {
+  const path = experiencePath(itemId, feedback);
+  if (!path) return "";
 
-function detailChips(itemId, feedback) {
-  const options = detailOptionsFor(feedback);
-  const prompt = feedback.rating === "not-tried"
-    ? "Want to save it for later? Optional. Saved doesn't change your Taste Profile."
-    : feedback.rating === "more"
-      ? "Already tried it? Tell us how it went. Optional."
-      : "Tried it, or just not for you? Optional.";
+  if (path === "tried") {
+    return `
+      <div class="feedback-details experience-outcomes">
+        <span class="feedback-detail-prompt">How did it land?</span>
+        <div class="detail-chip-row" role="group" aria-label="How did it land?">
+          ${outcomeButton(itemId, "loved", "Loved it", isStrongPositive(feedback))}
+          ${outcomeButton(itemId, "liked", "Liked it", isPositiveExperience(feedback) && !isStrongPositive(feedback))}
+          ${outcomeButton(itemId, "disliked", "Didn’t like it", isExperiencedNegative(feedback))}
+        </div>
+      </div>`;
+  }
 
   return `
-    <div class="feedback-details">
-      <span class="feedback-detail-prompt">${prompt}</span>
-      <div class="detail-chip-row">
-        ${options.map(([value, label]) => `
-          <button
-            class="detail-chip"
-            type="button"
-            data-feedback-item="${itemId}"
-            data-feedback-detail="${value}"
-            aria-pressed="${feedback.detail === value}"
-          >${label}</button>
-        `).join("")}
+    <div class="feedback-details experience-outcomes">
+      <span class="feedback-detail-prompt">Want to keep it around?</span>
+      <div class="detail-chip-row" role="group" aria-label="What do you want to do with this untried recommendation?">
+        ${outcomeButton(itemId, "save", "Save", isBookmarked(feedback))}
+        ${outcomeButton(itemId, "not-interested", "Not interested", isDeclined(feedback))}
       </div>
+      <span class="quality-note-help">These are intent only. They do not become Taste Profile evidence.</span>
     </div>`;
 }
+
+// #52/#53: the primary question is now whether the user has actually experienced the item.
+// Only the concrete second-step answer becomes stored feedback. This keeps intent separate from
+// taste evidence while making the first interaction understandable without algorithm vocabulary.
 
 // Discovery quality is about whether the pick was a good use of a recommendation slot, never about
 // whether it fits the user's taste — kept visually and conceptually apart from More/Less/detail chips so
@@ -150,7 +147,7 @@ function qualityNote(itemId, feedback) {
 }
 
 function hasQualityNote(feedback) {
-  return Boolean(feedback) && (feedback.rating === "more" || feedback.rating === "less");
+  return isPositiveExperience(feedback) || isExperiencedNegative(feedback);
 }
 
 // Defaults to open once there is an answer in it, closed otherwise; an explicit toggle click always
@@ -332,13 +329,15 @@ function recommendationCard(item, index, total) {
           </div>
         </div>
 
-        <div class="reaction-rail" aria-label="Rate ${esc(item.title)}">
-          ${ratingButton(item.id, "more", "More", "+", saved)}
-          ${ratingButton(item.id, "less", "Less", "-", saved)}
-          ${ratingButton(item.id, "not-tried", "Not tried", "o", saved)}
+        <div class="reaction-question">Have you tried it?</div>
+        <div class="reaction-rail reaction-rail-binary" aria-label="Have you tried ${esc(item.title)}?">
+          ${experienceButton(item.id, "tried", "Tried it", experiencePath(item.id, saved) === "tried")}
+          ${experienceButton(item.id, "not-tried", "Not tried", experiencePath(item.id, saved) === "not-tried")}
         </div>
 
-        ${saved ? detailChips(item.id, saved) : ""}
+        ${experienceChoices(item.id, saved)}
+        <p class="mobile-swipe-hint">Swipe right to Save · left for Not interested</p>
+        ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
         ${saved ? favoriteToggle(item.id, saved) : ""}
         ${saved ? seriesExperienceFeedback(item, saved) : ""}
         ${showQuality ? `
