@@ -73,10 +73,10 @@ function sayControls(item, said, record) {
       <div class="signal-say">
         ${primary}
         <div class="signal-followups signal-followups-partial">
-          <span class="signal-followup-heading">What makes it partial?</span>
-          <div class="signal-say-group" role="group" aria-label="What makes “${esc(item.title)}” only partly accurate?">
+          <span class="signal-followup-heading">What makes it only partly true?</span>
+          <div class="signal-say-group" role="group" aria-label="What makes “${esc(item.title)}” only partly true?">
             ${sayButton(item, "context", "some", "Depends on context", said)}
-            ${sayButton(item, "context", "unsure", "Not sure what yet", said)}
+            ${sayButton(item, "context", "unsure", "Not sure yet", said)}
           </div>
           ${domainScopeControls(item, record)}
         </div>
