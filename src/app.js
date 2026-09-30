@@ -404,6 +404,38 @@ function toggleWhyPopover(trigger) {
   trigger.setAttribute("aria-expanded", String(shouldPin));
 }
 
+let recommendationSwipe = null;
+
+app.addEventListener("pointerdown", (event) => {
+  if (event.pointerType !== "touch") return;
+  if (event.target.closest("button,a,summary,input,textarea,select")) return;
+  const card = event.target.closest("[data-rec-id]");
+  if (!card) return;
+  recommendationSwipe = {
+    itemId: card.dataset.recId,
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY
+  };
+});
+
+app.addEventListener("pointercancel", () => { recommendationSwipe = null; });
+
+app.addEventListener("pointerup", (event) => {
+  const swipe = recommendationSwipe;
+  recommendationSwipe = null;
+  if (!swipe || swipe.pointerId !== event.pointerId) return;
+
+  const dx = event.clientX - swipe.x;
+  const dy = event.clientY - swipe.y;
+  if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+
+  const outcome = dx > 0 ? "save" : "not-interested";
+  if (!saveExperienceOutcome(swipe.itemId, outcome)) return;
+  renderPreservingCardPosition(swipe.itemId);
+  announceReaction(swipe.itemId, announce);
+});
+
 app.addEventListener("click", async (event) => {
   const focusSelector = focusSelectorFor(event.target.closest("button"));
 
