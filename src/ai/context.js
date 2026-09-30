@@ -32,6 +32,7 @@ export function buildContext(state, extraCandidates = []) {
     recommendationStyle: state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced"),
     statements: state.patternStatements ?? [],   // user-confirmed statements (pattern corrections; not built yet)
     contexts: [],                                 // contexts the user gave (taste modes; not collected yet)
-    recommendationFilter: state.recommendationFilter ?? "all"
+    recommendationFilter: state.recommendationFilter ?? "all",
+    evidenceRotation: Math.floor((state.seenItemIds?.length ?? 0) / 5)
   };
 }

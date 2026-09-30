@@ -48,11 +48,14 @@ check("restore keeps profile and library data",restored.modelHypotheses.length==
 
 const html=buildHtmlExport(state,"2026-09-30T12:00:00.000Z");
 check("readable export is a standalone HTML document",html.startsWith("<!doctype html>")&&html.includes("<title>My Tastemake</title>"));
-check("readable export includes Saved",html.includes("<h2>Saved</h2>")&&html.includes("Saved Book"));
-check("readable export includes Tried and reaction",html.includes("<h2>Tried</h2>")&&html.includes("Liked Movie")&&html.includes(">Liked<"));
+check("readable export includes Saved",html.includes(">Saved <span class=\"count\">1</span></h2>")&&html.includes("Saved Book"));
+check("readable export includes Tried and reaction",html.includes(">Tried <span class=\"count\">1</span></h2>")&&html.includes("Liked Movie")&&html.includes(">Liked<"));
 check("readable export includes active Taste Profile",html.includes("<h2>Taste Profile</h2>")&&html.includes("Active pattern"));
-check("readable export includes corrected patterns",html.includes("<h2>Corrected patterns</h2>")&&html.includes("Rejected pattern"));
+check("readable export includes corrected patterns",html.includes("Corrected patterns")&&html.includes("Rejected pattern"));
 check("readable export filename uses html",htmlFileName(new Date("2026-09-30T12:00:00.000Z"))==="my-tastemake-2026-09-30.html");
+check("readable collections use a compact responsive grid",html.includes(".collection .items{grid-template-columns:repeat(3,minmax(0,1fr))}"));
+check("collection headers include item counts",html.includes("<h2>Saved <span class=\"count\">1</span></h2>")&&html.includes("<h2>Tried <span class=\"count\">1</span></h2>"));
+check("corrected patterns are collapsed by default",html.includes('<details class="corrected">')&&html.includes("<summary>Corrected patterns"));
 check("readable export escapes user content",buildHtmlExport({...state,feedbackByRecommendation:{"x":{...saved,item:{...saved.item,title:"<script>alert(1)</script>"}}}}).includes("&lt;script&gt;alert(1)&lt;/script&gt;"));
 
 let invalid=false;

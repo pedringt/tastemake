@@ -169,6 +169,7 @@ export function validatePicks(response, ctx) {
     return { ok: false, accepted, rejected, notes: ["response is not { picks: [...] }"], fallback: true };
   }
   const used = new Set();
+  const evidenceUse = new Map();
   let curveballs = 0;
   for (const p of response.picks) {
     const reasons = checkShape(p, { itemId: "string", why: "string", cites: "refs", tests: "nullable-string", kind: "enum:kind" });
@@ -188,6 +189,14 @@ export function validatePicks(response, ctx) {
       // citing intent as support, not a majority-vote. validateHypotheses already gets this right
       // with .some() at line 73; this brings picks in line with the same rule.
       else if (cited.some((r) => r.class !== "experienced")) reasons.push("cites intent (not something experienced), which can never count as support");
+      else {
+        for (const ref of new Set(p.cites)) {
+          const record = evidence.get(ref);
+          if (record?.polarity < 0 && (evidenceUse.get(ref) ?? 0) >= 1) {
+            reasons.push("reuses the same disliked item across multiple picks");
+          }
+        }
+      }
       if (CIRCULAR_PATTERNS.some((re) => re.test(p.why))) reasons.push("circular reasoning");
       if (IDENTITY_PATTERNS.some((re) => re.test(p.why))) reasons.push("states a single identity or aesthetic about the user");
       if (p.kind === "curveball") {
@@ -197,6 +206,7 @@ export function validatePicks(response, ctx) {
     }
     if (reasons.length) { rejected.push({ proposal: p, reasons }); continue; }
     used.add(p.itemId);
+    for (const ref of new Set(p.cites)) evidenceUse.set(ref, (evidenceUse.get(ref) ?? 0) + 1);
     if (p.kind === "curveball") curveballs += 1;
     accepted.push({ ...p, item: candidates.get(p.itemId), authority: "inferred", source: "model", contract: CONTRACT_VERSION });
   }
