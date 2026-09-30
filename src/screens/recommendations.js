@@ -399,9 +399,9 @@ function renderAiStatus() {
       </div>`;
   }
   if (!state.aiMessage) return "";
-  if (state.aiSource === "model") return `<p class="ai-inline-status"><strong>Live AI:</strong> ranked this set and passed validation.</p>`;
-  if (state.aiSource === "catalog") return `<p class="ai-inline-status"><strong>Catalog fallback:</strong> live AI was not used for this set.</p>`;
-  return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> no demo picks were substituted.</p>`;
+  if (state.aiSource === "model") return "";
+  if (state.aiSource === "catalog") return `<p class="ai-inline-status">Using catalog matches for this set.</p>`;
+  return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> Tastemake could not build a trustworthy set.</p>`;
 }
 // #93/2026-09-28: the ongoing-loop action. Available as soon as a set exists — not gated behind
 // rating any card, let alone every card, in the current set (see canKeepDiscovering).
