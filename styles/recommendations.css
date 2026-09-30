@@ -181,8 +181,6 @@
   background:var(--pink-soft);
   color:var(--accent-text,var(--pink));
 }
-.rec-favorite-star:hover { border-color:var(--navy); transform:translateY(-1px); }
-.rec-favorite-star.is-favorite { border-color:var(--navy); background:var(--yellow); }
 .rec-favorite-star:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:2px; }
 /* #95/#121: the rationale is the primary card copy — "why did Tastemake pick this?" — shown before
    the catalog synopsis, in the note-ink color used elsewhere for Tastemake's own commentary. The
