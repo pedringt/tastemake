@@ -506,4 +506,14 @@
 .experience-button { font-size:12px; }
 .experience-outcomes { margin-top:9px; }
 .outcome-chip { min-height:34px; padding-inline:11px; }
+.mobile-swipe-hint { display:none; }
+@media (max-width:760px) and (pointer:coarse) {
+  .mobile-swipe-hint {
+    display:block;
+    margin:7px 0 0;
+    color:var(--faint,#747994);
+    font-size:10px;
+    text-align:center;
+  }
+}
 .rating-button[disabled],.keep-discovering-bar .button[disabled] { opacity:.55; cursor:default; pointer-events:none; }
