@@ -4,13 +4,14 @@
 
 import { searchCatalog } from "../../src/catalog/providers.mjs";
 import hypothesesHandler, { buildHypothesisPrompt, produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
+import { selectPromptEvidence } from "../../api/recommendations.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
 import { serializeAiState, selectExperiencedFeedbackForWire } from "../../src/ai/live-client.js";
 import { bestExactMatch } from "../../api/resolve-item.mjs";
 import { applyResolvedCatalogItem, applySearchAction, findExisting, makeCustomItem } from "../../src/model/search.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
-import { normalizeHypothesisResponse, validateHypotheses } from "../../src/ai/validate.js";
+import { normalizeHypothesisResponse, validateHypotheses, validatePicks } from "../../src/ai/validate.js";
 import { hypothesisEvidenceKey, mergeHypotheses } from "../../src/ai/hypothesis-profile.js";
 
 let passed = 0;
@@ -499,6 +500,42 @@ eq("new revision supersedes the prior revision", historyState.hypothesisHistory[
   const rr = res();
   await hypothesesHandler({ method: "POST", headers: { "content-length": "999999" }, body: {} }, rr);
   eq("oversized body is refused by content-length before parsing", rr.code, 413);
+}
+
+
+// Repeated-recommendation regression: explicit dislikes remain available as useful counterexamples
+// without becoming the center of every set or every explanation.
+{
+  const positives = Array.from({length:6},(_,i)=>({
+    ref:`ev:tv-like-${i}`,itemId:`tv-like-${i}`,title:`Liked TV ${i}`,class:"experienced",
+    polarity:1,kind:i===0?"experienced-strong-positive":"experienced-positive",weight:i===0?2:1.25,domains:["tv"]
+  }));
+  const negatives = Array.from({length:3},(_,i)=>({
+    ref:`ev:tv-dislike-${i}`,itemId:`tv-dislike-${i}`,title:`Disliked TV ${i}`,class:"experienced",
+    polarity:-1,kind:"experienced-negative",weight:-2,domains:["tv"]
+  }));
+  const baseCtx = {
+    evidence:[...positives,...negatives],
+    candidates:[{id:"tv-candidate",title:"Candidate",type:"tv",domains:["tv"]}],
+    statements:[],contexts:[],curveball:true,recommendationFilter:"tv"
+  };
+  const first = selectPromptEvidence({...baseCtx,evidenceRotation:0});
+  const second = selectPromptEvidence({...baseCtx,evidenceRotation:1});
+  eq("prompt keeps only one negative counterexample for a single-domain set", first.filter((row)=>row.polarity<0).length, 1);
+  check("prompt still keeps several positive anchors", first.filter((row)=>row.polarity>0).length >= 4);
+  check("negative counterexample rotates between recommendation rounds", first.find((row)=>row.polarity<0)?.ref !== second.find((row)=>row.polarity<0)?.ref);
+
+  const candidates = Array.from({length:4},(_,i)=>({id:`pick-${i}`,title:`Pick ${i}`,type:"tv",domains:["tv"],hypotheses:[]}));
+  const validationCtx = {...baseCtx,candidates};
+  const response = {picks:[
+    {itemId:"pick-0",why:"Positive reason one.",cites:["ev:tv-dislike-0"],tests:null,kind:"pick"},
+    {itemId:"pick-1",why:"Positive reason two.",cites:["ev:tv-dislike-0"],tests:null,kind:"pick"},
+    {itemId:"pick-2",why:"Positive reason three.",cites:["ev:tv-like-0"],tests:null,kind:"pick"},
+    {itemId:"pick-3",why:"Positive reason four.",cites:["ev:tv-like-0"],tests:null,kind:"pick"}
+  ]};
+  const validated = validatePicks(response, validationCtx);
+  check("same disliked item may explain only one pick in a set", validated.rejected.some((row)=>(row.reasons??[]).includes("reuses the same disliked item across multiple picks")));
+  eq("positive evidence may support two picks before reuse is excessive", validated.accepted.filter((row)=>row.cites.includes("ev:tv-like-0")).length, 2);
 }
 
 console.log(`catalog/AI tests: ${passed} passed, ${failures.length} failed`);
