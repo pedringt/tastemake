@@ -38,26 +38,52 @@ function domainScopeControls(item, record) {
 
 // Pattern corrections: what the user says here is user-confirmed and outranks inference, but it is not taste
 // evidence, so it never changes the confidence level (see src/model/statements.js).
-function sayControls(item, said) {
-  return `
-    <div class="signal-say">
-      <div class="signal-say-group" role="group" aria-label="Is \u201c${esc(item.title)}\u201d you?">
-        <span class="signal-say-label">Is this you?</span>
-        ${sayButton(item, "says", "accurate", "Yes, accurate", said)}
-        ${sayButton(item, "says", "not-me", "Not really me", said)}
-      </div>
-      <div class="signal-say-group" role="group" aria-label="How much does \u201c${esc(item.title)}\u201d matter to you?">
-        <span class="signal-say-label">How much does it matter?</span>
-        ${sayButton(item, "weight", "lot", "A lot", said)}
-        ${sayButton(item, "weight", "little", "A little", said)}
-      </div>
-      <div class="signal-say-group signal-context-group" role="group" aria-label="How broadly does \u201c${esc(item.title)}\u201d hold for you?">
-        <span class="signal-say-label">Does this hold broadly?</span>
-        ${sayButton(item, "context", "broad", "Usually", said)}
-        ${sayButton(item, "context", "some", "Only in some contexts", said)}
-        ${sayButton(item, "context", "unsure", "Not sure yet", said)}
-      </div>
+function sayControls(item, said, record) {
+  const fit = said?.says ?? null;
+  const primary = `
+    <div class="signal-say-primary" role="group" aria-label="Does “${esc(item.title)}” sound right?">
+      <span class="signal-say-label">Does this sound right?</span>
+      ${sayButton(item, "says", "accurate", "Yes", said)}
+      ${sayButton(item, "says", "partial", "Partly", said)}
+      ${sayButton(item, "says", "not-me", "No", said)}
+      ${sayButton(item, "says", "unsure", "Not sure", said)}
     </div>`;
+
+  if (fit === "accurate") {
+    return `
+      <div class="signal-say">
+        ${primary}
+        <div class="signal-followups">
+          <div class="signal-say-group" role="group" aria-label="How important is “${esc(item.title)}” to your taste?">
+            <span class="signal-say-label">How important is it?</span>
+            ${sayButton(item, "weight", "lot", "Important to my taste", said)}
+            ${sayButton(item, "weight", "little", "Nice, but not important", said)}
+          </div>
+          <div class="signal-say-group" role="group" aria-label="How broadly does “${esc(item.title)}” hold for you?">
+            <span class="signal-say-label">Does it usually hold?</span>
+            ${sayButton(item, "context", "broad", "Usually", said)}
+            ${sayButton(item, "context", "some", "Depends", said)}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  if (fit === "partial") {
+    return `
+      <div class="signal-say">
+        ${primary}
+        <div class="signal-followups signal-followups-partial">
+          <span class="signal-followup-heading">What makes it partial?</span>
+          <div class="signal-say-group" role="group" aria-label="What makes “${esc(item.title)}” only partly accurate?">
+            ${sayButton(item, "context", "some", "Depends on context", said)}
+            ${sayButton(item, "context", "unsure", "Not sure what yet", said)}
+          </div>
+          ${domainScopeControls(item, record)}
+        </div>
+      </div>`;
+  }
+
+  return `<div class="signal-say">${primary}</div>`;
 }
 
 function hypothesisCard(item, index) {
@@ -76,7 +102,9 @@ function hypothesisCard(item, index) {
           <h3>${esc(item.title)}</h3>
           <span class="signal-badges">
             ${item.status === "conditional" ? `<span class="signal-flag" title="This pattern holds in some picks and not others.">Conditional</span>` : ""}
-            ${said?.says === "accurate" ? `<span class="signal-flag signal-confirmed">${FIT.accurate}</span>` : ""}
+            ${said?.says === "accurate" ? `<span class="signal-flag signal-confirmed">You confirmed this</span>` : ""}
+            ${said?.says === "partial" ? `<span class="signal-flag">Partly accurate</span>` : ""}
+            ${said?.says === "unsure" ? `<span class="signal-flag">Not sure yet</span>` : ""}
             <span class="signal-status ${update.status}">${esc(update.level)}</span>
           </span>
         </div>
@@ -84,10 +112,11 @@ function hypothesisCard(item, index) {
         <div class="signal-evidence"><span>cited evidence</span> ${esc(item.evidence)}</div>
         <div class="signal-provenance">${esc(update.provenance)}</div>
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
+        ${said?.says === "partial" ? `<div class="signal-said"><strong>${FIT.partial}.</strong> Tastemake treats it as a narrower pattern and uses the details you add below.</div>` : ""}
+        ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake keeps the pattern tentative rather than treating your uncertainty as evidence.</div>` : ""}
         ${said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
         ${said?.context ? `<div class="signal-said">${CONTEXT[said.context] ?? "You refined how broadly this applies."}${said.context === "some" ? ". Tastemake can't claim this is Strong until it's specific about which context." : "."}</div>` : ""}
-        ${sayControls(item, said)}
-        ${said?.says === "not-me" ? "" : domainScopeControls(item, record)}
+        ${sayControls(item, said, record)}
         ${blindLine}
       </div>
     </article>`;
