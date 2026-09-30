@@ -147,7 +147,7 @@ function qualityNote(itemId, feedback) {
 }
 
 function hasQualityNote(feedback) {
-  return Boolean(feedback) && (feedback.rating === "more" || feedback.rating === "less");
+  return isPositiveExperience(feedback) || isExperiencedNegative(feedback);
 }
 
 // Defaults to open once there is an answer in it, closed otherwise; an explicit toggle click always
