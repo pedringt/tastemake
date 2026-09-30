@@ -246,6 +246,8 @@ check("Taste Profile prompt refuses to invent facts for unresolved manual eviden
   eq("manual resolution refuses an ambiguous exact-title match", bestExactMatch(matches, "Same Title", "book").status, "ambiguous");
   eq("manual resolution uses creator to disambiguate", bestExactMatch(matches, "Same Title", "book", "Author Two").item?.providerId, "2");
   eq("missing provider creator never counts as a creator match", bestExactMatch(matches, "Same Title", "book", "No Such Author").status, "ambiguous");
+  eq("a single same-title result with the wrong creator is refused", bestExactMatch([matches[0]], "Same Title", "book", "Author Two").status, "not_found");
+  eq("a single same-title result with missing creator stays ambiguous when a creator was supplied", bestExactMatch([matches[2]], "Same Title", "book", "Author Two").status, "ambiguous");
   eq("manual resolution never crosses media types", bestExactMatch(matches, "Same Title", "movie", "Author Two").status, "not_found");
 }
 
