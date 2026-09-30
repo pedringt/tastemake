@@ -8,7 +8,7 @@ import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { bestExactMatch } from "../../api/resolve-item.mjs";
-import { applyResolvedCatalogItem, applySearchAction, makeCustomItem } from "../../src/model/search.js";
+import { applyResolvedCatalogItem, applySearchAction, findExisting, makeCustomItem } from "../../src/model/search.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
 
 let passed = 0;
@@ -268,6 +268,35 @@ check("Taste Profile prompt refuses to invent facts for unresolved manual eviden
   eq("resolved manual evidence gains a provider id", state.feedbackByRecommendation[manual.id]?.item?.providerId, "OLX");
   const record = evidenceRecords(state).find((row) => row.itemId === manual.id);
   check("resolved manual evidence exposes structured facts to Taste Profile", record?.facts?.resolved === true && record?.facts?.genres?.includes("Speculative fiction"));
+
+  const sameTitleOtherCreator = makeCustomItem("Obscure Book", "book", "Different Writer");
+  check("same-title manual works with different creators remain distinct", findExisting(state, sameTitleOtherCreator) === null);
+}
+
+// A resolved manual item keeps its custom evidence id, but deterministic retrieval must still block
+// the same provider work from coming back as a recommendation under the provider-native id.
+{
+  const manualAnchor = {
+    id:"custom-seed-film-director-movie", custom:true, provider:"tmdb", providerId:"10",
+    title:"Seed Movie", type:"movie", domains:["movies"], genres:["18"], providerMeta:{genreIds:[18]}
+  };
+  const state = {
+    selectedFavorites:new Set([manualAnchor.id]), feedbackByRecommendation:{}, recommendationSets:[],
+    libraryFavorites:new Set(), customItems:{[manualAnchor.id]:manualAnchor},
+    areas:{movies:true,tv:true,read:true,play:true}, recommendationFilter:"movies"
+  };
+  const fetchImpl = async (url) => {
+    if (String(url).includes("/movie/10/recommendations")) {
+      return {ok:true,json:async()=>({results:[
+        {id:10,title:"Seed Movie",overview:"The anchor itself.",release_date:"2020-01-01",genre_ids:[18]},
+        {id:22,title:"Real Neighbor",overview:"A real neighbor.",release_date:"2021-01-01",genre_ids:[18]}
+      ]})};
+    }
+    throw new Error(`unexpected resolved-manual URL: ${url}`);
+  };
+  const rows = await retrieveCatalogCandidates(state,{env,fetchImpl});
+  check("resolved manual anchor is blocked by provider identity, not only its custom id", !rows.some((item)=>item.provider==="tmdb" && item.providerId==="10"));
+  check("resolved manual anchor still retrieves other real provider candidates", rows.some((item)=>item.providerId==="22"));
 }
 
 const live = await produceHypotheses({ rawState, env: AI_ENV, fetchImpl: anthroFetch });
