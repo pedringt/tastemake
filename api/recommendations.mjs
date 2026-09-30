@@ -98,8 +98,6 @@ function promptEvidencePriority(record) {
 // domains represented in the current candidate pool, keeping strong anchors and counterexamples.
 export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
   const all = (ctx.evidence ?? []).filter((record) => record?.class === "experienced");
-  if (all.length <= limit) return all;
-
   const candidateDomains = [...new Set((ctx.candidates ?? []).flatMap((item) => item.domains ?? []))];
   const relevant = candidateDomains.length
     ? all.filter((record) => (record.domains ?? []).some((domain) => candidateDomains.includes(domain)))
@@ -117,17 +115,26 @@ export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
     .map((record, index) => ({ record, index }))
     .sort((a, b) => promptEvidencePriority(b.record) - promptEvidencePriority(a.record) || b.record.weight - a.record.weight || a.index - b.index)
     .map(({ record }) => record);
+  const rotate = (records, offset = 0) => {
+    if (!records.length) return records;
+    const at = Math.abs(offset) % records.length;
+    return records.slice(at).concat(records.slice(0, at));
+  };
+  const rotation = Number(ctx.evidenceRotation ?? 0);
 
-  // Give each represented domain a fair slice before the global fill so one large history area cannot
-  // crowd the others out. Four positive anchors + two negatives per domain is enough to ground a pick
-  // while preserving room for multiple domains.
+  // Positive evidence should do most of the explanatory work. Keep one negative counterexample per
+  // represented domain, and rotate which one is shown as the user moves through recommendation rounds
+  // so one memorable dislike does not become a permanent center of gravity.
   for (const domain of candidateDomains) {
     const rows = pool.filter((record) => (record.domains ?? []).includes(domain));
     ranked(rows.filter((record) => record.polarity > 0)).slice(0, 4).forEach(add);
-    ranked(rows.filter((record) => record.polarity < 0)).slice(0, 2).forEach(add);
+    const negatives = rotate(ranked(rows.filter((record) => record.polarity < 0)), rotation);
+    add(negatives[0]);
   }
 
-  ranked(pool).forEach(add);
+  // Fill remaining room with positives first. Negatives stay useful as contrast, but are not used
+  // simply to fill prompt capacity.
+  ranked(pool.filter((record) => record.polarity > 0)).forEach(add);
   return selected.slice(0, limit);
 }
 
@@ -166,7 +173,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     // several places but assigned nowhere), so any non-null `tests` the model chose was guaranteed to
     // fail validation. The instruction below now says that plainly instead of implying a real
     // per-candidate hypothesis id usually exists to test.
-    "Across the final set, vary the concrete reason for each pick and avoid repeating the same opening phrase or sentence template.",
+    "Across the final set, vary the concrete reason for each pick and avoid repeating the same opening phrase or sentence template. Treat dislikes as useful counterexamples, not the user's defining taste: prefer positive evidence as the main anchor, use a negative only when it adds specific contrast, and never center more than one pick on the same disliked item.",
     "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; today's real catalog candidates carry no attached hypothesis ids at all, so tests must always be null -- never invent or reuse a hypothesis id from elsewhere in this context, since it will not be attached to the candidate and will fail; never use a tests pattern the user marked not-me; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; at most one curveball, and none when curveball is false; explain what the pick tests in specific plain English, in one sentence of 25 words or fewer; internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; call a pick a curveball, in kind or in why, only for that one exploratory pick, and set kind to \"curveball\" whenever why calls it one — every other pick keeps kind \"pick\" and its why should not describe itself as a curveball.",
     "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
   ].join("\n\n");
