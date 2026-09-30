@@ -6,7 +6,7 @@ import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
-import { starterItems } from "../model/starters.js";
+import { libraryItems } from "../model/library.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -120,7 +120,9 @@ function blindSpotSection() {
 }
 
 export function renderProfile() {
-  const selectedTitles = starterItems(state).map((item) => item.title);
+  const favoriteTitles = libraryItems(state).favorites.map((entry) => entry.item.title);
+  const visibleFavoriteTitles = favoriteTitles.slice(0, 12);
+  const hiddenFavoriteTitles = favoriteTitles.slice(12);
   const workingHypotheses = state.modelHypotheses ?? [];
   const liveProfile = workingHypotheses.length > 0;
 
@@ -142,7 +144,7 @@ export function renderProfile() {
         </div>
       </div>
 
-      <div class="profile-evidence-strip">\n        <span class="profile-evidence-label">Your favorites</span>\n        <div class="profile-evidence-track">\n          ${selectedTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}\n        </div>\n      </div>\n\n      ${liveProfile ? `\n      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>\n      <div class="profile-map">\n        <aside class="profile-map-aside">\n          <span class="profile-aside-number">${workingHypotheses.length}</span>\n          <p>validated AI patterns currently shaping your profile</p>\n          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>\n        </aside>\n        <div class="signal-stack">${workingHypotheses.map(hypothesisCard).join("")}</div>\n      </div>` : `\n      <div class="profile-empty" role="status">\n        <strong>No generated patterns yet.</strong>\n        <p>Tastemake is not filling this page with demo hypotheses. When live profile AI is available, it will build patterns only from your real experienced evidence.</p>\n      </div>`}
+      <div class="profile-evidence-strip">\n        <span class="profile-evidence-label">Your favorites</span>\n        <div class="profile-evidence-track">\n          ${visibleFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}\n          ${hiddenFavoriteTitles.length ? `<details class="profile-evidence-more"><summary>+${hiddenFavoriteTitles.length} more</summary><span class="profile-evidence-more-items">${hiddenFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${((index + visibleFavoriteTitles.length) % 4) + 1}">${esc(title)}</span>`).join("")}</span></details>` : ""}\n        </div>\n      </div>\n\n      ${liveProfile ? `\n      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>\n      <div class="profile-map">\n        <aside class="profile-map-aside">\n          <span class="profile-aside-number">${workingHypotheses.length}</span>\n          <p>validated AI patterns currently shaping your profile</p>\n          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>\n        </aside>\n        <div class="signal-stack">${workingHypotheses.map(hypothesisCard).join("")}</div>\n      </div>` : `\n      <div class="profile-empty" role="status">\n        <strong>No generated patterns yet.</strong>\n        <p>Tastemake is not filling this page with demo hypotheses. When live profile AI is available, it will build patterns only from your real experienced evidence.</p>\n      </div>`}
 
       ${blindSpotSection()}
 
