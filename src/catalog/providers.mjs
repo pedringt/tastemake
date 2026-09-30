@@ -68,7 +68,9 @@ function tmdbItem(row, type) {
     // Rings film shares one collection id). When the provider response includes it, the shared novelty
     // guard in catalog/related.mjs can suppress same-collection sequels without relying on title text.
     providerMeta: { genreIds: row.genre_ids ?? [], collectionId: row.belongs_to_collection?.id ?? null },
-    sourceUrl: type === "tv" ? `https://www.themoviedb.org/tv/${row.id}` : `https://www.themoviedb.org/movie/${row.id}`
+    sourceUrl: type === "tv" ? `https://www.themoviedb.org/tv/${row.id}` : `https://www.themoviedb.org/movie/${row.id}`,
+    // Search-only signal. Stripped before results leave searchCatalog so it never becomes product state.
+    _searchPopularity: Number(row.popularity) || 0
   };
 }
 
@@ -123,12 +125,15 @@ function openLibraryItem(row) {
     // against the API for two popular in-print series) -- this is a real, honest improvement where
     // the upstream data supports it, not a claim that book sequel-suppression is now complete.
     providerMeta: { seriesKey: row.series_key ?? null, isbns: (row.isbn ?? []).slice(0, 24) },
-    sourceUrl: key ? `https://openlibrary.org/works/${key}` : "https://openlibrary.org/"
+    sourceUrl: key ? `https://openlibrary.org/works/${key}` : "https://openlibrary.org/",
+    // Open Library already exposes edition_count in search. Keep it only long enough to break
+    // ties between equally relevant title matches in the combined All search.
+    _searchPopularity: Number(row.edition_count) || 0
   };
 }
 
 async function searchOpenLibrary(query, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,isbn";
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,isbn,edition_count";
   const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
@@ -168,7 +173,9 @@ function igdbItem(row) {
       collectionId: row.collection?.id ?? null,
       franchiseId: (row.franchises ?? [])[0]?.id ?? row.franchise?.id ?? null
     },
-    sourceUrl: row.url ?? null
+    sourceUrl: row.url ?? null,
+    // Search-only signal. Stripped before results leave searchCatalog.
+    _searchPopularity: Number(row.total_rating_count) || 0
   };
 }
 
@@ -407,13 +414,15 @@ export async function searchCatalog(query, { domain = "all", env = process.env, 
   // emerges naturally farther down instead of being forced ahead of stronger matches.
   const combined = uniq(buckets.flat());
   combined.sort((a, b) =>
-    searchRelevance(b.title, q) - searchRelevance(a.title, q)
+    searchRelevance(b.title, q, b._searchPopularity) - searchRelevance(a.title, q, a._searchPopularity)
     || a.title.localeCompare(b.title)
   );
 
   const configured = settled.filter(([, , , isConfigured]) => isConfigured);
   const degraded = configured.length === 0 || configured.every(([, , , , available]) => !available);
-  const results = combined.slice(0, 24);
+  // Do not leak provider popularity/rating counts into persistent catalog items. They are only
+  // ranking hints for this search response.
+  const results = combined.slice(0, 24).map(({ _searchPopularity, ...item }) => item);
 
   // #135 foundation: start building up the canonical item store in the background from whatever
   // real provider items search already fetched. This is write-behind only (nothing here is
