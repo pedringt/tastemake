@@ -535,7 +535,7 @@ eq("new revision supersedes the prior revision", historyState.hypothesisHistory[
   ]};
   const validated = validatePicks(response, validationCtx);
   check("same disliked item may explain only one pick in a set", validated.rejected.some((row)=>(row.reasons??[]).includes("reuses the same disliked item across multiple picks")));
-  eq("positive evidence may support two picks before reuse is excessive", validated.accepted.filter((row)=>row.cites.includes("ev:tv-like-0")).length, 2);
+  eq("positive evidence can still support multiple picks", validated.accepted.filter((row)=>row.cites.includes("ev:tv-like-0")).length, 2);
 }
 
 console.log(`catalog/AI tests: ${passed} passed, ${failures.length} failed`);
