@@ -2,7 +2,7 @@
 // Free, no-network tests for the real-catalog recommendation endpoint.
 
 import { readFileSync } from "node:fs";
-import handler, { buildPickPrompt, callAnthropic, liveConfig, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
+import handler, { buildPickPrompt, callAnthropic, liveConfig, parseModelJson, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
 
 let passed=0;
 const failures=[];
@@ -18,6 +18,15 @@ const BASE={
   VERCEL_ENV:"preview"
 };
 const ON={...BASE,TASTEMAKE_AI_ENABLED:"1",ANTHROPIC_API_KEY:"fake-key"};
+
+// Production regression: a model occasionally omitted the comma between adjacent objects in an
+// otherwise-valid JSON array. Recover only that conservative syntax error; do not invent fields.
+{
+  const repaired = parseModelJson('{"hypotheses":[{"id":"a"} {"id":"b"}],"insufficientEvidence":false}');
+  eq("model JSON repair recovers a missing comma between array objects", repaired.hypotheses.length, 2);
+  eq("model JSON repair preserves the first object", repaired.hypotheses[0]?.id, "a");
+  eq("model JSON repair preserves the second object", repaired.hypotheses[1]?.id, "b");
+}
 
 const favorite={
   id:"tmdb-movie-1",provider:"tmdb",providerId:"1",title:"Favorite Film",type:"movie",
