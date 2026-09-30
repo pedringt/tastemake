@@ -23,56 +23,84 @@ import { isExperienced } from "../model/evidence.js";
 // anywhere server-side once an item comes back through feedbackByRecommendation/customItems on a
 // later request. Over a long session with many reacted-to picks, these two fields alone are enough
 // to grow the payload back past the body cap.
-function trimItemForWire(item) {
+const MAX_WIRE_EXPERIENCED = 96;
+
+function compactExperiencedItem(item) {
   if (!item) return item;
-  const { about, artwork, sourceUrl, reason, ai, ...rest } = item;
-  return rest;
+  return {
+    id: item.id,
+    title: item.title,
+    type: item.type ?? null,
+    domains: item.domains ?? null,
+    by: item.by ?? null,
+    custom: item.custom || undefined,
+    provider: item.provider ?? null,
+    providerId: item.providerId ?? null,
+    year: item.year ?? null,
+    genres: (item.genres ?? []).slice(0, 12),
+    providerMeta: item.providerMeta ?? null
+  };
 }
 
-// Real bug, recurred three times now (recommendationSets ids-only, then about/artwork/sourceUrl,
-// then reason/ai): trimming a fixed list of fields only raises the ceiling -- a long enough session
-// still grows the payload back past it eventually. This bounds the *shape* of the by-far-largest
-// group instead: intent-only reactions (bookmarks, Not interested, not-tried -- never Loved/Liked/
-// Tried-disliked) vastly outnumber real taste evidence in normal use, and matter server-side for
-// exactly two things: staying in the "already reacted, don't recommend again" exclusion set
-// (eligibleCandidates in ai/context.js, keyed by id alone) and their evidenceKind/title/type/domains
-// in evidenceRecords() (model/evidence.js's record()) -- never their provider/providerId/genres/
-// providerMeta/year, which only externalEvidenceItems (catalog/related.mjs) reads, and it explicitly
-// only looks at *experienced* items. So an intent-only entry's id can never be dropped (that would
-// silently un-exclude an already-seen item -- the exact #152 bug class), but its item payload can
-// shrink to just what record() and displayLabel() actually use, independent of how large the original
-// catalog item was. Real taste evidence keeps its full (already-trimmed) item, since that's what the
-// model actually reasons from and what anchor selection needs.
-function stubItemForWire(item) {
-  if (!item) return item;
-  return { id: item.id, title: item.title, type: item.type ?? null, domains: item.domains ?? null, custom: item.custom || undefined };
+function primaryDomain(feedback) {
+  return feedback?.item?.domains?.[0] ?? "other";
 }
 
-function trimFeedbackItemForWire(feedback) {
-  return { ...feedback, item: isExperienced(feedback) ? trimItemForWire(feedback.item) : stubItemForWire(feedback.item) };
+export function selectExperiencedFeedbackForWire(feedbackByRecommendation = {}, limit = MAX_WIRE_EXPERIENCED) {
+  const entries = Object.entries(feedbackByRecommendation).filter(([, feedback]) => isExperienced(feedback));
+  if (entries.length <= limit) return entries;
+
+  const buckets = new Map([["movies", []], ["tv", []], ["read", []], ["play", []], ["other", []]]);
+  for (const entry of entries) {
+    const key = buckets.has(primaryDomain(entry[1])) ? primaryDomain(entry[1]) : "other";
+    buckets.get(key).push(entry);
+  }
+  for (const bucket of buckets.values()) bucket.reverse();
+
+  const out = [];
+  while (out.length < limit && [...buckets.values()].some((bucket) => bucket.length)) {
+    for (const bucket of buckets.values()) {
+      const entry = bucket.shift();
+      if (entry) out.push(entry);
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
 }
 
-// customItems is only ever read server-side for ids already in selectedFavorites or carrying
-// experienced feedback (externalEvidenceItems, catalog/related.mjs) -- any other entry (a bookmarked
-// search result never reacted to, an old blind-spot draft item, etc.) is pure dead weight on the wire.
+function compactFeedbackForWire(feedback) {
+  return { ...feedback, item: compactExperiencedItem(feedback.item) };
+}
+
 function capCustomItemsForWire(customItems, feedbackByRecommendation, selectedFavorites) {
   const neededIds = new Set([
     ...(selectedFavorites ?? []),
-    ...Object.entries(feedbackByRecommendation ?? {}).filter(([, feedback]) => isExperienced(feedback)).map(([id]) => id)
+    ...Object.keys(feedbackByRecommendation ?? {})
   ]);
   return Object.fromEntries(
-    Object.entries(customItems ?? {}).filter(([id]) => neededIds.has(id)).map(([id, item]) => [id, trimItemForWire(item)])
+    Object.entries(customItems ?? {})
+      .filter(([id]) => neededIds.has(id))
+      .map(([id, item]) => [id, compactExperiencedItem(item)])
   );
+}
+
+function seenItemIdsForWire(state) {
+  return [...new Set([
+    ...Object.keys(state.feedbackByRecommendation ?? {}),
+    ...(state.recommendationSets ?? []).flat().map((item) => typeof item === "string" ? item : item?.id).filter(Boolean)
+  ])];
 }
 
 export function serializeAiState(state) {
   const feedbackByRecommendation = Object.fromEntries(
-    Object.entries(state.feedbackByRecommendation ?? {}).map(([id, feedback]) => [id, trimFeedbackItemForWire(feedback)])
+    selectExperiencedFeedbackForWire(state.feedbackByRecommendation ?? {})
+      .map(([id, feedback]) => [id, compactFeedbackForWire(feedback)])
   );
-  const customItems = capCustomItemsForWire(state.customItems, state.feedbackByRecommendation, state.selectedFavorites);
+  const customItems = capCustomItemsForWire(state.customItems, feedbackByRecommendation, state.selectedFavorites);
   return {
     selectedFavorites: [...state.selectedFavorites],
     feedbackByRecommendation,
+    seenItemIds: seenItemIdsForWire(state),
     // #120 follow-up, real bug: server-side, every historical set is only ever read for its item ids
     // (the "already shown" exclusion set in related.mjs/context.js) -- never full item data. The
     // full objects (title, artwork URL, synopsis, provider metadata, AI reasoning text) were being
@@ -81,7 +109,7 @@ export function serializeAiState(state) {
     // to a user as "stuck on the same recommendations," since the client keeps whatever was last
     // successfully rendered. Sending ids only cuts this payload by roughly two orders of magnitude
     // with zero behavior change server-side.
-    recommendationSets: state.recommendationSets.map((set) => set.map((item) => item.id)),
+    recommendationSets: [],
     libraryFavorites: [...(state.libraryFavorites ?? [])],
     customItems,
     // QA sweep finding (2026-09-28): blindSpots/blindSpotDrafts/blindSpotDismissed were being sent
