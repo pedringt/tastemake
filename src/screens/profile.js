@@ -105,7 +105,7 @@ function hypothesisCard(item, index) {
     ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${esc(spot.item.title)}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
     : "";
   return `
-    <article class="signal-row signal-row-${index + 1}${said?.says === "not-me" ? " is-excluded" : ""}">
+    <article class="signal-row signal-row-${index + 1}" data-profile-pattern="${item.id}">
       <div class="signal-index">${String(index + 1).padStart(2, "0")}</div>
       <div class="signal-main">
         <div class="signal-title-row">
