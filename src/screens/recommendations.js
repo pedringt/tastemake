@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { renderDomainFilter } from "../components/domain-filter.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
-import { isDeclined, isExperienced, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
+import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel, domainById } from "../data/domains.js";
