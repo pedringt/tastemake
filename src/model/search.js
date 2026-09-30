@@ -109,7 +109,10 @@ export function findExisting(state, itemOrTitle) {
     }
     if (target.type && item.type !== target.type) return false;
     if (normalize(item.title) !== wanted) return false;
-    if (target.by && item.by && normalize(item.by) !== normalize(target.by)) return false;
+    if (target.by) {
+      const existingCreator = normalize(item.by);
+      if (!existingCreator || existingCreator !== normalize(target.by)) return false;
+    }
     return true;
   }) ?? null;
 }
