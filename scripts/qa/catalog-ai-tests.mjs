@@ -127,6 +127,41 @@ check("grounded retrieval excludes the evidence item itself", !related.some((x) 
   check("multi-subject related book remains eligible and marked strong", fantasyRelated.some((item)=>item.title==="Good Fantasy Neighbor" && item.relationStrength==="strong"), fantasyRelated.map((item)=>`${item.title}:${item.relationStrength}`).join(","));
 }
 
+// #142 end-to-end regression: canonical Google Books/Open Library series facts must be consumed
+// by retrieval, not merely written to the database.
+{
+  const anchorId = "openlibrary-book-OL-WAY";
+  const state = {
+    selectedFavorites:new Set([anchorId]),
+    feedbackByRecommendation:{},
+    recommendationSets:[],
+    customItems:{
+      [anchorId]:{
+        id:anchorId,provider:"openlibrary",providerId:"OL-WAY",title:"The Way of Kings",
+        type:"book",domains:["read"],genres:["Fantasy","Epic fantasy"],providerMeta:{seriesKey:null,isbns:["9780765326355"]}
+      }
+    },
+    areas:{movies:true,tv:true,read:true,play:true},
+    recommendationFilter:"read"
+  };
+  const query = async (sql) => {
+    if (sql.includes("metadata_completeness, i.factual")) {
+      return [{provider:"openlibrary:book",provider_id:"OL-WAY",metadata_completeness:0.9,factual:{subjects:["Fantasy","Epic fantasy"],seriesKey:"googlebooks:stormlight"}}];
+    }
+    if (sql.includes("select i.canonical_title")) {
+      return [
+        {canonical_title:"Words of Radiance",year:"2014",provider:"openlibrary:book",provider_id:"OL-WORDS",factual:{author:"Brandon Sanderson",subjects:["Fantasy","Epic fantasy"],seriesKey:"googlebooks:stormlight"}},
+        {canonical_title:"Other Epic",year:"2015",provider:"openlibrary:book",provider_id:"OL-OTHER",factual:{author:"Other Author",subjects:["Fantasy","Epic fantasy"],seriesKey:"googlebooks:other"}}
+      ];
+    }
+    throw new Error("unexpected canonical query");
+  };
+  const fetchImpl = async () => ({ok:true,json:async()=>({docs:[]})});
+  const rows = await retrieveCatalogCandidates(state,{env:{},fetchImpl,query});
+  check("canonical series metadata suppresses a direct same-series book", !rows.some((item)=>item.providerId==="OL-WORDS"), rows.map((item)=>item.title).join(","));
+  check("canonical series suppression keeps unrelated books eligible", rows.some((item)=>item.providerId==="OL-OTHER"), rows.map((item)=>item.title).join(","));
+}
+
 // #107: recommendation style must survive serialization and change candidate selection.
 eq("recommendation style is serialized for the server", serializeAiState({ selectedFavorites: new Set(), feedbackByRecommendation: {}, recommendationSets: [], libraryFavorites: new Set(), customItems: {}, blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(), patternStatements: [], areas: {}, curveball: true, recommendationStyle: "adventurous" }).recommendationStyle, "adventurous");
 
