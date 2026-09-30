@@ -44,8 +44,8 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
 
   state.hypothesisAiStatus = "loading";
   state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
-    ? "Refreshing profile… Your current patterns stay visible while Tastemake checks new evidence."
-    : "Building your Taste Profile… Tastemake is checking what your actual experiences add up to.";
+    ? "Refreshing your Taste Profile…"
+    : "Building your Taste Profile…";
   onUpdate();
 
   try {
@@ -77,8 +77,8 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         ? mergeHypotheses(state.modelHypotheses ?? [], next)
         : next;
       state.hypothesisAiMessage = rejected > 0
-        ? `Updated with ${next.length} newly validated pattern${next.length === 1 ? "" : "s"}; existing valid patterns stayed in place while ${rejected} proposal${rejected === 1 ? "" : "s"} did not pass product checks.`
-        : "Live AI refreshed these working patterns. Product rules checked every evidence citation.";
+        ? "Your Taste Profile is up to date. Tastemake kept the patterns it trusts."
+        : "Your Taste Profile is up to date.";
       state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");
     } else {
@@ -92,8 +92,8 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     state.hypothesisAiStatus = "ready";
     state.hypothesisAiKey = null;
     state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
-      ? "Profile refresh did not finish. Your existing validated patterns are still here, and you can retry."
-      : "The live profile interpreter was unavailable. Tastemake left the profile empty instead of showing demo patterns, and you can retry.";
+      ? "Tastemake couldn’t update your profile this time. Your existing patterns are unchanged."
+      : "Tastemake couldn’t build your profile this time. You can try again.";
   }
   onUpdate();
 }
