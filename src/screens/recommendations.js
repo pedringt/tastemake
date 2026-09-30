@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { renderDomainFilter } from "../components/domain-filter.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
-import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
+import { isDeclined, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel, domainById } from "../data/domains.js";
@@ -51,10 +51,11 @@ export function ratingLabel(value) {
 
 export function reactionLabel(feedback) {
   if (!feedback) return "";
-  if (isStrongPositive(feedback)) return "Loved it before";
-  if (isPositiveExperience(feedback)) return "Liked it before";
-  if (isExperiencedNegative(feedback)) return "Disliked it before";
+  if (isStrongPositive(feedback)) return "Loved it";
+  if (isPositiveExperience(feedback)) return "Liked it";
+  if (isExperiencedNegative(feedback)) return "Didn’t like it";
   if (isBookmarked(feedback)) return "Saved";
+  if (isDeclined(feedback)) return "Not interested";
   return ratingLabel(feedback.rating);
 }
 
