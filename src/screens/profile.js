@@ -119,7 +119,7 @@ function hypothesisCard(item, index) {
           </span>
         </div>
         <p class="signal-claim">${esc(item.claim)}</p>
-        <div class="signal-evidence"><span>cited evidence</span> ${esc(item.evidence)}</div>
+        <div class="signal-evidence"><span>What this comes from</span> ${esc(item.evidence)}</div>
         <div class="signal-provenance">${esc(update.provenance)}</div>
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.says === "partial" ? `<div class="signal-said"><strong>${FIT.partial}.</strong> Tastemake treats it as a narrower pattern and uses the details you add below.</div>` : ""}
