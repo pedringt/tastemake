@@ -10,6 +10,7 @@ import { serializeAiState } from "../../src/ai/live-client.js";
 import { bestExactMatch } from "../../api/resolve-item.mjs";
 import { applyResolvedCatalogItem, applySearchAction, findExisting, makeCustomItem } from "../../src/model/search.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
+import { mergeHypotheses } from "../../src/ai/hypothesis-profile.js";
 
 let passed = 0;
 const failures = [];
@@ -235,6 +236,7 @@ check("Taste Profile prompt names the exact allowed domain ids", promptContract.
 check("Taste Profile prompt explicitly forbids the production 'watch' alias", promptContract.includes('Never use umbrella labels such as "watch"'));
 check("Taste Profile prompt explicitly forbids the production 'established' level", promptContract.includes("Never use established"));
 check("Taste Profile prompt refuses to invent facts for unresolved manual evidence", promptContract.includes("facts.resolved is false"));
+check("Taste Profile prompt asks for a smaller 2-4 pattern set", promptContract.includes("Use 2 to 4 hypotheses"));
 
 // Manual-item resolution stays conservative: exact title/type only, with optional creator to break ties.
 {
@@ -297,6 +299,67 @@ check("Taste Profile prompt refuses to invent facts for unresolved manual eviden
   const rows = await retrieveCatalogCandidates(state,{env,fetchImpl});
   check("resolved manual anchor is blocked by provider identity, not only its custom id", !rows.some((item)=>item.provider==="tmdb" && item.providerId==="10"));
   check("resolved manual anchor still retrieves other real provider candidates", rows.some((item)=>item.providerId==="22"));
+}
+
+{
+  let requestedMaxTokens = null;
+  const budgetFetch = async (_url, init = {}) => {
+    requestedMaxTokens = JSON.parse(init.body || "{}").max_tokens;
+    return anthroFetch();
+  };
+  const result = await produceHypotheses({ rawState, env: AI_ENV, fetchImpl: budgetFetch });
+  eq("profile generation uses a larger profile-specific output budget", requestedMaxTokens, 3200);
+  eq("larger-budget profile response still validates normally", result.source, "model");
+}
+
+{
+  const oldA = { id:"ai-old-a", title:"Old A", claim:"Old A claim" };
+  const oldB = { id:"ai-shared", title:"Old shared", claim:"Old shared claim" };
+  const incoming = [
+    { id:"ai-shared", title:"Updated shared", claim:"Updated shared claim" },
+    { id:"ai-new", title:"New", claim:"New claim" }
+  ];
+  const merged = mergeHypotheses([oldA, oldB], incoming);
+  eq("partial refresh merge keeps incoming revisions first", merged[0]?.title, "Updated shared");
+  eq("partial refresh merge adds newly validated patterns", merged[1]?.id, "ai-new");
+  check("partial refresh merge preserves older validated patterns that were not replaced", merged.some((item) => item.id === "ai-old-a"));
+  eq("partial refresh merge does not duplicate a revised id", merged.filter((item) => item.id === "ai-shared").length, 1);
+}
+
+{
+  const invalid = {
+    ...proposal.hypotheses[0],
+    id:"ai-bad-domain",
+    label:"Bad domain",
+    claim:"This sufficiently specific claim intentionally uses an unsupported domain for validation.",
+    domains:["movies"]
+  };
+  const mixedPayload = { hypotheses:[proposal.hypotheses[0], invalid], insufficientEvidence:false };
+  const originalInfo = console.info;
+  const lines = [];
+  console.info = (...args) => lines.push(args.map(String).join(" "));
+  try {
+    await produceHypotheses({
+      rawState,
+      env:AI_ENV,
+      fetchImpl:async()=>({ok:true,status:200,json:async()=>({
+        content:[{type:"text",text:JSON.stringify(mixedPayload)}],
+        usage:{input_tokens:10,output_tokens:20},
+        model:"claude-test"
+      })})
+    });
+  } finally {
+    console.info = originalInfo;
+  }
+  const validationLine = lines.find((line) => line.includes("[tastemake-profile-validation]"));
+  check("partial profile validation emits sanitized rejection telemetry", Boolean(validationLine));
+  if (validationLine) {
+    const parsed = JSON.parse(validationLine.split("[tastemake-profile-validation]")[1].trim());
+    eq("partial validation telemetry counts accepted proposals", parsed.acceptedCount, 1);
+    eq("partial validation telemetry counts rejected proposals", parsed.rejectedCount, 1);
+    check("partial validation telemetry categorizes unsupported domains", (parsed.rejectionCategories?.unsupported_domain ?? 0) >= 1);
+    check("partial validation telemetry contains no hypothesis text", !validationLine.includes("Bad domain") && !validationLine.includes("Favorite Book"));
+  }
 }
 
 const live = await produceHypotheses({ rawState, env: AI_ENV, fetchImpl: anthroFetch });
