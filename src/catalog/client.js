@@ -58,3 +58,25 @@ export async function fetchCatalogItemDetail(item) {
   detailCache.set(key, request);
   return request;
 }
+
+
+export async function resolveCustomCatalogItem(item) {
+  if (!item?.custom || item.provider || !item.title || !item.type) return { status: "skipped", item: null };
+  const params = new URLSearchParams({
+    title: item.title,
+    type: item.type,
+    ...(item.by ? { creator: item.by } : {})
+  });
+  try {
+    const response = await fetch(`/api/resolve-item?${params.toString()}`, { headers: { accept: "application/json" } });
+    if (!response.ok) return { status: "unavailable", item: null };
+    const payload = await response.json();
+    return {
+      status: payload.status ?? "unavailable",
+      item: payload.item ?? null,
+      degraded: Boolean(payload.degraded)
+    };
+  } catch {
+    return { status: "unavailable", item: null };
+  }
+}
