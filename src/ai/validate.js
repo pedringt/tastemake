@@ -192,11 +192,8 @@ export function validatePicks(response, ctx) {
       else {
         for (const ref of new Set(p.cites)) {
           const record = evidence.get(ref);
-          const maxUses = record?.polarity < 0 ? 1 : 2;
-          if ((evidenceUse.get(ref) ?? 0) >= maxUses) {
-            reasons.push(record?.polarity < 0
-              ? "reuses the same disliked item across multiple picks"
-              : "leans on the same evidence item too many times in one set");
+          if (record?.polarity < 0 && (evidenceUse.get(ref) ?? 0) >= 1) {
+            reasons.push("reuses the same disliked item across multiple picks");
           }
         }
       }
