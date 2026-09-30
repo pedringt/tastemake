@@ -259,12 +259,12 @@ export function renderMine() {
           <h2 id="mine-data-summary-title">What Tastemake is working with</h2>
           <p class="mine-blurb">Your Library is the place to browse Saved and Tried items. Taste Profile shows what Tastemake thinks those experiences add up to.</p>
           <div class="mine-data-actions">
-            <button class="button button-secondary" type="button" data-mine-export="markdown">Export readable copy</button>
+            <button class="button button-secondary" type="button" data-mine-export="html">Export readable copy</button>
             <button class="button button-secondary" type="button" data-mine-export="backup">Download backup</button>
             <button class="button button-quiet" type="button" data-mine-restore>Restore backup</button>
             <input class="visually-hidden" type="file" name="tastemake-backup" aria-label="Choose a Tastemake backup file" accept="application/json,.json" data-mine-restore-file />
           </div>
-          <p class="mine-data-note">The readable copy includes Saved, Tried, Favorites and your Taste Profile. The JSON backup can restore Tastemake after you reset it for testing.</p>
+          <p class="mine-data-note">The readable HTML copy includes Saved, Tried, Favorites and your Taste Profile. The JSON backup can restore Tastemake after you reset it for testing.</p>
         </div>
         <div class="mine-data-counts" aria-label="Evidence summary">
           <span><strong>${tasteCount}</strong> taste evidence</span>
