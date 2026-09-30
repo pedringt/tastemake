@@ -242,6 +242,7 @@ export function renderMine() {
   const steerCount = told.steers.length;
   return `
     <section class="mine-screen">
+      <div class="mine-back"><button class="button button-quiet mine-back-button" type="button" data-action="mine-back">&larr; Back</button></div>
       <p class="mine-eyebrow">My Tastemake</p>
       <h1>Your Tastemake.</h1>
       <p class="mine-lede">Manage what Tastemake may recommend and how discovery works. Your full taste history stays available when you need to correct it, but it does not have to fill this page every time.</p>
@@ -281,7 +282,5 @@ export function renderMine() {
       </details>
 
       <div class="mine-reset-wrap">${resetBlock()}</div>
-
-      <div class="mine-back"><button class="button button-primary" type="button" data-action="mine-back">Back</button></div>
     </section>`;
 }

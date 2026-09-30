@@ -31,12 +31,21 @@ function normalizeHypothesis(h, index, state) {
   };
 }
 
+export function mergeHypotheses(existing = [], incoming = [], limit = 6) {
+  const byId = new Map();
+  for (const item of incoming) byId.set(item.id, item);
+  for (const item of existing) if (!byId.has(item.id)) byId.set(item.id, item);
+  return [...byId.values()].slice(0, limit);
+}
+
 export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, force = false } = {}) {
   const key = hypothesisEvidenceKey(state);
   if (state.hypothesisAiStatus === "loading" || (!force && state.hypothesisAiKey === key)) return;
 
   state.hypothesisAiStatus = "loading";
-  state.hypothesisAiMessage = "Checking what your actual experiences add up to.";
+  state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
+    ? "Refreshing profile… Your current patterns stay visible while Tastemake checks new evidence."
+    : "Building your Taste Profile… Tastemake is checking what your actual experiences add up to.";
   onUpdate();
 
   try {
@@ -63,8 +72,13 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
           reason: "Live Taste Profile refresh"
         });
       }
-      state.modelHypotheses = next;
-      state.hypothesisAiMessage = "Live AI refreshed these working patterns. Product rules checked every evidence citation.";
+      const rejected = Number(payload.meta?.rejected ?? 0);
+      state.modelHypotheses = rejected > 0
+        ? mergeHypotheses(state.modelHypotheses ?? [], next)
+        : next;
+      state.hypothesisAiMessage = rejected > 0
+        ? `Updated with ${next.length} newly validated pattern${next.length === 1 ? "" : "s"}; existing valid patterns stayed in place while ${rejected} proposal${rejected === 1 ? "" : "s"} did not pass product checks.`
+        : "Live AI refreshed these working patterns. Product rules checked every evidence citation.";
       state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");
     } else {
@@ -75,7 +89,9 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
   } catch {
     state.hypothesisAiStatus = "ready";
     state.hypothesisAiKey = null;
-    state.hypothesisAiMessage = "The live profile interpreter was unavailable. Tastemake left the profile empty instead of showing demo patterns, and you can retry.";
+    state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
+      ? "Profile refresh did not finish. Your existing validated patterns are still here, and you can retry."
+      : "The live profile interpreter was unavailable. Tastemake left the profile empty instead of showing demo patterns, and you can retry.";
   }
   onUpdate();
 }

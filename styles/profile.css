@@ -287,3 +287,29 @@
 
 .profile-ai-status { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .profile-retry { min-height:34px; padding:5px 10px; font-size:12px; box-shadow:none; }
+
+.profile-ai-status.is-loading {
+  border-left-width:5px;
+  border-left-color:var(--cyan);
+  background:var(--tint-cool,#eef8fa);
+  color:var(--navy);
+  font-weight:700;
+}
+.profile-ai-status-dot {
+  width:9px;
+  height:9px;
+  flex:none;
+  border-radius:50%;
+  background:var(--cyan);
+}
+.profile-ai-status.is-loading .profile-ai-status-dot {
+  box-shadow:0 0 0 4px rgb(32 217 232 / .16);
+  animation:profile-refresh-pulse 1.2s ease-in-out infinite;
+}
+@keyframes profile-refresh-pulse {
+  0%,100% { opacity:.45; transform:scale(.85); }
+  50% { opacity:1; transform:scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-ai-status.is-loading .profile-ai-status-dot { animation:none; }
+}
