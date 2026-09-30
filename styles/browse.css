@@ -17,6 +17,31 @@
 .browse-progress strong,.browse-progress span { display:block; }
 .browse-progress span { margin-top:4px; color:var(--muted); font-size:12px; line-height:1.35; }
 
+.browse-search { margin:0 0 20px; }
+.browse-search-launch {
+  appearance:none;
+  width:100%;
+  min-height:54px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 16px;
+  border:2px solid var(--navy);
+  border-radius:14px;
+  background:#fff;
+  color:var(--muted);
+  text-align:left;
+  font:inherit;
+  font-size:15px;
+  font-weight:700;
+  cursor:text;
+  box-shadow:calc(3px * var(--hard)) calc(3px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .08));
+}
+.browse-search-launch > span:first-child { color:var(--navy); font-size:24px; line-height:1; }
+.browse-search-launch:hover { border-color:var(--pink); background:var(--tint-hover,#faf9ff); }
+.browse-search-launch:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:3px; }
+.browse-search p { margin:7px 2px 0; color:var(--muted); font-size:11px; }
+
 .browse-controls { display:grid; gap:12px; margin-bottom:24px; }
 .browse-domain-tabs,.browse-genres { display:flex; flex-wrap:wrap; gap:8px; }
 .browse-domain,.browse-genre {

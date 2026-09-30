@@ -19,8 +19,8 @@ import { pathForFeedback } from "../model/reaction-flow.js";
 // Limits are generous enough that most real rationale/synopsis copy is untouched; they exist only to
 // stop one verbose card from growing enormous relative to the rest of a row (the direction explicitly
 // warns against removing all limits).
-const RATIONALE_MAX_CHARS = 220;
-const ABOUT_MAX_CHARS = 130;
+const RATIONALE_MAX_CHARS = 160;
+const ABOUT_MAX_CHARS = 90;
 
 export function truncateCopy(text, maxChars) {
   const value = String(text ?? "").trim();
@@ -189,15 +189,17 @@ function seriesExperienceFeedback(item, feedback) {
 function favoriteToggle(itemId, feedback) {
   if (!isStrongPositive(feedback)) return "";
   const isFavorite = state.libraryFavorites.has(itemId);
+  const label = isFavorite ? "Remove from Favorites" : "Add to Favorites";
   return `
-    <div class="rec-favorite-action">
-      <button
-        class="button button-quiet library-action"
-        type="button"
-        data-library-item="${itemId}"
-        data-library-action="${isFavorite ? "unfavorite" : "favorite"}"
-      >${isFavorite ? "Remove from Favorites" : "Add to Favorites"}</button>
-    </div>`;
+    <button
+      class="rec-favorite-star library-action ${isFavorite ? "is-favorite" : ""}"
+      type="button"
+      data-library-item="${itemId}"
+      data-library-action="${isFavorite ? "unfavorite" : "favorite"}"
+      aria-label="${label}"
+      title="${label}"
+      aria-pressed="${isFavorite}"
+    ><span aria-hidden="true">${isFavorite ? "★" : "☆"}</span></button>`;
 }
 
 function moreFeedbackToggle(itemId, expanded, panelId) {
@@ -265,6 +267,37 @@ function whyContent(item) {
     ${isCurveball ? `<p class="why-caveat">This one deliberately breaks from the pattern above, to see what that tells Tastemake.</p>` : ""}`;
 }
 
+function feedbackPopover(item, saved) {
+  const path = experiencePath(item.id, saved);
+  if (state.recommendationFeedbackItemId !== item.id || !path) return "";
+
+  const showQuality = hasQualityNote(saved);
+  const expanded = showQuality && qualityExpanded(item.id, saved);
+  const qualityId = `quality-${item.id}`;
+
+  return `
+    <div class="rec-feedback-popover" role="dialog" aria-modal="false" aria-label="Feedback for ${esc(item.title)}">
+      <div class="rec-feedback-popover-head">
+        <div>
+          <span class="rec-feedback-kicker">${path === "tried" ? "Tried it" : "Not tried"}</span>
+          <strong>${esc(item.title)}</strong>
+        </div>
+        <button type="button" class="rec-feedback-close" data-feedback-close="${item.id}" aria-label="Close feedback">×</button>
+      </div>
+      ${experienceChoices(item.id, saved)}
+      ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
+      ${saved ? seriesExperienceFeedback(item, saved) : ""}
+      ${showQuality ? `
+        <div class="tertiary-feedback-toggle">
+          ${moreFeedbackToggle(item.id, expanded, qualityId)}
+        </div>
+        <div class="tertiary-feedback" id="${qualityId}" ${expanded ? "" : "hidden"}>
+          ${qualityNote(item.id, saved)}
+        </div>` : ""}
+      ${saved ? renderBlindSpotPanel(item.id) : ""}
+    </div>`;
+}
+
 function cardSizeClass() {
   return "rec-span-4";
 }
@@ -273,12 +306,9 @@ function recommendationCard(item, index, total) {
   const saved = state.feedbackByRecommendation[item.id];
   const layoutClass = `${cardSizeClass()} ${item.surprise ? "rec-surprise" : ""}`;
   const whyId = `why-${item.id}`;
-  const qualityId = `quality-${item.id}`;
-  const showQuality = hasQualityNote(saved);
-  const expanded = showQuality && qualityExpanded(item.id, saved);
 
   return `
-    <article class="editorial-rec ${layoutClass} ${saved ? "is-rated" : ""}" data-rec-id="${item.id}">
+    <article class="editorial-rec ${layoutClass} ${saved ? "is-rated" : ""} ${state.recommendationFeedbackItemId === item.id ? "has-feedback-open" : ""}" data-rec-id="${item.id}">
       ${item.surprise ? `<span class="surprise-burst" aria-hidden="true">GO<br />WEIRD</span>` : ""}
 
       ${mediaArt(item, index)}
@@ -293,19 +323,12 @@ function recommendationCard(item, index, total) {
           <h3>${esc(item.title)}</h3>
         </div>
 
-        <!-- #121: the status chip gets its own reserved row directly under the title, instead of
-             flowing inline after it. Titles of different heights (one line vs. two/three) no longer
-             move the chip's vertical position, and a card with no status still reserves the same
-             band so a row of cards stays visually level. -->
-        <div class="editorial-status-row">
-          ${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}
-        </div>
+        ${saved ? `
+          <div class="editorial-status-row">
+            <span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>
+            ${favoriteToggle(item.id, saved)}
+          </div>` : ""}
 
-        <!-- #95/#121: rationale-first — Tastemake's "why this fits" is the primary card copy, shown
-             up front rather than only behind the "Why this one?" trigger. The trigger still opens
-             the fuller pattern context (curveball caveat, tested-pattern label). The rationale and
-             synopsis strings are truncated (word/sentence boundary) at the data layer below, not by
-             a CSS clip, so nothing here can end mid-thought. -->
         <p class="editorial-rationale">${esc(truncateCopy(sanitizeRecommendationCopy(item.reason), RATIONALE_MAX_CHARS))}</p>
         <p class="editorial-about">${esc(truncateCopy(item.about, ABOUT_MAX_CHARS))}</p>
 
@@ -326,21 +349,10 @@ function recommendationCard(item, index, total) {
           ${experienceButton(item.id, "tried", "Tried it", experiencePath(item.id, saved) === "tried")}
           ${experienceButton(item.id, "not-tried", "Not tried", experiencePath(item.id, saved) === "not-tried")}
         </div>
-
-        ${experienceChoices(item.id, saved)}
         <p class="mobile-swipe-hint">Swipe right to Save · left for Not interested</p>
-        ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
-        ${saved ? favoriteToggle(item.id, saved) : ""}
-        ${saved ? seriesExperienceFeedback(item, saved) : ""}
-        ${showQuality ? `
-          <div class="tertiary-feedback-toggle">
-            ${moreFeedbackToggle(item.id, expanded, qualityId)}
-          </div>
-          <div class="tertiary-feedback" id="${qualityId}" ${expanded ? "" : "hidden"}>
-            ${qualityNote(item.id, saved)}
-          </div>` : ""}
-        ${renderBlindSpotPanel(item.id)}
       </div>
+
+      ${feedbackPopover(item, saved)}
     </article>`;
 }
 

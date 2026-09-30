@@ -79,6 +79,14 @@ export function renderBrowse() {
         </div>
       </div>
 
+      <div class="browse-search">
+        <button type="button" class="browse-search-launch" data-action="open-search" aria-label="Search books, movies, shows, and games">
+          <span aria-hidden="true">⌕</span>
+          <span>Search books, movies, shows, and games</span>
+        </button>
+        <p>Know what you want? Search directly. Not sure? Browse by category below.</p>
+      </div>
+
       <div class="browse-controls">
         <div class="browse-domain-tabs" role="group" aria-label="Browse category">
           ${domains.map((domain) => `

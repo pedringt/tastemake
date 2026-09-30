@@ -90,8 +90,7 @@
   display:grid;
   grid-template-columns:repeat(12,minmax(0,1fr));
   gap:20px;
-  align-items:stretch;
-  grid-auto-rows:1fr;
+  align-items:start;
 }
 .editorial-rec {
   position:relative;
@@ -103,7 +102,6 @@
   display:flex;
   flex-direction:column;
   min-width:0;
-  height:100%;
 }
 .rec-span-4 { grid-column:span 4; }
 .rec-span-5 { grid-column:span 5; }
@@ -118,7 +116,7 @@
   background:var(--tint-cool,#fbffff);
 }
 .editorial-rec.is-rated { box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--pink); }
-.editorial-rec-body { padding:16px; display:flex; flex-direction:column; min-width:0; flex:1 1 auto; }
+.editorial-rec-body { padding:14px 16px 16px; display:flex; flex-direction:column; min-width:0; }
 .editorial-rec-meta {
   display:flex;
   justify-content:space-between;
@@ -137,12 +135,12 @@
 .editorial-title-row { display:flex; align-items:flex-start; margin-top:12px; }
 /* #95: a fixed clamp range that reads fine at three-per-row width, whatever the title length —
    no separate "wide layout" font size to keep in sync. */
-.editorial-title-row h3 { flex:1 1 auto; min-width:0; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; min-height:2.16em; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+.editorial-title-row h3 { flex:1 1 auto; min-width:0; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
 /* #121: a reserved band directly under the title, present whether or not a card has a status chip,
    so one-line vs. two/three-line titles never shift the chip's vertical position and a row of cards
    stays level even when only some of them carry a status. min-height is sized to the chip's own
    rendered height (padding + line height + border) so the empty state reserves the same space. */
-.editorial-status-row { min-height:30px; display:flex; align-items:flex-start; margin-top:8px; }
+.editorial-status-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px; }
 .reaction-stamp {
   flex:0 0 auto;
   max-width:100%;
@@ -157,6 +155,24 @@
 .reaction-more { background:var(--pink-soft); border-color:var(--pink); color:var(--on-pink,#9b076e); }
 .reaction-less { background:var(--tint-lilac,#e7e9ff); }
 .reaction-not-tried { background:var(--violet-soft); }
+.rec-favorite-star {
+  appearance:none;
+  flex:none;
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  border:2px solid var(--line);
+  border-radius:50%;
+  background:#fff;
+  color:var(--navy);
+  font-size:22px;
+  line-height:1;
+  cursor:pointer;
+}
+.rec-favorite-star:hover { border-color:var(--navy); transform:translateY(-1px); }
+.rec-favorite-star.is-favorite { border-color:var(--navy); background:var(--yellow); }
+.rec-favorite-star:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:2px; }
 /* #95/#121: the rationale is the primary card copy — "why did Tastemake pick this?" — shown before
    the catalog synopsis, in the note-ink color used elsewhere for Tastemake's own commentary. The
    copy is truncated at a sentence/word boundary in recommendations.js before it ever reaches this
@@ -169,7 +185,6 @@
   line-height:1.42;
   font-size:14px;
   margin:8px 0 0;
-  min-height:2.84em;
 }
 
 /* #95/#121: default card copy prioritizes the recommendation rationale over the catalog synopsis —
@@ -179,13 +194,12 @@
   color:var(--muted);
   line-height:1.45;
   font-size:13px;
-  margin:8px 0 10px;
-  min-height:1.45em;
+  margin:7px 0 8px;
 }
 .editorial-why {
   position:relative;
   z-index:20;
-  margin-top:auto;
+  margin-top:2px;
   border-top:1px solid var(--line);
   padding-top:10px;
   overflow:visible;
@@ -507,6 +521,62 @@
 .experience-button { font-size:12px; }
 .experience-outcomes { margin-top:9px; }
 .outcome-chip { min-height:34px; padding-inline:11px; }
+.rec-feedback-popover {
+  position:absolute;
+  z-index:80;
+  left:12px;
+  right:12px;
+  bottom:12px;
+  max-height:min(560px,75vh);
+  overflow:auto;
+  padding:14px;
+  border:2px solid var(--navy);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .18));
+}
+.rec-feedback-popover::after {
+  content:"";
+  position:absolute;
+  left:26px;
+  bottom:-9px;
+  width:14px;
+  height:14px;
+  border-right:2px solid var(--navy);
+  border-bottom:2px solid var(--navy);
+  background:#fff;
+  transform:rotate(45deg);
+}
+.rec-feedback-popover-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:4px;
+}
+.rec-feedback-popover-head > div { min-width:0; }
+.rec-feedback-popover-head strong { display:block; margin-top:2px; font-size:14px; line-height:1.25; overflow-wrap:anywhere; }
+.rec-feedback-kicker { color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.rec-feedback-close {
+  appearance:none;
+  flex:none;
+  width:32px;
+  height:32px;
+  border:1.5px solid var(--line);
+  border-radius:50%;
+  background:#fff;
+  color:var(--navy);
+  font-size:20px;
+  line-height:1;
+  cursor:pointer;
+}
+.rec-feedback-close:hover { border-color:var(--navy); }
+.rec-feedback-popover .experience-outcomes { margin-top:8px; }
+.rec-feedback-popover .experience-refinement,
+.rec-feedback-popover .series-feedback,
+.rec-feedback-popover .recommendation-quality-note { margin-top:10px; }
+.editorial-rec.has-feedback-open { z-index:70; }
+
 .mobile-swipe-hint { display:none; }
 @media (max-width:760px) and (pointer:coarse) {
   .mobile-swipe-hint {
@@ -518,3 +588,12 @@
   }
 }
 .rating-button[disabled],.keep-discovering-bar .button[disabled] { opacity:.55; cursor:default; pointer-events:none; }
+
+@media (max-width:760px) {
+  .rec-feedback-popover {
+    left:8px;
+    right:8px;
+    bottom:8px;
+    max-height:72vh;
+  }
+}

@@ -54,6 +54,8 @@ function fresh() {
     // Per-card progressive disclosure for Recommendations. Choosing Tried / Not tried here is
     // presentation state only; it becomes evidence only after the user chooses a concrete outcome.
     recommendationExperienceChoice: {},
+    // Which recommendation currently has its anchored feedback editor open. Presentation only.
+    recommendationFeedbackItemId: null,
     libraryFilter: "all",
     // Browse is a presentation/discovery surface. Browsing alone is never evidence and these fields
     // are intentionally transient rather than persisted.
@@ -131,6 +133,7 @@ export const state = {
   hypothesisAiStatus: "idle",
   hypothesisAiMessage: null,
   recommendationMediumFilter: "all",
+  recommendationFeedbackItemId: null,
   browseItems: [],
   browsePage: 0,
   browseHasMore: true,
@@ -166,6 +169,7 @@ export function restoreStateFromBackupText(text) {
     hypothesisAiStatus: "idle",
     hypothesisAiMessage: null,
     recommendationMediumFilter: "all",
+    recommendationFeedbackItemId: null,
     browseItems: [],
     browsePage: 0,
     browseHasMore: true,

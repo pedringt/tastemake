@@ -58,6 +58,7 @@ const [first, second, third] = recommendations;
 state.recommendationSets = [[{ ...first, reason: `${PAYLOAD} why **(ev:tmdb-movie-999).**`, about: `${PAYLOAD} about`, title: `${PAYLOAD} pick` }, second, third]];
 applySearchAction(state, second, "bookmark");
 applySearchAction(state, third, "disliked");
+state.recommendationFeedbackItemId = third.id;
 saveBlindSpot(state, third.id, { broken: [hypotheses[0].id], reasons: ["tone"] });
 setStatement(state, hypotheses[0].id, "says", "not-me");
 // a Tastebreak note (#19), the newest untrusted free-text slot: shown on the Library card and in My Tastemake
@@ -76,7 +77,8 @@ const screens = {
   profile: (await import("../../src/screens/profile.js")).renderProfile,
   library: (await import("../../src/screens/library.js")).renderLibrary,
   mine: (await import("../../src/screens/mine.js")).renderMine,
-  look: (await import("../../src/screens/look.js")).renderLook
+  look: (await import("../../src/screens/look.js")).renderLook,
+  browse: (await import("../../src/screens/browse.js")).renderBrowse
 };
 
 for (const [name, render] of Object.entries(screens)) {
@@ -88,7 +90,11 @@ for (const [name, render] of Object.entries(screens)) {
   check(`${name}: ordinary copy still renders`, html.length > 200);
   if (name === "recommendations") {
     check("recommendations: internal evidence refs never render", !html.includes("ev:tmdb-movie-999"), html);
-    check("recommendations: disliked reaction offers visible optional refinement", html.includes("Want to get more specific?") && html.includes("What didn’t work?"), html);
+    check("recommendations: detailed feedback lives in an anchored popover", html.includes("rec-feedback-popover") && html.includes("Want to get more specific?") && html.includes("What didn’t work?"), html);
+    check("recommendations: feedback editor has an explicit close control", html.includes("data-feedback-close"), html);
+  }
+  if (name === "browse") {
+    check("browse: direct search entry uses the shared search flow", html.includes('data-action="open-search"') && html.includes("Search books, movies, shows, and games"), html);
   }
 }
 
