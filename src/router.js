@@ -18,7 +18,7 @@ const LEGACY_SAVED_PATHS = new Set(["/bookmarks", "/try-next"]);
 // ongoing product, not be sent back through first-run setup (Look/Favorites) every time they revisit.
 export function screenFromPath(pathname = window.location.pathname, { onboarded = false } = {}) {
   const normalized = pathname.replace(/\/$/, "") || "/";
-  const setupFallback = onboarded ? "recommendations" : "look";
+  const setupFallback = onboarded ? "recommendations" : "setup";
   if (normalized === "/") return setupFallback;
   if (LEGACY_SAVED_PATHS.has(normalized)) return "library";
   const entry = Object.entries(routes).find(([, path]) => path === normalized);
