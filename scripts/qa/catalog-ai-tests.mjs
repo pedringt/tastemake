@@ -366,10 +366,9 @@ check("Taste Profile prompt asks for a fuller 4-6 pattern set", promptContract.i
 {
   const invalid = {
     ...proposal.hypotheses[0],
-    id:"ai-bad-domain",
-    label:"Bad domain",
-    claim:"This sufficiently specific claim intentionally uses an unsupported domain for validation.",
-    domains:["movies"]
+    id:"ai-too-generic",
+    label:"Too generic",
+    claim:"Fantasy."
   };
   const mixedPayload = { hypotheses:[proposal.hypotheses[0], invalid], insufficientEvidence:false };
   const originalInfo = console.info;
@@ -394,8 +393,8 @@ check("Taste Profile prompt asks for a fuller 4-6 pattern set", promptContract.i
     const parsed = JSON.parse(validationLine.split("[tastemake-profile-validation]")[1].trim());
     eq("partial validation telemetry counts accepted proposals", parsed.acceptedCount, 1);
     eq("partial validation telemetry counts rejected proposals", parsed.rejectedCount, 1);
-    check("partial validation telemetry categorizes unsupported domains", (parsed.rejectionCategories?.unsupported_domain ?? 0) >= 1);
-    check("partial validation telemetry contains no hypothesis text", !validationLine.includes("Bad domain") && !validationLine.includes("Favorite Book"));
+    check("partial validation telemetry categorizes semantic rejections", (parsed.rejectionCategories?.generic_claim ?? 0) >= 1);
+    check("partial validation telemetry contains no hypothesis text", !validationLine.includes("Too generic") && !validationLine.includes("Favorite Book"));
   }
 }
 
