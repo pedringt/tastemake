@@ -76,9 +76,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
       state.modelHypotheses = rejected > 0
         ? mergeHypotheses(state.modelHypotheses ?? [], next)
         : next;
-      state.hypothesisAiMessage = rejected > 0
-        ? "Your Taste Profile is up to date. Tastemake kept the patterns it trusts."
-        : "Your Taste Profile is up to date.";
+      state.hypothesisAiMessage = "Your Taste Profile is up to date.";
       state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");
     } else {
