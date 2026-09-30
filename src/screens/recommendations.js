@@ -336,6 +336,7 @@ function recommendationCard(item, index, total) {
         </div>
 
         ${experienceChoices(item.id, saved)}
+        <p class="mobile-swipe-hint">Swipe right to Save · left for Not interested</p>
         ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
         ${saved ? favoriteToggle(item.id, saved) : ""}
         ${saved ? seriesExperienceFeedback(item, saved) : ""}
