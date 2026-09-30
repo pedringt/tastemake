@@ -218,6 +218,8 @@ function libraryTab(id, label, count) {
 export function renderLibrary() {
   const view = state.libraryView === "tried" ? "tried" : "saved";
   const savedCount = bookmarkedFeedback(state).length;
+  const triedBuckets = libraryItems(state);
+  const triedCount = triedBuckets.favorites.length + triedBuckets.library.length + dislikedItems(state).length;
 
   return `
     <section class="library-screen">
@@ -233,7 +235,7 @@ export function renderLibrary() {
 
       <div class="library-tabs" role="tablist" aria-label="Library view">
         ${libraryTab("saved", "Saved", savedCount)}
-        ${libraryTab("tried", "Tried")}
+        ${libraryTab("tried", "Tried", triedCount)}
       </div>
 
       <div class="filter-band library-filter-band">
