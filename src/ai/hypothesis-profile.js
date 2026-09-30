@@ -83,7 +83,9 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
       announce("Taste Profile refreshed from your current evidence.");
     } else {
       state.hypothesisAiKey = null;
-      state.hypothesisAiMessage = payload.reason || "Live profile AI did not return a usable pattern set. You can retry."; 
+      state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
+        ? "Tastemake couldn’t update your profile this time. Your existing patterns are still here."
+        : "Tastemake couldn’t build a trustworthy profile this time. You can try again.";
     }
     state.hypothesisAiStatus = "ready";
   } catch {
