@@ -16,7 +16,10 @@ export function bestExactMatch(items, title, type, creator = "") {
   if (exact.length === 1) return { status: "resolved", item: exact[0] };
 
   if (wantedCreator) {
-    const creatorMatches = exact.filter((item) => normalize(item.by).includes(wantedCreator) || wantedCreator.includes(normalize(item.by)));
+    const creatorMatches = exact.filter((item) => {
+      const candidateCreator = normalize(item.by);
+      return candidateCreator && (candidateCreator.includes(wantedCreator) || wantedCreator.includes(candidateCreator));
+    });
     if (creatorMatches.length === 1) return { status: "resolved", item: creatorMatches[0] };
   }
   return { status: "ambiguous", item: null };
