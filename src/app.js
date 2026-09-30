@@ -16,7 +16,7 @@ import { renderBrowse } from "./screens/browse.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
 import { renderDetailMeta, renderLibrary } from "./screens/library.js";
-import { fetchCatalogItemDetail } from "./catalog/client.js";
+import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/client.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
 import { renderMine } from "./screens/mine.js";
@@ -26,7 +26,7 @@ import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
 import { fetchBrowsePage } from "./catalog/browse-client.js";
 import { mergeUniqueBrowseItems } from "./model/browse.js";
-import { applySearchAction, searchableItems } from "./model/search.js";
+import { applyResolvedCatalogItem, applySearchAction, markCustomResolution, searchableItems } from "./model/search.js";
 import { isStrongPositive } from "./model/evidence.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
@@ -289,8 +289,31 @@ function maybeLoadBrowse() {
   if (state.screen === "browse" && !state.browseItems.length && !state.browseLoading) void loadBrowse();
 }
 
+async function resolveExistingCustomItems() {
+  const unresolved = Object.values(state.customItems ?? {}).filter((item) => item?.custom && !item.provider);
+  if (!unresolved.length) return;
+  let changed = false;
+  for (const item of unresolved) {
+    markCustomResolution(state, item.id, "resolving");
+    const result = await resolveCustomCatalogItem(item);
+    if (result.status === "resolved" && result.item) {
+      changed = Boolean(applyResolvedCatalogItem(state, item.id, result.item)) || changed;
+    } else {
+      markCustomResolution(state, item.id, result.status === "ambiguous" ? "ambiguous" : "unresolved");
+      changed = true;
+    }
+  }
+  if (changed) {
+    render();
+    updateStepper();
+  }
+}
+
 function navigate(screen, { replace = false, scroll = true } = {}) {
   if (!canAccess(screen)) return;
+  // Saved is the Library's actionable home. Re-entering Library starts there rather than
+  // resurrecting whichever secondary tab happened to be open last time.
+  if (screen === "library" && state.screen !== "library") state.libraryView = "saved";
   // Leaving the page a request was started from makes its answer irrelevant (#42).
   if (state.aiRequest && screen !== state.aiRequest.screen) cancelRequest(state, "you moved to another page while it was thinking");
   if (screen !== "browse") {
@@ -753,6 +776,7 @@ window.addEventListener("popstate", () => {
   const next = screenFromPath(undefined, { onboarded: state.onboarded });
   const fallback = state.onboarded ? "recommendations" : "favorites";
   state.screen = canAccess(next) ? next : fallback;
+  if (state.screen === "library") state.libraryView = "saved";
   markOnboarded(state.screen);
   if (state.screen !== next) writeRoute(fallback, { replace: true });
   render();
@@ -796,9 +820,11 @@ initSearch({
 // "/" (or an unrecognized path) lands in the ongoing product, not back through first-run setup.
 const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
 state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "look");
+if (state.screen === "library") state.libraryView = "saved";
 markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();
 updateStepper();
 maybeRefreshProfile();
 maybeLoadBrowse();
+void resolveExistingCustomItems();

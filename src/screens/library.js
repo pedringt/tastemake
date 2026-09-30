@@ -18,6 +18,14 @@ import { renderArtwork } from "../components/artwork.js";
 
 const SOURCE_LABEL = { starter: "Favorite", loved: "Loved it", liked: "Liked it" };
 
+function resolutionLabel(item) {
+  if (!item?.custom) return "";
+  if (item.provider) return "Catalog matched";
+  if (item.resolutionStatus === "resolving" || item.resolutionStatus === "pending") return "Identifying…";
+  if (item.resolutionStatus === "ambiguous") return "Needs more detail";
+  return "Limited metadata";
+}
+
 // #103 items 1/2/10: per-media-type detail fields, rendered only when present. `detail` comes from
 // fetchCatalogItemDetail (fetched lazily on expand, see app.js) and every field is optional — sparse
 // upstream data means an omitted line, never a label with nothing after it.
@@ -60,6 +68,7 @@ function savedCard(feedback) {
           <span class="library-compact-info">${esc(info)}</span>
           <strong>${esc(item.title)}</strong>
           <span class="library-compact-status">Saved</span>
+          ${resolutionLabel(item) ? `<span class="library-compact-resolution">${esc(resolutionLabel(item))}</span>` : ""}
         </span>
         <span class="library-compact-open" aria-hidden="true">+</span>
       </summary>
@@ -136,6 +145,7 @@ function triedCard(entry) {
           <span class="library-compact-info">${esc(info)}</span>
           <strong>${esc(item.title)}</strong>
           <span class="library-compact-status">${esc(status)}</span>
+          ${resolutionLabel(item) ? `<span class="library-compact-resolution">${esc(resolutionLabel(item))}</span>` : ""}
         </span>
         <span class="library-compact-open" aria-hidden="true">+</span>
       </summary>
@@ -218,6 +228,8 @@ function libraryTab(id, label, count) {
 export function renderLibrary() {
   const view = state.libraryView === "tried" ? "tried" : "saved";
   const savedCount = bookmarkedFeedback(state).length;
+  const triedBuckets = libraryItems(state);
+  const triedCount = triedBuckets.favorites.length + triedBuckets.library.length + dislikedItems(state).length;
 
   return `
     <section class="library-screen">
@@ -233,7 +245,7 @@ export function renderLibrary() {
 
       <div class="library-tabs" role="tablist" aria-label="Library view">
         ${libraryTab("saved", "Saved", savedCount)}
-        ${libraryTab("tried", "Tried")}
+        ${libraryTab("tried", "Tried", triedCount)}
       </div>
 
       <div class="filter-band library-filter-band">

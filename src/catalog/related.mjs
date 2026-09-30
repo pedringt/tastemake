@@ -390,7 +390,9 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     ...Object.keys(state.feedbackByRecommendation ?? {}),
     ...(state.recommendationSets ?? []).flat().map((entry) => (typeof entry === "string" ? entry : entry?.id))
   ]);
-  let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
+  const providerKey = (item) => item?.provider && item?.providerId ? `${item.provider}:${item.type ?? ""}:${item.providerId}` : null;
+  const blockedProviderKeys = new Set(allEvidence.map(providerKey).filter(Boolean));
+  let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
   const guardStarted = Date.now();
   let guarded = applyNoveltyGuard(eligible, evidenceItems);
   console.info("[tastemake-related]", JSON.stringify({ noveltyGuardMs: Date.now() - guardStarted, eligible: eligible.length, primary: guarded.primary.length }));
@@ -398,7 +400,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     const secondWaveStarted = Date.now();
     rows.push(...await loadEvidence(laterWave));
     console.info("[tastemake-related]", JSON.stringify({ wave: "second", items: laterWave.length, ms: Date.now() - secondWaveStarted }));
-    eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && areaAllowed(state, item) && modeAllowed(state, item));
+    eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
     guarded = applyNoveltyGuard(eligible, evidenceItems);
   }
 

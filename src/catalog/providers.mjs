@@ -347,6 +347,13 @@ export function enrichCanonicalItemWriteBehind(item, options = {}) {
           : await cachedValue(cacheKey, () => googleBooksSeriesDetail(item, { env, fetchImpl }), { ttl: 86400, tags: ["canonical-enrichment"] });
         if (seriesDetail?.seriesKey) {
           await mergeCanonicalFacts(item, seriesDetail, { env, query: options.query, source: "googlebooks" });
+          console.info("[tastemake-canonical]", JSON.stringify({
+            operation: "googlebooks-series-enrichment",
+            provider: item.provider,
+            providerId: item.providerId,
+            seriesKey: seriesDetail.seriesKey,
+            success: true
+          }));
         }
       }
 

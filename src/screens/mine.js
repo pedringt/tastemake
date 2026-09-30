@@ -238,15 +238,39 @@ function resetBlock() {
 
 export function renderMine() {
   const told = toldItems(state);
+  const tasteCount = told.counts.length;
+  const steerCount = told.steers.length;
   return `
     <section class="mine-screen">
       <p class="mine-eyebrow">My Tastemake</p>
-      <h1>What you've told Tastemake.</h1>
-      <p class="mine-lede">Everything here comes from something you did. Nothing was guessed. The lists below are the same items you see in Library (Saved and Tried) and Taste Profile, so a change here changes them too.</p>
+      <h1>Your Tastemake.</h1>
+      <p class="mine-lede">Manage what Tastemake may recommend and how discovery works. Your full taste history stays available when you need to correct it, but it does not have to fill this page every time.</p>
 
-      <div class="mine-columns">
-        <div class="mine-main">
-          <h2>Your evidence</h2>
+      <div class="mine-settings-grid">
+        ${setupBlock()}
+        ${areasBlock()}
+        ${picksBlock()}
+      </div>
+
+      <section class="mine-data-summary" aria-labelledby="mine-data-summary-title">
+        <div>
+          <p class="mine-eyebrow">Your data</p>
+          <h2 id="mine-data-summary-title">What Tastemake is working with</h2>
+          <p class="mine-blurb">Your Library is the place to browse Saved and Tried items. Taste Profile shows what Tastemake thinks those experiences add up to.</p>
+        </div>
+        <div class="mine-data-counts" aria-label="Evidence summary">
+          <span><strong>${tasteCount}</strong> taste evidence</span>
+          <span><strong>${steerCount}</strong> intent signals</span>
+          <span><strong>${told.blindSpots.length}</strong> blind spots</span>
+        </div>
+      </section>
+
+      <details class="mine-evidence-manager">
+        <summary>
+          <span><strong>Manage evidence & corrections</strong><small>Open this only when you want to change something you've told Tastemake.</small></span>
+          <span class="mine-count">${told.total}</span>
+        </summary>
+        <div class="mine-evidence-manager-body">
           ${told.total === 0 ? `<p class="mine-empty">Nothing yet. As you pick favorites and react to things, they show up here.</p>` : ""}
           ${group("Counts as taste", "Favorites and things you have tried. These shape the Taste Profile.", told.counts, "Nothing here yet.")}
           ${group("Only steers what comes next", "Reactions to things you haven't tried, including Saved saves. These nudge which picks appear, but they are not taste.", told.steers, "Nothing here yet.")}
@@ -254,14 +278,9 @@ export function renderMine() {
           ${statementList()}
           ${tastebreakList()}
         </div>
-        <aside class="mine-side">
-          ${setupBlock()}
-          ${conceptsBlock()}
-          ${areasBlock()}
-          ${picksBlock()}
-          ${resetBlock()}
-        </aside>
-      </div>
+      </details>
+
+      <div class="mine-reset-wrap">${resetBlock()}</div>
 
       <div class="mine-back"><button class="button button-primary" type="button" data-action="mine-back">Back</button></div>
     </section>`;

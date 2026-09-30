@@ -3,10 +3,13 @@
 // live hypothesis gating/validation, and append-only model revision history.
 
 import { searchCatalog } from "../../src/catalog/providers.mjs";
-import hypothesesHandler, { produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
+import hypothesesHandler, { buildHypothesisPrompt, produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
+import { bestExactMatch } from "../../api/resolve-item.mjs";
+import { applyResolvedCatalogItem, applySearchAction, findExisting, makeCustomItem } from "../../src/model/search.js";
+import { evidenceRecords } from "../../src/model/evidence.js";
 
 let passed = 0;
 const failures = [];
@@ -223,6 +226,79 @@ const anthroFetch = async () => ({
     model: "claude-test"
   })
 });
+const promptContract = buildHypothesisPrompt({
+  evidence: [{ ref:"ev:x", title:"X", type:"movie", domains:["movies"], kind:"experienced-positive", polarity:1, weight:1.25, facts:{resolved:true,year:2020,creator:null,genres:["Drama"]} }],
+  statements: [],
+  contexts: []
+}, []);
+check("Taste Profile prompt names the exact allowed domain ids", promptContract.includes("movies, tv, read, play"));
+check("Taste Profile prompt explicitly forbids the production 'watch' alias", promptContract.includes('Never use umbrella labels such as "watch"'));
+check("Taste Profile prompt explicitly forbids the production 'established' level", promptContract.includes("Never use established"));
+check("Taste Profile prompt refuses to invent facts for unresolved manual evidence", promptContract.includes("facts.resolved is false"));
+
+// Manual-item resolution stays conservative: exact title/type only, with optional creator to break ties.
+{
+  const matches = [
+    { id:"openlibrary-book-1", provider:"openlibrary", providerId:"1", title:"Same Title", type:"book", by:"Author One", domains:["read"], genres:["Fantasy"] },
+    { id:"openlibrary-book-2", provider:"openlibrary", providerId:"2", title:"Same Title", type:"book", by:"Author Two", domains:["read"], genres:["Mystery"] },
+    { id:"openlibrary-book-3", provider:"openlibrary", providerId:"3", title:"Same Title", type:"book", by:null, domains:["read"], genres:["History"] }
+  ];
+  eq("manual resolution refuses an ambiguous exact-title match", bestExactMatch(matches, "Same Title", "book").status, "ambiguous");
+  eq("manual resolution uses creator to disambiguate", bestExactMatch(matches, "Same Title", "book", "Author Two").item?.providerId, "2");
+  eq("missing provider creator never counts as a creator match", bestExactMatch(matches, "Same Title", "book", "No Such Author").status, "ambiguous");
+  eq("a single same-title result with the wrong creator is refused", bestExactMatch([matches[0]], "Same Title", "book", "Author Two").status, "not_found");
+  eq("a single same-title result with missing creator stays ambiguous when a creator was supplied", bestExactMatch([matches[2]], "Same Title", "book", "Author Two").status, "ambiguous");
+  eq("manual resolution never crosses media types", bestExactMatch(matches, "Same Title", "movie", "Author Two").status, "not_found");
+}
+
+// A resolved manual item keeps the user's stable evidence id while gaining provider facts that both
+// deterministic retrieval and Taste Profile inference can use.
+{
+  const manual = makeCustomItem("Obscure Book", "book", "A. Writer");
+  const state = {
+    selectedFavorites:new Set(), feedbackByRecommendation:{}, recommendationSets:[],
+    libraryFavorites:new Set(), customItems:{}, areas:{movies:true,tv:true,read:true,play:true}
+  };
+  applySearchAction(state, manual, "loved");
+  const merged = applyResolvedCatalogItem(state, manual.id, {
+    id:"openlibrary-book-OLX", provider:"openlibrary", providerId:"OLX", title:"Obscure Book",
+    type:"book", domains:["read"], by:"A. Writer", year:"2019", genres:["Speculative fiction"]
+  });
+  eq("resolved manual evidence keeps its original stable item id", merged?.id, manual.id);
+  eq("resolved manual evidence gains a provider id", state.feedbackByRecommendation[manual.id]?.item?.providerId, "OLX");
+  const record = evidenceRecords(state).find((row) => row.itemId === manual.id);
+  check("resolved manual evidence exposes structured facts to Taste Profile", record?.facts?.resolved === true && record?.facts?.genres?.includes("Speculative fiction"));
+
+  const sameTitleOtherCreator = makeCustomItem("Obscure Book", "book", "Different Writer");
+  check("same-title manual works with different creators remain distinct", findExisting(state, sameTitleOtherCreator) === null);
+}
+
+// A resolved manual item keeps its custom evidence id, but deterministic retrieval must still block
+// the same provider work from coming back as a recommendation under the provider-native id.
+{
+  const manualAnchor = {
+    id:"custom-seed-film-director-movie", custom:true, provider:"tmdb", providerId:"10",
+    title:"Seed Movie", type:"movie", domains:["movies"], genres:["18"], providerMeta:{genreIds:[18]}
+  };
+  const state = {
+    selectedFavorites:new Set([manualAnchor.id]), feedbackByRecommendation:{}, recommendationSets:[],
+    libraryFavorites:new Set(), customItems:{[manualAnchor.id]:manualAnchor},
+    areas:{movies:true,tv:true,read:true,play:true}, recommendationFilter:"movies"
+  };
+  const fetchImpl = async (url) => {
+    if (String(url).includes("/movie/10/recommendations")) {
+      return {ok:true,json:async()=>({results:[
+        {id:10,title:"Seed Movie",overview:"The anchor itself.",release_date:"2020-01-01",genre_ids:[18]},
+        {id:22,title:"Real Neighbor",overview:"A real neighbor.",release_date:"2021-01-01",genre_ids:[18]}
+      ]})};
+    }
+    throw new Error(`unexpected resolved-manual URL: ${url}`);
+  };
+  const rows = await retrieveCatalogCandidates(state,{env,fetchImpl});
+  check("resolved manual anchor is blocked by provider identity, not only its custom id", !rows.some((item)=>item.provider==="tmdb" && item.providerId==="10"));
+  check("resolved manual anchor still retrieves other real provider candidates", rows.some((item)=>item.providerId==="22"));
+}
+
 const live = await produceHypotheses({ rawState, env: AI_ENV, fetchImpl: anthroFetch });
 eq("validated live hypothesis output is accepted", live.source, "model");
 eq("Favorite evidence can support a live hypothesis", live.hypotheses[0]?.level, "supported");

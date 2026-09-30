@@ -112,6 +112,12 @@ function record(item, kind, extra) {
     weight: info.taste,                           // how much it moves a pattern
     authority: "user",          // evidence is always something the user did or said
     context: null,              // e.g. "family movie night"; not collected yet (#8 taste modes)
+    facts: {
+      resolved: Boolean(item.provider && item.providerId),
+      year: item.year ?? null,
+      creator: item.by ?? null,
+      genres: (item.genres ?? []).slice(0, 8)
+    },
     ...extra
   };
 }
