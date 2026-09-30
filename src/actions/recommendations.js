@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
-import { isDeclined, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
+import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { clearInvalidRefinements, refinablePolarity, toggleRefinement } from "../model/refinements.js";
 import { pathForFeedback, storedReactionForOutcome } from "../model/reaction-flow.js";
 import { reactionLabel } from "../screens/recommendations.js";
