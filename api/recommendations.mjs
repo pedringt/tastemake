@@ -178,16 +178,53 @@ export function buildPickPrompt(ctx, count) {
 // bad, but because it prefixed the JSON with prose ("Looking at your evidence...") despite the prompt's
 // instruction, and this only stripped markdown fences. Tightened the prompt above; this also extracts
 // the first {...} object as a fallback, so a model that still adds stray text isn't discarded outright.
-function parseModelJson(text) {
-  const cleaned = String(text || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
-  try {
-    return JSON.parse(cleaned);
-  } catch (error) {
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if (start === -1 || end === -1 || end <= start) throw error;
-    return JSON.parse(cleaned.slice(start, end + 1));
+function repairMissingArrayCommas(text) {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  const stack = [];
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    out += ch;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === "{" || ch === "[") { stack.push(ch); continue; }
+    if (ch !== "}" && ch !== "]") continue;
+    stack.pop();
+    if (stack[stack.length - 1] !== "[") continue;
+    let j = i + 1;
+    while (j < text.length && /\s/.test(text[j])) j += 1;
+    if (text[j] === "{" || text[j] === "[") out += ",";
   }
+  return out;
+}
+
+export function parseModelJson(text) {
+  const cleaned = String(text || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  const objectStart = cleaned.indexOf("{");
+  const objectEnd = cleaned.lastIndexOf("}");
+  const candidates = [cleaned];
+  if (objectStart !== -1 && objectEnd !== -1 && objectEnd > objectStart && (objectStart > 0 || objectEnd < cleaned.length - 1)) {
+    candidates.push(cleaned.slice(objectStart, objectEnd + 1));
+  }
+
+  let firstError = null;
+  for (const candidate of candidates) {
+    try { return JSON.parse(candidate); }
+    catch (error) {
+      firstError ??= error;
+      const repaired = repairMissingArrayCommas(candidate);
+      if (repaired !== candidate) {
+        try { return JSON.parse(repaired); } catch { /* keep the original parse failure */ }
+      }
+    }
+  }
+  throw firstError ?? new SyntaxError("model response was not JSON");
 }
 
 export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch }) {
