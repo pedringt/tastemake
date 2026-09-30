@@ -286,7 +286,17 @@
 
 
 .profile-ai-status { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.profile-retry { min-height:34px; padding:5px 10px; font-size:12px; box-shadow:none; }
+.profile-retry {
+  flex:0 0 auto;
+  min-width:0;
+  min-height:34px;
+  padding:5px 10px;
+  border-color:var(--line);
+  background:rgb(255 255 255 / .58);
+  color:var(--navy);
+  font-size:12px;
+  box-shadow:none;
+}
 
 .profile-ai-status.is-loading {
   border-left-width:5px;
@@ -296,13 +306,16 @@
   font-weight:700;
 }
 .profile-ai-status-dot {
-  width:9px;
-  height:9px;
+  width:7px;
+  height:7px;
   flex:none;
   border-radius:50%;
-  background:var(--cyan);
+  background:var(--muted);
+  opacity:.55;
 }
 .profile-ai-status.is-loading .profile-ai-status-dot {
+  background:var(--cyan);
+  opacity:1;
   box-shadow:0 0 0 4px rgb(32 217 232 / .16);
   animation:profile-refresh-pulse 1.2s ease-in-out infinite;
 }
