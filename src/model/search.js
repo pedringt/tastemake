@@ -108,7 +108,9 @@ export function findExisting(state, itemOrTitle) {
         && (!target.type || item.type === target.type);
     }
     if (target.type && item.type !== target.type) return false;
-    return normalize(item.title) === wanted;
+    if (normalize(item.title) !== wanted) return false;
+    if (target.by && item.by && normalize(item.by) !== normalize(target.by)) return false;
+    return true;
   }) ?? null;
 }
 
@@ -119,7 +121,7 @@ export function makeCustomItem(title, mediumKey, creator = "") {
   const clean = String(title).trim().replace(/\s+/g, " ").slice(0, 80);
   const cleanCreator = String(creator).trim().replace(/\s+/g, " ").slice(0, 120);
   return {
-    id: `custom-${slug(clean)}-${mediumKey}`,
+    id: `custom-${slug(clean)}${cleanCreator ? `-${slug(cleanCreator)}` : ""}-${mediumKey}`,
     title: clean,
     type: MEDIA[mediumKey] ? mediumKey : "movie",
     domains: medium.domains,
@@ -136,6 +138,7 @@ export function applyResolvedCatalogItem(state, customId, resolved) {
   const merged = {
     ...current,
     ...resolved,
+    by: resolved.by || current.by || null,
     id: customId,
     custom: true,
     catalogId: resolved.id,
