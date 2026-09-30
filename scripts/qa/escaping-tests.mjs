@@ -37,7 +37,7 @@ for (const ref of ["ev:openlibrary-book-OL8369445W", "ev:tmdb-movie-12345", "ev:
   check(`recommendation copy hides ${ref.split(":")[1].split("-")[0]} evidence ref`, cleaned === "A useful connection", cleaned);
 }
 check("citation-only copy becomes empty", sanitizeRecommendationCopy("**(ev:tmdb-movie-123).**") === "");
-check("empty/internal rationale gets readable fallback", readableRecommendationCopy("**(ev:tmdb-movie-123).**", {}) .length > 20);
+check("empty/internal rationale gets readable fallback", readableRecommendationCopy("**(ev:tmdb-movie-123).**", {}).length > 20);
 check("curveball fallback stays human-readable", /curveball/i.test(readableRecommendationCopy("", { surprise: true })));
 for (const internal of [
   "Anastasia shares 10751 catalog signals with Labyrinth.",
