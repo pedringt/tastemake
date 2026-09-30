@@ -115,11 +115,13 @@ export async function run() {
   check("profile requested/generated live hypotheses",state.modelHypotheses.length===2,state.modelHypotheses.length);
   check("profile renders generated cards",$$(".signal-row").length===2,$$(".signal-row").length);
   check("old seeded profile copy is absent",!document.body.textContent.includes("Comedy works better when it has teeth"));
-  check("profile says patterns are validated AI output",/validated AI patterns/.test(document.body.textContent));
+  check("profile describes active patterns without internal validation language",/patterns currently shaping your profile/.test(document.body.textContent)&&!/validated AI patterns/.test(document.body.textContent));
 
   // User corrections still work on a generated pattern.
   await act('[data-statement-pattern="ai-structured-weirdness"][data-statement-field="says"][data-statement-value="not-me"]');
   check("correction stored on generated pattern",state.patternStatements.some(s=>s.hypothesisId==="ai-structured-weirdness"&&s.says==="not-me"));
+  check("rejected pattern leaves the active profile list",!$(`[data-profile-pattern="ai-structured-weirdness"].signal-row`));
+  check("rejected pattern moves into corrected patterns",Boolean($(`.corrected-patterns [data-profile-pattern="ai-structured-weirdness"]`)));
 
   // Keep discovering also stays on the real-catalog endpoint.
   if($('[data-action="keep-discovering"]')) await act('[data-action="keep-discovering"]',300);

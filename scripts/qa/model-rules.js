@@ -10,6 +10,7 @@ export async function run() {
   const SAY = await import("/src/model/statements.js");
   const B = await import("/src/model/blindspots.js");
   const DOM = await import("/src/data/domains.js");
+  const PROFILE = await import("/src/screens/profile.js");
 
   const failures=[];
   let total=0;
@@ -99,6 +100,10 @@ export async function run() {
   ok("user can reject a live pattern",/isn't you/.test(msg));
   eq("no clears context follow-up",SAY.statementFor(st,pattern.id).context,null);
   eq("no refuses further context answers",SAY.setStatement(st,pattern.id,"context","some"),null);
+
+  const partitioned=PROFILE.partitionProfilePatterns(st.modelHypotheses,st.patternStatements);
+  eq("rejected pattern leaves the active profile",partitioned.active.length,0);
+  eq("rejected pattern remains available as corrected history",partitioned.corrected[0]?.id,pattern.id);
 
   // Blind spots only attach to live, validated patterns named by a model pick.
   st.feedbackByRecommendation[pick.id]=fb("less","tried-disliked");

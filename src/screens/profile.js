@@ -59,8 +59,8 @@ function sayControls(item, said, record) {
             ${sayButton(item, "weight", "lot", "Important to my taste", said)}
             ${sayButton(item, "weight", "little", "Nice, but not important", said)}
           </div>
-          <div class="signal-say-group" role="group" aria-label="How broadly does “${esc(item.title)}” hold for you?">
-            <span class="signal-say-label">Does it usually hold?</span>
+          <div class="signal-say-group" role="group" aria-label="How often is “${esc(item.title)}” true for you?">
+            <span class="signal-say-label">How often is this true for you?</span>
             ${sayButton(item, "context", "broad", "Usually", said)}
             ${sayButton(item, "context", "some", "Depends", said)}
           </div>
@@ -73,10 +73,10 @@ function sayControls(item, said, record) {
       <div class="signal-say">
         ${primary}
         <div class="signal-followups signal-followups-partial">
-          <span class="signal-followup-heading">What makes it partial?</span>
-          <div class="signal-say-group" role="group" aria-label="What makes “${esc(item.title)}” only partly accurate?">
+          <span class="signal-followup-heading">What makes it only partly true?</span>
+          <div class="signal-say-group" role="group" aria-label="What makes “${esc(item.title)}” only partly true?">
             ${sayButton(item, "context", "some", "Depends on context", said)}
-            ${sayButton(item, "context", "unsure", "Not sure what yet", said)}
+            ${sayButton(item, "context", "unsure", "Not sure yet", said)}
           </div>
           ${domainScopeControls(item, record)}
         </div>
@@ -84,6 +84,16 @@ function sayControls(item, said, record) {
   }
 
   return `<div class="signal-say">${primary}</div>`;
+}
+
+export function partitionProfilePatterns(patterns = [], statements = []) {
+  const rejectedIds = new Set(
+    (statements ?? []).filter((entry) => entry?.says === "not-me").map((entry) => entry.hypothesisId)
+  );
+  return {
+    active: (patterns ?? []).filter((item) => !rejectedIds.has(item.id)),
+    corrected: (patterns ?? []).filter((item) => rejectedIds.has(item.id))
+  };
 }
 
 function hypothesisCard(item, index) {
@@ -95,7 +105,7 @@ function hypothesisCard(item, index) {
     ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${esc(spot.item.title)}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
     : "";
   return `
-    <article class="signal-row signal-row-${index + 1}${said?.says === "not-me" ? " is-excluded" : ""}">
+    <article class="signal-row signal-row-${index + 1}" data-profile-pattern="${item.id}">
       <div class="signal-index">${String(index + 1).padStart(2, "0")}</div>
       <div class="signal-main">
         <div class="signal-title-row">
@@ -114,12 +124,31 @@ function hypothesisCard(item, index) {
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.says === "partial" ? `<div class="signal-said"><strong>${FIT.partial}.</strong> Tastemake treats it as a narrower pattern and uses the details you add below.</div>` : ""}
         ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake keeps the pattern tentative rather than treating your uncertainty as evidence.</div>` : ""}
-        ${said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
-        ${said?.context ? `<div class="signal-said">${CONTEXT[said.context] ?? "You refined how broadly this applies."}${said.context === "some" ? ". Tastemake can't claim this is Strong until it's specific about which context." : "."}</div>` : ""}
+        ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
+        ${["accurate", "partial"].includes(said?.says) && said?.context ? `<div class="signal-said">${CONTEXT[said.context] ?? "You refined when this applies."}.</div>` : ""}
         ${sayControls(item, said, record)}
         ${blindLine}
       </div>
     </article>`;
+}
+
+function correctedPatternsSection(items) {
+  if (!items.length) return "";
+  return `
+    <details class="corrected-patterns">
+      <summary>Corrected patterns <span class="corrected-pattern-count">${items.length}</span></summary>
+      <p class="corrected-patterns-note">Patterns you said do not fit you. They no longer shape recommendations, but you can revisit them.</p>
+      <div class="corrected-pattern-list">
+        ${items.map((item) => `
+          <div class="corrected-pattern-row" data-profile-pattern="${item.id}">
+            <div>
+              <strong>${esc(item.title)}</strong>
+              <span>You said this isn’t you.</span>
+            </div>
+            <button type="button" class="button button-quiet corrected-pattern-reconsider" data-statement-pattern="${item.id}" data-statement-field="says" data-statement-value="not-me">Reconsider</button>
+          </div>`).join("")}
+      </div>
+    </details>`;
 }
 
 function blindSpotSection() {
@@ -153,6 +182,7 @@ export function renderProfile() {
   const visibleFavoriteTitles = favoriteTitles.slice(0, 12);
   const hiddenFavoriteTitles = favoriteTitles.slice(12);
   const workingHypotheses = state.modelHypotheses ?? [];
+  const { active: activeHypotheses, corrected: correctedHypotheses } = partitionProfilePatterns(workingHypotheses, state.patternStatements);
   const liveProfile = workingHypotheses.length > 0;
 
   return `
@@ -164,7 +194,7 @@ export function renderProfile() {
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede">These are working patterns, not one fixed aesthetic. They can overlap, disagree, get stronger, or become more specific as you react.</p>
           <p class="lede profile-evidence-note">Your taste updates from things you have actually tried. Reactions to picks you have not tried only shape what comes next; they are not taste evidence. Taste Profile patterns appear only when live AI has proposed them and Tastemake has validated every evidence citation.</p>
-          ${state.hypothesisAiMessage ? `<div class="profile-ai-status ${state.hypothesisAiStatus === "loading" ? "is-loading" : ""}" role="status" aria-busy="${state.hypothesisAiStatus === "loading"}"><span class="profile-ai-status-dot" aria-hidden="true"></span><span>${esc(state.hypothesisAiMessage)}</span>${state.hypothesisAiStatus !== "loading" ? `<button class="button button-quiet profile-retry" type="button" data-action="retry-profile">${liveProfile ? "Refresh again" : "Retry profile AI"}</button>` : ""}</div>` : ""}
+          ${state.hypothesisAiMessage ? `<div class="profile-ai-status ${state.hypothesisAiStatus === "loading" ? "is-loading" : ""}" role="status" aria-busy="${state.hypothesisAiStatus === "loading"}"><span class="profile-ai-status-dot" aria-hidden="true"></span><span>${esc(state.hypothesisAiMessage)}</span>${state.hypothesisAiStatus !== "loading" ? `<button class="button button-quiet profile-retry" type="button" data-action="retry-profile">${liveProfile ? "Refresh profile" : "Try again"}</button>` : ""}</div>` : ""}
           ${liveProfile ? `<details class="profile-legend">\n            <summary>What do the confidence labels mean?</summary>\n            <ul>\n              <li><strong>Emerging:</strong> an early pattern with limited support.</li>\n              <li><strong>Supported:</strong> experienced evidence backs it.</li>\n              <li><strong>Strong:</strong> several experienced items back it without stronger counterevidence.</li>\n              <li><strong>Still learning:</strong> the evidence is mixed.</li>\n              <li><strong>Less certain:</strong> repeated misses outweigh the support.</li>\n            </ul>\n          </details>` : ""}
         </div>
         <div class="profile-stamp" aria-hidden="true">
@@ -173,8 +203,9 @@ export function renderProfile() {
         </div>
       </div>
 
-      <div class="profile-evidence-strip">\n        <span class="profile-evidence-label">Your favorites</span>\n        <div class="profile-evidence-track">\n          ${visibleFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}\n          ${hiddenFavoriteTitles.length ? `<details class="profile-evidence-more"><summary>+${hiddenFavoriteTitles.length} more</summary><span class="profile-evidence-more-items">${hiddenFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${((index + visibleFavoriteTitles.length) % 4) + 1}">${esc(title)}</span>`).join("")}</span></details>` : ""}\n        </div>\n      </div>\n\n      ${liveProfile ? `\n      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>\n      <div class="profile-map">\n        <aside class="profile-map-aside">\n          <span class="profile-aside-number">${workingHypotheses.length}</span>\n          <p>validated AI patterns currently shaping your profile</p>\n          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>\n        </aside>\n        <div class="signal-stack">${workingHypotheses.map(hypothesisCard).join("")}</div>\n      </div>` : `\n      <div class="profile-empty" role="status">\n        <strong>No generated patterns yet.</strong>\n        <p>Tastemake is not filling this page with demo hypotheses. When live profile AI is available, it will build patterns only from your real experienced evidence.</p>\n      </div>`}
+      <div class="profile-evidence-strip">\n        <span class="profile-evidence-label">Your favorites</span>\n        <div class="profile-evidence-track">\n          ${visibleFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}\n          ${hiddenFavoriteTitles.length ? `<details class="profile-evidence-more"><summary>+${hiddenFavoriteTitles.length} more</summary><span class="profile-evidence-more-items">${hiddenFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${((index + visibleFavoriteTitles.length) % 4) + 1}">${esc(title)}</span>`).join("")}</span></details>` : ""}\n        </div>\n      </div>\n\n      ${liveProfile ? `\n      <h2 class="visually-hidden">Patterns Tastemake is working with</h2>\n      <div class="profile-map">\n        <aside class="profile-map-aside">\n          <span class="profile-aside-number">${activeHypotheses.length}</span>\n          <p>patterns currently shaping your profile</p>\n          <div class="profile-aside-note">patterns, not one aesthetic &nearr;</div>\n        </aside>\n        <div class="signal-stack">${activeHypotheses.length ? activeHypotheses.map(hypothesisCard).join("") : `<div class="profile-no-active-patterns">No active patterns right now. Tastemake will keep learning from what you try.</div>`}</div>\n      </div>` : `\n      <div class="profile-empty" role="status">\n        <strong>No generated patterns yet.</strong>\n        <p>Tastemake is not filling this page with demo hypotheses. When live profile AI is available, it will build patterns only from your real experienced evidence.</p>\n      </div>`}
 
+      ${correctedPatternsSection(correctedHypotheses)}
       ${blindSpotSection()}
 
       <div class="profile-footer page-actions">

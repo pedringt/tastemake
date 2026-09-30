@@ -354,6 +354,38 @@ function renderPreservingCardPosition(itemId, focusSelector = null) {
   renderPreservingPosition(`[data-rec-id="${itemId}"]`, focusSelector);
 }
 
+function renderPreservingPatternPosition(patternId, focusSelector = null) {
+  const selector = `[data-profile-pattern="${patternId}"]`;
+  const before = document.querySelector(selector);
+  const beforeTop = before?.getBoundingClientRect().top;
+  const next = before?.closest(".signal-row")?.nextElementSibling;
+  const nextId = next?.dataset?.profilePattern;
+  const nextTop = next?.getBoundingClientRect().top;
+
+  render();
+  updateStepper();
+
+  const same = document.querySelector(selector);
+  if (same && beforeTop !== undefined) {
+    const afterTop = same.getBoundingClientRect().top;
+    window.scrollBy({ top: afterTop - beforeTop, left: 0, behavior: "auto" });
+    restoreFocus(focusSelector, same.querySelector("button") || same);
+    return;
+  }
+
+  if (nextId && nextTop !== undefined) {
+    const afterNext = document.querySelector(`[data-profile-pattern="${nextId}"]`);
+    if (afterNext) {
+      const afterTop = afterNext.getBoundingClientRect().top;
+      window.scrollBy({ top: afterTop - nextTop, left: 0, behavior: "auto" });
+      restoreFocus(afterNext.querySelector("button") || ".corrected-patterns summary");
+      return;
+    }
+  }
+
+  restoreFocus(".corrected-patterns summary", app);
+}
+
 function closeWhyPopovers(except = null) {
   document.querySelectorAll(".editorial-why.is-pinned").forEach((popover) => {
     if (popover === except) return;
@@ -440,8 +472,7 @@ app.addEventListener("click", async (event) => {
     const { statementPattern, statementField, statementValue } = sayButton.dataset;
     const message = setStatement(state, statementPattern, statementField, statementValue);
     if (!message) return;
-    render();
-    restoreFocus(focusSelector);
+    renderPreservingPatternPosition(statementPattern, focusSelector);
     announce(message);
     return;
   }
@@ -451,8 +482,7 @@ app.addEventListener("click", async (event) => {
     const { scopePattern, scopeDomain } = scopeButton.dataset;
     const message = toggleDomainExclusion(state, scopePattern, scopeDomain);
     if (!message) return;
-    render();
-    restoreFocus(focusSelector);
+    renderPreservingPatternPosition(scopePattern, focusSelector);
     announce(message);
     return;
   }
