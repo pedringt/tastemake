@@ -8,6 +8,7 @@ import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
 import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
+import { renderExperienceRefinement } from "../components/refinement.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -339,6 +340,7 @@ function recommendationCard(item, index, total) {
         </div>
 
         ${saved ? detailChips(item.id, saved) : ""}
+        ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
         ${saved ? favoriteToggle(item.id, saved) : ""}
         ${saved ? seriesExperienceFeedback(item, saved) : ""}
         ${showQuality ? `
