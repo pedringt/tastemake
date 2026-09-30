@@ -27,7 +27,7 @@ import { firstBrowseGenre } from "./catalog/browse-genres.js";
 import { fetchBrowsePage } from "./catalog/browse-client.js";
 import { mergeUniqueBrowseItems } from "./model/browse.js";
 import { applyResolvedCatalogItem, applySearchAction, markCustomResolution, searchableItems } from "./model/search.js";
-import { isStrongPositive } from "./model/evidence.js";
+import { isExperienced, isStrongPositive } from "./model/evidence.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
 import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
@@ -430,6 +430,8 @@ app.addEventListener("pointerup", (event) => {
   const dy = event.clientY - swipe.y;
   if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
 
+  const existing = state.feedbackByRecommendation[swipe.itemId];
+  if (isExperienced(existing)) return;
   const outcome = dx > 0 ? "save" : "not-interested";
   if (!saveExperienceOutcome(swipe.itemId, outcome)) return;
   renderPreservingCardPosition(swipe.itemId);
