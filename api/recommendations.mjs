@@ -33,6 +33,7 @@ export function hydrateState(raw = {}) {
     blindSpotDismissed: new Set(raw.blindSpotDismissed ?? []),
     feedbackByRecommendation: raw.feedbackByRecommendation ?? {},
     recommendationSets: Array.isArray(raw.recommendationSets) ? raw.recommendationSets : [],
+    seenItemIds: Array.isArray(raw.seenItemIds) ? raw.seenItemIds : [],
     customItems: raw.customItems ?? {},
     blindSpots: raw.blindSpots ?? {},
     blindSpotDrafts: raw.blindSpotDrafts ?? {},
@@ -547,6 +548,7 @@ export default async function handler(req, res) {
       paidCallMade: Boolean(payload.meta?.paidCallMade),
       errorType: payload.meta?.errorType ?? null,
       feedbackCount: Object.keys(body.state.feedbackByRecommendation ?? {}).length,
+      seenItemCount: body.state.seenItemIds?.length ?? 0,
       customItemsCount: Object.keys(body.state.customItems ?? {}).length
     }));
     res.setHeader("cache-control", "no-store");
