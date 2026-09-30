@@ -35,7 +35,7 @@ import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackQuality, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, toggleExpandedFeedback } from "./actions/recommendations.js";
+import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackQuality, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite, toggleExpandedFeedback } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
@@ -629,11 +629,38 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const recommendationFavorite = event.target.closest("[data-rec-favorite]");
+  if (recommendationFavorite) {
+    const itemId = recommendationFavorite.dataset.recFavorite;
+    const makeFavorite = recommendationFavorite.getAttribute("aria-pressed") !== "true";
+    const title = state.feedbackByRecommendation[itemId]?.item?.title
+      ?? activeRecommendations(state).find((item) => item.id === itemId)?.title
+      ?? "Item";
+    if (setRecommendationFavorite(itemId, makeFavorite)) {
+      state.recommendationFeedbackItemId = null;
+      renderPreservingCardPosition(itemId, `[data-rec-favorite="${itemId}"]`);
+      announce(makeFavorite
+        ? `${title} added to Favorites and marked Tried · Loved.`
+        : `${title} removed from Favorites. Your Loved reaction stays.`);
+    }
+    return;
+  }
+
+  const feedbackEdit = event.target.closest("[data-feedback-edit]");
+  if (feedbackEdit) {
+    const itemId = feedbackEdit.dataset.feedbackEdit;
+    state.recommendationFeedbackItemId = itemId;
+    renderPreservingCardPosition(itemId, `[data-feedback-close="${itemId}"]`);
+    return;
+  }
+
   const feedbackClose = event.target.closest("[data-feedback-close]");
   if (feedbackClose) {
     const itemId = feedbackClose.dataset.feedbackClose;
     state.recommendationFeedbackItemId = null;
-    renderPreservingCardPosition(itemId, `[data-feedback-item="${itemId}"][data-experience-path]`);
+    renderPreservingCardPosition(itemId, state.feedbackByRecommendation[itemId]
+      ? `[data-feedback-edit="${itemId}"]`
+      : `[data-feedback-item="${itemId}"][data-experience-path]`);
     return;
   }
 
