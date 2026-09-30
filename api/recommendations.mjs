@@ -227,7 +227,7 @@ export function parseModelJson(text) {
   throw firstError ?? new SyntaxError("model response was not JSON");
 }
 
-export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch }) {
+export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Number(env.TASTEMAKE_AI_TIMEOUT_MS || REQUEST_TIMEOUT_MS));
   try {
@@ -244,7 +244,7 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
         // thinking and returned no text at all (stop_reason=max_tokens, blocks=thinking).
         // Set TASTEMAKE_AI_THINKING=enabled to turn it back on, with a much larger cap.
         ...(env.TASTEMAKE_AI_THINKING === "enabled" ? {} : { thinking: { type: "disabled" } }),
-        max_tokens: Number(env.TASTEMAKE_AI_MAX_TOKENS || MAX_OUTPUT_TOKENS),
+        max_tokens: Number(maxTokens ?? env.TASTEMAKE_AI_MAX_TOKENS ?? MAX_OUTPUT_TOKENS),
         // No `temperature`: newer models reject it ("temperature is deprecated for this model"), which
         // failed every live call with 400 invalid_request_error. Runs are therefore not bit-identical;
         // eval comparisons allow for that (docs/ai-evals.md).
