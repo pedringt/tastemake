@@ -314,9 +314,12 @@ function recommendationCard(item, index, total) {
           <span>${esc(displayLabel(item))}${item.year ? ` · ${esc(item.year)}` : ""}</span>
         </div>
 
+        <div class="editorial-favorite-row">
+          ${favoriteToggle(item.id)}
+        </div>
+
         <div class="editorial-title-row">
           <h3>${esc(item.title)}</h3>
-          ${favoriteToggle(item.id)}
         </div>
 
         <div class="editorial-status-row">
