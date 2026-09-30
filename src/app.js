@@ -625,11 +625,20 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const feedbackClose = event.target.closest("[data-feedback-close]");
+  if (feedbackClose) {
+    const itemId = feedbackClose.dataset.feedbackClose;
+    state.recommendationFeedbackItemId = null;
+    renderPreservingCardPosition(itemId, `[data-feedback-item="${itemId}"][data-experience-path]`);
+    return;
+  }
+
   const experiencePath = event.target.closest("[data-experience-path][data-feedback-item]");
   if (experiencePath) {
     const itemId = experiencePath.dataset.feedbackItem;
     if (chooseExperiencePath(itemId, experiencePath.dataset.experiencePath)) {
-      renderPreservingCardPosition(itemId, focusSelector);
+      state.recommendationFeedbackItemId = itemId;
+      renderPreservingCardPosition(itemId, `[data-feedback-item="${itemId}"][data-experience-outcome]`);
       announce(experiencePath.dataset.experiencePath === "tried"
         ? "Tried it selected. Choose how it landed."
         : "Not tried selected. Choose Save or Not interested.");
@@ -640,8 +649,14 @@ app.addEventListener("click", async (event) => {
   const experienceOutcome = event.target.closest("[data-experience-outcome][data-feedback-item]");
   if (experienceOutcome) {
     const itemId = experienceOutcome.dataset.feedbackItem;
-    if (saveExperienceOutcome(itemId, experienceOutcome.dataset.experienceOutcome)) {
-      renderPreservingCardPosition(itemId, focusSelector);
+    const outcome = experienceOutcome.dataset.experienceOutcome;
+    if (saveExperienceOutcome(itemId, outcome)) {
+      // Untried intent has no deeper taste questions, so finish the small editor after Save/Not interested.
+      // Tried reactions keep it open so optional refinement/series/discovery feedback is available.
+      if (outcome === "save" || outcome === "not-interested") state.recommendationFeedbackItemId = null;
+      renderPreservingCardPosition(itemId, outcome === "save" || outcome === "not-interested"
+        ? `[data-feedback-item="${itemId}"][data-experience-path="not-tried"]`
+        : focusSelector);
       announceReaction(itemId, announce);
     }
     return;
@@ -862,6 +877,12 @@ app.addEventListener("input", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
+  if (state.recommendationFeedbackItemId) {
+    const itemId = state.recommendationFeedbackItemId;
+    state.recommendationFeedbackItemId = null;
+    renderPreservingCardPosition(itemId, `[data-feedback-item="${itemId}"][data-experience-path]`);
+    return;
+  }
   const trigger = document.querySelector(".editorial-why.is-pinned .why-trigger");
   if (!trigger) return;
   closeWhyPopovers();
