@@ -59,8 +59,8 @@ function sayControls(item, said, record) {
             ${sayButton(item, "weight", "lot", "Important to my taste", said)}
             ${sayButton(item, "weight", "little", "Nice, but not important", said)}
           </div>
-          <div class="signal-say-group" role="group" aria-label="How broadly does “${esc(item.title)}” hold for you?">
-            <span class="signal-say-label">Does it usually hold?</span>
+          <div class="signal-say-group" role="group" aria-label="How often is “${esc(item.title)}” true for you?">
+            <span class="signal-say-label">How often is this true for you?</span>
             ${sayButton(item, "context", "broad", "Usually", said)}
             ${sayButton(item, "context", "some", "Depends", said)}
           </div>
