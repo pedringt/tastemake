@@ -235,12 +235,17 @@ export function renderLibrary() {
     <section class="library-screen">
       ${renderStickerField("library")}
       <div class="library-masthead">
-        <p class="kicker">Your stuff</p>
-        <h1>Library.</h1>
-        <p class="lede">Discovery happens in Recommendations. This is what you've kept: things saved for later, and things you've already tried.</p>
-        <button class="button button-secondary library-search-open" type="button" data-action="open-search">
-          Search the catalog<span class="library-search-open-hint">Add or update a title. Looking it up never changes anything on its own.</span>
-        </button>
+        <div class="library-heading-row">
+          <div>
+            <p class="kicker">Your stuff</p>
+            <h1>Library.</h1>
+            <p class="lede">Everything you've saved or tried.</p>
+          </div>
+          <button class="button button-secondary library-search-open" type="button" data-action="open-search">
+            <span>Search or add a title</span>
+            <span class="library-search-open-hint">Looking something up never changes your taste on its own.</span>
+          </button>
+        </div>
       </div>
 
       <div class="library-tabs" role="tablist" aria-label="Library view">
@@ -249,7 +254,7 @@ export function renderLibrary() {
       </div>
 
       <div class="filter-band library-filter-band">
-        <span class="filter-band-label">Show me</span>
+        <span class="filter-band-label">Filter</span>
         ${renderDomainFilter({ selected: state.libraryFilter, scope: "library", label: "Filter your library by type" })}
       </div>
 

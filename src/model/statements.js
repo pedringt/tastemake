@@ -16,12 +16,12 @@ import { recordRevision } from "./history.js";
 // "broad" means the user says the pattern usually holds, "some" narrows it to some contexts, and
 // "unsure" records uncertainty. Only "some" caps model confidence; none of these are taste evidence.
 
-export const FIT = { accurate: "You confirmed this", "not-me": "You said this isn't you" };
-export const WEIGHT = { lot: "Matters a lot to you", little: "Matters a little to you" };
+export const FIT = { accurate: "You said this is accurate", partial: "You said this is partly accurate", "not-me": "You said this isn't you", unsure: "You said you're not sure yet" };
+export const WEIGHT = { lot: "Important to your taste", little: "Nice, but not important to your taste" };
 export const CONTEXT = {
   broad: "You said this usually holds",
-  some: "You said this only applies in some contexts",
-  unsure: "You said you are not sure yet"
+  some: "You said this depends on context",
+  unsure: "You are not sure what makes it partial yet"
 };
 
 const same = (a, b) => hypothesisMatches([a], b) || hypothesisMatches([b], a);
@@ -42,17 +42,35 @@ export function setStatement(state, hypothesisId, field, value) {
   if (!pattern || !["says", "weight", "context"].includes(field)) return null;
   state.patternStatements ??= [];
   let entry = statementFor(state, hypothesisId);
+
+  // Follow-ups are meaningful only after the matching primary fit answer.
+  if (field === "weight" && entry?.says !== "accurate") return null;
+  if (field === "context" && !["accurate", "partial"].includes(entry?.says)) return null;
+  if (field === "context" && entry?.says === "partial" && value === "broad") return null;
+
   if (!entry) {
     entry = { hypothesisId, label: pattern.title, says: null, weight: null, context: null, authority: "user-confirmed" };
     state.patternStatements.push(entry);
   }
-  entry[field] = entry[field] === value ? null : value;
+
+  const next = entry[field] === value ? null : value;
+  entry[field] = next;
+
+  if (field === "says") {
+    if (next === "not-me" || next === "unsure" || next == null) {
+      entry.weight = null;
+      entry.context = null;
+      entry.excludedDomains = [];
+    } else if (next === "partial") {
+      entry.weight = null;
+      if (entry.context === "broad") entry.context = null;
+    }
+  }
+
   if (!entry.says && !entry.weight && !entry.context && !(entry.excludedDomains?.length)) {
     state.patternStatements = state.patternStatements.filter((s) => s !== entry);
   }
   const message = MESSAGE[field](pattern, entry[field]);
-  // A user correction outranks model inference (#31) and is its own kind of revision (#37):
-  // record it as "user-confirmed" so it stays distinguishable from anything Tastemake infers.
   recordRevision(state, { hypothesisId: pattern.id, claim: pattern.claim, origin: "user-confirmed", reason: message });
   return message;
 }
@@ -73,10 +91,8 @@ export function toggleDomainExclusion(state, hypothesisId, domainId) {
   if (!pattern) return null;
   state.patternStatements ??= [];
   let entry = statementFor(state, hypothesisId);
-  if (!entry) {
-    entry = { hypothesisId, label: pattern.title, says: null, weight: null, excludedDomains: [], authority: "user-confirmed" };
-    state.patternStatements.push(entry);
-  }
+  if (entry?.says !== "partial") return null;
+
   entry.excludedDomains ??= [];
   const excluding = !entry.excludedDomains.includes(domainId);
   entry.excludedDomains = excluding

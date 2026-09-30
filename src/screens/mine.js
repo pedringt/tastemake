@@ -103,7 +103,7 @@ function statementList() {
   return `
     <section class="mine-group" aria-labelledby="mine-said">
       <h3 id="mine-said">What you've said about patterns <span class="mine-count">${said.length}</span></h3>
-      <p class="mine-blurb">These come from you, so they outrank anything Tastemake guessed. They change what it picks, not how sure it is about a pattern.</p>
+      <p class="mine-blurb">These come from you, so they outrank anything Tastemake guessed. They can confirm, narrow, set aside, or leave a pattern uncertain.</p>
       <ul class="mine-list">
         ${said.map((s) => `
           <li class="mine-row" data-mine-said="${s.hypothesisId}">

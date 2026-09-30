@@ -90,6 +90,21 @@ function fresh() {
   };
 }
 
+function normalizePersistedPatternStatements(statements = []) {
+  return (Array.isArray(statements) ? statements : []).map((entry) => {
+    const next = { ...entry };
+    if (next.says === "not-me" || next.says === "unsure") {
+      next.weight = null;
+      next.context = null;
+      next.excludedDomains = [];
+    } else if (next.says === "partial") {
+      next.weight = null;
+      if (next.context === "broad") next.context = null;
+    }
+    return next;
+  });
+}
+
 const persisted = loadPersistedState();
 const initial = fresh();
 
@@ -100,6 +115,7 @@ export const state = {
   mineReturn: "favorites",
   ...initial,
   ...persisted,
+  patternStatements: normalizePersistedPatternStatements(persisted.patternStatements ?? initial.patternStatements),
   selectedFavorites: persisted.selectedFavorites instanceof Set ? persisted.selectedFavorites : initial.selectedFavorites,
   libraryFavorites: persisted.libraryFavorites instanceof Set ? persisted.libraryFavorites : initial.libraryFavorites,
   blindSpotDismissed: persisted.blindSpotDismissed instanceof Set ? persisted.blindSpotDismissed : initial.blindSpotDismissed,

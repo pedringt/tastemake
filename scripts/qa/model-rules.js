@@ -82,17 +82,23 @@ export async function run() {
   eq("no model hypotheses means no inferred profile records",INT.hypothesisRecords(st).length,0);
   st.modelHypotheses=[pattern];
 
-  // User correction authority.
-  const msg=SAY.setStatement(st,pattern.id,"says","not-me");
-  ok("user can correct a live pattern",/isn't you/.test(msg));
+  // User correction authority and conditional follow-ups.
+  let msg=SAY.setStatement(st,pattern.id,"says","accurate");
+  ok("user can confirm a live pattern",/accurate/.test(msg));
   eq("correction is stored as user-confirmed",SAY.statementFor(st,pattern.id).authority,"user-confirmed");
   eq("correction to unknown/non-live pattern is refused",SAY.setStatement(st,"seed-H04","says","not-me"),null);
-  ok("context can be explicitly marked broad",/usually holds/.test(SAY.setStatement(st,pattern.id,"context","broad")));
+  ok("yes can be explicitly marked broad",/usually holds/.test(SAY.setStatement(st,pattern.id,"context","broad")));
   eq("broad context is not confidence-limiting",SAY.contextQualifiedFor(st,pattern.id),false);
-  ok("context can be narrowed to some contexts",/only applies in some contexts/.test(SAY.setStatement(st,pattern.id,"context","some")));
+
+  SAY.setStatement(st,pattern.id,"says","partial");
+  ok("partly can be narrowed to context",/depends on context/.test(SAY.setStatement(st,pattern.id,"context","some")));
   eq("some-context refinement caps confidence",SAY.contextQualifiedFor(st,pattern.id),true);
-  ok("context can be left explicitly uncertain",/not sure yet/.test(SAY.setStatement(st,pattern.id,"context","unsure")));
-  eq("uncertain context does not claim a narrow scope",SAY.contextQualifiedFor(st,pattern.id),false);
+  eq("partly refuses importance",SAY.setStatement(st,pattern.id,"weight","lot"),null);
+
+  msg=SAY.setStatement(st,pattern.id,"says","not-me");
+  ok("user can reject a live pattern",/isn't you/.test(msg));
+  eq("no clears context follow-up",SAY.statementFor(st,pattern.id).context,null);
+  eq("no refuses further context answers",SAY.setStatement(st,pattern.id,"context","some"),null);
 
   // Blind spots only attach to live, validated patterns named by a model pick.
   st.feedbackByRecommendation[pick.id]=fb("less","tried-disliked");
