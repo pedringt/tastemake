@@ -2,7 +2,7 @@
 // Free, no-network checks for #83-#86: provider normalization, grounded catalog search,
 // live hypothesis gating/validation, and append-only model revision history.
 
-import { searchCatalog } from "../../src/catalog/providers.mjs";
+import { searchCatalog, searchRelevance } from "../../src/catalog/providers.mjs";
 import hypothesesHandler, { buildHypothesisPrompt, produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
 import { produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
@@ -71,6 +71,33 @@ const rankedWatch = await searchCatalog("Breaking Bad", { domain: "all", env, fe
 eq("exact TV match outranks weaker movie matches", rankedWatch.items[0]?.title, "Breaking Bad");
 const rankedPlay = await searchCatalog("Control", { domain: "play", env, fetchImpl: rankingFetch });
 eq("exact canonical game outranks partial/edition matches", rankedPlay.items[0]?.title, "Control");
+
+check("leading articles do not demote canonical title matches",
+  searchRelevance("The Lord of the Rings", "lord of the rings") > searchRelevance("Lord of the Rings Fan Documentary", "lord of the rings"));
+check("title-family matches stay near the top",
+  searchRelevance("The Lord of the Rings: The Fellowship of the Ring", "lord of the rings") > searchRelevance("A Journey Through Middle-earth", "lord of the rings"));
+
+{
+  const lotrFetch = async (url) => {
+    const u = String(url);
+    if (u.includes("api.themoviedb.org/3/search/movie")) return { ok:true, json:async()=>({results:[
+      {id:100,title:"The Lord of the Rings: The Fellowship of the Ring",popularity:150,release_date:"2001-12-19"},
+      {id:101,title:"Lord of the Rings Fan Documentary",popularity:1,release_date:"2020-01-01"}
+    ]})};
+    if (u.includes("api.themoviedb.org/3/search/tv")) return { ok:true, json:async()=>({results:[]})};
+    if (u.includes("openlibrary.org/search.json")) return { ok:true, json:async()=>({docs:[
+      {key:"/works/OL1",title:"The Lord of the Rings",author_name:["J. R. R. Tolkien"],first_publish_year:1954},
+      {key:"/works/OL2",title:"Lord of the Rings Companion Notes",author_name:["Someone Else"],first_publish_year:2010}
+    ]})};
+    throw new Error(`unexpected LOTR URL: ${u}`);
+  };
+  const lotr = await searchCatalog("lord of the rings", { domain:"all", env:{ TASTEMAKE_TMDB_TOKEN:"tmdb-token" }, fetchImpl:lotrFetch });
+  check("All search globally ranks canonical LOTR matches ahead of weaker provider results",
+    lotr.items.findIndex((i)=>i.title==="The Lord of the Rings: The Fellowship of the Ring")
+      < lotr.items.findIndex((i)=>i.title==="Lord of the Rings Fan Documentary"),
+    lotr.items.map((i)=>i.title).join(" | "));
+}
+
 
 
 const relatedState = {
