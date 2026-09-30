@@ -12,7 +12,7 @@ function actionButton(item, action, label, pressed) {
 
 function browseCard(item) {
   const status = itemStatus(state, item);
-  const favorite = state.selectedFavorites.has(item.id);
+  const favorite = state.onboarded ? state.libraryFavorites.has(item.id) : state.selectedFavorites.has(item.id);
   const feedback = state.feedbackByRecommendation[item.id];
   const loved = status.key === "loved" || favorite;
   const meta = [displayLabel(item), item.year, item.by].filter(Boolean).join(" · ");
@@ -63,7 +63,7 @@ export function renderBrowse() {
   const domains = BROWSE_DOMAINS;
   const genres = browseGenresFor(state.browseDomain);
   const ready = browseReadyForRecommendations(state);
-  const count = state.selectedFavorites.size;
+  const count = state.onboarded ? state.libraryFavorites.size : state.selectedFavorites.size;
 
   return `
     <section class="browse-screen">
@@ -74,8 +74,8 @@ export function renderBrowse() {
           <p class="lede">Browse things you might recognize, then tell Tastemake what you've actually tried. Looking around never counts as taste evidence.</p>
         </div>
         <div class="browse-progress" aria-live="polite">
-          <strong>${count} of 4 favorites</strong>
-          <span>${ready ? "Enough to start personalizing." : "Love something here? Add it to Favorites."}</span>
+          <strong>${state.onboarded ? `${count} favorites` : `${count} of 4 favorites`}</strong>
+          <span>${state.onboarded ? "Your Favorites are the strongest signals in your taste profile." : (ready ? "Enough to start personalizing." : "Love something here? Add it to Favorites.")}</span>
         </div>
       </div>
 
