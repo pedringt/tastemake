@@ -38,7 +38,7 @@ const severance = tmdbItem({
 
 const wayOfKings = openLibraryItem({
   key: "/works/OL262758W", title: "The Way of Kings", author_name: ["Brandon Sanderson"],
-  first_publish_year: 2010, cover_i: 1, subject: ["Epic fantasy fiction", "Magic"]
+  first_publish_year: 2010, cover_i: 1, subject: ["Epic fantasy fiction", "Magic"], isbn: ["9780765326355", "0765326353"]
 });
 
 const hades = igdbItem({
@@ -63,6 +63,16 @@ function makeFakeDb() {
       const [provider, providerId] = params;
       const itemId = identifiers.get(`${provider}::${providerId}`);
       return itemId ? [{ item_id: itemId }] : [];
+    }
+    if (sql.startsWith("select provider, provider_id, item_id from item_identifiers")) {
+      const rows = [];
+      for (let i = 0; i < params.length; i += 2) {
+        const provider = params[i];
+        const providerId = params[i + 1];
+        const itemId = identifiers.get(`${provider}::${providerId}`);
+        if (itemId) rows.push({ provider, provider_id: providerId, item_id: itemId });
+      }
+      return rows;
     }
     // Simulates the atomic "resolve identity" CTE in upsertCanonicalItem's not-found branch: always
     // creates a speculative items row, then only actually claims the (provider, provider_id)
@@ -141,6 +151,7 @@ const normalizedBook = normalizeCanonicalItem(wayOfKings);
 check("book normalizes to media type book", normalizedBook.mediaType === "book");
 check("book factual carries author", normalizedBook.factual.author === "Brandon Sanderson");
 check("book factual carries subjects, not genres", Array.isArray(normalizedBook.factual.subjects) && !("genres" in normalizedBook.factual));
+check("book factual carries stable ISBN aliases", normalizedBook.factual.isbns?.includes("9780765326355"));
 check("book normalization never writes traits", !("traits" in normalizedBook));
 check("book completeness is between 0 and 1", normalizedBook.completeness > 0 && normalizedBook.completeness <= 1);
 
@@ -243,6 +254,29 @@ check("null item normalizes to null", normalizeCanonicalItem(null) === null);
   canonicalizeWriteBehind([dune, wayOfKings, hades], { query: db.query });
   await new Promise((resolve) => setTimeout(resolve, 0));
   check("canonicalizeWriteBehind (now batched) still persists all three fixture items", db.items.size === 3);
+}
+
+// ---- multiple provider IDs can resolve to one canonical book through a stable ISBN ---------------
+
+{
+  const db = makeFakeDb();
+  const openLibraryId = await upsertCanonicalItem(wayOfKings, { query: db.query });
+  const googleBooksLike = {
+    id: "googlebooks-book-abc",
+    provider: "googlebooks",
+    providerId: "abc",
+    title: "The Way of Kings",
+    type: "book",
+    domains: ["read"],
+    by: "Brandon Sanderson",
+    year: "2010",
+    genres: ["Epic fantasy fiction"],
+    providerMeta: { isbns: ["978-0-7653-2635-5"] }
+  };
+  const secondProviderId = await upsertCanonicalItem(googleBooksLike, { query: db.query });
+  check("a second book provider with a shared ISBN resolves to the existing canonical item", secondProviderId === openLibraryId);
+  check("the second provider id is attached as an alias instead of creating a duplicate item", db.identifiers.get("googlebooks:book::abc") === openLibraryId && db.items.size === 1);
+  check("normalized ISBN aliases are attached to the same canonical item", db.identifiers.get("isbn:book::9780765326355") === openLibraryId);
 }
 
 // ---- same-title-different-media-type must stay distinct -----------------------------------------
