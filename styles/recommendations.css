@@ -135,7 +135,7 @@
 .editorial-title-row { display:flex; align-items:flex-start; margin-top:12px; }
 /* #95: a fixed clamp range that reads fine at three-per-row width, whatever the title length —
    no separate "wide layout" font size to keep in sync. */
-.editorial-title-row h3 { flex:1 1 auto; min-width:0; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+.editorial-title-row h3 { flex:1 1 auto; min-width:0; min-height:2.16em; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
 /* #121: a reserved band directly under the title, present whether or not a card has a status chip,
    so one-line vs. two/three-line titles never shift the chip's vertical position and a row of cards
    stays level even when only some of them carry a status. min-height is sized to the chip's own
