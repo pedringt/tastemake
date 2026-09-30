@@ -3,7 +3,7 @@ import { applySearchAction } from "../model/search.js";
 import { clearStatement } from "../model/statements.js";
 import { removeBlindSpot } from "../model/blindspots.js";
 import { AREAS } from "../model/taste.js";
-import { backupFileName, buildBackup, buildMarkdownExport, markdownFileName } from "../model/export.js";
+import { backupFileName, buildBackup, buildHtmlExport, htmlFileName } from "../model/export.js";
 
 // ---- My Tastemake (#8) ----
 
@@ -39,9 +39,9 @@ export function handleMineClick(event, { render, updateStepper, restoreFocus, an
   const button = event.target.closest("button");
   if (!button) return;
 
-  if (button.dataset.mineExport === "markdown") {
-    downloadText(markdownFileName(), "text/markdown;charset=utf-8", buildMarkdownExport(state));
-    announce("Downloaded a readable copy of your Tastemake data.");
+  if (button.dataset.mineExport === "html") {
+    downloadText(htmlFileName(), "text/html;charset=utf-8", buildHtmlExport(state));
+    announce("Downloaded a readable HTML copy of your Tastemake data.");
     return;
   }
 
