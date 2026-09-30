@@ -366,7 +366,7 @@ function renderPreservingPatternPosition(patternId, focusSelector = null) {
   updateStepper();
 
   const same = document.querySelector(selector);
-  if (same && beforeTop !== undefined) {
+  if (same?.classList.contains("signal-row") && beforeTop !== undefined) {
     const afterTop = same.getBoundingClientRect().top;
     window.scrollBy({ top: afterTop - beforeTop, left: 0, behavior: "auto" });
     restoreFocus(focusSelector, same.querySelector("button") || same);
@@ -378,7 +378,7 @@ function renderPreservingPatternPosition(patternId, focusSelector = null) {
     if (afterNext) {
       const afterTop = afterNext.getBoundingClientRect().top;
       window.scrollBy({ top: afterTop - nextTop, left: 0, behavior: "auto" });
-      restoreFocus(afterNext.querySelector("button") || ".corrected-patterns summary");
+      restoreFocus(null, afterNext.querySelector("button") || afterNext);
       return;
     }
   }

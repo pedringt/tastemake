@@ -10,7 +10,10 @@ export function eligibleCandidates(state, extraCandidates = []) {
   // objects (see serializeAiState in ai/live-client.js) -- this was the only thing ever read from
   // them server-side anyway. Accepts a bare id or a full object (still the shape several test
   // fixtures construct directly).
-  const shown = new Set(state.recommendationSets.flat().map((entry) => (typeof entry === "string" ? entry : entry?.id)));
+  const shown = new Set([
+    ...(state.seenItemIds ?? []),
+    ...state.recommendationSets.flat().map((entry) => (typeof entry === "string" ? entry : entry?.id))
+  ]);
   const reacted = new Set(Object.keys(state.feedbackByRecommendation));
   const pool = [...extraCandidates];
   const seen = new Set();

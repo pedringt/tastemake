@@ -282,10 +282,10 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
   };
   const serialized = serializeAiState(stubState);
   check("an experienced (Loved) reaction keeps its full trimmed item", serialized.feedbackByRecommendation[lovedItem.id].item.providerId === "1" && JSON.stringify(serialized.feedbackByRecommendation[lovedItem.id].item.providerMeta) === JSON.stringify({ genreIds: [18] }));
-  check("an intent-only (bookmarked) reaction's id is never dropped, so it stays excluded from future picks", bookmarkedItem.id in serialized.feedbackByRecommendation);
-  check("an intent-only reaction's item is stubbed down to id/title/type/domains only", !("provider" in serialized.feedbackByRecommendation[bookmarkedItem.id].item) && !("providerId" in serialized.feedbackByRecommendation[bookmarkedItem.id].item) && !("genres" in serialized.feedbackByRecommendation[bookmarkedItem.id].item) && !("providerMeta" in serialized.feedbackByRecommendation[bookmarkedItem.id].item));
-  check("the stub still carries what evidenceRecords() and displayLabel() need", serialized.feedbackByRecommendation[bookmarkedItem.id].item.id === bookmarkedItem.id && serialized.feedbackByRecommendation[bookmarkedItem.id].item.title === "Bookmarked Movie" && serialized.feedbackByRecommendation[bookmarkedItem.id].item.type === "movie" && serialized.feedbackByRecommendation[bookmarkedItem.id].item.custom === true);
-  check("customItems drops an entry backing only an intent-only reaction, same as a fully orphaned one (neither is ever looked up server-side)", !(bookmarkedItem.id in serialized.customItems) && !(orphanCustomItem.id in serialized.customItems));
+  check("intent-only reactions are omitted from the heavier feedback payload", !(bookmarkedItem.id in serialized.feedbackByRecommendation));
+  check("intent-only reacted ids survive in compact seen history", serialized.seenItemIds.includes(bookmarkedItem.id));
+  check("experienced ids also survive in compact seen history", serialized.seenItemIds.includes(lovedItem.id));
+  check("customItems drops an entry backing only an intent-only reaction, same as a fully orphaned one", !(bookmarkedItem.id in serialized.customItems) && !(orphanCustomItem.id in serialized.customItems));
 }
 
 // (9) QA sweep finding: blindSpots/blindSpotDrafts/blindSpotDismissed were sent whole and unbounded --

@@ -6,12 +6,12 @@ import { searchCatalog } from "../../src/catalog/providers.mjs";
 import hypothesesHandler, { buildHypothesisPrompt, produceHypotheses, hypothesisConfig } from "../../api/hypotheses.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { recordRevisionIfChanged } from "../../src/model/history.js";
-import { serializeAiState } from "../../src/ai/live-client.js";
+import { serializeAiState, selectExperiencedFeedbackForWire } from "../../src/ai/live-client.js";
 import { bestExactMatch } from "../../api/resolve-item.mjs";
 import { applyResolvedCatalogItem, applySearchAction, findExisting, makeCustomItem } from "../../src/model/search.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
 import { normalizeHypothesisResponse, validateHypotheses } from "../../src/ai/validate.js";
-import { mergeHypotheses } from "../../src/ai/hypothesis-profile.js";
+import { hypothesisEvidenceKey, mergeHypotheses } from "../../src/ai/hypothesis-profile.js";
 
 let passed = 0;
 const failures = [];
@@ -42,6 +42,8 @@ check("Open Library requests large covers", catalog.items.find((x) => x.provider
 check("IGDB requests 2x cover art", catalog.items.find((x) => x.provider === "igdb")?.artwork?.includes("/t_cover_big_2x/"));
 check("All interleaves domains so games are present without choosing Play", catalog.items.some((x) => x.type === "game"));
 eq("domain filtering can request books only", (await searchCatalog("test", { domain: "read", env, fetchImpl: providerFetch })).items.map((x) => x.type).join(), "book");
+eq("Movies catalog filter excludes TV", (await searchCatalog("test", { domain: "movies", env, fetchImpl: providerFetch })).items.map((x) => x.type).join(), "movie");
+eq("TV catalog filter excludes movies", (await searchCatalog("test", { domain: "tv", env, fetchImpl: providerFetch })).items.map((x) => x.type).join(), "tv");
 
 // #106: rank exact/canonical matches across provider result types instead of preserving provider bucket order.
 const rankingFetch = async (url, init = {}) => {
@@ -125,8 +127,66 @@ check("grounded retrieval excludes the evidence item itself", !related.some((x) 
   check("multi-subject related book remains eligible and marked strong", fantasyRelated.some((item)=>item.title==="Good Fantasy Neighbor" && item.relationStrength==="strong"), fantasyRelated.map((item)=>`${item.title}:${item.relationStrength}`).join(","));
 }
 
+// #142 end-to-end regression: canonical Google Books/Open Library series facts must be consumed
+// by retrieval, not merely written to the database.
+{
+  const anchorId = "openlibrary-book-OL-WAY";
+  const state = {
+    selectedFavorites:new Set([anchorId]),
+    feedbackByRecommendation:{},
+    recommendationSets:[],
+    customItems:{
+      [anchorId]:{
+        id:anchorId,provider:"openlibrary",providerId:"OL-WAY",title:"The Way of Kings",
+        type:"book",domains:["read"],genres:["Fantasy","Epic fantasy"],providerMeta:{seriesKey:null,isbns:["9780765326355"]}
+      }
+    },
+    areas:{movies:true,tv:true,read:true,play:true},
+    recommendationFilter:"read"
+  };
+  const query = async (sql) => {
+    if (sql.includes("metadata_completeness, i.factual")) {
+      return [{provider:"openlibrary:book",provider_id:"OL-WAY",metadata_completeness:0.9,factual:{subjects:["Fantasy","Epic fantasy"],seriesKey:"googlebooks:stormlight"}}];
+    }
+    if (sql.includes("select i.canonical_title")) {
+      return [
+        {canonical_title:"Words of Radiance",year:"2014",provider:"openlibrary:book",provider_id:"OL-WORDS",factual:{author:"Brandon Sanderson",subjects:["Fantasy","Epic fantasy"],seriesKey:"googlebooks:stormlight"}},
+        {canonical_title:"Other Epic",year:"2015",provider:"openlibrary:book",provider_id:"OL-OTHER",factual:{author:"Other Author",subjects:["Fantasy","Epic fantasy"],seriesKey:"googlebooks:other"}}
+      ];
+    }
+    throw new Error("unexpected canonical query");
+  };
+  const fetchImpl = async () => ({ok:true,json:async()=>({docs:[]})});
+  const rows = await retrieveCatalogCandidates(state,{env:{},fetchImpl,query});
+  check("canonical series metadata suppresses a direct same-series book", !rows.some((item)=>item.providerId==="OL-WORDS"), rows.map((item)=>item.title).join(","));
+  check("canonical series suppression keeps unrelated books eligible", rows.some((item)=>item.providerId==="OL-OTHER"), rows.map((item)=>item.title).join(","));
+}
+
 // #107: recommendation style must survive serialization and change candidate selection.
 eq("recommendation style is serialized for the server", serializeAiState({ selectedFavorites: new Set(), feedbackByRecommendation: {}, recommendationSets: [], libraryFavorites: new Set(), customItems: {}, blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(), patternStatements: [], areas: {}, curveball: true, recommendationStyle: "adventurous" }).recommendationStyle, "adventurous");
+
+{
+  const feedbackByRecommendation = {};
+  const recommendationSets = [];
+  for (let i = 0; i < 1000; i += 1) {
+    const id = `tmdb-movie-${10000 + i}`;
+    feedbackByRecommendation[id] = {
+      item:{id,provider:"tmdb",providerId:String(10000+i),title:`Movie ${i}`,type:"movie",domains:["movies"],about:"x".repeat(800),artwork:"https://example.invalid/"+"x".repeat(300),genres:["Drama"],providerMeta:{genreIds:[18]}},
+      rating:i % 3 === 0 ? "more" : "not-tried",
+      detail:i % 3 === 0 ? "liked-before" : "bookmarked"
+    };
+    recommendationSets.push([{id:`tmdb-movie-shown-${i}`}]);
+  }
+  const wire = serializeAiState({
+    selectedFavorites:new Set(), feedbackByRecommendation, recommendationSets,
+    libraryFavorites:new Set(), customItems:{}, patternStatements:[], areas:{}, curveball:true
+  });
+  check("AI wire keeps every reacted/shown id in compact seen history", wire.seenItemIds.length === 2000);
+  check("AI wire caps full experienced feedback", Object.keys(wire.feedbackByRecommendation).length <= 96);
+  eq("AI wire no longer resends historical recommendation sets", wire.recommendationSets.length, 0);
+  check("large-session AI payload stays comfortably below the 160KB endpoint cap", JSON.stringify({state:wire}).length < 80000, JSON.stringify({state:wire}).length);
+  eq("wire sampler itself enforces the experienced cap", selectExperiencedFeedbackForWire(feedbackByRecommendation).length, 96);
+}
 const adventurousTitles = [
   "Amber Harbor", "Glass Orchard", "Night Signal", "Paper Kingdom", "Silent Atlas", "Copper Sky",
   "Velvet Transit", "Winter Circuit", "Crimson Static", "Moss Cathedral", "Silver Current", "Ivory Motel"
@@ -307,6 +367,18 @@ check("Taste Profile prompt asks for a fuller 4-6 pattern set", promptContract.i
   eq("resolved manual evidence gains a provider id", state.feedbackByRecommendation[manual.id]?.item?.providerId, "OLX");
   const record = evidenceRecords(state).find((row) => row.itemId === manual.id);
   check("resolved manual evidence exposes structured facts to Taste Profile", record?.facts?.resolved === true && record?.facts?.genres?.includes("Speculative fiction"));
+  const beforeKeyState = {
+    selectedFavorites:new Set(),
+    feedbackByRecommendation:{ [manual.id]: { item:{...manual}, rating:"more", detail:"liked-before" } },
+    customItems:{ [manual.id]: {...manual} },
+    patternStatements:[]
+  };
+  const beforeKey = hypothesisEvidenceKey(beforeKeyState);
+  applyResolvedCatalogItem(beforeKeyState, manual.id, {
+    id:"openlibrary-book-OLX2",provider:"openlibrary",providerId:"OLX2",title:"Obscure Book",
+    type:"book",domains:["read"],by:"A. Writer",year:"2019",genres:["Speculative fiction"]
+  });
+  check("resolving a manual item invalidates the Taste Profile evidence key", hypothesisEvidenceKey(beforeKeyState) !== beforeKey);
 
   const sameTitleOtherCreator = makeCustomItem("Obscure Book", "book", "Different Writer");
   check("same-title manual works with different creators remain distinct", findExisting(state, sameTitleOtherCreator) === null);
@@ -361,6 +433,13 @@ check("Taste Profile prompt asks for a fuller 4-6 pattern set", promptContract.i
   eq("partial refresh merge adds newly validated patterns", merged[1]?.id, "ai-new");
   check("partial refresh merge preserves older validated patterns that were not replaced", merged.some((item) => item.id === "ai-old-a"));
   eq("partial refresh merge does not duplicate a revised id", merged.filter((item) => item.id === "ai-shared").length, 1);
+  const corrected = Array.from({length:4},(_,i)=>({id:`ai-corrected-${i}`,title:`Corrected ${i}`,claim:"old"}));
+  const activeOld = Array.from({length:6},(_,i)=>({id:`ai-active-old-${i}`,title:`Old ${i}`,claim:"old"}));
+  const activeNew = Array.from({length:6},(_,i)=>({id:`ai-active-new-${i}`,title:`New ${i}`,claim:"new"}));
+  const statements = corrected.map((item)=>({hypothesisId:item.id,says:"not-me"}));
+  const capacity = mergeHypotheses([...activeOld,...corrected], activeNew, {statements, activeLimit:6, preserveExistingActive:false});
+  eq("corrected history does not consume the six active-profile slots", capacity.filter((item)=>!statements.some((s)=>s.hypothesisId===item.id)).length, 6);
+  eq("corrected history is retained outside active capacity", capacity.filter((item)=>statements.some((s)=>s.hypothesisId===item.id)).length, 4);
 }
 
 {

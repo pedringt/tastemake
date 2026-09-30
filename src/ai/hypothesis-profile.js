@@ -5,7 +5,7 @@ import { recordRevisionIfChanged } from "../model/history.js";
 const slug = (text) => String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
 export function hypothesisEvidenceKey(state) {
-  const evidence = evidenceRecords(state).map(({ ref, kind, polarity, weight }) => ({ ref, kind, polarity, weight }));
+  const evidence = evidenceRecords(state).map(({ ref, kind, polarity, weight, facts }) => ({ ref, kind, polarity, weight, facts }));
   const statements = (state.patternStatements ?? []).map(({ hypothesisId, says, weight, context, excludedDomains }) => ({ hypothesisId, says, weight, context, excludedDomains }));
   return JSON.stringify({ evidence, statements });
 }
@@ -31,11 +31,27 @@ function normalizeHypothesis(h, index, state) {
   };
 }
 
-export function mergeHypotheses(existing = [], incoming = [], limit = 6) {
-  const byId = new Map();
-  for (const item of incoming) byId.set(item.id, item);
-  for (const item of existing) if (!byId.has(item.id)) byId.set(item.id, item);
-  return [...byId.values()].slice(0, limit);
+export function mergeHypotheses(existing = [], incoming = [], { statements = [], activeLimit = 6, preserveExistingActive = true } = {}) {
+  const correctedIds = new Set(
+    (statements ?? []).filter((entry) => entry?.says === "not-me").map((entry) => entry.hypothesisId)
+  );
+  const corrected = [];
+  const correctedSeen = new Set();
+  for (const item of [...incoming, ...existing]) {
+    if (!item?.id || !correctedIds.has(item.id) || correctedSeen.has(item.id)) continue;
+    correctedSeen.add(item.id);
+    corrected.push(item);
+  }
+
+  const activeById = new Map();
+  for (const item of incoming) if (item?.id && !correctedIds.has(item.id)) activeById.set(item.id, item);
+  if (preserveExistingActive) {
+    for (const item of existing) {
+      if (!item?.id || correctedIds.has(item.id) || activeById.has(item.id)) continue;
+      activeById.set(item.id, item);
+    }
+  }
+  return [...activeById.values()].slice(0, activeLimit).concat(corrected);
 }
 
 export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, force = false } = {}) {
@@ -73,9 +89,11 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         });
       }
       const rejected = Number(payload.meta?.rejected ?? 0);
-      state.modelHypotheses = rejected > 0
-        ? mergeHypotheses(state.modelHypotheses ?? [], next)
-        : next;
+      state.modelHypotheses = mergeHypotheses(state.modelHypotheses ?? [], next, {
+        statements: state.patternStatements ?? [],
+        activeLimit: 6,
+        preserveExistingActive: rejected > 0
+      });
       state.hypothesisAiMessage = "Your Taste Profile is up to date.";
       state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");

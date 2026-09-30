@@ -188,6 +188,42 @@ export async function mergeCanonicalFacts(item, facts, { env = process.env, quer
 // degrade gracefully and add no meaningful latency: unconfigured, empty, slow or erroring all
 // resolve to an empty Map rather than throwing, so a caller can always treat "no data" the same
 // as "no preference" and never block retrieval on this.
+export async function lookupCanonicalAnchorMetadata(items, { env = process.env, query: queryImpl, timeoutMs = 250 } = {}) {
+  const runQuery = queryImpl ?? ((text, params) => defaultQuery(text, params, { env }));
+  if (!queryImpl && !isConfigured(env)) return new Map();
+
+  const identifiers = (items ?? [])
+    .filter((entry) => entry?.id && entry?.provider && entry?.providerId && MEDIA_TYPES.has(entry.type))
+    .map((entry) => ({ id: entry.id, provider: identifierNamespace(entry, entry.type), providerId: String(entry.providerId) }));
+  if (!identifiers.length) return new Map();
+
+  try {
+    const rows = await Promise.race([
+      runQuery(
+        `select ii.provider, ii.provider_id, i.metadata_completeness, i.factual
+           from item_identifiers ii
+           join items i on i.id = ii.item_id
+          where (ii.provider, ii.provider_id) in (${identifiers.map((_, index) => `($${index * 2 + 1}, $${index * 2 + 2})`).join(", ")})`,
+        identifiers.flatMap((entry) => [entry.provider, entry.providerId])
+      ),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("canonical anchor metadata lookup timed out")), timeoutMs))
+    ]);
+    const result = new Map();
+    for (const entry of identifiers) {
+      const row = (rows ?? []).find((candidate) => candidate.provider === entry.provider && candidate.provider_id === entry.providerId);
+      if (!row) continue;
+      result.set(entry.id, {
+        completeness: row.metadata_completeness == null ? null : Number(row.metadata_completeness),
+        factual: row.factual ?? {}
+      });
+    }
+    return result;
+  } catch (error) {
+    console.info("[tastemake-canonical]", JSON.stringify({ error: error?.message || "anchor metadata lookup failed" }));
+    return new Map();
+  }
+}
+
 export async function lookupMetadataCompleteness(items, { env = process.env, query: queryImpl, timeoutMs = 250 } = {}) {
   const runQuery = queryImpl ?? ((text, params) => defaultQuery(text, params, { env }));
   if (!queryImpl && !isConfigured(env)) return new Map();
@@ -412,6 +448,7 @@ export async function relatedCanonicalItems(anchor, subjects, { env = process.en
         by: row.factual?.author ?? null,
         genres: matched,
         subject: matched,
+        factual: row.factual ?? {},
         fromCanonicalStore: true
       });
     }

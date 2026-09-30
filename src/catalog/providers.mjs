@@ -64,20 +64,26 @@ function tmdbItem(row, type) {
   };
 }
 
-async function searchTmdb(query, env, fetchImpl) {
+async function searchTmdb(query, env, fetchImpl, domain = "all") {
   const token = env.TASTEMAKE_TMDB_TOKEN;
   if (!token) return [];
   const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
   const q = encodeURIComponent(query);
+  const wantMovies = domain === "all" || domain === "movies";
+  const wantTv = domain === "all" || domain === "tv";
   const [movies, tv] = await Promise.all([
-    fetchWithTimeout(fetchImpl, `https://api.themoviedb.org/3/search/movie?query=${q}&include_adult=false&language=en-US&page=1`, { headers }),
-    fetchWithTimeout(fetchImpl, `https://api.themoviedb.org/3/search/tv?query=${q}&include_adult=false&language=en-US&page=1`, { headers })
+    wantMovies
+      ? fetchWithTimeout(fetchImpl, `https://api.themoviedb.org/3/search/movie?query=${q}&include_adult=false&language=en-US&page=1`, { headers })
+      : Promise.resolve(null),
+    wantTv
+      ? fetchWithTimeout(fetchImpl, `https://api.themoviedb.org/3/search/tv?query=${q}&include_adult=false&language=en-US&page=1`, { headers })
+      : Promise.resolve(null)
   ]);
-  if (!movies.ok && !tv.ok) throw new Error(`tmdb ${movies.status || ""}/${tv.status || ""}`);
+  if ((wantMovies && !movies?.ok) && (wantTv && !tv?.ok)) throw new Error(`tmdb ${movies?.status || ""}/${tv?.status || ""}`);
 
   const rows = [];
-  if (movies.ok) rows.push(...((await movies.json()).results ?? []).slice(0, 12).map((row) => ({ row, type: "movie" })));
-  if (tv.ok) rows.push(...((await tv.json()).results ?? []).slice(0, 12).map((row) => ({ row, type: "tv" })));
+  if (movies?.ok) rows.push(...((await movies.json()).results ?? []).slice(0, 12).map((row) => ({ row, type: "movie" })));
+  if (tv?.ok) rows.push(...((await tv.json()).results ?? []).slice(0, 12).map((row) => ({ row, type: "tv" })));
 
   // TMDb ranks movie and TV searches independently. Merge them by title relevance before returning
   // Watch results so an exact flagship series is not automatically buried behind six weaker movies.
@@ -370,7 +376,7 @@ export async function searchCatalog(query, { domain = "all", env = process.env, 
   if (q.length < 2) return { items: [], providers: {}, degraded: false };
 
   const specs = [];
-  if (domainAllows(domain, "movies") || domainAllows(domain, "tv")) specs.push(["tmdb", Boolean(env.TASTEMAKE_TMDB_TOKEN), () => searchTmdb(q, env, fetchImpl)]);
+  if (domainAllows(domain, "movies") || domainAllows(domain, "tv")) specs.push(["tmdb", Boolean(env.TASTEMAKE_TMDB_TOKEN), () => searchTmdb(q, env, fetchImpl, domain)]);
   if (domainAllows(domain, "read")) specs.push(["openlibrary", true, () => searchOpenLibrary(q, env, fetchImpl)]);
   if (domainAllows(domain, "play")) specs.push(["igdb", Boolean(env.IGDB_CLIENT_ID && env.IGDB_CLIENT_SECRET), () => searchIgdb(q, env, fetchImpl)]);
 

@@ -122,6 +122,7 @@ export async function run() {
   check("correction stored on generated pattern",state.patternStatements.some(s=>s.hypothesisId==="ai-structured-weirdness"&&s.says==="not-me"));
   check("rejected pattern leaves the active profile list",!$(`[data-profile-pattern="ai-structured-weirdness"].signal-row`));
   check("rejected pattern moves into corrected patterns",Boolean($(`.corrected-patterns [data-profile-pattern="ai-structured-weirdness"]`)));
+  check("rejecting a pattern restores focus without throwing", Boolean(document.activeElement?.closest?.('[data-profile-pattern="ai-dark-playfulness"]') || document.activeElement?.closest?.(".corrected-patterns")));
 
   // Keep discovering also stays on the real-catalog endpoint.
   if($('[data-action="keep-discovering"]')) await act('[data-action="keep-discovering"]',300);

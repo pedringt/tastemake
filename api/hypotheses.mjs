@@ -26,7 +26,7 @@ export function hypothesisConfig(env = process.env) {
 export function buildHypothesisPrompt(ctx, existing = []) {
   const allowedDomains = visibleDomains().map((domain) => domain.id);
   const safe = {
-    evidence: (ctx.evidence ?? []).map(({ ref, title, type, domains, kind, polarity, weight, facts }) => ({ ref, title, type, domains, kind, polarity, weight, facts })),
+    evidence: (ctx.evidence ?? []).filter((row) => row?.class === "experienced").map(({ ref, title, type, domains, kind, polarity, weight, facts }) => ({ ref, title, type, domains, kind, polarity, weight, facts })),
     statements: ctx.statements,
     contexts: ctx.contexts,
     existing: existing.map(({ id, title, claim, domains, strength }) => ({ id, label: title, claim, domains, level: strength }))
