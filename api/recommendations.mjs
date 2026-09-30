@@ -166,6 +166,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     // several places but assigned nowhere), so any non-null `tests` the model chose was guaranteed to
     // fail validation. The instruction below now says that plainly instead of implying a real
     // per-candidate hypothesis id usually exists to test.
+    "Across the final set, vary the concrete reason for each pick and avoid repeating the same opening phrase or sentence template.",
     "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; today's real catalog candidates carry no attached hypothesis ids at all, so tests must always be null -- never invent or reuse a hypothesis id from elsewhere in this context, since it will not be attached to the candidate and will fail; never use a tests pattern the user marked not-me; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; at most one curveball, and none when curveball is false; explain what the pick tests in specific plain English, in one sentence of 25 words or fewer; internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; call a pick a curveball, in kind or in why, only for that one exploratory pick, and set kind to \"curveball\" whenever why calls it one — every other pick keeps kind \"pick\" and its why should not describe itself as a curveball.",
     "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
   ].join("\n\n");
@@ -320,11 +321,25 @@ function clientPicks(validated) {
 
 // When live AI is unavailable or its output fails validation, fall back to the same real catalog
 // candidates. There is no hand-written recommendation inventory in the product.
+function catalogFallbackReason(item, index) {
+  const source = item.relatedTo || "things you already liked";
+  const genre = (item.genres ?? []).find(Boolean);
+  const reasons = [
+    () => genre ? `${item.title} shares ${genre} catalog signals with ${source}.` : `${item.title} surfaced from the catalog neighborhood around ${source}.`,
+    () => item.year ? `A ${item.year} catalog neighbor of ${source}: ${item.title}.` : `${source} led Tastemake to ${item.title} through nearby provider data.`,
+    () => genre ? `The ${genre} overlap around ${source} points toward ${item.title}.` : `Catalog relationships around ${source} point toward ${item.title}.`,
+    () => `${item.title} is a distinct catalog branch away from ${source}.`,
+    () => `From ${source}, the next nearby catalog path leads to ${item.title}.`,
+    () => `${item.title} came from a separate provider relationship around ${source}.`
+  ];
+  return reasons[index % reasons.length]();
+}
+
 function catalogPicks(candidates, state) {
   const chosen = candidates.slice(0, 6);
   return chosen.map((item, index) => {
     const curveball = state.curveball !== false && chosen.length >= 6 && index === chosen.length - 1;
-    const basis = item.relatedTo ? `Related in the catalog to ${item.relatedTo}.` : "Related to things you told Tastemake you love.";
+    const basis = catalogFallbackReason(item, index);
     return {
       ...item,
       rank: curveball ? null : index + 1,
