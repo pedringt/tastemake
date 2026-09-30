@@ -1,0 +1,65 @@
+#!/usr/bin/env node
+
+import { buildBackup, buildMarkdownExport, parseBackupText } from "../../src/model/export.js";
+import { renderArtwork } from "../../src/components/artwork.js";
+
+let passed = 0;
+const failures = [];
+const check = (name, ok, detail = "") => ok ? passed += 1 : failures.push(`${name}${detail ? ` (${detail})` : ""}`);
+
+const saved = {
+  item:{id:"book-1",title:"Saved Book",type:"book",domains:["read"],by:"Writer",year:2024},
+  rating:"not-tried",detail:"bookmarked"
+};
+const liked = {
+  item:{id:"movie-1",title:"Liked Movie",type:"movie",domains:["movies"],year:2020},
+  rating:"more",detail:"liked-before"
+};
+const state = {
+  selectedFavorites:new Set(["movie-1"]),
+  libraryFavorites:new Set(["movie-1"]),
+  blindSpotDismissed:new Set(["x"]),
+  setupAreas:new Set(["all"]),
+  feedbackByRecommendation:{"book-1":saved,"movie-1":liked},
+  recommendationSets:[],
+  recommendationExhausted:false,
+  customItems:{"book-1":saved.item,"movie-1":liked.item},
+  blindSpots:{},
+  patternStatements:[{hypothesisId:"ai-no",says:"not-me"}],
+  tastebreaks:{},
+  hypothesisHistory:[],
+  modelHypotheses:[
+    {id:"ai-yes",title:"Active pattern",claim:"You like a thing.",level:"supported"},
+    {id:"ai-no",title:"Rejected pattern",claim:"Nope.",level:"emerging"}
+  ],
+  profileView:"list",mapPattern:null,mapItem:null,mapFilter:"all",favoriteFilter:"all",
+  recommendationFilter:"all",libraryFilter:"all",expandedFeedback:{},
+  areas:{movies:true,tv:true,read:true,play:true},curveball:true,displayName:"QA",
+  recommendationStyle:"balanced",setupComplete:true,setupReturn:"favorites",onboarded:true,
+  libraryView:"saved",look:"graphic"
+};
+
+const backup=buildBackup(state,"2026-09-30T12:00:00.000Z");
+check("backup identifies Tastemake format",backup.format==="tastemake-backup"&&backup.version===1);
+check("backup serializes Sets as arrays",Array.isArray(backup.state.selectedFavorites)&&backup.state.selectedFavorites[0]==="movie-1");
+const restored=parseBackupText(JSON.stringify(backup));
+check("restore rebuilds Set fields",restored.selectedFavorites instanceof Set&&restored.selectedFavorites.has("movie-1")&&restored.setupAreas instanceof Set);
+check("restore keeps profile and library data",restored.modelHypotheses.length===2&&restored.feedbackByRecommendation["book-1"].detail==="bookmarked");
+
+const md=buildMarkdownExport(state,"2026-09-30T12:00:00.000Z");
+check("readable export includes Saved",md.includes("## Saved")&&md.includes("Saved Book"));
+check("readable export includes Tried and reaction",md.includes("## Tried")&&md.includes("Liked Movie")&&md.includes("**Liked**"));
+check("readable export includes active Taste Profile",md.includes("## Taste Profile")&&md.includes("Active pattern"));
+check("readable export includes corrected patterns",md.includes("## Corrected patterns")&&md.includes("Rejected pattern"));
+
+let invalid=false;
+try{parseBackupText('{"hello":"world"}');}catch{invalid=true;}
+check("restore rejects non-Tastemake JSON",invalid);
+
+const fallback=renderArtwork({title:"Portal Walk",type:"game",year:2025}, "library-compact-artwork");
+check("missing artwork renders designed media fallback",fallback.includes("artwork-fallback-game")&&fallback.includes("Portal Walk")&&fallback.includes("2025"));
+check("fallback escapes titles",renderArtwork({title:"<script>",type:"book"}).includes("&lt;script&gt;"));
+
+console.log(`export tests: ${passed} passed, ${failures.length} failed`);
+failures.forEach((f)=>console.log(`  x ${f}`));
+process.exit(failures.length ? 1 : 0);

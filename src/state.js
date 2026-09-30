@@ -1,6 +1,7 @@
 import { DEFAULT_LOOK, isLook } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { clearPersistedState, loadPersistedState } from "./persistence.js";
+import { parseBackupText } from "./model/export.js";
 
 // Everything the user has told Tastemake or configured, in one place so "Start over" can clear it.
 // (The look, and where the user is, are not part of this: starting over keeps your look.)
@@ -142,4 +143,34 @@ export function resetState() {
   const look = state.look;
   clearPersistedState();
   Object.assign(state, fresh(), { look });
+}
+
+
+export function restoreStateFromBackupText(text) {
+  const restored = parseBackupText(text);
+  const look = isLook(restored.look) ? restored.look : state.look;
+  Object.assign(state, fresh(), restored, {
+    look,
+    patternStatements: normalizePersistedPatternStatements(restored.patternStatements ?? []),
+    selectedFavorites: restored.selectedFavorites instanceof Set ? restored.selectedFavorites : new Set(restored.selectedFavorites ?? []),
+    libraryFavorites: restored.libraryFavorites instanceof Set ? restored.libraryFavorites : new Set(restored.libraryFavorites ?? []),
+    blindSpotDismissed: restored.blindSpotDismissed instanceof Set ? restored.blindSpotDismissed : new Set(restored.blindSpotDismissed ?? []),
+    setupAreas: restored.setupAreas instanceof Set ? restored.setupAreas : new Set(restored.setupAreas ?? ["all"]),
+    aiRequest: null,
+    aiStatus: "idle",
+    aiSource: null,
+    aiMessage: null,
+    hypothesisAiStatus: "idle",
+    hypothesisAiMessage: null,
+    recommendationMediumFilter: "all",
+    browseItems: [],
+    browsePage: 0,
+    browseHasMore: true,
+    browseLoading: false,
+    browseError: false,
+    starterReplaceId: null,
+    resetArmed: false
+  });
+  document.documentElement.dataset.look = state.look;
+  return state;
 }
