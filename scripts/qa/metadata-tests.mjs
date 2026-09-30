@@ -7,7 +7,7 @@
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { renderDetailMeta } = await import("../../src/screens/library.js");
-const { fetchItemDetail } = await import("../../src/catalog/providers.mjs");
+const { fetchItemDetail, googleBooksSeriesDetail } = await import("../../src/catalog/providers.mjs");
 
 let passed = 0;
 const failures = [];
@@ -77,3 +77,49 @@ check("Open Library detail preserves provider-supplied series when present", boo
 console.log(`metadata tests: ${passed} passed, ${failures.length} failed`);
 failures.forEach((f) => console.log(`  x ${f}`));
 process.exit(failures.length ? 1 : 0);
+
+
+// #142: Google Books structured series fallback. This is background-only in production; the unit
+// test verifies the exact API shape we consume without making a live network request.
+{
+  const seen = [];
+  const googleFetch = async (url) => {
+    seen.push(String(url));
+    if (String(url).includes("/volumes?q=")) {
+      return { ok: true, json: async () => ({ items: [{ id: "gb-wok" }] }) };
+    }
+    if (String(url).includes("/volumes/gb-wok?")) {
+      return {
+        ok: true,
+        json: async () => ({
+          volumeInfo: {
+            seriesInfo: {
+              volumeSeries: [{ seriesId: "stormlight-series-123", orderNumber: 1 }]
+            }
+          }
+        })
+      };
+    }
+    throw new Error(`unexpected Google Books URL: ${url}`);
+  };
+  const series = await googleBooksSeriesDetail(
+    {
+      provider: "openlibrary",
+      providerId: "OL262758W",
+      type: "book",
+      providerMeta: { isbns: ["9780765326355"] }
+    },
+    { env: { TASTEMAKE_GOOGLE_BOOKS_API_KEY: "test-key" }, fetchImpl: googleFetch }
+  );
+  check("Google Books fallback searches by ISBN", decodeURIComponent(seen[0] ?? "").includes("isbn:9780765326355"));
+  check("Google Books fallback explicitly requests non-comics series metadata", seen.some((url) => url.includes("includeNonComicsSeries=true")));
+  check("Google Books fallback stores a namespaced stable series id", series.seriesKey === "googlebooks:stormlight-series-123");
+  check("Google Books fallback retains provider order when present", series.seriesOrder === 1);
+
+  let calledWithoutKey = false;
+  const noKey = await googleBooksSeriesDetail(
+    { providerMeta: { isbns: ["9780765326355"] } },
+    { env: {}, fetchImpl: async () => { calledWithoutKey = true; throw new Error("should not call"); } }
+  );
+  check("Google Books fallback is a no-op without an API key", JSON.stringify(noKey) === "{}" && !calledWithoutKey);
+}

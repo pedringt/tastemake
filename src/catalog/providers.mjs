@@ -7,6 +7,7 @@ const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
 const TWITCH_TOKEN = "https://id.twitch.tv/oauth2/token";
+const GOOGLE_BOOKS = "https://www.googleapis.com/books/v1";
 
 const domainAllows = (domain, wanted) => domain === "all" || domain === wanted;
 const clean = (value, n = 280) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, n);
@@ -236,6 +237,39 @@ async function openLibraryDetail(providerId, env, fetchImpl) {
   };
 }
 
+export async function googleBooksSeriesDetail(item, { env = process.env, fetchImpl = fetch } = {}) {
+  const key = env.TASTEMAKE_GOOGLE_BOOKS_API_KEY;
+  const isbn = (item?.providerMeta?.isbns ?? item?.isbns ?? [])
+    .map((value) => String(value ?? "").replace(/[^0-9Xx]/g, "").toUpperCase())
+    .find((value) => value.length === 10 || value.length === 13);
+  if (!key || !isbn) return {};
+
+  const search = await fetchWithTimeout(
+    fetchImpl,
+    `${GOOGLE_BOOKS}/volumes?q=${encodeURIComponent(`isbn:${isbn}`)}&maxResults=1&key=${encodeURIComponent(key)}`,
+    {},
+    3000
+  );
+  if (!search.ok) return {};
+  const volumeId = (await search.json()).items?.[0]?.id;
+  if (!volumeId) return {};
+
+  const detail = await fetchWithTimeout(
+    fetchImpl,
+    `${GOOGLE_BOOKS}/volumes/${encodeURIComponent(volumeId)}?includeNonComicsSeries=true&key=${encodeURIComponent(key)}`,
+    {},
+    3000
+  );
+  if (!detail.ok) return {};
+  const row = await detail.json();
+  const series = row.volumeInfo?.seriesInfo?.volumeSeries?.find((entry) => entry?.seriesId);
+  if (!series?.seriesId) return {};
+  return {
+    seriesKey: `googlebooks:${series.seriesId}`,
+    seriesOrder: Number.isFinite(Number(series.orderNumber)) ? Number(series.orderNumber) : null
+  };
+}
+
 async function igdbDetail(providerId, env, fetchImpl) {
   const token = await igdbToken(env, fetchImpl);
   if (!token) return {};
@@ -295,7 +329,29 @@ export async function fetchAndPersistItemDetail(item, { env = process.env, fetch
 
 export function enrichCanonicalItemWriteBehind(item, options = {}) {
   const task = Promise.resolve()
-    .then(() => fetchAndPersistItemDetail(item, options))
+    .then(async () => {
+      const detail = await fetchAndPersistItemDetail(item, options);
+
+      // #142: Open Library's series coverage is incomplete even for major series. Do not add
+      // another provider to the live recommendation path; instead, when a book anchor is already
+      // being enriched in the background and Open Library still has no series relationship, use
+      // Google Books' structured non-comics series metadata as a bounded fallback. The API key is
+      // optional, so environments without it behave exactly as before.
+      if (item?.provider === "openlibrary" && !detail?.seriesKey) {
+        const env = options.env ?? process.env;
+        const fetchImpl = options.fetchImpl ?? fetch;
+        const isbn = (item?.providerMeta?.isbns ?? [])[0] ?? "none";
+        const cacheKey = `canonical-series:v1:googlebooks:${isbn}`;
+        const seriesDetail = fetchImpl !== fetch
+          ? await googleBooksSeriesDetail(item, { env, fetchImpl })
+          : await cachedValue(cacheKey, () => googleBooksSeriesDetail(item, { env, fetchImpl }), { ttl: 86400, tags: ["canonical-enrichment"] });
+        if (seriesDetail?.seriesKey) {
+          await mergeCanonicalFacts(item, seriesDetail, { env, query: options.query, source: "googlebooks" });
+        }
+      }
+
+      return detail;
+    })
     .catch((error) => {
       console.info("[tastemake-canonical]", JSON.stringify({ error: error?.message || "enrichment failed" }));
     });
