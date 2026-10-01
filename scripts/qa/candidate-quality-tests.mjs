@@ -137,11 +137,13 @@ const bookState = (genres) => ({
       };
     }
   }
-  const movieRows = Array.from({length:12}, (_, i) => ({
-    id:400+i, title:`Movie Candidate ${i}`, overview:"x", release_date:"2020-01-01", genre_ids:[18]
+  const movieNames = ["Amber Harbor","Glass Orchard","Night Signal","Paper Kingdom","Silent Atlas","Copper Sky","Velvet Transit","Winter Circuit","Crimson Static","Moss Cathedral","Silver Current","Ivory Motel"];
+  const tvNames = ["Northbound","Signal House","Quiet City","Afterlight","Second Floor","Blue Hour"];
+  const movieRows = movieNames.map((title, i) => ({
+    id:400+i, title, overview:"x", release_date:"2020-01-01", genre_ids:[18]
   }));
-  const tvRows = Array.from({length:6}, (_, i) => ({
-    id:500+i, name:`TV Candidate ${i}`, overview:"x", first_air_date:"2020-01-01", genre_ids:[18]
+  const tvRows = tvNames.map((name, i) => ({
+    id:500+i, name, overview:"x", first_air_date:"2020-01-01", genre_ids:[18]
   }));
   const requested = [];
   const related = await retrieveCatalogCandidates({
