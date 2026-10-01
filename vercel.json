@@ -12,6 +12,10 @@
   },
   "rewrites": [
     {
+      "source": "/model-benchmark",
+      "destination": "/model-benchmark.html"
+    },
+    {
       "source": "/favorites",
       "destination": "/index.html"
     },
@@ -52,6 +56,5 @@
       "destination": "/index.html"
     }
   ],
-  "fluid": true,
-  "buildCommand": "node scripts/benchmark-models.mjs"
+  "fluid": true
 }
