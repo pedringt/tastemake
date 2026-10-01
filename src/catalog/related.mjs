@@ -432,12 +432,33 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   const guardStarted = Date.now();
   let guarded = applyNoveltyGuard(eligible, evidenceItems);
   console.info("[tastemake-related]", JSON.stringify({ noveltyGuardMs: Date.now() - guardStarted, eligible: eligible.length, primary: guarded.primary.length }));
-  if (guarded.primary.length < Math.min(12, limit) && laterWave.length) {
+
+  const domainSet = (items) => new Set(items.flatMap((item) => item.domains ?? []));
+  const desiredDomains = domainSet(evidenceItems);
+  const coveredDomains = domainSet(guarded.primary);
+  const missingEvidenceDomain = mode === "all"
+    && [...desiredDomains].some((domain) => !coveredDomains.has(domain));
+
+  // A numerically large pool is not actually healthy for the All view when one of the user's
+  // represented evidence domains produced no candidates. Previously, two strong movie branches
+  // could yield 12+ rows while game/book/TV branches returned zero; that skipped the remaining
+  // anchors and made the supposedly mixed set collapse to one medium. Try the remaining anchors
+  // whenever coverage is missing, then let balanceDomains() interleave whatever genuinely exists.
+  if ((guarded.primary.length < Math.min(12, limit) || missingEvidenceDomain) && laterWave.length) {
     const secondWaveStarted = Date.now();
     rows.push(...await loadEvidence(laterWave));
     console.info("[tastemake-related]", JSON.stringify({ wave: "second", items: laterWave.length, ms: Date.now() - secondWaveStarted }));
     eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
     guarded = applyNoveltyGuard(eligible, evidenceItems);
+  }
+
+  if (mode === "all") {
+    const finalDomains = [...domainSet(guarded.primary)];
+    console.info("[tastemake-related]", JSON.stringify({
+      domainCoverage: true,
+      anchorDomains: [...desiredDomains],
+      candidateDomains: finalDomains
+    }));
   }
 
   // #92: the novelty guard runs here — after retrieval, before this shared function returns
