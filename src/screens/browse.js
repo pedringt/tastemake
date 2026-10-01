@@ -73,6 +73,7 @@ function feedbackPanel(item, feedback) {
 function browseCard(item) {
   const status = itemStatus(state, item);
   const feedback = state.feedbackByRecommendation[item.id];
+  const starterFavorite = !state.onboarded && state.selectedFavorites.has(item.id);
   const path = state.recommendationExperienceChoice[item.id] ?? pathForFeedback(feedback);
   const meta = [displayLabel(item), item.year, item.by].filter(Boolean).join(" · ");
 
@@ -89,7 +90,11 @@ function browseCard(item) {
         </div>
         <p class="browse-about">${esc(item.about ?? "")}</p>
 
-        ${feedback ? `
+        ${starterFavorite ? `
+          <div class="reaction-complete">
+            <span>Favorite</span>
+          </div>`
+        : feedback ? `
           <div class="reaction-complete">
             <span>${esc(status.label)}</span>
             <button class="button button-quiet reaction-change" type="button" data-feedback-edit="${item.id}">Change</button>
