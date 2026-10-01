@@ -142,7 +142,7 @@ export async function run() {
   // Tried becomes a useful memory view, not just a storage bucket.
   await act('[data-step-jump="library"]');
   await act('[data-library-tab="tried"]');
-  check("Tried exposes five reaction filters",$("[data-library-reaction-filter]").length===5,$("[data-library-reaction-filter]").length);
+  check("Tried exposes five reaction filters",$$("[data-library-reaction-filter]").length===5,$$("[data-library-reaction-filter]").length);
   await act('[data-library-reaction-filter="favorites"]');
   check("Favorites reaction filter becomes active",$('[data-library-reaction-filter="favorites"]')?.getAttribute("aria-pressed")==="true");
   await act('[data-step-jump="recommendations"]');
