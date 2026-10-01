@@ -46,7 +46,9 @@ export function saveQuickFeedback(itemId, rating) {
 
 export function chooseExperiencePath(itemId, path) {
   if (!["tried", "not-tried"].includes(path)) return false;
-  const item = activeRecommendations(state).find((rec) => rec.id === itemId);
+  const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.browseItems.find((candidate) => candidate.id === itemId)
+    ?? state.feedbackByRecommendation[itemId]?.item;
   if (!item) return false;
   state.recommendationExperienceChoice[itemId] = path;
   return true;
