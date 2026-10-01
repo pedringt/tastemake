@@ -1,7 +1,7 @@
 import { enrichCanonicalItemWriteBehind, igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { cachedValue } from "../server/cache.mjs";
-import { canonicalizeWriteBehind, relatedCanonicalItems } from "./canonical-store.mjs";
+import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 
 // Deliberately NOT imported from model/evidence.js: this module sits in a real circular import
@@ -321,20 +321,49 @@ function shuffled(items) {
 // between rounds instead of being pinned), and gives genuine rotation across the whole evidence pool
 // when completeness data isn't available, which real logs show is common.
 function preferRicherAnchors(items) {
-  // Production timing showed the canonical metadata lookup frequently consuming its full 250ms
-  // budget before returning no usable preference. Keep anchor rotation and explicit reaction
-  // strength in the synchronous path; provider metadata is still enriched/write-behind below.
+  // Select anchors without a database round trip. The old path queried metadata for the entire
+  // evidence history before it even knew which <=6 anchors would be used.
   return shuffled(items).sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
+}
+
+async function hydrateSelectedAnchorMetadata(items, { env, query }) {
+  const needsLookup = items.filter((item) =>
+    item?.provider && item?.providerId && (
+      (item.type === "book" && !item.providerMeta?.seriesKey)
+      || (item.type === "movie" && !item.providerMeta?.collectionId)
+      || (item.type === "game" && !item.providerMeta?.franchiseId)
+    )
+  );
+  if (!needsLookup.length) return items;
+
+  const metadata = await lookupCanonicalAnchorMetadata(needsLookup, { env, query, timeoutMs: 100 });
+  if (!metadata.size) return items;
+  return items.map((item) => {
+    const factual = metadata.get(item.id)?.factual ?? {};
+    if (item.type === "book" && factual.seriesKey) {
+      return { ...item, providerMeta: { ...(item.providerMeta ?? {}), seriesKey: factual.seriesKey, isbns: item.providerMeta?.isbns ?? factual.isbns ?? [] } };
+    }
+    if (item.type === "movie" && factual.collectionId) {
+      return { ...item, providerMeta: { ...(item.providerMeta ?? {}), collectionId: factual.collectionId } };
+    }
+    if (item.type === "game" && factual.franchiseId) {
+      return { ...item, providerMeta: { ...(item.providerMeta ?? {}), franchiseId: factual.franchiseId } };
+    }
+    return item;
+  });
 }
 
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
   const mode = state.recommendationFilter ?? "all";
   const allEvidence = preferRicherAnchors(externalEvidenceItems(state));
-  const evidenceItems = (mode === "all"
+  let evidenceItems = (mode === "all"
     ? balanceDomains(allEvidence, "all")
     : allEvidence.filter((item) => item.domains?.includes(mode))
   ).slice(0, 6);
   if (!evidenceItems.length) return [];
+  // Preserve series/franchise suppression, but only query the tiny selected-anchor set and cap
+  // the optional lookup at 100ms instead of blocking on the user's entire evidence history.
+  evidenceItems = await hydrateSelectedAnchorMetadata(evidenceItems, { env, query: queryImpl });
 
   // #135: once an experienced item is important enough to become a live retrieval anchor, fill
   // high-value provider metadata in the background and persist it to the canonical store. This
