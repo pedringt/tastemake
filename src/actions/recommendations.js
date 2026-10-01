@@ -55,10 +55,22 @@ export function chooseExperiencePath(itemId, path) {
 }
 
 export function setRecommendationFavorite(itemId, makeFavorite) {
+  const browseItem = state.browseItems.find((candidate) => candidate.id === itemId);
   const item = activeRecommendations(state).find((rec) => rec.id === itemId)
-    ?? state.browseItems.find((candidate) => candidate.id === itemId)
+    ?? browseItem
     ?? state.feedbackByRecommendation[itemId]?.item;
   if (!item) return false;
+
+  if (!state.onboarded && browseItem) {
+    if (makeFavorite) {
+      if (item.custom || item.provider) state.customItems[item.id] = item;
+      state.selectedFavorites.add(itemId);
+      state.recommendationExperienceChoice[itemId] = "tried";
+    } else {
+      state.selectedFavorites.delete(itemId);
+    }
+    return true;
+  }
 
   if (!makeFavorite) {
     state.libraryFavorites.delete(itemId);
