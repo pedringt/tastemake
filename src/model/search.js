@@ -197,14 +197,24 @@ export function applySearchAction(state, item, action, { source = "search" } = {
   }
 
   if (action === "favorite" || action === "unfavorite") {
-    if (!existing) return null;
     if (action === "favorite") {
-      if (!isStrongPositive(existing)) return null;   // only a loved pick can be a Favorite
+      if (item.custom || item.provider) state.customItems[item.id] = item;
+      state.feedbackByRecommendation[item.id] = {
+        item,
+        rating: "more",
+        detail: "loved-before",
+        refinements: existing?.refinements ?? [],
+        quality: existing?.quality ?? null,
+        seriesExperience: existing?.seriesExperience ?? null,
+        wasBookmarked: Boolean(existing?.wasBookmarked || (existing && isBookmarked(existing))),
+        source
+      };
       state.libraryFavorites.add(item.id);
-      return `${item.title} added to Favorites.`;
+      return `${item.title} added to Favorites and marked Tried · Loved.`;
     }
+    if (!existing) return null;
     state.libraryFavorites.delete(item.id);
-    return `${item.title} removed from Favorites. It stays in your Library.`;
+    return `${item.title} removed from Favorites. Your Loved reaction stays.`;
   }
 
   const outcome = OUTCOMES[action];
