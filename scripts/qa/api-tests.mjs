@@ -115,9 +115,10 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
       model:body.model
     })};
   };
-  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-sonnet-5-5", effort:"low" });
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-sonnet-5-5", effort:"low", thinkingMode:"between_tools" });
   eq("Anthropic transport accepts a recommendation-specific model override", body?.model, "claude-sonnet-5-5");
   eq("Anthropic transport sends low effort in output_config", body?.output_config?.effort, "low");
+  eq("Sonnet 5.5 transport can request between-tools thinking mode", body?.thinking?.type, "between_tools");
 
   await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch });
   eq("shared Anthropic transport still defaults to the existing env model", body?.model, ON.TASTEMAKE_AI_MODEL);
@@ -186,6 +187,7 @@ await produceRecommendations({
 });
 eq("recommendations default to Sonnet 5.5", recommendationRequestBody?.model, "claude-sonnet-5-5");
 eq("recommendations default to low effort", recommendationRequestBody?.output_config?.effort, "low");
+eq("recommendations use Sonnet 5.5-compatible between-tools thinking mode", recommendationRequestBody?.thinking?.type, "between_tools");
 
 
 // #120: keep full history in product state/validation, but send a bounded, compact, experienced-only
