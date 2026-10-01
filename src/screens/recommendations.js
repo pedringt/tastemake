@@ -394,13 +394,13 @@ function skeletonCard(index) {
 }
 
 function renderCardArea(items) {
-  // Keep the current set on screen while "More recommendations" is working. Replacing useful,
-  // interactive cards with six blank placeholders made a 3-7 second request feel longer than it was.
-  // Skeletons are only needed for the first-ever load, when there is genuinely nothing useful to show.
-  if (items.length) return items.map((item, index) => recommendationCard(item, index, items.length)).join("");
+  // A new recommendation request replaces the old set with an explicit loading state. Keeping the
+  // old cards visible made it unclear whether the request had finished or whether those cards were
+  // still current. The branded skeletons preserve layout without that ambiguity.
   if (state.aiStatus === "loading") {
     return Array.from({ length: 6 }, (_, index) => skeletonCard(index)).join("");
   }
+  if (items.length) return items.map((item, index) => recommendationCard(item, index, items.length)).join("");
   return `<div class="filter-empty recommendation-empty">No real catalog recommendations are available yet. Change your favorites or try another category.</div>`;
 }
 
@@ -431,7 +431,7 @@ function renderAiStatus() {
       <div class="refresh-banner ${hasCurrentSet ? "is-refreshing-set" : "is-first-set-loading"}" role="status" aria-live="polite" aria-busy="true">
         <div>
           <span class="refresh-kicker">${hasCurrentSet ? "Building the next set" : "Checking the evidence"}</span>
-          <strong>${hasCurrentSet ? "Your current picks can stay put while Tastemake works." : "Tastemake is building your first set."}</strong>
+          <strong>${hasCurrentSet ? "Tastemake is replacing this set with fresh picks." : "Tastemake is building your first set."}</strong>
           <p>${state.aiMessage || (hasCurrentSet
             ? "Finding a fresh mix from what you have told Tastemake so far."
             : "Finding a first set from what you have told Tastemake so far.")}</p>
