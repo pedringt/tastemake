@@ -89,18 +89,17 @@
   }
 
   .topbar { grid-template-columns:1fr auto; grid-template-areas:"brand aside" "nav nav"; }
-  .topbar { grid-template-columns:1fr auto; grid-template-areas:"brand aside" "nav nav"; }
   .topbar-aside .prototype-label,.topbar-aside .topbar-note { display:none; }
   .brand-word { font-size:32px; }
   .step > span[aria-hidden="true"] { display:none; }
   .step { font-size:11px; }
 
   h1 { font-size:clamp(34px,10.5vw,42px); line-height:.98; }
-  .favorites-screen { padding:24px 0 32px; }
+  .favorites-screen { padding:22px 14px 28px; }
   .favorites-screen .button,.recommendations-screen .button { min-height:44px; }
-  .profile-screen { padding:22px 0 30px; }
-  .recommendations-screen { padding:18px 0 32px; }
-  .bookmarks-screen,.library-screen,.browse-screen { padding:18px 0 32px; }
+  .profile-screen { padding:22px 14px 28px; }
+  .recommendations-screen { padding:18px 14px 28px; }
+  .bookmarks-screen,.library-screen,.browse-screen { padding:18px 14px 28px; }
   .favorites-hero,.profile-hero,.recommendations-masthead { margin-inline:4px; }
 
   .filter-band { margin-inline:0; align-items:flex-start; }
