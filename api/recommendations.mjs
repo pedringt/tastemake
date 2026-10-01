@@ -464,6 +464,11 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   // context with candidates capped to the actual offered set, used everywhere the model's answer is
   // built or checked.
   const promptCtx = { ...ctx, candidates };
+  const offeredDomains = {};
+  for (const candidate of candidates) {
+    for (const domain of candidate.domains ?? []) offeredDomains[domain] = (offeredDomains[domain] ?? 0) + 1;
+  }
+  logStage("candidateDomains", 0, { domains: offeredDomains });
 
   const config = liveConfig(env);
   if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length });
