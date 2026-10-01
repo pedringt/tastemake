@@ -51,6 +51,58 @@ function balanceDomains(items, mode) {
   return interleave([...buckets.values()].filter((bucket) => bucket.length));
 }
 
+const MIXED_DOMAINS = ["movies", "tv", "read", "play"];
+const primaryDomain = (item) => MIXED_DOMAINS.find((domain) => item?.domains?.includes(domain)) ?? "other";
+
+function selectAllAnchors(items, max = 8) {
+  const buckets = new Map(MIXED_DOMAINS.map((domain) => [domain, []]));
+  for (const item of items) {
+    const domain = primaryDomain(item);
+    if (buckets.has(domain)) buckets.get(domain).push(item);
+  }
+  // Two passes means every represented medium gets one anchor before any medium gets a second.
+  // Eight is still a small bounded retrieval set, but unlike the old six-anchor cap it can give
+  // all four visible media two chances when All is selected.
+  const selected = [];
+  for (let depth = 0; depth < 2 && selected.length < max; depth += 1) {
+    for (const domain of MIXED_DOMAINS) {
+      const item = buckets.get(domain)?.[depth];
+      if (item) selected.push(item);
+      if (selected.length >= max) break;
+    }
+  }
+  return selected;
+}
+
+function applyMixedNoveltyGuard(candidates, evidenceItems, mode) {
+  if (mode !== "all") return applyNoveltyGuard(candidates, evidenceItems);
+
+  const candidateBuckets = new Map(MIXED_DOMAINS.map((domain) => [domain, []]));
+  const other = [];
+  for (const candidate of candidates) {
+    const domain = primaryDomain(candidate);
+    (candidateBuckets.get(domain) ?? other).push(candidate);
+  }
+
+  const primaryBuckets = [];
+  const suppressed = [];
+  for (const domain of MIXED_DOMAINS) {
+    const bucket = candidateBuckets.get(domain) ?? [];
+    if (!bucket.length) continue;
+    const sameDomainEvidence = evidenceItems.filter((item) => primaryDomain(item) === domain);
+    const guarded = applyNoveltyGuard(bucket, sameDomainEvidence);
+    primaryBuckets.push(guarded.primary);
+    suppressed.push(...guarded.suppressed);
+  }
+  if (other.length) {
+    const guarded = applyNoveltyGuard(other, evidenceItems);
+    primaryBuckets.push(guarded.primary);
+    suppressed.push(...guarded.suppressed);
+  }
+
+  return { primary: interleave(primaryBuckets), suppressed };
+}
+
 // Real bug (2026-09-28): reacting Loved it/Liked it directly on a recommendation card only ever
 // wrote the item into feedbackByRecommendation[id].item (see saveQuickFeedback in
 // actions/recommendations.js) -- it was never copied into state.customItems, which only search-added
@@ -356,10 +408,9 @@ async function hydrateSelectedAnchorMetadata(items, { env, query }) {
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
   const mode = state.recommendationFilter ?? "all";
   const allEvidence = preferRicherAnchors(externalEvidenceItems(state));
-  let evidenceItems = (mode === "all"
-    ? balanceDomains(allEvidence, "all")
-    : allEvidence.filter((item) => item.domains?.includes(mode))
-  ).slice(0, 6);
+  let evidenceItems = mode === "all"
+    ? selectAllAnchors(allEvidence)
+    : allEvidence.filter((item) => item.domains?.includes(mode)).slice(0, 6);
   if (!evidenceItems.length) return [];
   // Preserve series/franchise suppression, but only query the tiny selected-anchor set and cap
   // the optional lookup at 100ms instead of blocking on the user's entire evidence history.
@@ -430,7 +481,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   const blockedProviderKeys = new Set(allEvidence.map(providerKey).filter(Boolean));
   let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
   const guardStarted = Date.now();
-  let guarded = applyNoveltyGuard(eligible, evidenceItems);
+  let guarded = applyMixedNoveltyGuard(eligible, evidenceItems, mode);
   console.info("[tastemake-related]", JSON.stringify({ noveltyGuardMs: Date.now() - guardStarted, eligible: eligible.length, primary: guarded.primary.length }));
 
   const domainSet = (items) => new Set(items.flatMap((item) => item.domains ?? []));
@@ -449,7 +500,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     rows.push(...await loadEvidence(laterWave));
     console.info("[tastemake-related]", JSON.stringify({ wave: "second", items: laterWave.length, ms: Date.now() - secondWaveStarted }));
     eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
-    guarded = applyNoveltyGuard(eligible, evidenceItems);
+    guarded = applyMixedNoveltyGuard(eligible, evidenceItems, mode);
   }
 
   if (mode === "all") {
