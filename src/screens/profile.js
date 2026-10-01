@@ -7,6 +7,7 @@ import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from ".
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { libraryItems } from "../model/library.js";
+import { evidenceRecords } from "../model/evidence.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -96,6 +97,24 @@ export function partitionProfilePatterns(patterns = [], statements = []) {
   };
 }
 
+function statementConsequence(item, said) {
+  if (!said?.says) return "";
+  const excluded = (said.excludedDomains ?? []).map((id) => domainById(id)?.label ?? id);
+
+  let text = "";
+  if (said.says === "not-me") text = "Future recommendations will leave this pattern out.";
+  else if (said.says === "unsure") text = "Tastemake will keep this tentative instead of leaning on it.";
+  else if (said.says === "partial") text = "Tastemake will use this pattern more selectively.";
+  else if (said.weight === "lot") text = "This pattern will count more when Tastemake ranks future picks.";
+  else if (said.weight === "little") text = "This pattern will count less when Tastemake ranks future picks.";
+  else if (said.context === "some") text = "Tastemake will treat this as conditional rather than broadly true.";
+  else if (said.says === "accurate") text = "Tastemake can keep using this pattern when it explains a future pick.";
+
+  if (excluded.length) text += ` It will not use it for ${excluded.join(", ")}.`;
+  if (!text) return "";
+  return `<div class="signal-consequence"><strong>What this changes</strong><span>${esc(text)}</span></div>`;
+}
+
 function hypothesisCard(item, index) {
   const update = { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." };
   const said = statementFor(state, item.id);
@@ -127,6 +146,7 @@ function hypothesisCard(item, index) {
         ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
         ${["accurate", "partial"].includes(said?.says) && said?.context ? `<div class="signal-said">${CONTEXT[said.context] ?? "You refined when this applies."}.</div>` : ""}
         ${sayControls(item, said, record)}
+        ${statementConsequence(item, said)}
         ${blindLine}
       </div>
     </article>`;
@@ -155,6 +175,7 @@ function learningPanel(patterns = []) {
   if (!patterns.length) return "";
 
   const history = state.hypothesisHistory ?? [];
+  const evidence = new Map(evidenceRecords(state).map((row) => [row.ref, row]));
   const changes = [];
 
   for (const pattern of patterns) {
@@ -163,45 +184,64 @@ function learningPanel(patterns = []) {
     const previous = revisions[revisions.length - 2];
     const current = revisions[revisions.length - 1];
 
-    let detail = "";
+    const addedSupport = (current.supports ?? []).find((ref) => !(previous.supports ?? []).includes(ref));
+    const source = addedSupport ? evidence.get(addedSupport) : null;
+    const sourceLine = source ? `You told Tastemake: ${source.title} → ${source.polarity > 0 ? "positive signal" : "didn’t work for you"}.` : "";
+
+    let changed = "";
+    let consequence = "";
     if (previous.level && current.level && previous.level !== current.level) {
-      detail = `Moved from ${previous.level} to ${current.level}.`;
+      changed = `${previous.level} → ${current.level}.`;
+      consequence = String(current.level).toLowerCase() === "strong"
+        ? "This pattern can carry more weight in future recommendations."
+        : "Tastemake will lean on this pattern more cautiously.";
     } else if (String(previous.claim ?? "") !== String(current.claim ?? "")) {
-      detail = "Became more specific after your recent reactions.";
+      changed = "The pattern became more specific.";
+      consequence = "Future picks will use the narrower interpretation instead of the older broad one.";
     } else if ((current.supports?.length ?? 0) > (previous.supports?.length ?? 0)) {
-      detail = "Gained support from something you recently reacted to.";
+      changed = "This pattern gained another supporting example.";
+      consequence = "Tastemake has more reason to test this pattern again in future picks.";
     } else if (JSON.stringify(previous.domains ?? []) !== JSON.stringify(current.domains ?? [])) {
-      detail = "Changed where this pattern seems to apply.";
+      changed = "Where this pattern applies changed.";
+      consequence = "Tastemake will apply it more selectively across books, movies, shows, and games.";
+    } else if (current.origin === "user-confirmed" && current.reason) {
+      changed = current.reason;
+      consequence = "Your correction now outranks Tastemake’s earlier inference.";
     } else {
       continue;
     }
 
-    changes.push({ title: pattern.title, detail });
+    changes.push({ title: pattern.title, sourceLine, changed, consequence });
   }
 
-  const items = changes.length
-    ? changes.slice(0, 3)
-    : patterns.slice(0, 3).map((pattern) => ({ title: pattern.title, detail: pattern.claim }));
-
-  const heading = changes.length ? "What changed" : "What Tastemake learned";
-  const intro = changes.length
-    ? "Your recent reactions changed how Tastemake understands a few patterns."
-    : "A few patterns Tastemake is starting to see in what you love.";
+  const hasChanges = changes.length > 0;
+  const items = hasChanges
+    ? changes.slice(-3).reverse()
+    : patterns.slice(0, 3).map((pattern) => ({
+        title: pattern.title,
+        sourceLine: "",
+        changed: pattern.claim,
+        consequence: "This is one of the patterns Tastemake is currently testing when it chooses recommendations."
+      }));
 
   return `
     <section class="profile-learning" aria-labelledby="profile-learning-title">
       <div class="profile-learning-head">
         <div>
           <p class="kicker">Learning out loud</p>
-          <h2 id="profile-learning-title">${heading}</h2>
-          <p>${intro}</p>
+          <h2 id="profile-learning-title">${hasChanges ? "What changed" : "What Tastemake learned"}</h2>
+          <p>${hasChanges
+            ? "Your recent reactions and corrections changed how Tastemake will choose future picks."
+            : "A few patterns Tastemake is starting to see in what you love."}</p>
         </div>
       </div>
       <div class="profile-learning-list">
         ${items.map((item) => `
           <article class="profile-learning-item">
             <strong>${esc(item.title)}</strong>
-            <span>${esc(item.detail)}</span>
+            ${item.sourceLine ? `<span class="profile-learning-source">${esc(item.sourceLine)}</span>` : ""}
+            <span><b>${hasChanges ? "So Tastemake changed:" : "Current read:"}</b> ${esc(item.changed)}</span>
+            <span><b>What that means:</b> ${esc(item.consequence)}</span>
           </article>`).join("")}
       </div>
     </section>`;
