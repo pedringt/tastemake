@@ -835,6 +835,16 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const libraryReactionFilter = event.target.closest("[data-library-reaction-filter]");
+  if (libraryReactionFilter) {
+    state.libraryReactionFilter = libraryReactionFilter.dataset.libraryReactionFilter || "all";
+    render();
+    updateStepper();
+    restoreFocus(`[data-library-reaction-filter="${state.libraryReactionFilter}"]`);
+    announce(`Showing ${libraryReactionFilter.textContent.trim()} in Tried.`);
+    return;
+  }
+
   const libraryTab = event.target.closest("[data-library-tab]");
   if (libraryTab) {
     state.libraryView = libraryTab.dataset.libraryTab === "tried" ? "tried" : "saved";
