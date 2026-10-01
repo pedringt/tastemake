@@ -161,7 +161,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
   return [
     "You are the recommendation interpreter inside Tastemake.",
     "The product, not you, decides what is evidence, which candidates are eligible, and what state may change.",
-    `Choose exactly ${count} items from candidates and return JSON only in this compact shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."]}],"curveballItemId":"...or null"}. Software adds validation-only fields after you respond.`,
+    `Choose exactly ${count} items from candidates and return JSON only in this compact shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."]}],"curveballItemId":null}. If you choose one exploratory pick, replace null with that candidate itemId string. Software adds validation-only fields after you respond.`,
     // Real report (2026-09-28): with the domain filter set to "All", one real request returned 5/6
     // picks from a single domain (games), and the very next returned 6/6 from a different single
     // domain (movies) -- candidate retrieval already interleaves a mixed pool across domains, but
