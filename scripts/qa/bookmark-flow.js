@@ -82,6 +82,7 @@ export async function run() {
   for(const item of favs){
     await type("#search-input",item.title);
     check(`search finds ${item.title}`,Boolean(`[data-search-pick="${item.id}"]`)&&Boolean($(`[data-search-pick="${item.id}"]`)));
+    check(`search result for ${item.title} includes artwork slot`,Boolean($(`[data-search-pick="${item.id}"] .search-artwork`)));
     await act(`[data-search-pick="${item.id}"]`);
     await act('[data-search-starter="add"]');
   }
@@ -111,6 +112,9 @@ export async function run() {
   check("Favorite shortcut records Loved",state.feedbackByRecommendation[favoriteShortcutId]?.detail==="loved-before",state.feedbackByRecommendation[favoriteShortcutId]?.detail);
   check("Favorite shortcut sets Favorite flag",state.libraryFavorites.has(favoriteShortcutId));
   check("completed Favorite card shows Change instead of Tried/Not tried buttons",Boolean(`[data-feedback-edit="${favoriteShortcutId}"]`)&&Boolean($(`[data-feedback-edit="${favoriteShortcutId}"]`))&&!$(`[data-feedback-item="${favoriteShortcutId}"][data-experience-path]`));
+  await sleep(180);
+  check("first experienced reaction primes a Taste Profile in the background",state.modelHypotheses.length>0,state.modelHypotheses.length);
+  check("Recommendations surfaces the first insight",Boolean($(".first-insight-nudge")));
 
   // React to one as experienced so profile has more than starter-favorite evidence.
   const firstId=state.recommendationSets[0][0].id;
@@ -124,13 +128,24 @@ export async function run() {
   check("profile renders generated cards",$$(".signal-row").length===2,$$(".signal-row").length);
   check("old seeded profile copy is absent",!document.body.textContent.includes("Comedy works better when it has teeth"));
   check("profile describes active patterns without internal validation language",/patterns currently shaping your profile/.test(document.body.textContent)&&!/validated AI patterns/.test(document.body.textContent));
+  check("profile learning panel explains consequences",/What that means:/.test($(".profile-learning")?.textContent||""));
 
-  // User corrections still work on a generated pattern.
+  // User corrections explain their consequence immediately, then remain reversible.
+  await act('[data-statement-pattern="ai-structured-weirdness"][data-statement-field="says"][data-statement-value="accurate"]');
+  check("confirming a pattern shows what it changes",/What this changes/.test($('[data-profile-pattern="ai-structured-weirdness"]')?.textContent||""));
   await act('[data-statement-pattern="ai-structured-weirdness"][data-statement-field="says"][data-statement-value="not-me"]');
   check("correction stored on generated pattern",state.patternStatements.some(s=>s.hypothesisId==="ai-structured-weirdness"&&s.says==="not-me"));
   check("rejected pattern leaves the active profile list",!$(`[data-profile-pattern="ai-structured-weirdness"].signal-row`));
   check("rejected pattern moves into corrected patterns",Boolean($(`.corrected-patterns [data-profile-pattern="ai-structured-weirdness"]`)));
   check("rejecting a pattern restores focus without throwing", Boolean(document.activeElement?.closest?.('[data-profile-pattern="ai-dark-playfulness"]') || document.activeElement?.closest?.(".corrected-patterns")));
+
+  // Tried becomes a useful memory view, not just a storage bucket.
+  await act('[data-step-jump="library"]');
+  await act('[data-library-tab="tried"]');
+  check("Tried exposes five reaction filters",$("[data-library-reaction-filter]").length===5,$("[data-library-reaction-filter]").length);
+  await act('[data-library-reaction-filter="favorites"]');
+  check("Favorites reaction filter becomes active",$('[data-library-reaction-filter="favorites"]')?.getAttribute("aria-pressed")==="true");
+  await act('[data-step-jump="recommendations"]');
 
   // Keep discovering also stays on the real-catalog endpoint.
   if($('[data-action="keep-discovering"]')) await act('[data-action="keep-discovering"]',300);
