@@ -108,7 +108,7 @@ export default async function handler(req, res) {
   const mean = (values) => values.length ? Math.round(values.reduce((a,b)=>a+b,0) / values.length) : null;
   const sorted = successful.map((row) => row.ms).sort((a,b)=>a-b);
   const p50 = sorted.length ? sorted[Math.floor((sorted.length - 1) * 0.5)] : null;
-  return res.status(200).json({
+  const payload = {
     config: key,
     label: config.label,
     model: config.model,
@@ -125,5 +125,8 @@ export default async function handler(req, res) {
       totalRuleFailures: successful.reduce((sum,row)=>sum+row.ruleFailures.length,0),
       totalQualityFindings: successful.reduce((sum,row)=>sum+row.qualityFindings.length,0)
     }
-  });
+  };
+  console.info("[model-benchmark-summary]", JSON.stringify(payload.summary ? { config:key, label:config.label, model:config.model, ...payload.summary } : payload));
+  for (const row of rows) console.info("[model-benchmark-row]", JSON.stringify({ config:key, ...row }));
+  return res.status(200).json(payload);
 }
