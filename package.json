@@ -8,7 +8,7 @@
     "test:flow": "scripts/qa/headless.sh flow 1440",
     "test:layout": "scripts/qa/headless.sh layout 1440",
     "test:a11y": "scripts/qa/headless.sh a11y 1440",
-    "test:browse-ui": "scripts/qa/headless.sh layout 390 && scripts/qa/headless.sh a11y 390",
+    "test:browse-ui": "scripts/qa/headless.sh layout 390 && scripts/qa/headless.sh a11y 390 && LOOK=graphic scripts/qa/headless.sh layout 390 && LOOK=graphic scripts/qa/headless.sh a11y 390",
     "test:eval": "node scripts/evals/run.mjs",
     "test:full": "node scripts/qa/full-sweep.mjs",
     "test:eval:endpoint": "node scripts/evals/run.mjs --producer endpoint --yes",

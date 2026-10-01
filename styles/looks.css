@@ -592,3 +592,37 @@
   :root[data-look="graphic"] .starter-grid { grid-template-columns:1fr; }
   :root[data-look="graphic"] .starter-card.has-artwork { grid-template-columns:96px minmax(0,1fr); column-gap:16px; }
 }
+
+
+/* Mobile: keep Bold Graphic's color/type personality without letting desktop frame decoration
+   compete with the narrow content column. */
+@media (max-width:620px) {
+  :root[data-look="graphic"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen, .browse-screen) {
+    --gutter:14px;
+    --band:18px;
+    border-width:3px;
+    border-radius:8px;
+    box-shadow:5px 5px 0 #0b0b0b;
+  }
+  :root[data-look="graphic"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen, .browse-screen)::before,
+  :root[data-look="graphic"] :is(.favorites-screen, .profile-screen, .recommendations-screen, .bookmarks-screen, .library-screen, .browse-screen)::after {
+    display:none;
+  }
+  :root[data-look="graphic"] h1 {
+    font-size:clamp(34px,10vw,40px);
+    line-height:.96;
+    word-spacing:.02em;
+  }
+  :root[data-look="graphic"] .button {
+    border-width:2.5px;
+    box-shadow:3px 3px 0 #0b0b0b;
+  }
+  :root[data-look="graphic"] .filter-band {
+    border-width:2px;
+    box-shadow:2px 2px 0 rgb(11 11 11 / .18);
+  }
+  :root[data-look="graphic"] .refresh-banner {
+    border-width:2.5px;
+    box-shadow:3px 3px 0 #0b0b0b;
+  }
+}
