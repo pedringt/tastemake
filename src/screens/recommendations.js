@@ -376,23 +376,31 @@ function recommendationCard(item, index, total) {
 // jarring layout jump when results replace an already-populated grid.
 function skeletonCard(index) {
   return `
-    <div class="editorial-rec-skeleton rec-span-4" aria-hidden="true" style="animation-delay:${index * 70}ms">
-      <div class="skeleton-art"></div>
+    <div class="editorial-rec-skeleton rec-span-4" aria-hidden="true" style="--skeleton-delay:${index * 90}ms">
+      <div class="skeleton-art skeleton-art-${(index % 4) + 1}">
+        <span class="skeleton-art-kicker">Building your set</span>
+        <span class="skeleton-art-shape skeleton-art-shape-a"></span>
+        <span class="skeleton-art-shape skeleton-art-shape-b"></span>
+        <span class="skeleton-art-pattern"></span>
+      </div>
       <div class="skeleton-body">
-        <span class="skeleton-line is-short"></span>
+        <span class="skeleton-kicker">Tastemake pick</span>
         <span class="skeleton-line is-title"></span>
         <span class="skeleton-line"></span>
         <span class="skeleton-line is-medium"></span>
-        <div class="skeleton-actions"><span></span><span></span><span></span></div>
+        <div class="skeleton-actions"><span></span><span></span></div>
       </div>
     </div>`;
 }
 
 function renderCardArea(items) {
+  // Keep the current set on screen while "More recommendations" is working. Replacing useful,
+  // interactive cards with six blank placeholders made a 3-7 second request feel longer than it was.
+  // Skeletons are only needed for the first-ever load, when there is genuinely nothing useful to show.
+  if (items.length) return items.map((item, index) => recommendationCard(item, index, items.length)).join("");
   if (state.aiStatus === "loading") {
     return Array.from({ length: 6 }, (_, index) => skeletonCard(index)).join("");
   }
-  if (items.length) return items.map((item, index) => recommendationCard(item, index, items.length)).join("");
   return `<div class="filter-empty recommendation-empty">No real catalog recommendations are available yet. Change your favorites or try another category.</div>`;
 }
 
@@ -418,12 +426,15 @@ function renderFirstInsightNudge() {
 
 function renderAiStatus() {
   if (state.aiStatus === "loading") {
+    const hasCurrentSet = activeRecommendations(state).length > 0;
     return `
-      <div class="refresh-banner" role="status" aria-live="polite" aria-busy="true">
+      <div class="refresh-banner ${hasCurrentSet ? "is-refreshing-set" : "is-first-set-loading"}" role="status" aria-live="polite" aria-busy="true">
         <div>
-          <span class="refresh-kicker">Checking the evidence</span>
-          <strong>Tastemake is building the next set.</strong>
-          <p>${state.aiMessage || "Finding a fresh set from what you have told Tastemake so far."}</p>
+          <span class="refresh-kicker">${hasCurrentSet ? "Building the next set" : "Checking the evidence"}</span>
+          <strong>${hasCurrentSet ? "Your current picks can stay put while Tastemake works." : "Tastemake is building your first set."}</strong>
+          <p>${state.aiMessage || (hasCurrentSet
+            ? "Finding a fresh mix from what you have told Tastemake so far."
+            : "Finding a first set from what you have told Tastemake so far.")}</p>
         </div>
       </div>`;
   }

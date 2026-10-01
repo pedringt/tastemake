@@ -310,6 +310,13 @@ eq("recommendations use Sonnet 5.5-compatible between-tools thinking mode", reco
   // Real report (2026-09-28): "after a few rounds I'm getting mostly books now" -- nothing logged
   // what the model actually picked, only the candidate pool it picked from. Sanitized domain counts
   // (never titles/ids) make a real skew visible instead of guessed.
+  check("timing logs cover the offered candidates' domain mix", stages.includes("candidateDomains"), stages.join(","));
+  check("candidateDomains reports only sanitized counts", timingLines.some((line) => {
+    const parsed = JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim());
+    return parsed.stage === "candidateDomains" && parsed.domains && typeof parsed.domains === "object"
+      && Object.values(parsed.domains).every((count) => typeof count === "number")
+      && !line.includes("Amber Harbor") && !line.includes(candidateTitles[0]);
+  }));
   check("timing logs cover the actual picks' domain mix", stages.includes("picksDomains"), stages.join(","));
   check("picksDomains reports sanitized counts, not titles/ids", timingLines.some((line) => {
     const parsed = JSON.parse(line.split("[tastemake-recommendations-timing]")[1].trim());
