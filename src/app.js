@@ -666,7 +666,7 @@ app.addEventListener("click", async (event) => {
         : (state.onboarded
           ? `${title} removed from Favorites. Your Loved reaction stays.`
           : `${title} removed from Favorites. ${state.selectedFavorites.size} of 4 selected.`));
-      if (makeFavorite) primeProfileInBackground();
+      if (makeFavorite && state.onboarded) primeProfileInBackground();
     }
     return;
   }
