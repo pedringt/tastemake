@@ -68,14 +68,24 @@
 }
 
 @media (max-width:620px) {
-  .app-shell { width:min(100% - 14px,1440px); }
+  .app-shell { width:min(100% - 10px,1440px); padding-top:6px; }
+
+  /* Phone layouts should feel composed for the viewport rather than like the desktop board
+     compressed into a narrow column. Keep the personality, reduce the competing frame/decor. */
+  .favorites-screen,.profile-screen,.recommendations-screen,.bookmarks-screen,.library-screen,.browse-screen {
+    --gutter:14px;
+    --band:18px;
+    padding:22px 14px 28px;
+  }
+
+  .topbar { grid-template-columns:1fr auto; grid-template-areas:"brand aside" "nav nav"; }
   .topbar { grid-template-columns:1fr auto; grid-template-areas:"brand aside" "nav nav"; }
   .topbar-aside .prototype-label,.topbar-aside .topbar-note { display:none; }
   .brand-word { font-size:32px; }
   .step > span[aria-hidden="true"] { display:none; }
   .step { font-size:11px; }
 
-  h1 { font-size:42px; }
+  h1 { font-size:clamp(34px,10.5vw,42px); line-height:.98; }
   .favorites-screen { padding:24px 0 32px; }
   .profile-screen { padding:22px 0 30px; }
   .recommendations-screen { padding:18px 0 32px; }
@@ -114,8 +124,83 @@
   .why-popover { width:min(300px,calc(100vw - 34px)); }
   .quality-note-row { display:block; }
   .quality-note-help { display:block; margin-top:7px; }
-  .refresh-banner { align-items:stretch; flex-direction:column; }
+  .refresh-banner { align-items:stretch; flex-direction:column; gap:8px; padding:13px 14px; margin-bottom:14px; }
+  .refresh-banner > div:first-child { flex:0 0 auto; min-width:0; }
+  .refresh-banner strong { font-size:18px; line-height:1.15; }
+  .refresh-banner p { font-size:12px; line-height:1.4; }
   .refresh-banner .button { width:100%; }
+
+  /* Favorites: reduce first-screen visual competition and make progress legible. */
+  .favorites-hero { gap:12px; margin:0 0 16px; }
+  .favorites-hero h1 { max-width:12ch; margin-bottom:12px; }
+  .favorites-hero .lede { margin:0 0 14px; font-size:16px; line-height:1.42; }
+  .favorites-side-note { display:none; }
+  .starter-search { width:100%; min-height:46px; margin-top:0; }
+  .starter-browse-row { margin-top:8px; }
+  .starter-browse-button { width:100%; min-height:42px; padding:8px 11px; font-size:12px; }
+  .starter-progress {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:14px 0 12px;
+    padding:10px 12px;
+    border:1.5px solid var(--line);
+    border-radius:12px;
+    background:rgba(255,255,255,.78);
+    font-size:12px;
+    line-height:1.35;
+  }
+  .starter-progress strong { flex:none; font-size:14px; white-space:nowrap; }
+  .starter-grid { gap:10px; }
+  .starter-card,.starter-placeholder { min-height:154px; padding:14px; border-radius:13px; }
+  .starter-placeholder .starter-index { top:12px; left:12px; }
+  .starter-plus { width:40px; height:40px; font-size:24px; }
+  .starter-placeholder strong { font-size:14px; }
+  .favorites-footer { margin-top:16px; padding:12px; gap:12px; }
+  .favorites-footer .selection-counter { display:none; }
+
+  /* Recommendations: filters become a compact horizontal control and loading stays above the fold. */
+  .recommendations-masthead { gap:12px; margin:0 0 14px; }
+  .recommendation-filter-band {
+    display:block;
+    margin:0 0 10px;
+    padding:10px;
+    overflow:hidden;
+  }
+  .recommendation-filter-band .filter-band-label { display:block; margin-bottom:7px; }
+  .recommendation-filter-band .domain-filter {
+    width:100%;
+    flex-wrap:nowrap;
+    gap:6px;
+    overflow-x:auto;
+    padding-bottom:2px;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .recommendation-filter-band .domain-filter::-webkit-scrollbar { display:none; }
+  .recommendation-filter-band .domain-filter-button {
+    flex:0 0 auto;
+    min-height:36px;
+    padding:6px 13px;
+  }
+  .recommendation-filter-band .filter-context { display:block; margin:7px 0 0; font-size:10px; line-height:1.35; }
+  .recommendation-browse-link { margin:0 0 12px; }
+  .recommendation-browse-link .button {
+    width:auto;
+    min-width:0;
+    min-height:38px;
+    padding:7px 10px;
+    font-size:12px;
+    box-shadow:none;
+  }
+
+  .editorial-grid { gap:14px; }
+  .editorial-rec-body { padding:13px; }
+  .editorial-rec-skeleton { min-height:0; }
+  .skeleton-art { aspect-ratio:16 / 8.5; }
+  .skeleton-body { padding:12px; gap:7px; }
+  .skeleton-actions span { height:36px; }
+  .rec-interaction { min-height:78px; padding-top:8px; }
 }
 
 
@@ -133,6 +218,9 @@
 /* Very small phones: three header buttons (search, My Tastemake, Look) plus the brand must fit on one row. */
 @media (max-width:400px) {
   .brand-word { font-size:25px; }
+  .favorites-hero h1 { font-size:34px; }
+  .starter-progress { align-items:flex-start; }
+  .recommendation-filter-band .domain-filter-button { padding-inline:11px; }
   .brand-cluster { gap:8px; }
   .topbar-aside { gap:6px; }
   .search-open, .me-open, .look-open { width:40px; height:40px; min-height:40px; }
