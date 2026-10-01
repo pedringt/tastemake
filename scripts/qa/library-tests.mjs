@@ -120,12 +120,12 @@ check("favoriting a merely-liked item succeeds", saveLibraryAction(likedItem.id,
 check("favoriting promotes merely-liked to Loved", isStrongPositive(state5.feedbackByRecommendation[likedItem.id]));
 check("favoriting adds durable Favorite flag", state5.libraryFavorites.has(likedItem.id));
 
-const savedItem = { id: "tmdb-movie-saved", title: "Saved Thing", type: "movie", domains: ["movies"] };
-state5.feedbackByRecommendation[savedItem.id] = { item: savedItem, rating: "not-tried", detail: "bookmarked" };
-check("favoriting a Saved item succeeds", saveLibraryAction(savedItem.id, "favorite"));
-check("favoriting Saved records Loved", isStrongPositive(state5.feedbackByRecommendation[savedItem.id]));
-check("favoriting Saved remembers that it was bookmarked", state5.feedbackByRecommendation[savedItem.id].wasBookmarked === true);
-check("favoriting Saved adds durable Favorite flag", state5.libraryFavorites.has(savedItem.id));
+const promotedSavedItem = { id: "tmdb-movie-saved", title: "Saved Thing", type: "movie", domains: ["movies"] };
+state5.feedbackByRecommendation[promotedSavedItem.id] = { item: promotedSavedItem, rating: "not-tried", detail: "bookmarked" };
+check("favoriting a Saved item succeeds", saveLibraryAction(promotedSavedItem.id, "favorite"));
+check("favoriting Saved records Loved", isStrongPositive(state5.feedbackByRecommendation[promotedSavedItem.id]));
+check("favoriting Saved remembers that it was bookmarked", state5.feedbackByRecommendation[promotedSavedItem.id].wasBookmarked === true);
+check("favoriting Saved adds durable Favorite flag", state5.libraryFavorites.has(promotedSavedItem.id));
 
 // Recommendation-card Favorite is shorthand for “I know this and love it.”
 {
