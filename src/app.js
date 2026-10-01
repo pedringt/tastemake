@@ -621,7 +621,7 @@ app.addEventListener("click", async (event) => {
           : focusSelector;
       restoreFocus(libraryFocus, app.querySelector(".library-reaction-edit summary") || app.querySelector(".library-action") || app);
       announce(({
-        favorite: `${title} added to Favorites.`,
+        favorite: `${title} added to Favorites and marked Loved it.`,
         unfavorite: `${title} removed from Favorites. It stays in your Library.`,
         loved: `${title}: marked Loved it before.`,
         liked: `${title}: marked Liked it before.`,
@@ -654,13 +654,18 @@ app.addEventListener("click", async (event) => {
     const makeFavorite = recommendationFavorite.getAttribute("aria-pressed") !== "true";
     const title = state.feedbackByRecommendation[itemId]?.item?.title
       ?? activeRecommendations(state).find((item) => item.id === itemId)?.title
+      ?? state.browseItems.find((item) => item.id === itemId)?.title
       ?? "Item";
     if (setRecommendationFavorite(itemId, makeFavorite)) {
       state.recommendationFeedbackItemId = null;
       renderPreservingCardPosition(itemId, `[data-rec-favorite="${itemId}"]`);
       announce(makeFavorite
-        ? `${title} added to Favorites and marked Tried · Loved.`
-        : `${title} removed from Favorites. Your Loved reaction stays.`);
+        ? (state.onboarded
+          ? `${title} added to Favorites and marked Tried · Loved.`
+          : `${title} added to Favorites. ${state.selectedFavorites.size} of 4 selected.`)
+        : (state.onboarded
+          ? `${title} removed from Favorites. Your Loved reaction stays.`
+          : `${title} removed from Favorites. ${state.selectedFavorites.size} of 4 selected.`));
       if (makeFavorite) primeProfileInBackground();
     }
     return;
