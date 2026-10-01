@@ -19,7 +19,7 @@ function areaChoice(id, label) {
 
 export function renderSetup() {
   const editing = state.setupComplete;
-  const settingsCards = editing ? `
+  const settingsCards = `
         <section class="setup-card" aria-labelledby="setup-area-title">
           <p class="setup-step">02</p>
           <h2 id="setup-area-title">What do you want recommendations for?</h2>
@@ -40,7 +40,7 @@ export function renderSetup() {
                 <span><strong>${label}</strong><small>${help}</small></span>
               </label>`).join("")}
           </div>
-        </section>` : "";
+        </section>`;
 
   return `
     <section class="setup-screen">
