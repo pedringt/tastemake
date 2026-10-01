@@ -52,5 +52,6 @@
       "destination": "/index.html"
     }
   ],
-  "fluid": true
+  "fluid": true,
+  "buildCommand": "node scripts/benchmark-models.mjs"
 }
