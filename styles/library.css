@@ -366,3 +366,20 @@
   .library-reaction-filters::-webkit-scrollbar { display:none; }
   .library-reaction-filter { flex:0 0 auto; }
 }
+
+.library-favorite-row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:10px 0;
+}
+.library-favorite-row > span {
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.35;
+}
+.library-saved-tried {
+  margin-top:8px;
+  padding-top:8px;
+  border-top:1px solid var(--line);
+}
