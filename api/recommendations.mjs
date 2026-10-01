@@ -247,7 +247,7 @@ export function parseModelJson(text) {
   throw firstError ?? new SyntaxError("model response was not JSON");
 }
 
-export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null, model = null, effort = null }) {
+export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null, model = null, effort = null, thinkingMode = null }) {
   const resolvedModel = model || env.TASTEMAKE_AI_MODEL;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Number(env.TASTEMAKE_AI_TIMEOUT_MS || REQUEST_TIMEOUT_MS));
@@ -264,7 +264,7 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
         // This is a short, strict JSON job. With thinking on by default, the model spent the whole budget
         // thinking and returned no text at all (stop_reason=max_tokens, blocks=thinking).
         // Set TASTEMAKE_AI_THINKING=enabled to turn it back on, with a much larger cap.
-        ...(env.TASTEMAKE_AI_THINKING === "enabled" ? {} : { thinking: { type: "disabled" } }),
+        ...(env.TASTEMAKE_AI_THINKING === "enabled" ? {} : { thinking: { type: thinkingMode || "disabled" } }),
         ...(effort ? { output_config: { effort } } : {}),
         max_tokens: Number(maxTokens ?? env.TASTEMAKE_AI_MAX_TOKENS ?? MAX_OUTPUT_TOKENS),
         // No `temperature`: newer models reject it ("temperature is deprecated for this model"), which
@@ -479,7 +479,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       ...promptSizeBreakdown(promptCtx, candidates.length, prompt)
     }));
     started = Date.now();
-    const model = await callAnthropic({ prompt, env, fetchImpl, model: recommendationModel, effort: recommendationEffort });
+    const model = await callAnthropic({ prompt, env, fetchImpl, model: recommendationModel, effort: recommendationEffort, thinkingMode: "between_tools" });
     const liveAiMs = Date.now() - started;
     const aiMetric = {
       operation: "recommendations",
