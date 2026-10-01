@@ -438,3 +438,22 @@
 @media (max-width: 640px) {
   .corrected-pattern-row { align-items:flex-start; flex-direction:column; }
 }
+
+.signal-consequence {
+  display:flex;
+  gap:8px;
+  align-items:flex-start;
+  margin:10px 0 0;
+  padding:9px 11px;
+  border-left:3px solid var(--cyan);
+  background:var(--tint-cool,#f4fdff);
+  color:var(--text2,#3f4774);
+  font-size:12px;
+  line-height:1.4;
+}
+.signal-consequence strong { flex:none; color:var(--navy); }
+.profile-learning-source { color:var(--note-ink,#4053ad) !important; }
+.profile-learning-item b { color:var(--navy); }
+@media (max-width:620px) {
+  .signal-consequence { display:grid; gap:3px; }
+}
