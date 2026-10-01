@@ -177,8 +177,8 @@ export function initSearch({ onChange, announce, goTo }) {
     }
 
     const favorite = state.libraryFavorites.has(item.id);
-    const path = ui.experiencePath ?? pathForStatus(status);
     const hasReaction = status.key !== "none";
+    const path = ui.experiencePath;
     const feedbackChoices = path ? `
       <div class="feedback-details experience-outcomes search-feedback-step">
         <span class="feedback-detail-prompt">${path === "tried" ? "How did it land?" : "Want to keep it around?"}</span>
