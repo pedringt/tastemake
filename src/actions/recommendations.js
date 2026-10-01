@@ -51,6 +51,33 @@ export function chooseExperiencePath(itemId, path) {
   return true;
 }
 
+export function setRecommendationFavorite(itemId, makeFavorite) {
+  const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.feedbackByRecommendation[itemId]?.item;
+  if (!item) return false;
+
+  if (!makeFavorite) {
+    state.libraryFavorites.delete(itemId);
+    return true;
+  }
+
+  const existing = state.feedbackByRecommendation[itemId];
+  const previousPolarity = refinablePolarity(existing);
+  state.feedbackByRecommendation[itemId] = {
+    item,
+    rating: "more",
+    detail: "loved-before",
+    refinements: existing?.refinements ?? [],
+    quality: existing?.quality ?? null,
+    seriesExperience: existing?.seriesExperience ?? null,
+    wasBookmarked: Boolean(existing?.wasBookmarked || isBookmarked(existing))
+  };
+  clearInvalidRefinements(state.feedbackByRecommendation[itemId], previousPolarity);
+  state.libraryFavorites.add(itemId);
+  state.recommendationExperienceChoice[itemId] = "tried";
+  return true;
+}
+
 export function saveExperienceOutcome(itemId, outcome) {
   const item = activeRecommendations(state).find((rec) => rec.id === itemId)
     ?? state.feedbackByRecommendation[itemId]?.item;

@@ -90,10 +90,11 @@
   display:grid;
   grid-template-columns:repeat(12,minmax(0,1fr));
   gap:20px;
-  align-items:start;
+  align-items:stretch;
 }
 .editorial-rec {
   position:relative;
+  height:100%;
   overflow:visible;
   overflow-anchor:none;
   background:#fff;
@@ -116,7 +117,7 @@
   background:var(--tint-cool,#fbffff);
 }
 .editorial-rec.is-rated { box-shadow:calc(8px * var(--hard)) calc(8px * var(--hard)) 0 var(--pink); }
-.editorial-rec-body { padding:14px 16px 16px; display:flex; flex-direction:column; min-width:0; }
+.editorial-rec-body { padding:14px 16px 16px; display:flex; flex:1 1 auto; flex-direction:column; min-width:0; }
 .editorial-rec-meta {
   display:flex;
   justify-content:space-between;
@@ -132,7 +133,8 @@
    reaction stamp — the last child — gets pushed out over the neighboring card. flex-wrap is a second
    safety net: if the two still don't fit on one line, the stamp drops to its own line instead of
    overflowing sideways. */
-.editorial-title-row { display:flex; align-items:flex-start; margin-top:12px; }
+.editorial-favorite-row { display:flex; justify-content:flex-end; align-items:center; min-height:36px; margin-top:8px; }
+.editorial-title-row { display:flex; align-items:flex-start; margin-top:8px; }
 /* #95: a fixed clamp range that reads fine at three-per-row width, whatever the title length —
    no separate "wide layout" font size to keep in sync. */
 .editorial-title-row h3 { flex:1 1 auto; min-width:0; min-height:2.16em; overflow-wrap:break-word; margin:0; font-size:clamp(20px,2vw,26px); line-height:1.08; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
@@ -140,7 +142,8 @@
    so one-line vs. two/three-line titles never shift the chip's vertical position and a row of cards
    stays level even when only some of them carry a status. min-height is sized to the chip's own
    rendered height (padding + line height + border) so the empty state reserves the same space. */
-.editorial-status-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px; }
+.editorial-status-row { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:38px; margin-top:8px; }
+.reaction-status-slot { display:flex; align-items:center; min-width:0; min-height:34px; }
 .reaction-stamp {
   flex:0 0 auto;
   max-width:100%;
@@ -162,16 +165,23 @@
   height:36px;
   display:grid;
   place-items:center;
-  border:2px solid var(--line);
+  padding:0;
+  border:1.5px solid var(--line);
   border-radius:50%;
-  background:#fff;
+  background:rgba(255,255,255,.72);
   color:var(--navy);
-  font-size:22px;
+  font:inherit;
+  font-size:20px;
   line-height:1;
   cursor:pointer;
+  box-shadow:none;
 }
-.rec-favorite-star:hover { border-color:var(--navy); transform:translateY(-1px); }
-.rec-favorite-star.is-favorite { border-color:var(--navy); background:var(--yellow); }
+.rec-favorite-star:hover { border-color:var(--navy); background:var(--tint-warm,#fff9e6); }
+.rec-favorite-star.is-favorite {
+  border-color:var(--accent-text,var(--pink));
+  background:var(--pink-soft);
+  color:var(--accent-text,var(--pink));
+}
 .rec-favorite-star:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:2px; }
 /* #95/#121: the rationale is the primary card copy — "why did Tastemake pick this?" — shown before
    the catalog synopsis, in the note-ink color used elsewhere for Tastemake's own commentary. The
@@ -521,6 +531,35 @@
 .experience-button { font-size:12px; }
 .experience-outcomes { margin-top:9px; }
 .outcome-chip { min-height:34px; padding-inline:11px; }
+.rec-interaction {
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  min-height:92px;
+  margin-top:auto;
+  padding-top:12px;
+}
+.reaction-complete {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-height:62px;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+}
+.reaction-complete > span {
+  color:var(--navy);
+  font-size:13px;
+  font-weight:800;
+}
+.reaction-change {
+  min-width:0;
+  min-height:36px;
+  padding:5px 10px;
+  box-shadow:none;
+}
+
 .rec-feedback-popover {
   position:absolute;
   z-index:80;

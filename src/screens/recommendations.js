@@ -181,21 +181,16 @@ function seriesExperienceFeedback(item, feedback) {
     </div>`;
 }
 
-// #159: Loved/Liked on a rec card used to only ever write feedbackByRecommendation -- it never
-// offered a way to also make the pick a Favorite, so every reacted-to pick required a separate trip
-// to Library or Search to star it. Mirrors Library's own favorite/unfavorite button exactly (same
-// data-library-action/data-library-item attributes, same saveLibraryAction handler in app.js), so
-// this needs no new wiring -- it's gated the same way Library gates it, on isStrongPositive.
-function favoriteToggle(itemId, feedback) {
-  if (!isStrongPositive(feedback)) return "";
+// Favorite is always available on a recommendation. Choosing it is shorthand for
+// “I know this and love it”: the action records Tried + Loved + Favorite in one step.
+function favoriteToggle(itemId) {
   const isFavorite = state.libraryFavorites.has(itemId);
   const label = isFavorite ? "Remove from Favorites" : "Add to Favorites";
   return `
     <button
-      class="rec-favorite-star library-action ${isFavorite ? "is-favorite" : ""}"
+      class="rec-favorite-star ${isFavorite ? "is-favorite" : ""}"
       type="button"
-      data-library-item="${itemId}"
-      data-library-action="${isFavorite ? "unfavorite" : "favorite"}"
+      data-rec-favorite="${itemId}"
       aria-label="${label}"
       title="${label}"
       aria-pressed="${isFavorite}"
@@ -319,15 +314,17 @@ function recommendationCard(item, index, total) {
           <span>${esc(displayLabel(item))}${item.year ? ` · ${esc(item.year)}` : ""}</span>
         </div>
 
+        <div class="editorial-favorite-row">
+          ${favoriteToggle(item.id)}
+        </div>
+
         <div class="editorial-title-row">
           <h3>${esc(item.title)}</h3>
         </div>
 
-        ${saved ? `
-          <div class="editorial-status-row">
-            <span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>
-            ${favoriteToggle(item.id, saved)}
-          </div>` : ""}
+        <div class="editorial-status-row">
+          <span class="reaction-status-slot">${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}</span>
+        </div>
 
         <p class="editorial-rationale">${esc(truncateCopy(readableRecommendationCopy(item.reason, item), RATIONALE_MAX_CHARS))}</p>
         <p class="editorial-about">${esc(truncateCopy(item.about, ABOUT_MAX_CHARS))}</p>
@@ -344,12 +341,20 @@ function recommendationCard(item, index, total) {
           </div>
         </div>
 
-        <div class="reaction-question">Have you tried it?</div>
-        <div class="reaction-rail reaction-rail-binary" aria-label="Have you tried ${esc(item.title)}?">
-          ${experienceButton(item.id, "tried", "Tried it", experiencePath(item.id, saved) === "tried")}
-          ${experienceButton(item.id, "not-tried", "Not tried", experiencePath(item.id, saved) === "not-tried")}
+        <div class="rec-interaction">
+          ${saved ? `
+            <div class="reaction-complete">
+              <span>${reactionLabel(saved)}</span>
+              <button class="button button-quiet reaction-change" type="button" data-feedback-edit="${item.id}">Change</button>
+            </div>`
+          : `
+            <div class="reaction-question">Have you tried it?</div>
+            <div class="reaction-rail reaction-rail-binary" aria-label="Have you tried ${esc(item.title)}?">
+              ${experienceButton(item.id, "tried", "Tried it", experiencePath(item.id, saved) === "tried")}
+              ${experienceButton(item.id, "not-tried", "Not tried", experiencePath(item.id, saved) === "not-tried")}
+            </div>
+            <p class="mobile-swipe-hint">Swipe right to Save · left for Not interested</p>`}
         </div>
-        <p class="mobile-swipe-hint">Swipe right to Save · left for Not interested</p>
       </div>
 
       ${feedbackPopover(item, saved)}

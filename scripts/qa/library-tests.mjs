@@ -12,7 +12,7 @@ async function freshState() {
 }
 
 const { saveBookmarkAction, saveLibraryAction } = await import("../../src/actions/library.js");
-const { saveQuickFeedback, saveFeedbackDetail } = await import("../../src/actions/recommendations.js");
+const { saveQuickFeedback, saveFeedbackDetail, setRecommendationFavorite } = await import("../../src/actions/recommendations.js");
 const { bookmarkedFeedback, isBookmarked, isPositiveExperience } = await import("../../src/model/taste.js");
 const { libraryItems, migrateStarterFavorites } = await import("../../src/model/library.js");
 const { browseReadyForRecommendations } = await import("../../src/model/browse.js");
@@ -116,6 +116,22 @@ check("it no longer counts as a positive experience", !isPositiveExperience(stat
 const likedItem = { id: "tmdb-movie-3", title: "Liked Thing", type: "movie", domains: ["movies"] };
 state5.feedbackByRecommendation[likedItem.id] = { item: likedItem, rating: "more", detail: "liked-before" };
 check("favoriting a merely-liked (not loved) item is refused", !saveLibraryAction(likedItem.id, "favorite"));
+
+// Recommendation-card Favorite is shorthand for “I know this and love it.”
+{
+  const stateFavorite = fresh();
+  const rec = { id: "tmdb-movie-4", title: "Instant Favorite", type: "movie", domains: ["movies"] };
+  stateFavorite.recommendationSets = [[rec]];
+
+  check("recommendation Favorite works before any Tried reaction", setRecommendationFavorite(rec.id, true));
+  check("recommendation Favorite records Loved", isStrongPositive(stateFavorite.feedbackByRecommendation[rec.id]));
+  check("recommendation Favorite adds durable Favorite flag", stateFavorite.libraryFavorites.has(rec.id));
+  eq("recommendation Favorite records tried path", stateFavorite.recommendationExperienceChoice[rec.id], "tried");
+
+  check("un-favoriting from recommendation succeeds", setRecommendationFavorite(rec.id, false));
+  check("un-favoriting removes only Favorite flag", !stateFavorite.libraryFavorites.has(rec.id));
+  check("un-favoriting preserves Loved reaction", isStrongPositive(stateFavorite.feedbackByRecommendation[rec.id]));
+}
 
 // #117 follow-up: migrateStarterFavorites is the one moment starter Favorites move from
 // selectedFavorites into the ongoing Library model (feedbackByRecommendation + libraryFavorites).
