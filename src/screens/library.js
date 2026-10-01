@@ -197,18 +197,51 @@ function dislikedBlock(items) {
     </details>`;
 }
 
+function reactionFilterButton(id, label, count) {
+  const active = (state.libraryReactionFilter ?? "all") === id;
+  return `<button type="button" class="library-reaction-filter ${active ? "is-active" : ""}" data-library-reaction-filter="${id}" aria-pressed="${active}">${label}<span>${count}</span></button>`;
+}
+
 function renderTriedView() {
   const { favorites: favoriteEntries, library: libraryEntries } = libraryItems(state);
-  const shown = (entries) => entries.filter((entry) => itemMatchesDomain(entry.item, state.libraryFilter));
-  const disliked = dislikedItems(state).filter((entry) => itemMatchesDomain(entry.item, state.libraryFilter));
+  const domainMatches = (entry) => itemMatchesDomain(entry.item, state.libraryFilter);
+  const favorites = favoriteEntries.filter(domainMatches);
+  const library = libraryEntries.filter(domainMatches);
+  const disliked = dislikedItems(state).filter(domainMatches);
+
+  const allPositive = [...favorites, ...library];
+  const loved = allPositive.filter((entry) => entry.source === "loved" || entry.source === "starter");
+  const liked = allPositive.filter((entry) => entry.source === "liked");
+  const mode = state.libraryReactionFilter ?? "all";
+
+  let content = "";
+  if (mode === "favorites") {
+    content = section("Favorites", "The things you love most.", favorites, "No Favorites in this category.");
+  } else if (mode === "loved") {
+    content = section("Loved", "Everything you've marked Loved, including starter Favorites.", loved, "Nothing marked Loved in this category.");
+  } else if (mode === "liked") {
+    content = section("Liked", "Things you enjoyed without marking them as Loved.", liked, "Nothing marked Liked in this category.");
+  } else if (mode === "disliked") {
+    content = dislikedBlock(disliked) || `<div class="filter-empty library-empty">Nothing marked Didn't like in this category.</div>`;
+  } else {
+    content = `
+      ${section("Favorites", "Things you love, including the Favorites you started with.", favorites, "No favorites in this category. Try All.")}
+      ${section("Tried", "Everything else you've tried and liked or loved.", library,
+        "Nothing here yet. When you tell Tastemake you loved or liked something you've tried, it lands here.")}
+      ${dislikedBlock(disliked)}`;
+  }
 
   return `
     <div class="library-view" data-library-view-panel="tried">
-      <p class="library-view-lede">Things you've actually tried and reacted to, plus your Favorites. This is where you go to revisit or correct a reaction.</p>
-      ${section("Favorites", "Things you love, including the Favorites you started with.", shown(favoriteEntries), "No favorites in this category. Try All.")}
-      ${section("Tried", "Everything else you've tried and liked or loved.", shown(libraryEntries),
-        "Nothing here yet. When you tell Tastemake you loved or liked something you've tried, it lands here.")}
-      ${dislikedBlock(disliked)}
+      <p class="library-view-lede">Things you've actually tried and reacted to. Filter this memory by how something landed.</p>
+      <div class="library-reaction-filters" role="group" aria-label="Filter Tried by reaction">
+        ${reactionFilterButton("all", "All", allPositive.length + disliked.length)}
+        ${reactionFilterButton("favorites", "Favorites", favorites.length)}
+        ${reactionFilterButton("loved", "Loved", loved.length)}
+        ${reactionFilterButton("liked", "Liked", liked.length)}
+        ${reactionFilterButton("disliked", "Didn't like", disliked.length)}
+      </div>
+      ${content}
     </div>`;
 }
 

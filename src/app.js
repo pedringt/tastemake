@@ -238,6 +238,25 @@ function maybeRefreshProfile({ force = false } = {}) {
   });
 }
 
+function primeProfileInBackground() {
+  if ((state.modelHypotheses ?? []).length || state.hypothesisAiStatus === "loading") return;
+  const hasExperiencedReaction = Object.values(state.feedbackByRecommendation ?? {}).some(isExperienced);
+  if (!hasExperiencedReaction) return;
+
+  void refreshProfileHypotheses(state, {
+    onUpdate() {
+      persistState(state);
+      if (state.screen === "recommendations"
+        && state.hypothesisAiStatus === "ready"
+        && !state.recommendationFeedbackItemId) {
+        render();
+        updateStepper();
+      }
+    },
+    announce() {}
+  });
+}
+
 let browseController = null;
 
 async function loadBrowse({ reset = false, focusSelector = null } = {}) {
@@ -642,6 +661,7 @@ app.addEventListener("click", async (event) => {
       announce(makeFavorite
         ? `${title} added to Favorites and marked Tried · Loved.`
         : `${title} removed from Favorites. Your Loved reaction stays.`);
+      if (makeFavorite) primeProfileInBackground();
     }
     return;
   }
@@ -689,6 +709,7 @@ app.addEventListener("click", async (event) => {
         ? `[data-feedback-item="${itemId}"][data-experience-path="not-tried"]`
         : focusSelector);
       announceReaction(itemId, announce);
+      if (["loved", "liked", "disliked"].includes(outcome)) primeProfileInBackground();
     }
     return;
   }
@@ -832,6 +853,16 @@ app.addEventListener("click", async (event) => {
     render();
     updateStepper();
     restoreFocus(`[data-browse-favorite][data-browse-item="${itemId}"]`, app.querySelector(`[data-browse-card="${itemId}"]`) || app);
+    return;
+  }
+
+  const libraryReactionFilter = event.target.closest("[data-library-reaction-filter]");
+  if (libraryReactionFilter) {
+    state.libraryReactionFilter = libraryReactionFilter.dataset.libraryReactionFilter || "all";
+    render();
+    updateStepper();
+    restoreFocus(`[data-library-reaction-filter="${state.libraryReactionFilter}"]`);
+    announce(`Showing ${libraryReactionFilter.textContent.trim()} in Tried.`);
     return;
   }
 

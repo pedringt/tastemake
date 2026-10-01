@@ -323,3 +323,46 @@
   .library-search-open { width:100%; max-width:none; min-width:0; }
   .library-tabs { max-width:none; }
 }
+
+.library-reaction-filters {
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:0 0 18px;
+}
+.library-reaction-filter {
+  appearance:none;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:38px;
+  padding:7px 11px;
+  border:1.5px solid var(--line);
+  border-radius:999px;
+  background:#fff;
+  color:var(--navy);
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.library-reaction-filter span {
+  display:inline-grid;
+  min-width:22px;
+  min-height:20px;
+  place-items:center;
+  padding-inline:5px;
+  border-radius:999px;
+  background:var(--tint-lilac,#ececf6);
+  font-size:10px;
+}
+.library-reaction-filter.is-active {
+  border-color:var(--navy);
+  background:var(--navy);
+  color:#fff;
+}
+.library-reaction-filter.is-active span { background:rgb(255 255 255 / .18); }
+@media (max-width:620px) {
+  .library-reaction-filters { flex-wrap:nowrap; overflow-x:auto; padding-bottom:3px; scrollbar-width:none; }
+  .library-reaction-filters::-webkit-scrollbar { display:none; }
+  .library-reaction-filter { flex:0 0 auto; }
+}

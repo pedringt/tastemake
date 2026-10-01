@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { renderDomainFilter } from "../components/domain-filter.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
-import { isDeclined, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
+import { isDeclined, isExperienced, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel, domainById } from "../data/domains.js";
@@ -252,14 +252,22 @@ function whyContent(item) {
   const isCurveball = item.surprise || item.ai?.kind === "curveball";
   const kicker = whyKicker(item, pattern);
   const label = pattern ? `${kicker}: ${esc(pattern.title)}` : kicker;
+  const rationale = readableRecommendationCopy(item.reason, item);
 
-  // The rationale itself (item.reason) is now shown up front on the card (#95); this popover adds
-  // the pattern context around it (what's being tested, and how confident that pattern is) rather
-  // than repeating the same sentence.
+  let uncertainty = "";
+  const level = String(pattern?.strength ?? "Emerging");
+  if (isCurveball) uncertainty = "This deliberately stretches beyond your strongest patterns, so a miss is useful information rather than a failure.";
+  else if (!pattern) uncertainty = "Tastemake does not have a stable named pattern behind this yet, so this is still an early test.";
+  else if (pattern.status === "conditional") uncertainty = "This pattern has only held in some contexts, so this pick may expose where the boundary is.";
+  else if (level === "Emerging") uncertainty = "This pattern is still early. One reaction could make Tastemake narrow it, strengthen it, or drop it.";
+  else if (level === "Strong") uncertainty = "The pattern is strong, but Tastemake may still be wrong about which details of it matter most to you.";
+  else uncertainty = "This is supported, but your reaction can still make Tastemake refine what the pattern actually means.";
+
   return `
     <span class="why-kicker">${label}</span>
-    ${pattern ? `<p>This tests a pattern Tastemake is ${String(pattern.strength ?? "still forming").toLowerCase()} on: ${esc(pattern.title)}.</p>` : `<p>Tastemake does not have a named pattern behind this one yet — it is an early test.</p>`}
-    ${isCurveball ? `<p class="why-caveat">This one deliberately breaks from the pattern above, to see what that tells Tastemake.</p>` : ""}`;
+    <p><strong>Why this might work:</strong> ${esc(rationale)}</p>
+    ${pattern ? `<p><strong>Pattern being tested:</strong> ${esc(pattern.claim)}</p>` : ""}
+    <p class="why-caveat"><strong>What could miss:</strong> ${esc(uncertainty)}</p>`;
 }
 
 function feedbackPopover(item, saved) {
@@ -392,6 +400,22 @@ function bookmarkNote(count) {
   return count ? `<p class="bookmark-note">${count} ${count === 1 ? "thing" : "things"} in Saved.</p>` : "";
 }
 
+function renderFirstInsightNudge() {
+  if ((state.modelHypotheses ?? []).length === 0 || state.recommendationSets.length > 1) return "";
+  const hasExperiencedReaction = Object.values(state.feedbackByRecommendation ?? {}).some(isExperienced);
+  if (!hasExperiencedReaction) return "";
+  const first = state.modelHypotheses[0];
+  return `
+    <aside class="first-insight-nudge">
+      <div>
+        <span class="refresh-kicker">Tastemake learned something</span>
+        <strong>${esc(first.title)}</strong>
+        <p>${esc(first.claim)}</p>
+      </div>
+      <button class="button button-secondary" type="button" data-action="view-model">See what changed →</button>
+    </aside>`;
+}
+
 function renderAiStatus() {
   if (state.aiStatus === "loading") {
     return `
@@ -516,6 +540,7 @@ export function renderRecommendations() {
         <button class="button button-quiet" type="button" data-action="browse">Browse by genre instead &rarr;</button>
       </p>
       ${renderAiStatus()}
+      ${renderFirstInsightNudge()}
       ${renderNextSteps()}
 
       <h2 class="visually-hidden">Your picks</h2>
