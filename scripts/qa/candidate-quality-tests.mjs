@@ -167,6 +167,83 @@ const bookState = (genres) => ({
     related.map((item)=>item.domains?.[0]).join(","));
 }
 
+// ---- All gives every represented positive medium a retrieval chance -----------------------------
+
+{
+  const customItems = {
+    "tmdb-movie-701": { id:"tmdb-movie-701", provider:"tmdb", providerId:"701", title:"Movie Seed", type:"movie", domains:["movies"], genres:["18"], providerMeta:{genreIds:[18]} },
+    "tmdb-tv-702": { id:"tmdb-tv-702", provider:"tmdb", providerId:"702", title:"TV Seed", type:"tv", domains:["tv"], genres:["18"], providerMeta:{genreIds:[18]} },
+    "openlibrary-book-OL703": { id:"openlibrary-book-OL703", provider:"openlibrary", providerId:"OL703", title:"Book Seed", type:"book", domains:["read"], genres:["Fantasy"] },
+    "igdb-game-704": { id:"igdb-game-704", provider:"igdb", providerId:"704", title:"Game Seed", type:"game", domains:["play"], providerMeta:{genreIds:[31]} }
+  };
+  const requested = [];
+  const related = await retrieveCatalogCandidates({
+    selectedFavorites:new Set(Object.keys(customItems)),
+    feedbackByRecommendation:{},
+    recommendationSets:[],
+    customItems,
+    areas:{movies:true,tv:true,read:true,play:true},
+    recommendationFilter:"all"
+  }, {
+    env,
+    fetchImpl:async (url, init={}) => {
+      const u=String(url);
+      requested.push(u);
+      if (u.includes("/movie/701/recommendations")) return {ok:true,json:async()=>({results:[
+        {id:801,title:"Movie Neighbor",overview:"x",release_date:"2020-01-01",genre_ids:[18]}
+      ]})};
+      if (u.includes("/tv/702/recommendations")) return {ok:true,json:async()=>({results:[
+        {id:802,name:"TV Neighbor",overview:"x",first_air_date:"2020-01-01",genre_ids:[18]}
+      ]})};
+      if (u.includes("openlibrary.org/search.json")) return {ok:true,json:async()=>({docs:[
+        {key:"/works/OL803",title:"Book Neighbor",author_name:["A"],first_publish_year:2020,subject:["Fantasy"]}
+      ]})};
+      if (u.includes("id.twitch.tv/oauth2/token")) return {ok:true,json:async()=>({access_token:"fake-token"})};
+      if (u.includes("api.igdb.com/v4/games")) return {ok:true,json:async()=>[
+        {id:804,name:"Game Neighbor",summary:"x",first_release_date:1600000000,genres:[{id:31,name:"Adventure"}]}
+      ]};
+      throw new Error(`unexpected all-domain URL: ${url} body=${init.body || ""}`);
+    }
+  });
+  check("All queries a movie anchor", requested.some((u)=>u.includes("/movie/701/recommendations")), requested.join(" | "));
+  check("All queries a TV anchor", requested.some((u)=>u.includes("/tv/702/recommendations")), requested.join(" | "));
+  check("All queries a book anchor", requested.some((u)=>u.includes("openlibrary.org/search.json")), requested.join(" | "));
+  check("All queries a game anchor", requested.some((u)=>u.includes("api.igdb.com/v4/games")), requested.join(" | "));
+  for (const domain of ["movies","tv","read","play"]) {
+    check(`All can preserve ${domain} candidates through novelty filtering`, related.some((item)=>item.domains?.includes(domain)), related.map((item)=>item.domains?.[0]).join(","));
+  }
+}
+
+// Cross-media title overlap is not a franchise/sequel relationship. A game sharing a title with a
+// movie the user liked must not be removed merely because All compares candidates across media.
+{
+  const customItems = {
+    "tmdb-movie-901": { id:"tmdb-movie-901", provider:"tmdb", providerId:"901", title:"Night Signal", type:"movie", domains:["movies"], genres:["18"], providerMeta:{genreIds:[18]} },
+    "igdb-game-902": { id:"igdb-game-902", provider:"igdb", providerId:"902", title:"Portal", type:"game", domains:["play"], providerMeta:{genreIds:[31]} }
+  };
+  const related = await retrieveCatalogCandidates({
+    selectedFavorites:new Set(Object.keys(customItems)),
+    feedbackByRecommendation:{},
+    recommendationSets:[],
+    customItems,
+    areas:{movies:true,tv:true,read:true,play:true},
+    recommendationFilter:"all"
+  }, {
+    env,
+    fetchImpl:async (url) => {
+      const u=String(url);
+      if (u.includes("/movie/901/recommendations")) return {ok:true,json:async()=>({results:[]})};
+      if (u.includes("id.twitch.tv/oauth2/token")) return {ok:true,json:async()=>({access_token:"fake-token"})};
+      if (u.includes("api.igdb.com/v4/games")) return {ok:true,json:async()=>[
+        {id:903,name:"Night Signal",summary:"x",first_release_date:1600000000,genres:[{id:31,name:"Adventure"}]}
+      ]};
+      throw new Error(`unexpected cross-media URL: ${url}`);
+    }
+  });
+  check("cross-media same-title game is not suppressed as a movie continuation",
+    related.some((item)=>item.id==="igdb-game-903"), related.map((item)=>item.id).join(","));
+}
+
 // ---- games audit: genre-only IGDB query from a single anchor -----------------------------------
 // Documents the current behavior so a future PR can compare against it if IGDB pool health
 // regresses; per #135's "audited, not necessarily rewritten" instruction, no production change was
