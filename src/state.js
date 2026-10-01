@@ -57,6 +57,7 @@ function fresh() {
     // Which recommendation currently has its anchored feedback editor open. Presentation only.
     recommendationFeedbackItemId: null,
     libraryFilter: "all",
+    libraryReactionFilter: "all",
     // Browse is a presentation/discovery surface. Browsing alone is never evidence and these fields
     // are intentionally transient rather than persisted.
     browseDomain: "movies",
