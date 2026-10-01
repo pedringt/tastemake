@@ -36,9 +36,19 @@
 @media (max-width:860px) {
   .app-shell { width:min(100% - 20px,1440px); padding-top:10px; }
   .brand-tagline,.topbar-note { display:none; }
-  .stepper { display:flex; flex-wrap:wrap; gap:4px; width:100%; }
-  .stepper .step { flex:1 1 auto; }
-  .step { font-size:12px; padding-inline:8px; justify-content:center; }
+  .stepper {
+    display:flex;
+    flex-wrap:nowrap;
+    gap:3px;
+    width:100%;
+    overflow-x:auto;
+    padding-bottom:2px;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .stepper::-webkit-scrollbar { display:none; }
+  .stepper .step { flex:0 0 auto; }
+  .step { font-size:12px; padding-inline:10px; justify-content:center; }
 
   .favorites-hero,.profile-hero,.recommendations-masthead { grid-template-columns:1fr; gap:18px; margin-inline:0; }
   .bookmark-grid { grid-template-columns:1fr; }
@@ -87,6 +97,7 @@
 
   h1 { font-size:clamp(34px,10.5vw,42px); line-height:.98; }
   .favorites-screen { padding:24px 0 32px; }
+  .favorites-screen .button,.recommendations-screen .button { min-height:44px; }
   .profile-screen { padding:22px 0 30px; }
   .recommendations-screen { padding:18px 0 32px; }
   .bookmarks-screen,.library-screen,.browse-screen { padding:18px 0 32px; }
