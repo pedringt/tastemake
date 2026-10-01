@@ -19,7 +19,8 @@ export function toggleExpandedFeedback(itemId) {
 }
 
 export function saveQuickFeedback(itemId, rating) {
-  const item = activeRecommendations(state).find((rec) => rec.id === itemId);
+  const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.browseItems.find((candidate) => candidate.id === itemId);
   if (!item) return false;
 
   const existing = state.feedbackByRecommendation[itemId];
@@ -53,6 +54,7 @@ export function chooseExperiencePath(itemId, path) {
 
 export function setRecommendationFavorite(itemId, makeFavorite) {
   const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.browseItems.find((candidate) => candidate.id === itemId)
     ?? state.feedbackByRecommendation[itemId]?.item;
   if (!item) return false;
 
@@ -80,6 +82,7 @@ export function setRecommendationFavorite(itemId, makeFavorite) {
 
 export function saveExperienceOutcome(itemId, outcome) {
   const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.browseItems.find((candidate) => candidate.id === itemId)
     ?? state.feedbackByRecommendation[itemId]?.item;
   if (!item) return false;
 
