@@ -122,6 +122,49 @@ const bookState = (genres) => ({
   eq("TMDb /recommendations from a single anchor already returns a healthy (12-row) pool", related.length, 12);
 }
 
+// ---- All view retries unused anchors when a represented domain is missing -----------------------
+
+{
+  const customItems = {};
+  const selectedFavorites = new Set();
+  for (const [kind, ids] of [["movie", ["101","102","103"]], ["tv", ["201","202","203"]]]) {
+    for (const id of ids) {
+      const itemId = `tmdb-${kind}-${id}`;
+      selectedFavorites.add(itemId);
+      customItems[itemId] = {
+        id:itemId, provider:"tmdb", providerId:id, title:`${kind} seed ${id}`, type:kind,
+        domains:[kind === "movie" ? "movies" : "tv"], genres:["18"], providerMeta:{genreIds:[18]}
+      };
+    }
+  }
+  const movieRows = Array.from({length:12}, (_, i) => ({
+    id:400+i, title:`Movie Candidate ${i}`, overview:"x", release_date:"2020-01-01", genre_ids:[18]
+  }));
+  const tvRows = Array.from({length:6}, (_, i) => ({
+    id:500+i, name:`TV Candidate ${i}`, overview:"x", first_air_date:"2020-01-01", genre_ids:[18]
+  }));
+  const requested = [];
+  const related = await retrieveCatalogCandidates({
+    selectedFavorites, feedbackByRecommendation:{}, recommendationSets:[], customItems,
+    areas:{movies:true,tv:true,read:true,play:true}, recommendationFilter:"all"
+  }, {
+    env,
+    fetchImpl:async (url) => {
+      const u=String(url);
+      requested.push(u);
+      if (u.includes("/movie/")) return {ok:true,json:async()=>({results:movieRows})};
+      if (u.includes("/tv/201/") || u.includes("/tv/202/")) return {ok:true,json:async()=>({results:[]})};
+      if (u.includes("/tv/203/")) return {ok:true,json:async()=>({results:tvRows})};
+      throw new Error(`unexpected mixed-domain URL: ${url}`);
+    }
+  });
+  check("All retries a later TV anchor when the first wave has only movie candidates",
+    requested.some((u)=>u.includes("/tv/203/")), requested.join(" | "));
+  check("All returns both represented domains after that retry",
+    related.some((item)=>item.domains?.includes("movies")) && related.some((item)=>item.domains?.includes("tv")),
+    related.map((item)=>item.domains?.[0]).join(","));
+}
+
 // ---- games audit: genre-only IGDB query from a single anchor -----------------------------------
 // Documents the current behavior so a future PR can compare against it if IGDB pool health
 // regresses; per #135's "audited, not necessarily rewritten" instruction, no production change was
