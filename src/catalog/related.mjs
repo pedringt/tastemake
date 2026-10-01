@@ -1,7 +1,7 @@
 import { enrichCanonicalItemWriteBehind, igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { cachedValue } from "../server/cache.mjs";
-import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
+import { canonicalizeWriteBehind, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 
 // Deliberately NOT imported from model/evidence.js: this module sits in a real circular import
@@ -178,12 +178,12 @@ function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
   return openLibraryOverlapStrength(sourceSubjects, candidateSubjects) !== null;
 }
 
-async function openLibrarySubjectSearch(subject, env, fetchImpl) {
+async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
   const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key";
   const load = async () => {
     const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
-    });
+    }, timeoutMs);
     if (!response.ok) return [];
     return (await response.json()).docs ?? [];
   };
@@ -198,14 +198,14 @@ async function openLibrarySubjectSearch(subject, env, fetchImpl) {
 // once the post-#130 overlap gate ran (#131). Results across queries are merged/deduped by Open
 // Library work key, then ranked by overlap strength (see openLibraryOverlapStrength above) so the
 // combined pool stays large without readmitting the Atomic-Habits-style false positive #130 fixed.
-async function openLibraryRelated(item, env, fetchImpl, queryImpl) {
+async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
   if (item.provider !== "openlibrary") return [];
   const sourceSubjects = meaningfulBookSubjects(item.genres ?? []);
   const querySubjects = sourceSubjects.slice(0, 3);
   if (!querySubjects.length) return [];
 
   const storePromise = relatedCanonicalItems(item, querySubjects, { env, query: queryImpl });
-  const rows = (await Promise.all(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl)))).flat();
+  const rows = (await Promise.all(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs)))).flat();
 
   // Keyed by the raw Open Library work key (the real identity), so a live result and a
   // store-canonicalized result for the same book collapse into one entry either way.
@@ -320,37 +320,16 @@ function shuffled(items) {
 // stable sort keeps items tied on completeness in their shuffled relative order, so ties rotate
 // between rounds instead of being pinned), and gives genuine rotation across the whole evidence pool
 // when completeness data isn't available, which real logs show is common.
-async function preferRicherAnchors(items, { env, fetchImpl, query }) {
-  if (!items.length) return items;
-  const pool = shuffled(items);
-  try {
-    const metadata = await lookupCanonicalAnchorMetadata(pool, { env, query });
-    const hydrated = pool.map((item) => {
-      const factual = metadata.get(item.id)?.factual ?? {};
-      if (item.type === "book" && factual.seriesKey) {
-        return { ...item, providerMeta: { ...(item.providerMeta ?? {}), seriesKey: factual.seriesKey, isbns: item.providerMeta?.isbns ?? factual.isbns ?? [] } };
-      }
-      if (item.type === "movie" && factual.collectionId) {
-        return { ...item, providerMeta: { ...(item.providerMeta ?? {}), collectionId: factual.collectionId } };
-      }
-      if (item.type === "game" && factual.franchiseId) {
-        return { ...item, providerMeta: { ...(item.providerMeta ?? {}), franchiseId: factual.franchiseId } };
-      }
-      return item;
-    });
-    if (!metadata.size) return hydrated.sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
-    return hydrated.sort((a, b) =>
-      (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0)
-      || (metadata.get(b.id)?.completeness ?? -1) - (metadata.get(a.id)?.completeness ?? -1)
-    );
-  } catch {
-    return pool.sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
-  }
+function preferRicherAnchors(items) {
+  // Production timing showed the canonical metadata lookup frequently consuming its full 250ms
+  // budget before returning no usable preference. Keep anchor rotation and explicit reaction
+  // strength in the synchronous path; provider metadata is still enriched/write-behind below.
+  return shuffled(items).sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
 }
 
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
   const mode = state.recommendationFilter ?? "all";
-  const allEvidence = await preferRicherAnchors(externalEvidenceItems(state), { env, fetchImpl, query: queryImpl });
+  const allEvidence = preferRicherAnchors(externalEvidenceItems(state));
   const evidenceItems = (mode === "all"
     ? balanceDomains(allEvidence, "all")
     : allEvidence.filter((item) => item.domains?.includes(mode))
@@ -375,7 +354,10 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     try {
       let related = [];
       if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
-      else if (item.provider === "openlibrary") related = await openLibraryRelated(item, env, fetchImpl, queryImpl);
+      else if (item.provider === "openlibrary") {
+        const timeoutMs = mode === "all" ? Number(env.TASTEMAKE_OPENLIBRARY_MIXED_TIMEOUT_MS || 1750) : undefined;
+        related = await openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs);
+      }
       else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl, queryImpl);
       console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: related.length }));
       // #135 foundation: write-behind canonicalization of real related candidates (see the same
