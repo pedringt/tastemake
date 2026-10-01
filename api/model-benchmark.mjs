@@ -37,7 +37,7 @@ async function callModel(prompt, config) {
     },
     body: JSON.stringify({
       model: config.model,
-      ...(config.effort ? { effort: config.effort } : {}),
+      ...(config.effort ? { output_config: { effort: config.effort } } : {}),
       thinking: config.thinking,
       max_tokens: 1000,
       system: [{
