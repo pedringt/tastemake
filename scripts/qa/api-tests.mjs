@@ -105,6 +105,25 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   check("recommendation prompt cache sends dynamic context as the user message", body?.messages?.[0]?.content?.includes('"dynamic":true'));
 }
 
+{
+  let body = null;
+  const captureFetch = async (_url, init = {}) => {
+    body = JSON.parse(init.body || "{}");
+    return { ok:true, status:200, json:async()=>({
+      content:[{type:"text",text:'{"picks":[]}'}],
+      usage:{input_tokens:10,output_tokens:4},
+      model:body.model
+    })};
+  };
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-sonnet-5-5", effort:"low" });
+  eq("Anthropic transport accepts a recommendation-specific model override", body?.model, "claude-sonnet-5-5");
+  eq("Anthropic transport sends low effort in output_config", body?.output_config?.effort, "low");
+
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch });
+  eq("shared Anthropic transport still defaults to the existing env model", body?.model, ON.TASTEMAKE_AI_MODEL);
+  check("shared Anthropic transport does not add effort unless requested", body?.output_config == null);
+}
+
 // QA pass regression: every client-side router path that is intended to survive a reload/bookmark
 // must have a Vercel rewrite, and the static search shell should match the runtime domain registry
 // instead of shipping the retired Watch/Read/Play markup before JS initializes.
@@ -121,10 +140,11 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
 }
 
 function routedFetch(aiPayload=modelSays(goodPicks()),opts={}){
-  return async (url)=>{
+  return async (url, init = {})=>{
     const u=String(url);
     if(u.includes("/movie/1/recommendations")) return {ok:true,status:200,json:async()=>({results:relatedRows})};
     if(u.includes("api.anthropic.com")){
+      opts.onAnthropic?.(JSON.parse(init.body || "{}"));
       if(opts.abort){const e=new Error("aborted");e.name="AbortError";throw e;}
       if(opts.fail) throw new Error(opts.fail);
       if(opts.status && opts.status!==200) return {ok:false,status:opts.status,json:async()=>({error:{type:"test_error",message:"test"}})};
@@ -158,6 +178,15 @@ eq("valid model ranking is used",out.source,"model");
 check("model picks keep real provider ids",out.picks.every(p=>p.provider==="tmdb"));
 check("model picks carry validated citations",out.picks.every(p=>p.ai?.cites?.includes(`ev:${favorite.id}`)));
 eq("model request is reported as paid",out.meta.paidCallMade,true);
+let recommendationRequestBody = null;
+await produceRecommendations({
+  rawState:rawState(),
+  env:ON,
+  fetchImpl:routedFetch(modelSays(goodPicks()), { onAnthropic:(body)=>{ recommendationRequestBody = body; } })
+});
+eq("recommendations default to Sonnet 5.5", recommendationRequestBody?.model, "claude-sonnet-5-5");
+eq("recommendations default to low effort", recommendationRequestBody?.output_config?.effort, "low");
+
 
 // #120: keep full history in product state/validation, but send a bounded, compact, experienced-only
 // working set to the ranking model. This is the scaling guard for a Library that can grow indefinitely.

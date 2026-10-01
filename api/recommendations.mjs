@@ -247,7 +247,8 @@ export function parseModelJson(text) {
   throw firstError ?? new SyntaxError("model response was not JSON");
 }
 
-export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null }) {
+export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null, model = null, effort = null }) {
+  const resolvedModel = model || env.TASTEMAKE_AI_MODEL;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Number(env.TASTEMAKE_AI_TIMEOUT_MS || REQUEST_TIMEOUT_MS));
   try {
@@ -259,11 +260,12 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: env.TASTEMAKE_AI_MODEL,
+        model: resolvedModel,
         // This is a short, strict JSON job. With thinking on by default, the model spent the whole budget
         // thinking and returned no text at all (stop_reason=max_tokens, blocks=thinking).
         // Set TASTEMAKE_AI_THINKING=enabled to turn it back on, with a much larger cap.
         ...(env.TASTEMAKE_AI_THINKING === "enabled" ? {} : { thinking: { type: "disabled" } }),
+        ...(effort ? { output_config: { effort } } : {}),
         max_tokens: Number(maxTokens ?? env.TASTEMAKE_AI_MAX_TOKENS ?? MAX_OUTPUT_TOKENS),
         // No `temperature`: newer models reject it ("temperature is deprecated for this model"), which
         // failed every live call with 400 invalid_request_error. Runs are therefore not bit-identical;
@@ -298,7 +300,7 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
       data = await response.json();
     } catch (err) {
       err.paidCallMade = true;
-      err.model = env.TASTEMAKE_AI_MODEL;
+      err.model = resolvedModel;
       err.anthropicType = "malformed-response";
       throw err;
     }
@@ -309,17 +311,17 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
       err.anthropicType = "no-text-block";
       err.anthropicDetail = `stop_reason=${data.stop_reason ?? "?"} blocks=${(data.content ?? []).map((b) => b.type).join(",") || "none"} out_tokens=${data.usage?.output_tokens ?? "?"}`;
       err.paidCallMade = true;
-      err.model = data.model ?? env.TASTEMAKE_AI_MODEL;
+      err.model = data.model ?? resolvedModel;
       err.usage = data.usage ?? null;
       throw err;
     }
     try {
-      return { json: parseModelJson(text), usage: data.usage ?? null, model: data.model ?? env.TASTEMAKE_AI_MODEL };
+      return { json: parseModelJson(text), usage: data.usage ?? null, model: data.model ?? resolvedModel };
     } catch (err) {
       // The provider already returned a successful model response, so this was a paid call even if
       // Tastemake cannot parse the model's text into valid JSON.
       err.paidCallMade = true;
-      err.model = data.model ?? env.TASTEMAKE_AI_MODEL;
+      err.model = data.model ?? resolvedModel;
       err.usage = data.usage ?? null;
       err.anthropicType = "malformed-response";
       throw err;
@@ -465,6 +467,8 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
 
   const config = liveConfig(env);
   if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length });
+  const recommendationModel = env.TASTEMAKE_RECOMMENDATIONS_MODEL || "claude-sonnet-5-5";
+  const recommendationEffort = env.TASTEMAKE_RECOMMENDATIONS_EFFORT || "low";
 
   try {
     const prompt = buildPickPrompt(promptCtx, candidates.length);
@@ -475,7 +479,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       ...promptSizeBreakdown(promptCtx, candidates.length, prompt)
     }));
     started = Date.now();
-    const model = await callAnthropic({ prompt, env, fetchImpl });
+    const model = await callAnthropic({ prompt, env, fetchImpl, model: recommendationModel, effort: recommendationEffort });
     const liveAiMs = Date.now() - started;
     const aiMetric = {
       operation: "recommendations",
@@ -557,7 +561,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     recordAiCallInBackground({
       operation: "recommendations",
       outcome: aiOutcomeForError(error),
-      model: error?.model ?? config.model,
+      model: error?.model ?? recommendationModel,
       durationMs,
       inputTokens: error?.usage?.input_tokens ?? null,
       outputTokens: error?.usage?.output_tokens ?? null,
