@@ -320,6 +320,30 @@ check("All recommendation retrieval represents available domains", ["movies", "r
 const readOnly = await retrieveCatalogCandidates({ ...mixedState, recommendationFilter: "read" }, { env, fetchImpl: mixedFetch });
 check("category recommendation retrieval returns only that domain", readOnly.length > 0 && readOnly.every((item) => item.domains?.includes("read")), readOnly.map((x) => x.domains?.[0]).join(","));
 
+{
+  let openLibraryAborted = false;
+  const stalledMixedFetch = async (url, init = {}) => {
+    const u = String(url);
+    if (u.includes("openlibrary.org/search.json")) {
+      return new Promise((_, reject) => {
+        init.signal?.addEventListener("abort", () => {
+          openLibraryAborted = true;
+          const error = new Error("aborted");
+          error.name = "AbortError";
+          reject(error);
+        }, { once:true });
+      });
+    }
+    return mixedFetch(url, init);
+  };
+  const rows = await retrieveCatalogCandidates(mixedState, {
+    env:{ ...env, TASTEMAKE_OPENLIBRARY_MIXED_TIMEOUT_MS:"5" },
+    fetchImpl:stalledMixedFetch
+  });
+  check("mixed recommendations abort a stalled Open Library branch at the mixed-media latency budget", openLibraryAborted);
+  check("mixed recommendations keep fast-provider candidates after Open Library times out", rows.some((item)=>item.domains?.includes("movies")) && rows.some((item)=>item.domains?.includes("play")), rows.map((x)=>x.domains?.[0]).join(","));
+}
+
 const OFF = hypothesisConfig({});
 check("live hypotheses are fail-closed by default", !OFF.enabled && OFF.reasons.includes("hypotheses-off-switch"));
 

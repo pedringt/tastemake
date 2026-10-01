@@ -178,12 +178,12 @@ function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
   return openLibraryOverlapStrength(sourceSubjects, candidateSubjects) !== null;
 }
 
-async function openLibrarySubjectSearch(subject, env, fetchImpl) {
+async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
   const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key";
   const load = async () => {
     const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
-    });
+    }, timeoutMs);
     if (!response.ok) return [];
     return (await response.json()).docs ?? [];
   };
@@ -198,14 +198,14 @@ async function openLibrarySubjectSearch(subject, env, fetchImpl) {
 // once the post-#130 overlap gate ran (#131). Results across queries are merged/deduped by Open
 // Library work key, then ranked by overlap strength (see openLibraryOverlapStrength above) so the
 // combined pool stays large without readmitting the Atomic-Habits-style false positive #130 fixed.
-async function openLibraryRelated(item, env, fetchImpl, queryImpl) {
+async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
   if (item.provider !== "openlibrary") return [];
   const sourceSubjects = meaningfulBookSubjects(item.genres ?? []);
   const querySubjects = sourceSubjects.slice(0, 3);
   if (!querySubjects.length) return [];
 
   const storePromise = relatedCanonicalItems(item, querySubjects, { env, query: queryImpl });
-  const rows = (await Promise.all(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl)))).flat();
+  const rows = (await Promise.all(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs)))).flat();
 
   // Keyed by the raw Open Library work key (the real identity), so a live result and a
   // store-canonicalized result for the same book collapse into one entry either way.
@@ -320,42 +320,50 @@ function shuffled(items) {
 // stable sort keeps items tied on completeness in their shuffled relative order, so ties rotate
 // between rounds instead of being pinned), and gives genuine rotation across the whole evidence pool
 // when completeness data isn't available, which real logs show is common.
-async function preferRicherAnchors(items, { env, fetchImpl, query }) {
-  if (!items.length) return items;
-  const pool = shuffled(items);
-  try {
-    const metadata = await lookupCanonicalAnchorMetadata(pool, { env, query });
-    const hydrated = pool.map((item) => {
-      const factual = metadata.get(item.id)?.factual ?? {};
-      if (item.type === "book" && factual.seriesKey) {
-        return { ...item, providerMeta: { ...(item.providerMeta ?? {}), seriesKey: factual.seriesKey, isbns: item.providerMeta?.isbns ?? factual.isbns ?? [] } };
-      }
-      if (item.type === "movie" && factual.collectionId) {
-        return { ...item, providerMeta: { ...(item.providerMeta ?? {}), collectionId: factual.collectionId } };
-      }
-      if (item.type === "game" && factual.franchiseId) {
-        return { ...item, providerMeta: { ...(item.providerMeta ?? {}), franchiseId: factual.franchiseId } };
-      }
-      return item;
-    });
-    if (!metadata.size) return hydrated.sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
-    return hydrated.sort((a, b) =>
-      (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0)
-      || (metadata.get(b.id)?.completeness ?? -1) - (metadata.get(a.id)?.completeness ?? -1)
-    );
-  } catch {
-    return pool.sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
-  }
+function preferRicherAnchors(items) {
+  // Select anchors without a database round trip. The old path queried metadata for the entire
+  // evidence history before it even knew which <=6 anchors would be used.
+  return shuffled(items).sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
+}
+
+async function hydrateSelectedAnchorMetadata(items, { env, query }) {
+  const needsLookup = items.filter((item) =>
+    item?.provider && item?.providerId && (
+      (item.type === "book" && !item.providerMeta?.seriesKey)
+      || (item.type === "movie" && !item.providerMeta?.collectionId)
+      || (item.type === "game" && !item.providerMeta?.franchiseId)
+    )
+  );
+  if (!needsLookup.length) return items;
+
+  const metadata = await lookupCanonicalAnchorMetadata(needsLookup, { env, query, timeoutMs: 100 });
+  if (!metadata.size) return items;
+  return items.map((item) => {
+    const factual = metadata.get(item.id)?.factual ?? {};
+    if (item.type === "book" && factual.seriesKey) {
+      return { ...item, providerMeta: { ...(item.providerMeta ?? {}), seriesKey: factual.seriesKey, isbns: item.providerMeta?.isbns ?? factual.isbns ?? [] } };
+    }
+    if (item.type === "movie" && factual.collectionId) {
+      return { ...item, providerMeta: { ...(item.providerMeta ?? {}), collectionId: factual.collectionId } };
+    }
+    if (item.type === "game" && factual.franchiseId) {
+      return { ...item, providerMeta: { ...(item.providerMeta ?? {}), franchiseId: factual.franchiseId } };
+    }
+    return item;
+  });
 }
 
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
   const mode = state.recommendationFilter ?? "all";
-  const allEvidence = await preferRicherAnchors(externalEvidenceItems(state), { env, fetchImpl, query: queryImpl });
-  const evidenceItems = (mode === "all"
+  const allEvidence = preferRicherAnchors(externalEvidenceItems(state));
+  let evidenceItems = (mode === "all"
     ? balanceDomains(allEvidence, "all")
     : allEvidence.filter((item) => item.domains?.includes(mode))
   ).slice(0, 6);
   if (!evidenceItems.length) return [];
+  // Preserve series/franchise suppression, but only query the tiny selected-anchor set and cap
+  // the optional lookup at 100ms instead of blocking on the user's entire evidence history.
+  evidenceItems = await hydrateSelectedAnchorMetadata(evidenceItems, { env, query: queryImpl });
 
   // #135: once an experienced item is important enough to become a live retrieval anchor, fill
   // high-value provider metadata in the background and persist it to the canonical store. This
@@ -375,7 +383,10 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     try {
       let related = [];
       if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
-      else if (item.provider === "openlibrary") related = await openLibraryRelated(item, env, fetchImpl, queryImpl);
+      else if (item.provider === "openlibrary") {
+        const timeoutMs = mode === "all" ? Number(env.TASTEMAKE_OPENLIBRARY_MIXED_TIMEOUT_MS || 1750) : undefined;
+        related = await openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs);
+      }
       else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl, queryImpl);
       console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: related.length }));
       // #135 foundation: write-behind canonicalization of real related candidates (see the same

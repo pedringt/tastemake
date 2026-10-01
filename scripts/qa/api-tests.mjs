@@ -89,6 +89,22 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   eq("malformed successful response preserves usage for telemetry",err?.usage?.output_tokens,8);
 }
 
+{
+  let body = null;
+  const cacheFetch = async (_url, init = {}) => {
+    body = JSON.parse(init.body || "{}");
+    return { ok:true, status:200, json:async()=>({
+      content:[{type:"text",text:'{"picks":[]}'}],
+      usage:{input_tokens:12,output_tokens:4,cache_read_input_tokens:6},
+      model:"claude-test"
+    })};
+  };
+  await callAnthropic({ prompt:"STATIC RULES\n\nCONTEXT\n{\"dynamic\":true}", env:ON, fetchImpl:cacheFetch });
+  eq("recommendation prompt cache marks the stable system prefix", body?.system?.[0]?.cache_control?.type, "ephemeral");
+  check("recommendation prompt cache keeps dynamic context out of the cached system block", !body?.system?.[0]?.text?.includes("dynamic"));
+  check("recommendation prompt cache sends dynamic context as the user message", body?.messages?.[0]?.content?.includes('"dynamic":true'));
+}
+
 // QA pass regression: every client-side router path that is intended to survive a reload/bookmark
 // must have a Vercel rewrite, and the static search shell should match the runtime domain registry
 // instead of shipping the retired Watch/Read/Play markup before JS initializes.
@@ -180,6 +196,8 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
   const prompt = buildPickPrompt(ctx, 2);
   check("prompt omits redundant evidence fields", !prompt.includes('"authority":"user"') && !prompt.includes('"countsAsTaste"') && !prompt.includes('"itemId":"test-'));
   check("prompt excludes saved-only evidence", !prompt.includes("ev:intent-only"));
+  check("recommendation prompt omits provider ids from the model payload", !prompt.includes('"providerId"'));
+  check("recommendation prompt uses the compact output contract", prompt.includes('"curveballItemId"') && !prompt.includes('"tests":null'));
 }
 
 // #120 follow-up: soft domain-spread nudge, "All" filter only (Paige's explicit call: soft nudge,
@@ -197,6 +215,15 @@ eq("model request is reported as paid",out.meta.paidCallMade,true);
   check("the domain-spread nudge is absent for a single-domain filter (nothing to spread across)", !watchPrompt.includes("Prefer a spread across the domains"));
   check("an unset recommendationFilter defaults to All's behavior", defaultPrompt.includes("Prefer a spread across the domains"));
   check("the nudge is explicitly soft, not a hard quota", allPrompt.includes("do not force in a weaker candidate"));
+}
+
+{
+  const compactPicks = goodPicks().map(({tests,kind,...pick})=>pick);
+  const compactPayload = modelSays(compactPicks);
+  compactPayload.content[0].text = JSON.stringify({ picks:compactPicks, curveballItemId:compactPicks.at(-1).itemId });
+  const result = await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(compactPayload)});
+  eq("compact recommendation output still validates as model output", result.source, "model");
+  check("compact output restores the exploratory pick in software", result.picks.some((pick)=>pick.surprise===true));
 }
 
 // #129: structured cites stay intact, but an internal evidence id echoed into natural-language why

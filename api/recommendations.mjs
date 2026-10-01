@@ -7,7 +7,7 @@ import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-me
 import { domainById } from "../src/data/domains.js";
 
 const MAX_BODY_BYTES = 160_000;
-const MAX_OUTPUT_TOKENS = 2000;   // the cap has to cover any thinking tokens as well as the JSON itself
+const MAX_OUTPUT_TOKENS = 1000;   // compact recommendation JSON should stay well below this; cap runaway generation
 const REQUEST_TIMEOUT_MS = 25_000;   // 12s was tripping on every real call; the function allows 30s
 const DEFAULT_VISITOR_LIMIT = 6;
 const DEFAULT_WINDOW_MS = 60_000;
@@ -143,7 +143,14 @@ export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
 function pickPromptPayload(ctx) {
   return {
     evidence: selectPromptEvidence(ctx).map(compactEvidenceRecord),
-    candidates: ctx.candidates.map(({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres }) => ({ id, title, type, domains, about, hypotheses, provider, providerId, year, genres })),
+    // The model ranks candidates; it does not need provider ids or validation-only hypothesis fields.
+    // Keep synopsis copy short so input processing stays bounded without removing the useful premise.
+    candidates: ctx.candidates.map(({ id, title, type, domains, about, year, genres }) => ({
+      id, title, type, domains,
+      about: typeof about === "string" ? about.slice(0, 220) : about,
+      year,
+      genres: (genres ?? []).slice(0, 8)
+    })),
     curveball: ctx.curveball,
     statements: ctx.statements,
     contexts: ctx.contexts
@@ -154,7 +161,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
   return [
     "You are the recommendation interpreter inside Tastemake.",
     "The product, not you, decides what is evidence, which candidates are eligible, and what state may change.",
-    `Choose exactly ${count} items from candidates and return JSON only in this shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."],"tests":null,"kind":"pick"}]}.`,
+    `Choose exactly ${count} items from candidates and return JSON only in this compact shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."]}],"curveballItemId":null}. If you choose one exploratory pick, replace null with that candidate itemId string. Software adds validation-only fields after you respond.`,
     // Real report (2026-09-28): with the domain filter set to "All", one real request returned 5/6
     // picks from a single domain (games), and the very next returned 6/6 from a different single
     // domain (movies) -- candidate retrieval already interleaves a mixed pool across domains, but
@@ -178,7 +185,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     "Across the final set, vary the concrete reason for each pick and avoid repeating the same opening phrase or sentence template. Treat dislikes as useful counterexamples, not the user's defining taste: prefer positive evidence as the main anchor, use a negative only when it adds specific contrast, and never center more than one pick on the same disliked item.",
     "User-facing explanations must say why the pick may fit the person, not how retrieval found it. Never mention providers, catalog branches/paths/neighbors/signals, metadata, similarity scores, embeddings, retrieval provenance, or raw overlap counts. A disliked item may only appear as explicit contrast, never as the positive reason a pick fits.",
     "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. Use them as item-local context, not as standalone evidence or a global preference unless multiple independent experienced items support that broader pattern.",
-    "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; today's real catalog candidates carry no attached hypothesis ids at all, so tests must always be null -- never invent or reuse a hypothesis id from elsewhere in this context, since it will not be attached to the candidate and will fail; never use a tests pattern the user marked not-me; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; at most one curveball, and none when curveball is false; explain what the pick tests in specific plain English, in one sentence of 25 words or fewer; internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; call a pick a curveball, in kind or in why, only for that one exploratory pick, and set kind to \"curveball\" whenever why calls it one — every other pick keeps kind \"pick\" and its why should not describe itself as a curveball.",
+    "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; never cite intent-only evidence as support; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; explain why the pick may fit in specific plain English, in one sentence of 14 words or fewer; internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; if curveball is true you may choose at most one exploratory pick by putting only its itemId in curveballItemId, otherwise use null; if curveball is false curveballItemId must be null; do not write the word curveball in why.",
     "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
   ].join("\n\n");
 }
@@ -261,7 +268,17 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
         // No `temperature`: newer models reject it ("temperature is deprecated for this model"), which
         // failed every live call with 400 invalid_request_error. Runs are therefore not bit-identical;
         // eval comparisons allow for that (docs/ai-evals.md).
-        messages: [{ role: "user", content: prompt }]
+        system: [{
+          type: "text",
+          text: prompt.includes("\n\nCONTEXT\n") ? prompt.split("\n\nCONTEXT\n", 1)[0] : prompt,
+          cache_control: { type: "ephemeral" }
+        }],
+        messages: [{
+          role: "user",
+          content: prompt.includes("\n\nCONTEXT\n")
+            ? `CONTEXT\n${prompt.slice(prompt.indexOf("\n\nCONTEXT\n") + "\n\nCONTEXT\n".length)}`
+            : prompt
+        }]
       }),
       signal: controller.signal
     });
@@ -479,7 +496,18 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     });
 
     started = Date.now();
-    const validated = validatePicks(model.json, promptCtx);
+    const compact = model.json;
+    const normalizedModel = compact && Array.isArray(compact.picks)
+      ? {
+          ...compact,
+          picks: compact.picks.map((pick) => ({
+            ...pick,
+            tests: pick.tests ?? null,
+            kind: pick.kind ?? (compact.curveballItemId && pick.itemId === compact.curveballItemId ? "curveball" : "pick")
+          }))
+        }
+      : compact;
+    const validated = validatePicks(normalizedModel, promptCtx);
     // #120/QA-sweep follow-up (Paige's explicit call, 2026-09-28): this used to require every
     // candidate offered (up to 6) to individually pass validation, or the whole batch fell back to
     // catalog picks -- one flawed pick discarded five good ones, and #148's logging confirmed this
