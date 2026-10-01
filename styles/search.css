@@ -239,3 +239,18 @@
   .search-artwork { width:46px; height:62px; }
   .search-status { grid-column:2; justify-self:start; }
 }
+
+.search-favorite-row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0 0 14px;
+}
+.search-favorite-row > span {
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.35;
+}
+.search-reaction-start,
+.search-reaction-complete { margin-top:4px; }
+.search-feedback-step { margin-top:10px; }
