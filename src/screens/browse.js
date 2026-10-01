@@ -5,20 +5,80 @@ import { displayLabel } from "../data/domains.js";
 import { itemStatus } from "../model/search.js";
 import { browseReadyForRecommendations } from "../model/browse.js";
 import { esc } from "../lib/html.js";
+import { pathForFeedback } from "../model/reaction-flow.js";
 
-function actionButton(item, action, label, pressed) {
-  return `<button type="button" class="browse-action" data-browse-action="${action}" data-browse-item="${item.id}" aria-pressed="${pressed}">${label}</button>`;
+function favoriteToggle(itemId) {
+  const isFavorite = state.onboarded ? state.libraryFavorites.has(itemId) : state.selectedFavorites.has(itemId);
+  const label = isFavorite ? "Remove from Favorites" : "Add to Favorites";
+  return `
+    <button
+      class="rec-favorite-star ${isFavorite ? "is-favorite" : ""}"
+      type="button"
+      data-rec-favorite="${itemId}"
+      aria-label="${label}"
+      title="${label}"
+      aria-pressed="${isFavorite}"
+    ><span aria-hidden="true">${isFavorite ? "★" : "☆"}</span></button>`;
+}
+
+function experienceButton(itemId, value, label, pressed) {
+  return `
+    <button
+      class="rating-button experience-button"
+      type="button"
+      data-feedback-item="${itemId}"
+      data-experience-path="${value}"
+      aria-pressed="${pressed}"
+    ><span>${label}</span></button>`;
+}
+
+function outcomeButton(itemId, value, label, pressed = false) {
+  return `
+    <button
+      class="detail-chip outcome-chip"
+      type="button"
+      data-feedback-item="${itemId}"
+      data-experience-outcome="${value}"
+      aria-pressed="${pressed}"
+    >${label}</button>`;
+}
+
+function feedbackPanel(item, feedback) {
+  const path = state.recommendationExperienceChoice[item.id] ?? pathForFeedback(feedback);
+  if (state.recommendationFeedbackItemId !== item.id || !path) return "";
+
+  return `
+    <div class="rec-feedback-popover browse-feedback-popover" role="dialog" aria-modal="false" aria-label="Feedback for ${esc(item.title)}">
+      <div class="rec-feedback-popover-head">
+        <div>
+          <span class="rec-feedback-kicker">${path === "tried" ? "Tried it" : "Not tried"}</span>
+          <strong>${esc(item.title)}</strong>
+        </div>
+        <button type="button" class="rec-feedback-close" data-feedback-close="${item.id}" aria-label="Close feedback">×</button>
+      </div>
+      <div class="feedback-details experience-outcomes">
+        <span class="feedback-detail-prompt">${path === "tried" ? "How did it land?" : "Want to keep it around?"}</span>
+        <div class="detail-chip-row" role="group" aria-label="${path === "tried" ? "How did it land?" : "What do you want to do with this untried item?"}">
+          ${path === "tried"
+            ? `${outcomeButton(item.id, "loved", "Loved it", feedback?.detail === "loved-before")}
+               ${outcomeButton(item.id, "liked", "Liked it", feedback?.detail === "liked-before")}
+               ${outcomeButton(item.id, "disliked", "Didn’t like it", feedback?.detail === "tried-disliked")}`
+            : `${outcomeButton(item.id, "save", "Save", feedback?.detail === "bookmarked")}
+               ${outcomeButton(item.id, "not-interested", "Not interested", feedback?.detail === "not-interested")}`}
+        </div>
+      </div>
+    </div>`;
 }
 
 function browseCard(item) {
   const status = itemStatus(state, item);
-  const favorite = state.onboarded ? state.libraryFavorites.has(item.id) : state.selectedFavorites.has(item.id);
   const feedback = state.feedbackByRecommendation[item.id];
-  const loved = status.key === "loved" || favorite;
+  const starterFavorite = !state.onboarded && state.selectedFavorites.has(item.id);
+  const path = state.recommendationExperienceChoice[item.id] ?? pathForFeedback(feedback);
   const meta = [displayLabel(item), item.year, item.by].filter(Boolean).join(" · ");
 
   return `
-    <article class="browse-card" data-browse-card="${item.id}">
+    <article class="browse-card ${feedback ? "is-rated" : ""}" data-browse-card="${item.id}" data-rec-id="${item.id}">
       ${renderArtwork(item, "browse-artwork")}
       <div class="browse-card-copy">
         <div class="browse-card-head">
@@ -26,35 +86,29 @@ function browseCard(item) {
             <h3>${esc(item.title)}</h3>
             <p class="browse-meta">${esc(meta)}</p>
           </div>
-          ${status.key !== "none" ? `<span class="browse-status is-${status.key}">${esc(status.label)}</span>` : ""}
+          ${favoriteToggle(item.id)}
         </div>
         <p class="browse-about">${esc(item.about ?? "")}</p>
 
-        ${favorite ? `
-          <p class="browse-favorite-note">This is one of your Favorites. Remove it from Favorites first if you want to change your reaction.</p>
-        ` : `
-          <div class="browse-reactions">
-            <div class="browse-reaction-group" role="group" aria-label="I've tried ${esc(item.title)}">
-              <span>I've tried it</span>
-              ${actionButton(item, "loved", "Loved it", status.key === "loved")}
-              ${actionButton(item, "liked", "Liked it", status.key === "liked")}
-              ${actionButton(item, "disliked", "Didn't like it", status.key === "disliked")}
+        ${starterFavorite ? `
+          <div class="reaction-complete">
+            <span>Favorite</span>
+          </div>`
+        : feedback ? `
+          <div class="reaction-complete">
+            <span>${esc(status.label)}</span>
+            <button class="button button-quiet reaction-change" type="button" data-feedback-edit="${item.id}">Change</button>
+          </div>`
+        : `
+          <div class="rec-interaction">
+            <div class="reaction-question">Have you tried it?</div>
+            <div class="reaction-rail reaction-rail-binary" aria-label="Have you tried ${esc(item.title)}?">
+              ${experienceButton(item.id, "tried", "Tried it", path === "tried")}
+              ${experienceButton(item.id, "not-tried", "Not tried", path === "not-tried")}
             </div>
-            <div class="browse-reaction-group" role="group" aria-label="I haven't tried ${esc(item.title)}">
-              <span>I haven't tried it</span>
-              ${actionButton(item, "bookmark", "Save", status.key === "bookmarked")}
-              ${actionButton(item, "not-interested", "Not interested", status.key === "not-interested")}
-            </div>
-          </div>
-        `}
+          </div>`}
 
-        ${loved ? `
-          <div class="browse-favorite-row">
-            <button type="button" class="button ${favorite ? "button-quiet" : "button-secondary"} browse-favorite" data-browse-favorite="${favorite ? "remove" : "add"}" data-browse-item="${item.id}" aria-pressed="${favorite}">
-              ${favorite ? "★ Favorite" : "☆ Add to Favorites"}
-            </button>
-            <span>Favorites are the things you love most.</span>
-          </div>` : ""}
+        ${feedbackPanel(item, feedback)}
       </div>
     </article>`;
 }

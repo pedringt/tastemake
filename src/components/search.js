@@ -23,7 +23,7 @@ export function initSearch({ onChange, announce, goTo }) {
   const opener = document.querySelector("#open-search");
   if (!dialog || !input || !view || !opener || typeof dialog.showModal !== "function") return;
 
-  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" };
+  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" };
   let catalogTimer = null;
   let catalogController = null;
   let catalogSeq = 0;
@@ -127,8 +127,14 @@ export function initSearch({ onChange, announce, goTo }) {
     return `${list}<p class="search-add-row"><button type="button" class="button button-quiet" data-search-add>${addLabel}</button></p>`;
   }
 
-  function actionButton(item, action, label, pressed) {
-    return `<button type="button" class="button button-secondary search-action" data-search-action="${action}" aria-pressed="${pressed}">${label}</button>`;
+  function outcomeButton(action, label, pressed) {
+    return `<button type="button" class="detail-chip outcome-chip search-outcome" data-search-outcome="${action}" aria-pressed="${pressed}">${label}</button>`;
+  }
+
+  function pathForStatus(status) {
+    if (["loved", "liked", "disliked"].includes(status.key)) return "tried";
+    if (["bookmarked", "not-interested"].includes(status.key)) return "not-tried";
+    return null;
   }
 
   function sheetHTML(item) {
@@ -170,28 +176,52 @@ export function initSearch({ onChange, announce, goTo }) {
         <p><button type="button" class="button button-primary" data-search-close>Done adding favorites</button></p>`;
     }
 
-    const on = (key) => status.key === key;
+    const favorite = state.libraryFavorites.has(item.id);
+    const hasReaction = status.key !== "none";
+    const path = ui.experiencePath;
+    const feedbackChoices = path ? `
+      <div class="feedback-details experience-outcomes search-feedback-step">
+        <span class="feedback-detail-prompt">${path === "tried" ? "How did it land?" : "Want to keep it around?"}</span>
+        <div class="detail-chip-row" role="group" aria-label="${path === "tried" ? "How did it land?" : "What do you want to do with this untried item?"}">
+          ${path === "tried"
+            ? `${outcomeButton("loved", "Loved it", status.key === "loved")}
+               ${outcomeButton("liked", "Liked it", status.key === "liked")}
+               ${outcomeButton("disliked", "Didn’t like it", status.key === "disliked")}`
+            : `${outcomeButton("bookmark", "Save", status.key === "bookmarked")}
+               ${outcomeButton("not-interested", "Not interested", status.key === "not-interested")}`}
+        </div>
+      </div>` : "";
+
     return `${head}
-      <div class="search-groups">
-        <div class="search-group" role="group" aria-label="I've tried it">
-          <span class="search-group-label">I've tried it</span>
-          ${actionButton(item, "loved", "Loved it", on("loved"))}
-          ${actionButton(item, "liked", "Liked it", on("liked"))}
-          ${actionButton(item, "disliked", "Didn't like it", on("disliked"))}
-        </div>
-        <div class="search-group" role="group" aria-label="I haven't tried it">
-          <span class="search-group-label">I haven't tried it</span>
-          ${actionButton(item, "bookmark", "Saved", on("bookmarked"))}
-          ${actionButton(item, "not-interested", "Not interested", on("not-interested"))}
-        </div>
+      <div class="search-favorite-row">
+        <button
+          type="button"
+          class="rec-favorite-star ${favorite ? "is-favorite" : ""} search-action"
+          data-search-action="${favorite ? "unfavorite" : "favorite"}"
+          aria-label="${favorite ? "Remove from Favorites" : "Add to Favorites"}"
+          title="${favorite ? "Remove from Favorites" : "Add to Favorites"}"
+          aria-pressed="${favorite}"
+        ><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>
+        <span>Favorites are automatically marked Tried · Loved.</span>
       </div>
+
+      ${hasReaction && ui.experiencePath === null
+        ? `<div class="reaction-complete search-reaction-complete">
+            <span>${esc(status.label)}</span>
+            <button class="button button-quiet reaction-change" type="button" data-search-edit>Change</button>
+          </div>`
+        : `<div class="rec-interaction search-reaction-start">
+            <div class="reaction-question">Have you tried it?</div>
+            <div class="reaction-rail reaction-rail-binary" aria-label="Have you tried ${esc(item.title)}?">
+              <button class="rating-button experience-button" type="button" data-search-path="tried" aria-pressed="${path === "tried"}"><span>Tried it</span></button>
+              <button class="rating-button experience-button" type="button" data-search-path="not-tried" aria-pressed="${path === "not-tried"}"><span>Not tried</span></button>
+            </div>
+          </div>`}
+      ${feedbackChoices}
       <div class="search-extra">
-        ${status.key === "loved"
-          ? `<button type="button" class="button ${state.libraryFavorites.has(item.id) ? "button-quiet" : "button-primary"} search-action" data-search-action="${state.libraryFavorites.has(item.id) ? "unfavorite" : "favorite"}">${state.libraryFavorites.has(item.id) ? "Remove from Favorites" : "Add to Favorites"}</button>`
-          : ""}
-        ${status.key !== "none" ? `<button type="button" class="button button-quiet search-action" data-search-action="remove">Remove from Tastemake</button>` : ""}
+        ${hasReaction ? `<button type="button" class="button button-quiet search-action" data-search-action="remove">Remove from Tastemake</button>` : ""}
       </div>
-      <p class="search-note">Choose an action only when you want to save or react to this.</p>
+      <p class="search-note">Searching never changes your taste. Only the choices you make here do.</p>
       <p><button type="button" class="button button-primary" data-search-close>Done</button></p>`;
   }
 
@@ -244,7 +274,7 @@ export function initSearch({ onChange, announce, goTo }) {
   }
 
   function open() {
-    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" });
+    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" });
     input.value = "";
     syncFilters();
     render();
@@ -347,6 +377,7 @@ export function initSearch({ onChange, announce, goTo }) {
       ui.catalogLoading = false;
       ui.mode = "sheet";
       ui.itemId = pick.dataset.searchPick;
+      ui.experiencePath = null;
       render();
       focus("#search-sheet-title");
       return;
@@ -355,6 +386,7 @@ export function initSearch({ onChange, announce, goTo }) {
     if (event.target.closest("[data-search-back]")) {
       const from = ui.itemId;
       ui.mode = "results";
+      ui.experiencePath = null;
       render();
       if (!(from && focus(`[data-search-pick="${from}"]`))) input.focus();
       return;
@@ -404,6 +436,38 @@ export function initSearch({ onChange, announce, goTo }) {
       render();
       if (item.custom && !item.provider) void resolveAddedItem(state.customItems[item.id] ?? item);
       input.focus();
+      return;
+    }
+
+    const searchEdit = event.target.closest("[data-search-edit]");
+    if (searchEdit) {
+      const item = itemById(ui.itemId);
+      if (!item) return;
+      ui.experiencePath = pathForStatus(itemStatus(state, item)) ?? "tried";
+      render();
+      focus(`[data-search-path="${ui.experiencePath}"]`);
+      return;
+    }
+
+    const searchPath = event.target.closest("[data-search-path]");
+    if (searchPath) {
+      ui.experiencePath = searchPath.dataset.searchPath;
+      render();
+      focus("[data-search-outcome]");
+      return;
+    }
+
+    const searchOutcome = event.target.closest("[data-search-outcome]");
+    if (searchOutcome) {
+      const item = itemById(ui.itemId);
+      if (!item) return;
+      const action = searchOutcome.dataset.searchOutcome;
+      const message = applySearchAction(state, item, action);
+      if (message) onChange(message);
+      if (message && item.custom && !item.provider) void resolveAddedItem(state.customItems[item.id] ?? item);
+      ui.experiencePath = null;
+      render();
+      focus("#search-sheet-title");
       return;
     }
 

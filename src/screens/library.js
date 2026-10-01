@@ -77,12 +77,28 @@ function savedCard(feedback) {
         <div class="library-detail-meta-slot" data-detail-slot="${item.id}">${renderDetailMeta(item)}</div>
         <p class="library-blurb">${esc(item.about ?? item.note ?? "")}</p>
         ${item.reason ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${esc(item.reason)}</p>` : ""}
-        <div class="bookmark-actions" role="group" aria-label="Tried ${esc(item.title)}?">
-          <span class="bookmark-actions-label">Tried it?</span>
-          ${action("tried-loved", "Loved it")}
-          ${action("tried-liked", "Liked it")}
-          ${action("tried-disliked", "Didn't like it")}
-          ${action("remove", "Remove", "button button-quiet")}
+        <div class="library-favorite-row">
+          <button
+            class="rec-favorite-star library-action"
+            type="button"
+            data-library-item="${item.id}"
+            data-library-action="favorite"
+            aria-label="Add to Favorites"
+            title="Add to Favorites"
+            aria-pressed="false"
+          ><span aria-hidden="true">☆</span></button>
+          <span>Favorite marks this Tried · Loved automatically.</span>
+        </div>
+        <details class="library-reaction-edit library-saved-tried">
+          <summary>Tried it</summary>
+          <div class="library-reaction-options" role="group" aria-label="How did ${esc(item.title)} land?">
+            ${action("tried-loved", "Loved it")}
+            ${action("tried-liked", "Liked it")}
+            ${action("tried-disliked", "Didn't like it")}
+          </div>
+        </details>
+        <div class="bookmark-actions">
+          ${action("remove", "Remove from Saved", "button button-quiet")}
         </div>
       </div>
     </details>`;
@@ -129,9 +145,18 @@ function triedCard(entry) {
           </div>
         </details>
       </div>
-      ${source === "loved"
-        ? `<div class="library-secondary"><button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="${entry.isFavorite ? "unfavorite" : "favorite"}">${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}</button></div>`
-        : ""}`
+      <div class="library-favorite-row">
+        <button
+          class="rec-favorite-star library-action ${entry.isFavorite ? "is-favorite" : ""}"
+          type="button"
+          data-library-item="${id}"
+          data-library-action="${entry.isFavorite ? "unfavorite" : "favorite"}"
+          aria-label="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
+          title="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
+          aria-pressed="${entry.isFavorite}"
+        ><span aria-hidden="true">${entry.isFavorite ? "★" : "☆"}</span></button>
+        <span>${entry.isFavorite ? "Favorite" : "Favorite marks this Tried · Loved."}</span>
+      </div>`
     : `
       <div class="library-starter-actions">
         <button class="button button-quiet" type="button" data-starter-replace="${id}">Replace</button>
@@ -185,6 +210,7 @@ function dislikedBlock(items) {
             <div class="library-disliked-row">
               <span>${esc(item.title)} <em>${esc(displayLabel(item))}</em></span>
               <span class="library-restore" role="group" aria-label="Correct ${esc(item.title)}">
+                <button class="rec-favorite-star library-action" type="button" data-library-item="${id}" data-library-action="favorite" aria-label="Add to Favorites" title="Add to Favorites" aria-pressed="false"><span aria-hidden="true">☆</span></button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="liked">Actually, I liked it</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>
               </span>

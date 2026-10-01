@@ -43,7 +43,12 @@ export function saveLibraryAction(itemId, action) {
   if (!existing) return false;
 
   if (action === "favorite") {
-    if (!isStrongPositive(existing)) return false;
+    const previousPolarity = refinablePolarity(existing);
+    const wasBookmarked = isBookmarked(existing);
+    existing.rating = "more";
+    existing.detail = "loved-before";
+    existing.wasBookmarked = Boolean(existing.wasBookmarked || wasBookmarked);
+    clearInvalidRefinements(existing, previousPolarity);
     state.libraryFavorites.add(itemId);
     return true;
   }

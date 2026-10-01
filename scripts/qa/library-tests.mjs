@@ -112,10 +112,20 @@ saveLibraryAction(lovedItem.id, "disliked");
 check("correcting to 'disliked' clears Favorite (no Disliked+Favorite state)", !state5.libraryFavorites.has(lovedItem.id));
 check("it no longer counts as a positive experience", !isPositiveExperience(state5.feedbackByRecommendation[lovedItem.id]));
 
-// Favorite can never be set directly on a merely-liked (not loved) or untried item.
+// Favorite is a deliberate shortcut for “I tried this and loved it,” even when correcting
+// a weaker prior reaction or promoting something that was only Saved.
 const likedItem = { id: "tmdb-movie-3", title: "Liked Thing", type: "movie", domains: ["movies"] };
 state5.feedbackByRecommendation[likedItem.id] = { item: likedItem, rating: "more", detail: "liked-before" };
-check("favoriting a merely-liked (not loved) item is refused", !saveLibraryAction(likedItem.id, "favorite"));
+check("favoriting a merely-liked item succeeds", saveLibraryAction(likedItem.id, "favorite"));
+check("favoriting promotes merely-liked to Loved", isStrongPositive(state5.feedbackByRecommendation[likedItem.id]));
+check("favoriting adds durable Favorite flag", state5.libraryFavorites.has(likedItem.id));
+
+const promotedSavedItem = { id: "tmdb-movie-saved", title: "Saved Thing", type: "movie", domains: ["movies"] };
+state5.feedbackByRecommendation[promotedSavedItem.id] = { item: promotedSavedItem, rating: "not-tried", detail: "bookmarked" };
+check("favoriting a Saved item succeeds", saveLibraryAction(promotedSavedItem.id, "favorite"));
+check("favoriting Saved records Loved", isStrongPositive(state5.feedbackByRecommendation[promotedSavedItem.id]));
+check("favoriting Saved remembers that it was bookmarked", state5.feedbackByRecommendation[promotedSavedItem.id].wasBookmarked === true);
+check("favoriting Saved adds durable Favorite flag", state5.libraryFavorites.has(promotedSavedItem.id));
 
 // Recommendation-card Favorite is shorthand for “I know this and love it.”
 {

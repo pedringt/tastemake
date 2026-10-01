@@ -19,7 +19,8 @@ export function toggleExpandedFeedback(itemId) {
 }
 
 export function saveQuickFeedback(itemId, rating) {
-  const item = activeRecommendations(state).find((rec) => rec.id === itemId);
+  const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.browseItems.find((candidate) => candidate.id === itemId);
   if (!item) return false;
 
   const existing = state.feedbackByRecommendation[itemId];
@@ -45,16 +46,31 @@ export function saveQuickFeedback(itemId, rating) {
 
 export function chooseExperiencePath(itemId, path) {
   if (!["tried", "not-tried"].includes(path)) return false;
-  const item = activeRecommendations(state).find((rec) => rec.id === itemId);
+  const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.browseItems.find((candidate) => candidate.id === itemId)
+    ?? state.feedbackByRecommendation[itemId]?.item;
   if (!item) return false;
   state.recommendationExperienceChoice[itemId] = path;
   return true;
 }
 
 export function setRecommendationFavorite(itemId, makeFavorite) {
+  const browseItem = state.browseItems.find((candidate) => candidate.id === itemId);
   const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? browseItem
     ?? state.feedbackByRecommendation[itemId]?.item;
   if (!item) return false;
+
+  if (!state.onboarded && browseItem) {
+    if (makeFavorite) {
+      if (item.custom || item.provider) state.customItems[item.id] = item;
+      state.selectedFavorites.add(itemId);
+      state.recommendationExperienceChoice[itemId] = "tried";
+    } else {
+      state.selectedFavorites.delete(itemId);
+    }
+    return true;
+  }
 
   if (!makeFavorite) {
     state.libraryFavorites.delete(itemId);
@@ -80,6 +96,7 @@ export function setRecommendationFavorite(itemId, makeFavorite) {
 
 export function saveExperienceOutcome(itemId, outcome) {
   const item = activeRecommendations(state).find((rec) => rec.id === itemId)
+    ?? state.browseItems.find((candidate) => candidate.id === itemId)
     ?? state.feedbackByRecommendation[itemId]?.item;
   if (!item) return false;
 
