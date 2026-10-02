@@ -1,20 +1,32 @@
-// Movie and TV genre chips share TMDb's genre taxonomy (each entry carries both a movie and a tv
-// genre id, one of which may be null where TMDb has no equivalent on that side), so both domains
-// browse from the same WATCH_GENRES list -- only the discover query (browse.mjs) picks movie vs tv.
-const WATCH_GENRES = [
-  { id: "drama", label: "Drama", provider: { kind: "genre", movie: 18, tv: 18 } },
-  { id: "comedy", label: "Comedy", provider: { kind: "genre", movie: 35, tv: 35 } },
-  { id: "horror", label: "Horror", provider: { kind: "genre", movie: 27, tv: 9648 } },
-  { id: "sci-fi", label: "Sci-fi", provider: { kind: "genre", movie: 878, tv: 10765 } },
-  { id: "fantasy", label: "Fantasy", provider: { kind: "genre", movie: 14, tv: 10765 } },
-  { id: "thriller", label: "Thriller", provider: { kind: "genre", movie: 53, tv: 9648 } },
-  { id: "documentary", label: "Documentary", provider: { kind: "genre", movie: 99, tv: 99 } },
-  { id: "animation", label: "Animation", provider: { kind: "genre", movie: 16, tv: 16 } }
+const MOVIE_GENRES = [
+  { id: "drama", label: "Drama", provider: { kind: "genre", movie: 18 } },
+  { id: "comedy", label: "Comedy", provider: { kind: "genre", movie: 35 } },
+  { id: "horror", label: "Horror", provider: { kind: "genre", movie: 27 } },
+  { id: "sci-fi", label: "Sci-fi", provider: { kind: "genre", movie: 878 } },
+  { id: "fantasy", label: "Fantasy", provider: { kind: "genre", movie: 14 } },
+  { id: "thriller", label: "Thriller", provider: { kind: "genre", movie: 53 } },
+  { id: "documentary", label: "Documentary", provider: { kind: "genre", movie: 99 } },
+  { id: "animation", label: "Animation", provider: { kind: "genre", movie: 16 } }
+];
+
+// TMDb does not expose dedicated Horror or Thriller TV genre ids. Treating both as Mystery
+// made the two Browse filters identical and admitted crime procedurals such as Law & Order.
+// Resolve those two labels through TMDb keywords instead; the remaining TV filters use the
+// provider's real TV genre taxonomy.
+const TV_GENRES = [
+  { id: "drama", label: "Drama", provider: { kind: "genre", tv: 18 } },
+  { id: "comedy", label: "Comedy", provider: { kind: "genre", tv: 35 } },
+  { id: "horror", label: "Horror", provider: { kind: "keyword", value: "horror" } },
+  { id: "sci-fi", label: "Sci-fi", provider: { kind: "genre", tv: 10765 } },
+  { id: "fantasy", label: "Fantasy", provider: { kind: "genre", tv: 10765 } },
+  { id: "thriller", label: "Thriller", provider: { kind: "keyword", value: "thriller" } },
+  { id: "documentary", label: "Documentary", provider: { kind: "genre", tv: 99 } },
+  { id: "animation", label: "Animation", provider: { kind: "genre", tv: 16 } }
 ];
 
 export const BROWSE_GENRES = {
-  movies: WATCH_GENRES,
-  tv: WATCH_GENRES,
+  movies: MOVIE_GENRES,
+  tv: TV_GENRES,
   read: [
     { id: "fantasy", label: "Fantasy", provider: { kind: "subject", value: "fantasy" } },
     { id: "sci-fi", label: "Sci-fi", provider: { kind: "subject", value: "science_fiction" } },
