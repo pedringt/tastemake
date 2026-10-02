@@ -42,7 +42,9 @@ async function browsePlay(genre, page, env, fetchImpl) {
     ? `where genres = (${Number(genre.provider.value)});`
     : genre.provider.kind === "theme"
       ? `where themes = (${Number(genre.provider.value)});`
-      : `search "${String(genre.provider.value).replace(/"/g, "")}";`;
+      : genre.provider.kind === "where"
+        ? `where ${String(genre.provider.value).replace(/;/g, "")};`
+        : `search "${String(genre.provider.value).replace(/"/g, "")}";`;
   const sort = genre.provider.kind === "search" ? "" : "sort total_rating_count desc;";
   const response = await fetchImpl("https://api.igdb.com/v4/games", {
     method: "POST",
