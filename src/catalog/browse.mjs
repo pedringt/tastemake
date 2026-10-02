@@ -112,27 +112,41 @@ async function browsePlay(genre, page, env, fetchImpl) {
   const { where } = igdbMetadataFilter(provider, taxonomy);
   if (!where) return { items: [], configured: true, hasMore: false };
 
-  // Pull a wider candidate page for curated categories, then apply stricter metadata rules locally.
-  // Provider discovery stays broad enough to find candidates, while the user-facing category favors
-  // precision over admitting a game because of one incidental theme or genre tag.
+  // Curated categories can be much narrower than IGDB's discovery query. Build pages from
+  // qualifying results rather than from raw candidate pages so users do not see 1 item, then 7,
+  // then an empty page even though more matching games exist farther down the provider results.
   const candidateLimit = BROWSE_PAGE_SIZE * 3;
-  const offset = (page - 1) * candidateLimit;
-  const response = await fetchImpl("https://api.igdb.com/v4/games", {
-    method: "POST",
-    headers: {
-      "client-id": env.IGDB_CLIENT_ID,
-      authorization: `Bearer ${token}`,
-      "content-type": "text/plain"
-    },
-    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.id,themes.name,collection.id,franchises.id,total_rating_count; ${where} sort total_rating_count desc; limit ${candidateLimit}; offset ${offset};`
-  });
-  if (!response.ok) throw new Error("igdb browse unavailable");
-  const rows = await response.json();
-  const filtered = rows.filter((row) => matchesRequiredMetadata(row, provider));
+  const targetStart = (page - 1) * BROWSE_PAGE_SIZE;
+  const targetEnd = targetStart + BROWSE_PAGE_SIZE;
+  const maxBatches = 10;
+  const qualifying = [];
+  let offset = 0;
+  let exhausted = false;
+
+  for (let batch = 0; batch < maxBatches && qualifying.length < targetEnd; batch += 1) {
+    const response = await fetchImpl("https://api.igdb.com/v4/games", {
+      method: "POST",
+      headers: {
+        "client-id": env.IGDB_CLIENT_ID,
+        authorization: `Bearer ${token}`,
+        "content-type": "text/plain"
+      },
+      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.id,themes.name,collection.id,franchises.id,total_rating_count; ${where} sort total_rating_count desc; limit ${candidateLimit}; offset ${offset};`
+    });
+    if (!response.ok) throw new Error("igdb browse unavailable");
+    const rows = await response.json();
+    qualifying.push(...rows.filter((row) => matchesRequiredMetadata(row, provider)));
+    if (rows.length < candidateLimit) {
+      exhausted = true;
+      break;
+    }
+    offset += candidateLimit;
+  }
+
   return {
-    items: filtered.slice(0, BROWSE_PAGE_SIZE).map(igdbItem),
+    items: qualifying.slice(targetStart, targetEnd).map(igdbItem),
     configured: true,
-    hasMore: rows.length >= candidateLimit
+    hasMore: qualifying.length > targetEnd || (!exhausted && qualifying.length >= targetEnd)
   };
 }
 
