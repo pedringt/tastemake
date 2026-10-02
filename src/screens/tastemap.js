@@ -1,5 +1,4 @@
 import { nodeLayout } from "../model/tastemap.js";
-import { statementFor } from "../model/statements.js";
 import { domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 
@@ -42,9 +41,8 @@ export function renderTasteMap(patterns = []) {
   const layout = nodeLayout(patterns.length);
   const links = mapLinks(patterns);
   const nodes = patterns.map((pattern, index) => {
-    const said = statementFor({ patternStatements: [] }, pattern.id);
     const status = String(pattern.strength ?? "Emerging");
-    const note = pattern.status === "conditional" ? "Conditional" : said?.says === "accurate" ? "Confirmed by you" : "";
+    const note = pattern.status === "conditional" ? "Conditional" : "";
     return `
       <div class="taste-map-node look-${status.toLowerCase() === "strong" ? "firm" : "tentative"}"
         style="left:${layout[index].x}%;top:${layout[index].y}%">
