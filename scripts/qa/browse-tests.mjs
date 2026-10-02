@@ -18,8 +18,10 @@ eq("Browse exposes Movies / TV / Read / Play", BROWSE_DOMAINS.map((x) => x.id).j
 check("every Browse domain has genres", BROWSE_DOMAINS.every((domain) => browseGenresFor(domain.id).length >= 8));
 eq("Movies Horror maps to the TMDb movie genre", browseGenreById("movies", "horror")?.provider?.movie, 27);
 eq("TV Sci-fi maps to TMDb's separate TV genre", browseGenreById("tv", "sci-fi")?.provider?.tv, 10765);
-check("TV Horror has a usable TV provider category", Boolean(browseGenreById("tv", "horror")?.provider?.tv));
-check("TV Thriller has a usable TV provider category", Boolean(browseGenreById("tv", "thriller")?.provider?.tv));
+eq("TV Horror uses keyword discovery instead of Mystery", browseGenreById("tv", "horror")?.provider?.kind, "keyword");
+eq("TV Horror resolves the horror keyword", browseGenreById("tv", "horror")?.provider?.value, "horror");
+eq("TV Thriller uses keyword discovery instead of Mystery", browseGenreById("tv", "thriller")?.provider?.kind, "keyword");
+eq("TV Thriller resolves a distinct keyword", browseGenreById("tv", "thriller")?.provider?.value, "thriller");
 eq("Play Horror maps to the provider horror theme", browseGenreById("play", "horror")?.provider?.value, 19);
 eq("Play Cozy uses category filtering instead of literal title search", browseGenreById("play", "cozy")?.provider?.kind, "where");
 
@@ -57,14 +59,35 @@ check("TV Browse keeps provider identities", tv.items.every((x) => x.provider ==
 
 const tvHorrorFetch = async (url) => {
   const u = String(url);
+  if (u.includes("/search/keyword")) {
+    check("TV Horror searches the horror keyword", u.includes("query=horror"), u);
+    return { ok: true, json: async () => ({ results: [{ id: 8087, name: "horror" }] }) };
+  }
   if (u.includes("/discover/tv")) {
-    check("TV Horror does not send an empty genre", !u.includes("with_genres=null"), u);
-    return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: 300 + i, name: `Horror Show ${i + 1}`, first_air_date: "2022-01-01", genre_ids: [9648] })) }) };
+    check("TV Horror discovers by keyword", u.includes("with_keywords=8087"), u);
+    check("TV Horror no longer aliases Mystery", !u.includes("with_genres=9648"), u);
+    return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: 300 + i, name: `Horror Show ${i + 1}`, first_air_date: "2022-01-01", genre_ids: [] })) }) };
   }
   throw new Error(`unexpected tv horror URL: ${u}`);
 };
 const tvHorror = await browseCatalog({ domain: "tv", genreId: "horror", page: 1, env, fetchImpl: tvHorrorFetch });
 eq("TV Horror Browse returns shows", tvHorror.items[0]?.type, "tv");
+
+const tvThrillerFetch = async (url) => {
+  const u = String(url);
+  if (u.includes("/search/keyword")) {
+    check("TV Thriller searches a different keyword", u.includes("query=thriller"), u);
+    return { ok: true, json: async () => ({ results: [{ id: 9937, name: "thriller" }] }) };
+  }
+  if (u.includes("/discover/tv")) {
+    check("TV Thriller discovers by its own keyword", u.includes("with_keywords=9937"), u);
+    check("TV Thriller stays distinct from Horror", !u.includes("with_keywords=8087"), u);
+    return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: 500 + i, name: `Thriller Show ${i + 1}`, first_air_date: "2023-01-01", genre_ids: [] })) }) };
+  }
+  throw new Error(`unexpected tv thriller URL: ${u}`);
+};
+const tvThriller = await browseCatalog({ domain: "tv", genreId: "thriller", page: 1, env, fetchImpl: tvThrillerFetch });
+eq("TV Thriller Browse returns shows", tvThriller.items[0]?.type, "tv");
 
 const readFetch = async (url) => {
   const u = String(url);
