@@ -302,7 +302,15 @@ export function renderProfile() {
         </div>
       </div>
 
-            ${liveProfile ? (
+      ${liveProfile ? `<div class="profile-view-toolbar">
+        <div class="profile-view-toggle" role="group" aria-label="Taste Profile views">
+          <button type="button" class="button button-secondary profile-view-button" data-profile-view="list" aria-pressed="${profileView === "list"}">Overview</button>
+          <button type="button" class="button button-secondary profile-view-button" data-profile-view="full" aria-pressed="${profileView === "full"}">Full profile</button>
+          <button type="button" class="button button-secondary profile-view-button" data-profile-view="map" aria-pressed="${profileView === "map"}">Taste Map</button>
+        </div>
+      </div>` : ""}
+
+      ${liveProfile ? (
         profileView === "map"
           ? renderTasteMap(activeHypotheses)
           : `
@@ -313,13 +321,6 @@ export function renderProfile() {
                 <p>${profileView === "full"
                   ? "Refine any active pattern here."
                   : "The overview keeps the strongest six easy to scan."}</p>
-              </div>
-              <div class="profile-depth-tools">
-                <div class="profile-view-toggle" role="group" aria-label="Taste Profile views">
-                  <button type="button" class="button button-secondary profile-view-button" data-profile-view="list" aria-pressed="${profileView === "list"}">Overview</button>
-                  <button type="button" class="button button-secondary profile-view-button" data-profile-view="full" aria-pressed="${profileView === "full"}">Full profile</button>
-                  <button type="button" class="button button-secondary profile-view-button" data-profile-view="map" aria-pressed="${profileView === "map"}">Taste Map</button>
-                </div>
               </div>
             </div>
             <h2 class="visually-hidden">Patterns Tastemake is working with</h2>
