@@ -36,7 +36,7 @@
 .taste-map-node {
   position:absolute;
   transform:translate(-50%,-50%);
-  width:min(230px,27%);
+  width:min(190px,21%);
   display:grid;
   gap:4px;
   padding:12px 14px;
