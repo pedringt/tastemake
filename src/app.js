@@ -549,7 +549,8 @@ app.addEventListener("click", async (event) => {
     state.profileView = viewButton.dataset.profileView;
     render();
     restoreFocus(focusSelector);
-    announce(state.profileView === "map" ? "Showing your Taste Profile as a map." : "Showing your Taste Profile as a list.");
+    const viewLabel = state.profileView === "map" ? "Taste Map" : state.profileView === "full" ? "full Taste Profile" : "Taste Profile overview";
+    announce(`Showing your ${viewLabel}.`);
     return;
   }
 
