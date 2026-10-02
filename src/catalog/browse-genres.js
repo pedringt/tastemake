@@ -4,10 +4,10 @@
 const WATCH_GENRES = [
   { id: "drama", label: "Drama", provider: { kind: "genre", movie: 18, tv: 18 } },
   { id: "comedy", label: "Comedy", provider: { kind: "genre", movie: 35, tv: 35 } },
-  { id: "horror", label: "Horror", provider: { kind: "genre", movie: 27, tv: null } },
+  { id: "horror", label: "Horror", provider: { kind: "genre", movie: 27, tv: 9648 } },
   { id: "sci-fi", label: "Sci-fi", provider: { kind: "genre", movie: 878, tv: 10765 } },
   { id: "fantasy", label: "Fantasy", provider: { kind: "genre", movie: 14, tv: 10765 } },
-  { id: "thriller", label: "Thriller", provider: { kind: "genre", movie: 53, tv: null } },
+  { id: "thriller", label: "Thriller", provider: { kind: "genre", movie: 53, tv: 9648 } },
   { id: "documentary", label: "Documentary", provider: { kind: "genre", movie: 99, tv: 99 } },
   { id: "animation", label: "Animation", provider: { kind: "genre", movie: 16, tv: 16 } }
 ];
@@ -32,7 +32,7 @@ export const BROWSE_GENRES = {
     { id: "puzzle", label: "Puzzle", provider: { kind: "genre", value: 9 } },
     { id: "narrative", label: "Narrative", provider: { kind: "search", value: "narrative" } },
     { id: "strategy", label: "Strategy", provider: { kind: "genre", value: 15 } },
-    { id: "cozy", label: "Cozy", provider: { kind: "search", value: "cozy" } },
+    { id: "cozy", label: "Cozy", provider: { kind: "where", value: "genres = (13, 32) | themes = (35)" } },
     { id: "indie", label: "Indie", provider: { kind: "genre", value: 32 } }
   ]
 };
