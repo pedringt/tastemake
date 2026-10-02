@@ -488,3 +488,54 @@
   .profile-depth-head,.profile-more-callout { align-items:stretch; flex-direction:column; }
   .profile-depth-head > button,.profile-more-actions .button { width:100%; }
 }
+
+
+/* Compact Taste Profile entry: get users to the patterns before supporting context. */
+.profile-compact-lede {
+  max-width:700px;
+  margin-bottom:4px;
+}
+.profile-ai-status-compact {
+  margin-top:8px;
+  padding:5px 9px;
+  border-left-width:2px;
+  background:transparent;
+  font-size:12px;
+}
+.profile-ai-status-compact .profile-retry {
+  min-height:30px;
+  padding:3px 8px;
+}
+.profile-depth-head {
+  align-items:flex-end;
+  margin:10px 0 14px;
+}
+.profile-depth-head h2 { margin-bottom:5px; }
+.profile-depth-head p:last-child { font-size:13px; }
+.profile-legend-inline {
+  width:fit-content;
+  margin:12px 0 0;
+}
+.profile-evidence-collapsed {
+  display:block;
+  margin-top:22px;
+  padding:0;
+  border:1px solid rgb(var(--ink-rgb,17 26 75) / .16);
+  border-radius:13px;
+  background:rgb(255 255 255 / .45);
+}
+.profile-evidence-collapsed > summary {
+  padding:10px 13px;
+  color:var(--navy);
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.profile-evidence-collapsed[open] > summary { border-bottom:1px solid var(--line); }
+.profile-evidence-collapsed .profile-evidence-track { padding:11px 13px 13px; }
+.profile-learning { margin-top:26px; }
+
+@media (max-width:760px) {
+  .profile-depth-head { margin-top:8px; }
+  .profile-ai-status-compact { width:100%; }
+}
