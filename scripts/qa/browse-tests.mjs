@@ -18,7 +18,10 @@ eq("Browse exposes Movies / TV / Read / Play", BROWSE_DOMAINS.map((x) => x.id).j
 check("every Browse domain has genres", BROWSE_DOMAINS.every((domain) => browseGenresFor(domain.id).length >= 8));
 eq("Movies Horror maps to the TMDb movie genre", browseGenreById("movies", "horror")?.provider?.movie, 27);
 eq("TV Sci-fi maps to TMDb's separate TV genre", browseGenreById("tv", "sci-fi")?.provider?.tv, 10765);
+check("TV Horror has a usable TV provider category", Boolean(browseGenreById("tv", "horror")?.provider?.tv));
+check("TV Thriller has a usable TV provider category", Boolean(browseGenreById("tv", "thriller")?.provider?.tv));
 eq("Play Horror maps to the provider horror theme", browseGenreById("play", "horror")?.provider?.value, 19);
+eq("Play Cozy uses category filtering instead of literal title search", browseGenreById("play", "cozy")?.provider?.kind, "where");
 
 const env = {
   TASTEMAKE_TMDB_TOKEN: "tmdb",
@@ -52,6 +55,17 @@ eq("TV Browse returns the page size", tv.items.length, BROWSE_PAGE_SIZE);
 check("TV Browse returns only TV shows", tv.items.every((x) => x.type === "tv"));
 check("TV Browse keeps provider identities", tv.items.every((x) => x.provider === "tmdb"));
 
+const tvHorrorFetch = async (url) => {
+  const u = String(url);
+  if (u.includes("/discover/tv")) {
+    check("TV Horror does not send an empty genre", !u.includes("with_genres=null"), u);
+    return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: 300 + i, name: `Horror Show ${i + 1}`, first_air_date: "2022-01-01", genre_ids: [9648] })) }) };
+  }
+  throw new Error(`unexpected tv horror URL: ${u}`);
+};
+const tvHorror = await browseCatalog({ domain: "tv", genreId: "horror", page: 1, env, fetchImpl: tvHorrorFetch });
+eq("TV Horror Browse returns shows", tvHorror.items[0]?.type, "tv");
+
 const readFetch = async (url) => {
   const u = String(url);
   check("Read Browse sends the selected subject", u.includes("subject=fantasy"), u);
@@ -76,6 +90,21 @@ const play = await browseCatalog({ domain: "play", genreId: "horror", page: 2, e
 eq("Play Browse returns games", play.items[0]?.type, "game");
 check("Play Horror uses the horror theme filter", /where themes = \(19\)/.test(playBody), playBody);
 check("Play Browse paginates without repeats", /offset 12/.test(playBody), playBody);
+
+let cozyBody = "";
+const cozyFetch = async (url, init = {}) => {
+  const u = String(url);
+  if (u.includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "token" }) };
+  if (u.includes("api.igdb.com/v4/games")) {
+    cozyBody = init.body;
+    return { ok: true, json: async () => Array.from({ length: 12 }, (_, i) => ({ id: 400 + i, name: `Comfort Game ${i}`, first_release_date: 1609459200, genres: [] })) };
+  }
+  throw new Error(`unexpected cozy URL: ${u}`);
+};
+const cozy = await browseCatalog({ domain: "play", genreId: "cozy", page: 1, env, fetchImpl: cozyFetch });
+eq("Play Cozy Browse returns games", cozy.items[0]?.type, "game");
+check("Play Cozy avoids literal title search", !/search\s+"cozy"/i.test(cozyBody), cozyBody);
+check("Play Cozy uses provider category filters", /where genres = \(13, 32\) \| themes = \(35\)/.test(cozyBody), cozyBody);
 
 const invalid = await browseCatalog({ domain: "movies", genreId: "not-real", page: 1, env, fetchImpl: moviesFetch });
 check("invalid Browse genre fails closed", invalid.degraded && invalid.items.length === 0);

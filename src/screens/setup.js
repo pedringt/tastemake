@@ -17,6 +17,31 @@ function areaChoice(id, label) {
     </label>`;
 }
 
+function setupSummary() {
+  const scope = state.setupAreas.has("all")
+    ? "Movies, TV, books, and games"
+    : visibleDomains().filter((domain) => state.setupAreas.has(domain.id)).map((domain) => domain.label).join(", ");
+  const style = STYLES.find(([id]) => id === state.recommendationStyle) ?? STYLES[1];
+
+  return `
+    <aside class="setup-support" aria-label="Setup summary">
+      <div class="setup-support-card">
+        <p class="setup-support-kicker">What this affects</p>
+        <h2>Your first recommendations start here.</h2>
+        <p>Tastemake uses these settings to decide what kinds of things to offer and how far it should stretch from obvious matches.</p>
+      </div>
+      <div class="setup-preview">
+        <p class="setup-support-kicker">Current setup</p>
+        <dl>
+          <div><dt>Name</dt><dd>${esc(state.displayName.trim() || "Not set yet")}</dd></div>
+          <div><dt>Scope</dt><dd>${esc(scope || "All")}</dd></div>
+          <div><dt>Feel</dt><dd>${esc(style[1])}</dd></div>
+        </dl>
+      </div>
+      <p class="setup-support-note">Favorites and ratings teach Tastemake what actually fits. Setup only controls the starting lane.</p>
+    </aside>`;
+}
+
 export function renderSetup() {
   const editing = state.setupComplete;
   const settingsCards = `
@@ -50,21 +75,27 @@ export function renderSetup() {
           <h1>${editing ? "Your Tastemake setup." : "What should Tastemake call you?"}</h1>
           <p class="lede">${editing ? "Adjust what Tastemake recommends and how adventurous it gets." : "Then jump straight into a few things you love."}</p>
         </div>
-        <button class="button button-primary setup-next" type="button" data-action="setup-done" ${state.displayName.trim() ? "" : "disabled"}>${editing ? "Save" : "Next"}</button>
       </header>
 
-      <div class="setup-grid ${editing ? "" : "is-first-run"}">
-        <section class="setup-card" aria-labelledby="setup-name-title">
-          <p class="setup-step">01</p>
-          <h2 id="setup-name-title">Your name</h2>
-          <label class="setup-field">
-            <span>Display name</span>
-            <input type="text" data-setup-name maxlength="40" autocomplete="name" value="${esc(state.displayName)}" placeholder="Your name" />
-          </label>
-        </section>
-        ${settingsCards}
+      <div class="setup-layout">
+        <div class="setup-main">
+          <div class="setup-grid ${editing ? "" : "is-first-run"}">
+            <section class="setup-card" aria-labelledby="setup-name-title">
+              <p class="setup-step">01</p>
+              <h2 id="setup-name-title">Your name</h2>
+              <label class="setup-field">
+                <span>Display name</span>
+                <input type="text" data-setup-name maxlength="40" autocomplete="name" value="${esc(state.displayName)}" placeholder="Your name" />
+              </label>
+            </section>
+            ${settingsCards}
+          </div>
+          <div class="setup-form-actions">
+            <p class="setup-note">${editing ? "These settings change what Tastemake serves you, not what it thinks you like." : "Next: choose four favorites and get your first recommendations."}</p>
+            <button class="button button-primary setup-next" type="button" data-action="setup-done" ${state.displayName.trim() ? "" : "disabled"}>${editing ? "Save" : "Next"}</button>
+          </div>
+        </div>
+        ${setupSummary()}
       </div>
-
-      <p class="setup-note">${editing ? "These settings change what Tastemake serves you, not what it thinks you like." : "Next: choose four favorites and get your first recommendations."}</p>
     </section>`;
 }
