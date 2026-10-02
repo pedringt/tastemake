@@ -44,9 +44,13 @@ export function renderTasteMap(patterns = []) {
   const nodes = visiblePatterns.map((pattern, index) => {
     const status = String(pattern.strength ?? "Emerging");
     const note = pattern.status === "conditional" ? "Conditional" : "";
+    const primaryDomain = pattern.domains?.[0] ?? "other";
+    const domainClass = ["movies", "tv", "read", "play"].includes(primaryDomain) ? primaryDomain : "other";
+    const strengthClass = status.toLowerCase() === "strong" ? "is-strong" : status.toLowerCase() === "supported" ? "is-supported" : "is-emerging";
     return `
-      <div class="taste-map-node look-${status.toLowerCase() === "strong" ? "firm" : "tentative"}"
+      <div class="taste-map-node map-domain-${domainClass} ${strengthClass} ${pattern.status === "conditional" ? "is-conditional" : ""}"
         style="left:${layout[index].x}%;top:${layout[index].y}%">
+        <span class="map-node-orbit" aria-hidden="true"></span>
         <b>${esc(pattern.title)}</b>
         <span class="map-node-conf">${esc(status)}</span>
         <span class="map-node-notes">${esc(domainLine(pattern))}${note ? ` · ${esc(note)}` : ""}</span>
@@ -77,14 +81,18 @@ export function renderTasteMap(patterns = []) {
       </div>
 
       <ul class="map-key" aria-label="How to read the Taste Map">
-        <li><span class="key-swatch look-firm"></span> Stronger working pattern</li>
-        <li><span class="key-swatch look-tentative"></span> Still developing</li>
+        <li><span class="key-swatch map-key-strong"></span> Stronger working pattern</li>
+        <li><span class="key-swatch map-key-developing"></span> Still developing</li>
         <li class="map-key-lines"><span class="key-line"></span> A line means the patterns overlap somewhere</li>
       </ul>
 
       <div class="taste-map" role="img" aria-label="Visual map of ${visiblePatterns.length} working taste patterns">
+        <span class="map-blob map-blob-a" aria-hidden="true"></span>
+        <span class="map-blob map-blob-b" aria-hidden="true"></span>
+        <span class="map-spark map-spark-a" aria-hidden="true">✦</span>
+        <span class="map-spark map-spark-b" aria-hidden="true">✶</span>
         <svg class="taste-map-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">${lines}</svg>
-        <div class="taste-map-centre" aria-hidden="true"><span>you</span><em>still learning</em></div>
+        <div class="taste-map-centre" aria-hidden="true"><span>you</span><em>your taste orbit</em></div>
         ${nodes}
       </div>
       ${patterns.length > visiblePatterns.length ? `<p class="map-empty">Showing the 8 most prominent patterns here. The full profile includes ${patterns.length} active patterns.</p>` : ""}
