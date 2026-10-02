@@ -41,8 +41,8 @@ export const BROWSE_GENRES = {
     { id: "horror", label: "Horror", provider: { kind: "metadata", themes: ["Horror"] } },
     { id: "puzzle", label: "Puzzle", provider: { kind: "metadata", genres: ["Puzzle"] } },
     { id: "narrative", label: "Narrative", provider: { kind: "metadata", genres: ["Visual Novel", "Point-and-click"], themes: ["Drama", "Mystery", "Romance"] } },
-    { id: "strategy", label: "Strategy", provider: { kind: "metadata", genres: ["Strategy", "Real Time Strategy (RTS)", "Turn-based strategy (TBS)", "Tactical"] } },
-    { id: "cozy", label: "Cozy", provider: { kind: "metadata", genres: ["Simulator"], themes: ["Kids", "Sandbox", "Comedy", "Romance"], excludeThemes: ["Action", "Horror", "Thriller", "Survival", "Warfare"] } },
+    { id: "strategy", label: "Strategy", provider: { kind: "metadata", genres: ["Strategy", "Real Time Strategy (RTS)", "Turn-based strategy (TBS)"], requireGenres: ["Strategy", "Real Time Strategy (RTS)", "Turn-based strategy (TBS)"], excludeGenres: ["Shooter", "Hack and slash/Beat 'em up"] } },
+    { id: "cozy", label: "Cozy", provider: { kind: "metadata", genres: ["Simulator"], themes: ["Kids", "Sandbox", "Comedy", "Romance"], requireGenres: ["Simulator"], requireThemes: ["Kids", "Sandbox", "Comedy", "Romance"], excludeThemes: ["Action", "Horror", "Thriller", "Survival", "Warfare"] } },
     { id: "indie", label: "Indie", provider: { kind: "metadata", genres: ["Indie"] } }
   ]
 };

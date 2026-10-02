@@ -82,10 +82,23 @@ function igdbMetadataFilter(provider, taxonomy) {
   return { where: parts.length ? `where ${parts.join(" | ")};` : "", genreIds, themeIds };
 }
 
-function excludesGame(row, provider) {
-  const excluded = new Set((provider.excludeThemes ?? []).map((name) => String(name).toLowerCase()));
-  if (!excluded.size) return false;
-  return (row.themes ?? []).some((theme) => excluded.has(String(theme.name ?? "").toLowerCase()));
+function metadataNames(rows = []) {
+  return new Set(rows.map((row) => String(row?.name ?? "").trim().toLowerCase()).filter(Boolean));
+}
+
+function matchesRequiredMetadata(row, provider) {
+  const genres = metadataNames(row.genres);
+  const themes = metadataNames(row.themes);
+  const excludedGenres = (provider.excludeGenres ?? []).map((name) => String(name).toLowerCase());
+  const excludedThemes = (provider.excludeThemes ?? []).map((name) => String(name).toLowerCase());
+  if (excludedGenres.some((name) => genres.has(name))) return false;
+  if (excludedThemes.some((name) => themes.has(name))) return false;
+
+  const requiredGenres = (provider.requireGenres ?? []).map((name) => String(name).toLowerCase());
+  const requiredThemes = (provider.requireThemes ?? []).map((name) => String(name).toLowerCase());
+  if (requiredGenres.length && !requiredGenres.some((name) => genres.has(name))) return false;
+  if (requiredThemes.length && !requiredThemes.some((name) => themes.has(name))) return false;
+  return true;
 }
 
 async function browsePlay(genre, page, env, fetchImpl) {
@@ -99,9 +112,9 @@ async function browsePlay(genre, page, env, fetchImpl) {
   const { where } = igdbMetadataFilter(provider, taxonomy);
   if (!where) return { items: [], configured: true, hasMore: false };
 
-  // Pull a wider candidate page for curated categories such as Cozy, then filter using provider
-  // theme metadata. This keeps title words out of category logic while still excluding obvious
-  // mismatches such as Action/Warfare/Horror games.
+  // Pull a wider candidate page for curated categories, then apply stricter metadata rules locally.
+  // Provider discovery stays broad enough to find candidates, while the user-facing category favors
+  // precision over admitting a game because of one incidental theme or genre tag.
   const candidateLimit = BROWSE_PAGE_SIZE * 3;
   const offset = (page - 1) * candidateLimit;
   const response = await fetchImpl("https://api.igdb.com/v4/games", {
@@ -115,7 +128,7 @@ async function browsePlay(genre, page, env, fetchImpl) {
   });
   if (!response.ok) throw new Error("igdb browse unavailable");
   const rows = await response.json();
-  const filtered = rows.filter((row) => !excludesGame(row, provider));
+  const filtered = rows.filter((row) => matchesRequiredMetadata(row, provider));
   return {
     items: filtered.slice(0, BROWSE_PAGE_SIZE).map(igdbItem),
     configured: true,

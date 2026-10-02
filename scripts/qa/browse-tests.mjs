@@ -151,8 +151,16 @@ function makePlayFetch({ games = [] } = {}) {
   return { fetchImpl, bodies };
 }
 
+function taxonomyRows(rows, names = []) {
+  const wanted = new Set(names.map((name) => String(name).toLowerCase()));
+  return rows.filter((row) => wanted.has(String(row.name).toLowerCase()));
+}
+
 for (const genre of browseGenresFor("play")) {
-  const { fetchImpl, bodies } = makePlayFetch({ games: [{ id: 900, name: "Metadata Match", first_release_date: 1609459200, genres: [], themes: [] }] });
+  const provider = genre.provider ?? {};
+  const positiveGenres = taxonomyRows(igdbGenres, provider.requireGenres?.length ? provider.requireGenres : provider.genres).slice(0, 1);
+  const positiveThemes = taxonomyRows(igdbThemes, provider.requireThemes?.length ? provider.requireThemes : provider.themes).slice(0, 1);
+  const { fetchImpl, bodies } = makePlayFetch({ games: [{ id: 900, name: "Metadata Match", first_release_date: 1609459200, genres: positiveGenres, themes: positiveThemes }] });
   const result = await browseCatalog({ domain: "play", genreId: genre.id, page: 1, env, fetchImpl });
   eq(`Play ${genre.label} returns games from a structured provider query`, result.items[0]?.type, "game");
   check(`Play ${genre.label} never sends a literal title search`, !/search\s+"/i.test(bodies[0] ?? ""), bodies[0] ?? "");
@@ -169,13 +177,27 @@ check("Play Narrative query uses story-relevant genre/theme ids", /genres = \([^
 const cozyHarness = makePlayFetch({ games: [
   { id: 920, name: "Stardew-like", first_release_date: 1609459200, genres: [{ id: 13, name: "Simulator" }], themes: [{ id: 33, name: "Sandbox" }] },
   { id: 921, name: "Obvious Shooter", first_release_date: 1609459200, genres: [{ id: 31, name: "Adventure" }], themes: [{ id: 1, name: "Action" }, { id: 39, name: "Warfare" }] },
-  { id: 922, name: "Dark Survival", first_release_date: 1609459200, genres: [{ id: 13, name: "Simulator" }], themes: [{ id: 19, name: "Horror" }, { id: 21, name: "Survival" }] }
+  { id: 922, name: "Dark Survival", first_release_date: 1609459200, genres: [{ id: 13, name: "Simulator" }], themes: [{ id: 19, name: "Horror" }, { id: 21, name: "Survival" }] },
+  { id: 923, name: "Romance RPG", first_release_date: 1609459200, genres: [{ id: 12, name: "Role-playing (RPG)" }], themes: [{ id: 44, name: "Romance" }] },
+  { id: 924, name: "Sandbox Strategy", first_release_date: 1609459200, genres: [{ id: 15, name: "Strategy" }], themes: [{ id: 33, name: "Sandbox" }] }
 ] });
 const cozy = await browseCatalog({ domain: "play", genreId: "cozy", page: 1, env, fetchImpl: cozyHarness.fetchImpl });
 check("Play Cozy keeps a positive cozy-style metadata match", cozy.items.some((item) => item.title === "Stardew-like"));
 check("Play Cozy excludes obvious Action/Warfare false positives", !cozy.items.some((item) => item.title === "Obvious Shooter"));
 check("Play Cozy excludes Horror/Survival false positives", !cozy.items.some((item) => item.title === "Dark Survival"));
+check("Play Cozy requires a cozy theme plus Simulator instead of accepting Romance alone", !cozy.items.some((item) => item.title === "Romance RPG"));
+check("Play Cozy does not accept Sandbox alone without Simulator", !cozy.items.some((item) => item.title === "Sandbox Strategy"));
 check("Play Cozy avoids literal title search", !/search\s+"cozy"/i.test(cozyHarness.bodies[0] ?? ""), cozyHarness.bodies[0] ?? "");
+
+const strategyHarness = makePlayFetch({ games: [
+  { id: 930, name: "True Strategy", first_release_date: 1609459200, genres: [{ id: 15, name: "Strategy" }], themes: [] },
+  { id: 931, name: "Tactical Shooter", first_release_date: 1609459200, genres: [{ id: 24, name: "Tactical" }, { id: 5, name: "Shooter" }], themes: [] },
+  { id: 932, name: "Strategy Shooter", first_release_date: 1609459200, genres: [{ id: 15, name: "Strategy" }, { id: 5, name: "Shooter" }], themes: [] }
+] });
+const strategy = await browseCatalog({ domain: "play", genreId: "strategy", page: 1, env, fetchImpl: strategyHarness.fetchImpl });
+check("Play Strategy keeps a true strategy match", strategy.items.some((item) => item.title === "True Strategy"));
+check("Play Strategy excludes tactical-shooter false positives", !strategy.items.some((item) => item.title === "Tactical Shooter"));
+check("Play Strategy favors category precision when a shooter also carries a Strategy tag", !strategy.items.some((item) => item.title === "Strategy Shooter"));
 
 const invalid = await browseCatalog({ domain: "movies", genreId: "not-real", page: 1, env, fetchImpl: moviesFetch });
 check("invalid Browse genre fails closed", invalid.degraded && invalid.items.length === 0);
