@@ -135,8 +135,9 @@ const igdbThemes = [
   { id: 21, name: "Survival" }, { id: 39, name: "Warfare" }
 ];
 
-function makePlayFetch({ games = [] } = {}) {
+function makePlayFetch({ games = [], batches = null } = {}) {
   const bodies = [];
+  let gameRequest = 0;
   const fetchImpl = async (url, init = {}) => {
     const u = String(url);
     if (u.includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "token" }) };
@@ -144,7 +145,9 @@ function makePlayFetch({ games = [] } = {}) {
     if (u.includes("api.igdb.com/v4/themes")) return { ok: true, json: async () => igdbThemes };
     if (u.includes("api.igdb.com/v4/games")) {
       bodies.push(init.body);
-      return { ok: true, json: async () => games };
+      const rows = batches ? (batches[gameRequest] ?? []) : games;
+      gameRequest += 1;
+      return { ok: true, json: async () => rows };
     }
     throw new Error(`unexpected play URL: ${u}`);
   };
@@ -188,6 +191,24 @@ check("Play Cozy excludes Horror/Survival false positives", !cozy.items.some((it
 check("Play Cozy requires a cozy theme plus Simulator instead of accepting Romance alone", !cozy.items.some((item) => item.title === "Romance RPG"));
 check("Play Cozy does not accept Sandbox alone without Simulator", !cozy.items.some((item) => item.title === "Sandbox Strategy"));
 check("Play Cozy avoids literal title search", !/search\s+"cozy"/i.test(cozyHarness.bodies[0] ?? ""), cozyHarness.bodies[0] ?? "");
+
+const filler = (start, count, { qualifying = false } = {}) => Array.from({ length: count }, (_, index) => ({
+  id: start + index,
+  name: `Game ${start + index}`,
+  first_release_date: 1609459200,
+  genres: qualifying ? [{ id: 13, name: "Simulator" }] : [{ id: 31, name: "Adventure" }],
+  themes: qualifying ? [{ id: 33, name: "Sandbox" }] : [{ id: 1, name: "Action" }]
+}));
+const sparseCozyHarness = makePlayFetch({ batches: [
+  [...filler(1000, 35), ...filler(1035, 1, { qualifying: true })],
+  [...filler(2000, 30), ...filler(2030, 6, { qualifying: true })],
+  [...filler(3000, 31), ...filler(3031, 5, { qualifying: true })],
+  []
+] });
+const filledCozy = await browseCatalog({ domain: "play", genreId: "cozy", page: 1, env, fetchImpl: sparseCozyHarness.fetchImpl });
+eq("Play Cozy fills the first page across sparse provider batches", filledCozy.items.length, BROWSE_PAGE_SIZE);
+check("Play Cozy keeps fetching after a sparse first candidate batch", sparseCozyHarness.bodies.length >= 3);
+check("Play Cozy advances IGDB offsets while filling a page", /offset 36;/.test(sparseCozyHarness.bodies[1] ?? "") && /offset 72;/.test(sparseCozyHarness.bodies[2] ?? ""));
 
 const strategyHarness = makePlayFetch({ games: [
   { id: 930, name: "True Strategy", first_release_date: 1609459200, genres: [{ id: 15, name: "Strategy" }], themes: [] },
