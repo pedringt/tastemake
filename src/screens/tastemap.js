@@ -37,10 +37,11 @@ function domainLine(pattern) {
 
 export function renderTasteMap(patterns = []) {
   if (!patterns.length) return "";
+  const visiblePatterns = patterns.slice(0, 8);
 
-  const layout = nodeLayout(patterns.length);
-  const links = mapLinks(patterns);
-  const nodes = patterns.map((pattern, index) => {
+  const layout = nodeLayout(visiblePatterns.length);
+  const links = mapLinks(visiblePatterns);
+  const nodes = visiblePatterns.map((pattern, index) => {
     const status = String(pattern.strength ?? "Emerging");
     const note = pattern.status === "conditional" ? "Conditional" : "";
     return `
@@ -59,7 +60,7 @@ export function renderTasteMap(patterns = []) {
   }).join("");
 
   const domainGroups = new Map();
-  for (const pattern of patterns) {
+  for (const pattern of visiblePatterns) {
     for (const domain of pattern.domains ?? []) {
       const list = domainGroups.get(domain) ?? [];
       list.push(pattern.title);
@@ -72,7 +73,7 @@ export function renderTasteMap(patterns = []) {
       <div class="map-intro">
         <p class="kicker">Taste Map</p>
         <h2 id="taste-map-heading">A visual sketch of how your taste connects.</h2>
-        <p>This is the playful view, not a score or diagnosis. Patterns sit together when they share evidence or show up in the same kinds of things.</p>
+        <p>This is the playful view, not a score or diagnosis. Lines show where patterns share evidence or show up in the same kinds of things. The layout is a visual sketch, not a measured distance.</p>
       </div>
 
       <ul class="map-key" aria-label="How to read the Taste Map">
@@ -81,11 +82,12 @@ export function renderTasteMap(patterns = []) {
         <li class="map-key-lines"><span class="key-line"></span> A line means the patterns overlap somewhere</li>
       </ul>
 
-      <div class="taste-map" role="img" aria-label="Visual map of ${patterns.length} working taste patterns">
+      <div class="taste-map" role="img" aria-label="Visual map of ${visiblePatterns.length} working taste patterns">
         <svg class="taste-map-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">${lines}</svg>
         <div class="taste-map-centre" aria-hidden="true"><span>you</span><em>still learning</em></div>
         ${nodes}
       </div>
+      ${patterns.length > visiblePatterns.length ? `<p class="map-empty">Showing the 8 most prominent patterns here. The full profile includes ${patterns.length} active patterns.</p>` : ""}
 
       <div class="map-columns taste-map-summary">
         ${[...domainGroups.entries()].map(([domain, titles]) => `
