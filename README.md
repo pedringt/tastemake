@@ -1,25 +1,66 @@
 # Tastemake
 
-An experimental recommendation product that builds an inspectable model of why someone likes what they like across books, movies, TV, games, and more.
+Tastemake is an experimental recommendation product that helps people understand and refine their taste across books, movies, TV, and games.
 
-## Prototype v1
+Instead of only asking whether someone liked an item, Tastemake also builds a visible Taste Profile that explains the patterns it thinks are shaping those reactions. Users can correct those patterns, narrow them, or reject them, and those corrections influence what happens next.
 
-The current interactive prototype validates a simpler core loop:
+## Current product loop
 
-**Favorites -> Recommendations -> React -> Better recommendations**
+**Favorites -> Recommendations -> React -> Taste Profile learns -> Better recommendations**
 
-The Taste Profile remains available for users who want to inspect the reasoning, but it is not a required stop in the recommendation flow.
+The first-run flow stays intentionally light:
+- add a few Favorites
+- get recommendations
+- react with Loved, Liked, Didn't like, Saved, or Not interested
+- refine deeper taste details only when useful
+- inspect what Tastemake learned in the Taste Profile
 
-Recommendation feedback is intentionally lightweight:
-- **More like this**
-- **Less like this**
-- **Haven't tried**
+The product keeps experienced taste separate from future intent. Saving or browsing does not automatically become evidence that a user likes something.
 
-One tap is enough. Optional context chips can add stronger or more specific signal without turning every recommendation into a survey.
+## AI and product boundaries
 
-The prototype is intentionally deterministic and framework-free. There are no live model calls, user accounts, integrations, or production persistence yet.
+Tastemake uses live AI in two places:
+- **Recommendation ranking and explanation**
+- **Taste Profile hypothesis generation**
 
-### Run locally
+The model does not control the whole system. Software still decides:
+- what counts as taste evidence
+- which catalog candidates are eligible
+- whether model output passes validation
+- what user corrections take priority
+
+If a live recommendation call fails or is rejected, Tastemake can fall back to catalog-based recommendations rather than presenting weak model output as trustworthy.
+
+## Catalog and data
+
+Tastemake works with real catalog data across:
+- books
+- movies
+- TV
+- games
+
+Provider data is normalized into Tastemake's own catalog shape, with a canonical store used to improve reuse and metadata consistency over time.
+
+## Quality and testing
+
+The repository includes automated coverage for:
+- recommendation behavior and candidate quality
+- AI output validation
+- evidence and intent rules
+- Taste Profile corrections
+- persistence and export
+- desktop and mobile layout
+- accessibility
+- end-to-end product flows
+- recommendation evals
+
+Run the main test suite with:
+
+```bash
+npm test
+```
+
+## Run locally
 
 From the repository root:
 
@@ -29,9 +70,11 @@ python3 -m http.server 4173
 
 Then open `http://localhost:4173`.
 
-## Research
+Some live AI and catalog features depend on server-side environment configuration, so the deployed Vercel app is the best way to try the full experience.
 
-The `experiments/` folder contains the blind taste-model, boundary, and recommendation-selection evals that informed this prototype. The `notes/` folder tracks reusable case-study and AI product lessons.
+## Research and product notes
+
+The `experiments/` folder contains taste-model and recommendation experiments that informed the product. The `notes/` and `docs/` folders capture product decisions, QA findings, and implementation context.
 
 ## Deployment
 
