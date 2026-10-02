@@ -46,7 +46,7 @@
   color:var(--ink);
   text-align:left;
   font:inherit;
-  cursor:pointer;
+  cursor:default;
   box-shadow:calc(5px * var(--hard)) calc(5px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .12));
 }
 .taste-map-node b { font-size:clamp(14px,1.5vw,18px); line-height:1.15; }
@@ -54,7 +54,6 @@
 .map-node-notes { color:var(--text2,#3f4774); font-size:11px; line-height:1.3; }
 .taste-map-node.look-tentative { border-style:dashed; }
 .taste-map-node.look-shaky { border-style:dotted; border-color:var(--warn,#b5524b); }
-.taste-map-node:hover { background:var(--tint-hover,#faf9ff); }
 .taste-map-node.is-selected { background:var(--tint-pink,#fff0fa); box-shadow:calc(5px * var(--hard)) calc(5px * var(--hard)) 0 var(--pink); }
 .taste-map-node.is-linked { outline:4px solid rgba(32,217,232,.65); outline-offset:3px; }
 
@@ -120,3 +119,5 @@
   .map-key-lines { display:none; }
   .taste-map-node { position:static; transform:none; width:auto; }
 }
+
+.taste-map-summary .map-panel p { margin:0; color:var(--text2,#3f4774); font-size:13px; line-height:1.5; }
