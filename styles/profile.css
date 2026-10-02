@@ -539,3 +539,26 @@
   .profile-depth-head { margin-top:8px; }
   .profile-ai-status-compact { width:100%; }
 }
+
+
+.profile-evidence-summary {
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+  padding:11px 13px 0;
+}
+.profile-evidence-summary strong { color:var(--navy); font-size:14px; }
+.profile-evidence-summary span { color:var(--muted); font-size:12px; }
+.profile-evidence-collapsed .profile-evidence-label {
+  flex-basis:100%;
+  margin-bottom:2px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+@media (max-width:640px) {
+  .profile-evidence-summary { align-items:flex-start; flex-direction:column; gap:3px; }
+}
