@@ -127,7 +127,7 @@ export async function run() {
   check("profile requested/generated live hypotheses",state.modelHypotheses.length===2,state.modelHypotheses.length);
   check("profile renders generated cards",$$(".signal-row").length===2,$$(".signal-row").length);
   check("old seeded profile copy is absent",!document.body.textContent.includes("Comedy works better when it has teeth"));
-  check("profile describes active patterns without internal validation language",/patterns currently shaping your profile/.test(document.body.textContent)&&!/validated AI patterns/.test(document.body.textContent));
+  check("profile describes active patterns without internal validation language",/patterns currently shaping the overview|patterns Tastemake is leaning on most/i.test(document.body.textContent)&&!/validated AI patterns/.test(document.body.textContent));
   check("profile learning panel explains consequences",/What that means:/.test($(".profile-learning")?.textContent||""));
 
   // User corrections explain their consequence immediately, then remain reversible.
