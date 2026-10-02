@@ -31,7 +31,7 @@ function normalizeHypothesis(h, index, state) {
   };
 }
 
-export function mergeHypotheses(existing = [], incoming = [], { statements = [], activeLimit = 6, preserveExistingActive = true } = {}) {
+export function mergeHypotheses(existing = [], incoming = [], { statements = [], activeLimit = 12, preserveExistingActive = true } = {}) {
   const correctedIds = new Set(
     (statements ?? []).filter((entry) => entry?.says === "not-me").map((entry) => entry.hypothesisId)
   );
@@ -91,7 +91,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
       const rejected = Number(payload.meta?.rejected ?? 0);
       state.modelHypotheses = mergeHypotheses(state.modelHypotheses ?? [], next, {
         statements: state.patternStatements ?? [],
-        activeLimit: 6,
+        activeLimit: 12,
         preserveExistingActive: rejected > 0
       });
       state.hypothesisAiMessage = "Your Taste Profile is up to date.";
