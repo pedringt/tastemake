@@ -278,6 +278,14 @@ export function renderProfile() {
   const favoriteTitles = libraryItems(state).favorites.map((entry) => entry.item.title);
   const visibleFavoriteTitles = favoriteTitles.slice(0, 12);
   const hiddenFavoriteTitles = favoriteTitles.slice(12);
+  const triedEvidence = evidenceRecords(state).filter((record) => record.class === "experienced");
+  const evidenceMix = {
+    favorites: triedEvidence.filter((record) => ["starter-favorite", "experienced-favorite"].includes(record.kind)).length,
+    loved: triedEvidence.filter((record) => record.kind === "experienced-strong-positive").length,
+    liked: triedEvidence.filter((record) => record.kind === "experienced-positive").length,
+    disliked: triedEvidence.filter((record) => record.kind === "experienced-negative").length
+  };
+  const triedCount = evidenceMix.favorites + evidenceMix.loved + evidenceMix.liked + evidenceMix.disliked;
   const workingHypotheses = state.modelHypotheses ?? [];
   const { active: activeHypotheses, corrected: correctedHypotheses } = partitionProfilePatterns(workingHypotheses, state.patternStatements);
   const liveProfile = workingHypotheses.length > 0;
@@ -353,18 +361,23 @@ export function renderProfile() {
       ) : `
         <div class="profile-empty" role="status">
           <strong>No generated patterns yet.</strong>
-          <p>Tastemake needs more ratings from things you have actually tried before it can infer patterns responsibly. Favorites start the conversation; reactions give it evidence.</p>
+          <p>Tastemake needs more ratings from things you have actually tried before it can infer patterns responsibly. Favorites seed the profile; your reactions keep teaching it.</p>
           <button class="button button-primary" type="button" data-action="browse">Rate more things</button>
         </div>`}
 
       ${liveProfile && profileView === "list" ? learningPanel(primaryHypotheses) : ""}
 
       ${liveProfile && profileView !== "map" ? `<details class="profile-evidence-strip profile-evidence-collapsed">
-        <summary>Built from ${favoriteTitles.length} favorite${favoriteTitles.length === 1 ? "" : "s"}</summary>
-        <div class="profile-evidence-track">
+        <summary>Built from your favorites and ratings</summary>
+        <div class="profile-evidence-summary">
+          <strong>${triedCount} thing${triedCount === 1 ? "" : "s"} you’ve tried</strong>
+          <span>${evidenceMix.favorites} favorite${evidenceMix.favorites === 1 ? "" : "s"} · ${evidenceMix.loved} loved · ${evidenceMix.liked} liked · ${evidenceMix.disliked} disliked</span>
+        </div>
+        ${favoriteTitles.length ? `<div class="profile-evidence-track">
+          <span class="profile-evidence-label">Favorites that helped seed the profile</span>
           ${visibleFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${(index % 4) + 1}">${esc(title)}</span>`).join("")}
           ${hiddenFavoriteTitles.length ? `<details class="profile-evidence-more"><summary>+${hiddenFavoriteTitles.length} more</summary><span class="profile-evidence-more-items">${hiddenFavoriteTitles.map((title, index) => `<span class="profile-evidence-item evidence-${((index + visibleFavoriteTitles.length) % 4) + 1}">${esc(title)}</span>`).join("")}</span></details>` : ""}
-        </div>
+        </div>` : ""}
       </details>` : ""}
 
       ${liveProfile && profileView !== "map" ? correctedPatternsSection(correctedHypotheses) : ""}
