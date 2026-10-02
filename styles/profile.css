@@ -457,3 +457,34 @@
 @media (max-width:620px) {
   .signal-consequence { display:grid; gap:3px; }
 }
+
+
+/* Deeper Taste Profile views: keep the overview concise while allowing the working model to grow. */
+.profile-depth-head {
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:24px;
+  margin:28px 0 18px;
+}
+.profile-depth-head > div { max-width:760px; }
+.profile-depth-head h2 { margin:4px 0 8px; font-size:clamp(26px,3vw,38px); }
+.profile-depth-head p:last-child { margin:0; color:var(--muted); line-height:1.5; }
+.profile-more-callout {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  margin:20px 0 8px;
+  padding:18px 20px;
+  border:2px dashed var(--navy);
+  border-radius:16px;
+  background:var(--tint-cool,#eef9fb);
+}
+.profile-more-callout > div:first-child { display:grid; gap:3px; }
+.profile-more-callout span { color:var(--muted); font-size:13px; }
+.profile-more-actions { display:flex; flex-wrap:wrap; gap:8px; }
+@media (max-width:760px) {
+  .profile-depth-head,.profile-more-callout { align-items:stretch; flex-direction:column; }
+  .profile-depth-head > button,.profile-more-actions .button { width:100%; }
+}
