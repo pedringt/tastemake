@@ -3,13 +3,29 @@ import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs"
 
 export const BROWSE_PAGE_SIZE = 12;
 
+async function resolveTmdbKeywordId(keyword, headers, fetchImpl) {
+  const response = await fetchImpl(`https://api.themoviedb.org/3/search/keyword?query=${encodeURIComponent(keyword)}&page=1`, { headers });
+  if (!response.ok) throw new Error("tmdb keyword search unavailable");
+  const results = (await response.json()).results ?? [];
+  const exact = results.find((row) => String(row.name ?? "").trim().toLowerCase() === String(keyword).trim().toLowerCase());
+  return exact?.id ?? results[0]?.id ?? null;
+}
+
 async function browseTmdb(genre, page, env, fetchImpl, mediaType) {
   if (!env.TASTEMAKE_TMDB_TOKEN) return { items: [], configured: false };
-  const genreId = mediaType === "tv" ? genre.provider.tv : genre.provider.movie;
-  if (!genreId) return { items: [], configured: true, hasMore: false };
   const headers = { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" };
   const common = `sort_by=popularity.desc&include_adult=false&language=en-US&page=${page}`;
-  const response = await fetchImpl(`https://api.themoviedb.org/3/discover/${mediaType}?with_genres=${genreId}&${common}`, { headers });
+  let filter = "";
+  if (genre.provider.kind === "keyword") {
+    const keywordId = await resolveTmdbKeywordId(genre.provider.value, headers, fetchImpl);
+    if (!keywordId) return { items: [], configured: true, hasMore: false };
+    filter = `with_keywords=${keywordId}`;
+  } else {
+    const genreId = mediaType === "tv" ? genre.provider.tv : genre.provider.movie;
+    if (!genreId) return { items: [], configured: true, hasMore: false };
+    filter = `with_genres=${genreId}`;
+  }
+  const response = await fetchImpl(`https://api.themoviedb.org/3/discover/${mediaType}?${filter}&${common}`, { headers });
   if (!response.ok) throw new Error("tmdb browse unavailable");
   const rows = ((await response.json()).results ?? []).slice(0, BROWSE_PAGE_SIZE).map((row) => tmdbItem(row, mediaType));
   return { items: rows, configured: true, hasMore: rows.length >= BROWSE_PAGE_SIZE };
