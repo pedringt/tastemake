@@ -253,7 +253,7 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
     state.recommendationMediumFilter = "all";
 
     if (picks.length) state.recommendationSets.push(picks);
-    navigate("recommendations", { replace: true });
+    navigate("recommendations", { replace: true, scroll: false });
     announce(picks.length
       ? `New set: ${plural(picks.length, "pick", "picks")}. ${source === "model" ? "Live AI was used and validated." : "Real catalog fallback was used."}`
       : "No more eligible catalog picks were found.");
@@ -269,7 +269,7 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
       message: "Recommendations are temporarily unavailable. Tastemake did not substitute seeded demo picks."
     });
     state.recommendationExhausted = false;
-    navigate("recommendations", { replace: true });
+    navigate("recommendations", { replace: true, scroll: false });
     announce("Recommendations are temporarily unavailable.");
   } finally {
     clearLoadingStages();
