@@ -487,20 +487,42 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   const domainSet = (items) => new Set(items.flatMap((item) => item.domains ?? []));
   const desiredDomains = domainSet(evidenceItems);
   const coveredDomains = domainSet(guarded.primary);
-  const missingEvidenceDomain = mode === "all"
-    && [...desiredDomains].some((domain) => !coveredDomains.has(domain));
+  const missingEvidenceDomains = () => {
+    if (mode !== "all") return [];
+    const covered = domainSet(guarded.primary);
+    return [...desiredDomains].filter((domain) => !covered.has(domain));
+  };
+  const missingEvidenceDomain = missingEvidenceDomains().length > 0;
 
   // A numerically large pool is not actually healthy for the All view when one of the user's
   // represented evidence domains produced no candidates. Previously, two strong movie branches
   // could yield 12+ rows while game/book/TV branches returned zero; that skipped the remaining
-  // anchors and made the supposedly mixed set collapse to one medium. Try the remaining anchors
-  // whenever coverage is missing, then let balanceDomains() interleave whatever genuinely exists.
+  // anchors and made the supposedly mixed set collapse to one medium. Try the remaining selected
+  // anchors whenever coverage is missing, then, if a represented domain is still absent, give one
+  // unused anchor from each missing domain a final chance. This keeps the common path bounded while
+  // avoiding a random two-anchor choice permanently starving a medium that has other evidence.
   if ((guarded.primary.length < Math.min(12, limit) || missingEvidenceDomain) && laterWave.length) {
     const secondWaveStarted = Date.now();
     rows.push(...await loadEvidence(laterWave));
     console.info("[tastemake-related]", JSON.stringify({ wave: "second", items: laterWave.length, ms: Date.now() - secondWaveStarted }));
     eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
     guarded = applyMixedNoveltyGuard(eligible, evidenceItems, mode);
+  }
+
+  const stillMissingDomains = missingEvidenceDomains();
+  if (stillMissingDomains.length) {
+    const selectedIds = new Set(evidenceItems.map((item) => item.id));
+    const fallbackAnchors = stillMissingDomains
+      .map((domain) => allEvidence.find((item) => !selectedIds.has(item.id) && primaryDomain(item) === domain))
+      .filter(Boolean);
+    if (fallbackAnchors.length) {
+      const fallbackStarted = Date.now();
+      rows.push(...await loadEvidence(fallbackAnchors));
+      console.info("[tastemake-related]", JSON.stringify({ wave: "coverage-fallback", items: fallbackAnchors.length, ms: Date.now() - fallbackStarted }));
+      evidenceItems = [...evidenceItems, ...fallbackAnchors];
+      eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
+      guarded = applyMixedNoveltyGuard(eligible, evidenceItems, mode);
+    }
   }
 
   if (mode === "all") {
