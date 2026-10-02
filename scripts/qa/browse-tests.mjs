@@ -199,16 +199,21 @@ const filler = (start, count, { qualifying = false } = {}) => Array.from({ lengt
   genres: qualifying ? [{ id: 13, name: "Simulator" }] : [{ id: 31, name: "Adventure" }],
   themes: qualifying ? [{ id: 33, name: "Sandbox" }] : [{ id: 1, name: "Action" }]
 }));
-const sparseCozyHarness = makePlayFetch({ batches: [
-  [...filler(1000, 35), ...filler(1035, 1, { qualifying: true })],
-  [...filler(2000, 30), ...filler(2030, 6, { qualifying: true })],
-  [...filler(3000, 31), ...filler(3031, 5, { qualifying: true })],
-  []
-] });
+const sparseCozyCandidates = [
+  ...filler(1000, 35),
+  ...filler(1035, 1, { qualifying: true }),
+  ...filler(2000, 30),
+  ...filler(2030, 6, { qualifying: true }),
+  ...filler(3000, 31),
+  ...filler(3031, 5, { qualifying: true })
+];
+const sparseCozyHarness = makePlayFetch({ games: sparseCozyCandidates });
 const filledCozy = await browseCatalog({ domain: "play", genreId: "cozy", page: 1, env, fetchImpl: sparseCozyHarness.fetchImpl });
-eq("Play Cozy fills the first page across sparse provider batches", filledCozy.items.length, BROWSE_PAGE_SIZE);
-check("Play Cozy keeps fetching after a sparse first candidate batch", sparseCozyHarness.bodies.length >= 3);
-check("Play Cozy advances IGDB offsets while filling a page", /offset 36;/.test(sparseCozyHarness.bodies[1] ?? "") && /offset 72;/.test(sparseCozyHarness.bodies[2] ?? ""));
+eq("Play Cozy fills the first page from a sparse curated candidate set", filledCozy.items.length, BROWSE_PAGE_SIZE);
+eq("Play Cozy uses one bounded provider request instead of burst-fetching batches", sparseCozyHarness.bodies.length, 1);
+check("Play Cozy requests a larger curated candidate pool", /limit 500;/.test(sparseCozyHarness.bodies[0] ?? ""), sparseCozyHarness.bodies[0] ?? "");
+const filledCozyPage2 = await browseCatalog({ domain: "play", genreId: "cozy", page: 2, env, fetchImpl: makePlayFetch({ games: [...sparseCozyCandidates, ...filler(4000, 12, { qualifying: true })] }).fetchImpl });
+check("Play Cozy paginates qualifying results rather than raw candidates", filledCozyPage2.items.length > 0 && filledCozyPage2.items[0]?.title !== filledCozy.items[0]?.title);
 
 const strategyHarness = makePlayFetch({ games: [
   { id: 930, name: "True Strategy", first_release_date: 1609459200, genres: [{ id: 15, name: "Strategy" }], themes: [] },

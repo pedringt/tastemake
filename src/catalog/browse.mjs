@@ -112,41 +112,33 @@ async function browsePlay(genre, page, env, fetchImpl) {
   const { where } = igdbMetadataFilter(provider, taxonomy);
   if (!where) return { items: [], configured: true, hasMore: false };
 
-  // Curated categories can be much narrower than IGDB's discovery query. Build pages from
-  // qualifying results rather than from raw candidate pages so users do not see 1 item, then 7,
-  // then an empty page even though more matching games exist farther down the provider results.
-  const candidateLimit = BROWSE_PAGE_SIZE * 3;
+  // Curated categories can be much narrower than IGDB's discovery query. Fetch one larger,
+  // bounded candidate set and paginate the qualifying results locally. This fills sparse categories
+  // without bursting several sequential provider requests and tripping IGDB rate limits.
+  const curated = Boolean(provider.requireGenres?.length || provider.requireThemes?.length || provider.excludeGenres?.length || provider.excludeThemes?.length);
+  const candidateLimit = curated ? 500 : BROWSE_PAGE_SIZE * 3;
   const targetStart = (page - 1) * BROWSE_PAGE_SIZE;
   const targetEnd = targetStart + BROWSE_PAGE_SIZE;
-  const maxBatches = 10;
-  const qualifying = [];
-  let offset = 0;
-  let exhausted = false;
-
-  for (let batch = 0; batch < maxBatches && qualifying.length < targetEnd; batch += 1) {
-    const response = await fetchImpl("https://api.igdb.com/v4/games", {
-      method: "POST",
-      headers: {
-        "client-id": env.IGDB_CLIENT_ID,
-        authorization: `Bearer ${token}`,
-        "content-type": "text/plain"
-      },
-      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.id,themes.name,collection.id,franchises.id,total_rating_count; ${where} sort total_rating_count desc; limit ${candidateLimit}; offset ${offset};`
-    });
-    if (!response.ok) throw new Error("igdb browse unavailable");
-    const rows = await response.json();
-    qualifying.push(...rows.filter((row) => matchesRequiredMetadata(row, provider)));
-    if (rows.length < candidateLimit) {
-      exhausted = true;
-      break;
-    }
-    offset += candidateLimit;
-  }
-
+  const rawOffset = curated ? 0 : (page - 1) * candidateLimit;
+  const response = await fetchImpl("https://api.igdb.com/v4/games", {
+    method: "POST",
+    headers: {
+      "client-id": env.IGDB_CLIENT_ID,
+      authorization: `Bearer ${token}`,
+      "content-type": "text/plain"
+    },
+    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.id,themes.name,collection.id,franchises.id,total_rating_count; ${where} sort total_rating_count desc; limit ${candidateLimit}; offset ${rawOffset};`
+  });
+  if (!response.ok) throw new Error("igdb browse unavailable");
+  const rows = await response.json();
+  const qualifying = rows.filter((row) => matchesRequiredMetadata(row, provider));
+  const items = curated
+    ? qualifying.slice(targetStart, targetEnd)
+    : qualifying.slice(0, BROWSE_PAGE_SIZE);
   return {
-    items: qualifying.slice(targetStart, targetEnd).map(igdbItem),
+    items: items.map(igdbItem),
     configured: true,
-    hasMore: qualifying.length > targetEnd || (!exhausted && qualifying.length >= targetEnd)
+    hasMore: curated ? qualifying.length > targetEnd : rows.length >= candidateLimit
   };
 }
 
