@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   }
 
   const started = Date.now();
-  const key = `browse:v1:${domain}:${genre}:${page}`;
+  const key = `browse:v2:${domain}:${genre}:${page}`;
   const payload = await cachedValue(key, () => browseCatalog({ domain, genreId: genre, page }), { ttl: 900, tags: ["browse-catalog"] });
   console.info("[tastemake-browse]", JSON.stringify({ domain, genre, page, ms: Date.now() - started, results: payload.items?.length ?? 0 }));
   res.setHeader("cache-control", "public, max-age=300, stale-while-revalidate=900");
