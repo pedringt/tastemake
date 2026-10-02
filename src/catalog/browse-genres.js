@@ -9,16 +9,14 @@ const MOVIE_GENRES = [
   { id: "animation", label: "Animation", provider: { kind: "genre", movie: 16 } }
 ];
 
-// TMDb does not expose dedicated Horror or Thriller TV genre ids. Treating both as Mystery
-// made the two Browse filters identical and admitted crime procedurals such as Law & Order.
-// Resolve those two labels through TMDb keywords instead; the remaining TV filters use the
-// provider's real TV genre taxonomy.
+// TMDb's TV taxonomy combines Sci-Fi & Fantasy and has no dedicated Horror or Thriller genres.
+// Use keyword discovery for those user-facing distinctions instead of exposing duplicate/misleading filters.
 const TV_GENRES = [
   { id: "drama", label: "Drama", provider: { kind: "genre", tv: 18 } },
   { id: "comedy", label: "Comedy", provider: { kind: "genre", tv: 35 } },
   { id: "horror", label: "Horror", provider: { kind: "keyword", value: "horror" } },
-  { id: "sci-fi", label: "Sci-fi", provider: { kind: "genre", tv: 10765 } },
-  { id: "fantasy", label: "Fantasy", provider: { kind: "genre", tv: 10765 } },
+  { id: "sci-fi", label: "Sci-fi", provider: { kind: "keyword", value: "science fiction" } },
+  { id: "fantasy", label: "Fantasy", provider: { kind: "keyword", value: "fantasy" } },
   { id: "thriller", label: "Thriller", provider: { kind: "keyword", value: "thriller" } },
   { id: "documentary", label: "Documentary", provider: { kind: "genre", tv: 99 } },
   { id: "animation", label: "Animation", provider: { kind: "genre", tv: 16 } }
@@ -38,14 +36,14 @@ export const BROWSE_GENRES = {
     { id: "memoir-nonfiction", label: "Memoir / nonfiction", provider: { kind: "subject", value: "biography" } }
   ],
   play: [
-    { id: "action-adventure", label: "Action / Adventure", provider: { kind: "genre", value: 31 } },
-    { id: "rpg", label: "RPG", provider: { kind: "genre", value: 12 } },
-    { id: "horror", label: "Horror", provider: { kind: "theme", value: 19 } },
-    { id: "puzzle", label: "Puzzle", provider: { kind: "genre", value: 9 } },
-    { id: "narrative", label: "Narrative", provider: { kind: "search", value: "narrative" } },
-    { id: "strategy", label: "Strategy", provider: { kind: "genre", value: 15 } },
-    { id: "cozy", label: "Cozy", provider: { kind: "where", value: "genres = (13, 32) | themes = (35)" } },
-    { id: "indie", label: "Indie", provider: { kind: "genre", value: 32 } }
+    { id: "action-adventure", label: "Action / Adventure", provider: { kind: "metadata", genres: ["Adventure"], themes: ["Action"] } },
+    { id: "rpg", label: "RPG", provider: { kind: "metadata", genres: ["Role-playing (RPG)"] } },
+    { id: "horror", label: "Horror", provider: { kind: "metadata", themes: ["Horror"] } },
+    { id: "puzzle", label: "Puzzle", provider: { kind: "metadata", genres: ["Puzzle"] } },
+    { id: "narrative", label: "Narrative", provider: { kind: "metadata", genres: ["Visual Novel", "Point-and-click"], themes: ["Drama", "Mystery", "Romance"] } },
+    { id: "strategy", label: "Strategy", provider: { kind: "metadata", genres: ["Strategy", "Real Time Strategy (RTS)", "Turn-based strategy (TBS)", "Tactical"] } },
+    { id: "cozy", label: "Cozy", provider: { kind: "metadata", genres: ["Simulator"], themes: ["Kids", "Sandbox", "Comedy", "Romance"], excludeThemes: ["Action", "Horror", "Thriller", "Survival", "Warfare"] } },
+    { id: "indie", label: "Indie", provider: { kind: "metadata", genres: ["Indie"] } }
   ]
 };
 

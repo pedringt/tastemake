@@ -50,18 +50,60 @@ async function browseRead(genre, page, env, fetchImpl) {
   };
 }
 
+async function igdbTaxonomy(token, env, fetchImpl) {
+  const request = async (path) => {
+    const response = await fetchImpl(`https://api.igdb.com/v4/${path}`, {
+      method: "POST",
+      headers: {
+        "client-id": env.IGDB_CLIENT_ID,
+        authorization: `Bearer ${token}`,
+        "content-type": "text/plain"
+      },
+      body: "fields id,name; limit 100;"
+    });
+    if (!response.ok) throw new Error(`igdb ${path} unavailable`);
+    return response.json();
+  };
+  const [genres, themes] = await Promise.all([request("genres"), request("themes")]);
+  return { genres, themes };
+}
+
+function taxonomyIds(rows, names = []) {
+  const wanted = new Set(names.map((name) => String(name).toLowerCase()));
+  return rows.filter((row) => wanted.has(String(row.name ?? "").toLowerCase())).map((row) => Number(row.id)).filter(Number.isFinite);
+}
+
+function igdbMetadataFilter(provider, taxonomy) {
+  const genreIds = taxonomyIds(taxonomy.genres, provider.genres);
+  const themeIds = taxonomyIds(taxonomy.themes, provider.themes);
+  const parts = [];
+  if (genreIds.length) parts.push(`genres = (${genreIds.join(", ")})`);
+  if (themeIds.length) parts.push(`themes = (${themeIds.join(", ")})`);
+  return { where: parts.length ? `where ${parts.join(" | ")};` : "", genreIds, themeIds };
+}
+
+function excludesGame(row, provider) {
+  const excluded = new Set((provider.excludeThemes ?? []).map((name) => String(name).toLowerCase()));
+  if (!excluded.size) return false;
+  return (row.themes ?? []).some((theme) => excluded.has(String(theme.name ?? "").toLowerCase()));
+}
+
 async function browsePlay(genre, page, env, fetchImpl) {
   const token = await igdbToken(env, fetchImpl);
   if (!token) return { items: [], configured: false };
-  const offset = (page - 1) * BROWSE_PAGE_SIZE;
-  const filter = genre.provider.kind === "genre"
-    ? `where genres = (${Number(genre.provider.value)});`
-    : genre.provider.kind === "theme"
-      ? `where themes = (${Number(genre.provider.value)});`
-      : genre.provider.kind === "where"
-        ? `where ${String(genre.provider.value).replace(/;/g, "")};`
-        : `search "${String(genre.provider.value).replace(/"/g, "")}";`;
-  const sort = genre.provider.kind === "search" ? "" : "sort total_rating_count desc;";
+
+  const provider = genre.provider;
+  if (provider.kind !== "metadata") return { items: [], configured: true, hasMore: false };
+
+  const taxonomy = await igdbTaxonomy(token, env, fetchImpl);
+  const { where } = igdbMetadataFilter(provider, taxonomy);
+  if (!where) return { items: [], configured: true, hasMore: false };
+
+  // Pull a wider candidate page for curated categories such as Cozy, then filter using provider
+  // theme metadata. This keeps title words out of category logic while still excluding obvious
+  // mismatches such as Action/Warfare/Horror games.
+  const candidateLimit = BROWSE_PAGE_SIZE * 3;
+  const offset = (page - 1) * candidateLimit;
   const response = await fetchImpl("https://api.igdb.com/v4/games", {
     method: "POST",
     headers: {
@@ -69,14 +111,15 @@ async function browsePlay(genre, page, env, fetchImpl) {
       authorization: `Bearer ${token}`,
       "content-type": "text/plain"
     },
-    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id,total_rating_count; ${filter} ${sort} limit ${BROWSE_PAGE_SIZE}; offset ${offset};`
+    body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.id,themes.name,collection.id,franchises.id,total_rating_count; ${where} sort total_rating_count desc; limit ${candidateLimit}; offset ${offset};`
   });
   if (!response.ok) throw new Error("igdb browse unavailable");
   const rows = await response.json();
+  const filtered = rows.filter((row) => !excludesGame(row, provider));
   return {
-    items: rows.map(igdbItem),
+    items: filtered.slice(0, BROWSE_PAGE_SIZE).map(igdbItem),
     configured: true,
-    hasMore: rows.length >= BROWSE_PAGE_SIZE
+    hasMore: rows.length >= candidateLimit
   };
 }
 

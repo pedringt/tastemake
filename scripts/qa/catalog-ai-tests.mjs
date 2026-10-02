@@ -406,7 +406,7 @@ check("Taste Profile prompt names the exact allowed domain ids", promptContract.
 check("Taste Profile prompt explicitly forbids the production 'watch' alias", promptContract.includes('Never use umbrella labels such as "watch"'));
 check("Taste Profile prompt explicitly forbids the production 'established' level", promptContract.includes("Never use established"));
 check("Taste Profile prompt refuses to invent facts for unresolved manual evidence", promptContract.includes("facts.resolved is false"));
-check("Taste Profile prompt asks for a fuller 4-6 pattern set", promptContract.includes("Use 4 to 6 concise hypotheses"));
+check("Taste Profile prompt allows a deeper profile while keeping thin evidence concise", promptContract.includes("Return up to 12 concise hypotheses") && promptContract.includes("4 to 6 is enough"));
 
 // Production regression: software should repair mechanical contract mistakes that it can resolve
 // safely from product-owned evidence rather than discarding an otherwise useful pattern.

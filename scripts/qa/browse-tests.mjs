@@ -17,13 +17,17 @@ const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(
 eq("Browse exposes Movies / TV / Read / Play", BROWSE_DOMAINS.map((x) => x.id).join(","), "movies,tv,read,play");
 check("every Browse domain has genres", BROWSE_DOMAINS.every((domain) => browseGenresFor(domain.id).length >= 8));
 eq("Movies Horror maps to the TMDb movie genre", browseGenreById("movies", "horror")?.provider?.movie, 27);
-eq("TV Sci-fi maps to TMDb's separate TV genre", browseGenreById("tv", "sci-fi")?.provider?.tv, 10765);
+eq("TV Sci-fi uses keyword discovery instead of the combined Sci-Fi & Fantasy genre", browseGenreById("tv", "sci-fi")?.provider?.kind, "keyword");
+eq("TV Sci-fi resolves the science fiction keyword", browseGenreById("tv", "sci-fi")?.provider?.value, "science fiction");
+eq("TV Fantasy uses its own keyword discovery", browseGenreById("tv", "fantasy")?.provider?.value, "fantasy");
 eq("TV Horror uses keyword discovery instead of Mystery", browseGenreById("tv", "horror")?.provider?.kind, "keyword");
 eq("TV Horror resolves the horror keyword", browseGenreById("tv", "horror")?.provider?.value, "horror");
 eq("TV Thriller uses keyword discovery instead of Mystery", browseGenreById("tv", "thriller")?.provider?.kind, "keyword");
 eq("TV Thriller resolves a distinct keyword", browseGenreById("tv", "thriller")?.provider?.value, "thriller");
-eq("Play Horror maps to the provider horror theme", browseGenreById("play", "horror")?.provider?.value, 19);
-eq("Play Cozy uses category filtering instead of literal title search", browseGenreById("play", "cozy")?.provider?.kind, "where");
+eq("Play Horror uses structured metadata", browseGenreById("play", "horror")?.provider?.kind, "metadata");
+eq("Play Cozy uses structured metadata", browseGenreById("play", "cozy")?.provider?.kind, "metadata");
+eq("Play Narrative uses structured metadata instead of title search", browseGenreById("play", "narrative")?.provider?.kind, "metadata");
+check("every Games Browse category uses IGDB metadata instead of literal title search", browseGenresFor("play").every((genre) => genre.provider?.kind === "metadata"));
 
 const env = {
   TASTEMAKE_TMDB_TOKEN: "tmdb",
@@ -46,9 +50,13 @@ check("Movies Browse keeps provider identities", movies.items.every((x) => x.pro
 
 const tvFetch = async (url) => {
   const u = String(url);
+  if (u.includes("/search/keyword")) {
+    check("TV Sci-fi searches science fiction rather than sharing the Fantasy genre", u.includes("query=science%20fiction"), u);
+    return { ok: true, json: async () => ({ results: [{ id: 111, name: "science fiction" }] }) };
+  }
   if (u.includes("/discover/tv")) {
-    check("TV Sci-fi uses the TV genre id", u.includes("with_genres=10765"), u);
-    return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: 100 + i, name: `Show ${i + 1}`, first_air_date: "2021-01-01", genre_ids: [10765] })) }) };
+    check("TV Sci-fi discovers by its own keyword", u.includes("with_keywords=111"), u);
+    return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: 100 + i, name: `Show ${i + 1}`, first_air_date: "2021-01-01", genre_ids: [] })) }) };
   }
   throw new Error(`unexpected tv URL: ${u}`);
 };
@@ -56,6 +64,21 @@ const tv = await browseCatalog({ domain: "tv", genreId: "sci-fi", page: 1, env, 
 eq("TV Browse returns the page size", tv.items.length, BROWSE_PAGE_SIZE);
 check("TV Browse returns only TV shows", tv.items.every((x) => x.type === "tv"));
 check("TV Browse keeps provider identities", tv.items.every((x) => x.provider === "tmdb"));
+
+const tvFantasyFetch = async (url) => {
+  const u = String(url);
+  if (u.includes("/search/keyword")) {
+    check("TV Fantasy searches its own keyword", u.includes("query=fantasy"), u);
+    return { ok: true, json: async () => ({ results: [{ id: 222, name: "fantasy" }] }) };
+  }
+  if (u.includes("/discover/tv")) {
+    check("TV Fantasy stays distinct from Sci-fi", u.includes("with_keywords=222") && !u.includes("with_keywords=111"), u);
+    return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: 700 + i, name: `Fantasy Show ${i + 1}`, first_air_date: "2021-01-01", genre_ids: [] })) }) };
+  }
+  throw new Error(`unexpected fantasy URL: ${u}`);
+};
+const tvFantasy = await browseCatalog({ domain: "tv", genreId: "fantasy", page: 1, env, fetchImpl: tvFantasyFetch });
+eq("TV Fantasy Browse returns shows", tvFantasy.items[0]?.type, "tv");
 
 const tvHorrorFetch = async (url) => {
   const u = String(url);
@@ -99,35 +122,60 @@ const read = await browseCatalog({ domain: "read", genreId: "fantasy", page: 2, 
 eq("Read Browse returns books", read.items[0]?.type, "book");
 check("Read Browse reports more when the provider fills a page", read.hasMore);
 
-let playBody = "";
-const playFetch = async (url, init = {}) => {
-  const u = String(url);
-  if (u.includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "token" }) };
-  if (u.includes("api.igdb.com/v4/games")) {
-    playBody = init.body;
-    return { ok: true, json: async () => Array.from({ length: 12 }, (_, i) => ({ id: 200 + i, name: `Horror Game ${i}`, first_release_date: 1609459200, genres: [] })) };
-  }
-  throw new Error(`unexpected play URL: ${u}`);
-};
-const play = await browseCatalog({ domain: "play", genreId: "horror", page: 2, env, fetchImpl: playFetch });
-eq("Play Browse returns games", play.items[0]?.type, "game");
-check("Play Horror uses the horror theme filter", /where themes = \(19\)/.test(playBody), playBody);
-check("Play Browse paginates without repeats", /offset 12/.test(playBody), playBody);
+const igdbGenres = [
+  { id: 31, name: "Adventure" }, { id: 12, name: "Role-playing (RPG)" }, { id: 9, name: "Puzzle" },
+  { id: 34, name: "Visual Novel" }, { id: 2, name: "Point-and-click" }, { id: 15, name: "Strategy" },
+  { id: 11, name: "Real Time Strategy (RTS)" }, { id: 16, name: "Turn-based strategy (TBS)" },
+  { id: 24, name: "Tactical" }, { id: 13, name: "Simulator" }, { id: 32, name: "Indie" }
+];
+const igdbThemes = [
+  { id: 1, name: "Action" }, { id: 19, name: "Horror" }, { id: 31, name: "Drama" },
+  { id: 43, name: "Mystery" }, { id: 44, name: "Romance" }, { id: 35, name: "Kids" },
+  { id: 33, name: "Sandbox" }, { id: 27, name: "Comedy" }, { id: 20, name: "Thriller" },
+  { id: 21, name: "Survival" }, { id: 39, name: "Warfare" }
+];
 
-let cozyBody = "";
-const cozyFetch = async (url, init = {}) => {
-  const u = String(url);
-  if (u.includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "token" }) };
-  if (u.includes("api.igdb.com/v4/games")) {
-    cozyBody = init.body;
-    return { ok: true, json: async () => Array.from({ length: 12 }, (_, i) => ({ id: 400 + i, name: `Comfort Game ${i}`, first_release_date: 1609459200, genres: [] })) };
-  }
-  throw new Error(`unexpected cozy URL: ${u}`);
-};
-const cozy = await browseCatalog({ domain: "play", genreId: "cozy", page: 1, env, fetchImpl: cozyFetch });
-eq("Play Cozy Browse returns games", cozy.items[0]?.type, "game");
-check("Play Cozy avoids literal title search", !/search\s+"cozy"/i.test(cozyBody), cozyBody);
-check("Play Cozy uses provider category filters", /where genres = \(13, 32\) \| themes = \(35\)/.test(cozyBody), cozyBody);
+function makePlayFetch({ games = [] } = {}) {
+  const bodies = [];
+  const fetchImpl = async (url, init = {}) => {
+    const u = String(url);
+    if (u.includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "token" }) };
+    if (u.includes("api.igdb.com/v4/genres")) return { ok: true, json: async () => igdbGenres };
+    if (u.includes("api.igdb.com/v4/themes")) return { ok: true, json: async () => igdbThemes };
+    if (u.includes("api.igdb.com/v4/games")) {
+      bodies.push(init.body);
+      return { ok: true, json: async () => games };
+    }
+    throw new Error(`unexpected play URL: ${u}`);
+  };
+  return { fetchImpl, bodies };
+}
+
+for (const genre of browseGenresFor("play")) {
+  const { fetchImpl, bodies } = makePlayFetch({ games: [{ id: 900, name: "Metadata Match", first_release_date: 1609459200, genres: [], themes: [] }] });
+  const result = await browseCatalog({ domain: "play", genreId: genre.id, page: 1, env, fetchImpl });
+  eq(`Play ${genre.label} returns games from a structured provider query`, result.items[0]?.type, "game");
+  check(`Play ${genre.label} never sends a literal title search`, !/search\s+"/i.test(bodies[0] ?? ""), bodies[0] ?? "");
+  check(`Play ${genre.label} sends a metadata where clause`, /where\s+(genres|themes)/i.test(bodies[0] ?? ""), bodies[0] ?? "");
+}
+
+const narrativeHarness = makePlayFetch({ games: [
+  { id: 910, name: "Story Game", first_release_date: 1609459200, genres: [{ id: 34, name: "Visual Novel" }], themes: [{ id: 31, name: "Drama" }] }
+] });
+const narrative = await browseCatalog({ domain: "play", genreId: "narrative", page: 1, env, fetchImpl: narrativeHarness.fetchImpl });
+eq("Play Narrative returns metadata-matched story games", narrative.items[0]?.title, "Story Game");
+check("Play Narrative query uses story-relevant genre/theme ids", /genres = \([^)]*34/.test(narrativeHarness.bodies[0]) && /themes = \([^)]*31/.test(narrativeHarness.bodies[0]), narrativeHarness.bodies[0]);
+
+const cozyHarness = makePlayFetch({ games: [
+  { id: 920, name: "Stardew-like", first_release_date: 1609459200, genres: [{ id: 13, name: "Simulator" }], themes: [{ id: 33, name: "Sandbox" }] },
+  { id: 921, name: "Obvious Shooter", first_release_date: 1609459200, genres: [{ id: 31, name: "Adventure" }], themes: [{ id: 1, name: "Action" }, { id: 39, name: "Warfare" }] },
+  { id: 922, name: "Dark Survival", first_release_date: 1609459200, genres: [{ id: 13, name: "Simulator" }], themes: [{ id: 19, name: "Horror" }, { id: 21, name: "Survival" }] }
+] });
+const cozy = await browseCatalog({ domain: "play", genreId: "cozy", page: 1, env, fetchImpl: cozyHarness.fetchImpl });
+check("Play Cozy keeps a positive cozy-style metadata match", cozy.items.some((item) => item.title === "Stardew-like"));
+check("Play Cozy excludes obvious Action/Warfare false positives", !cozy.items.some((item) => item.title === "Obvious Shooter"));
+check("Play Cozy excludes Horror/Survival false positives", !cozy.items.some((item) => item.title === "Dark Survival"));
+check("Play Cozy avoids literal title search", !/search\s+"cozy"/i.test(cozyHarness.bodies[0] ?? ""), cozyHarness.bodies[0] ?? "");
 
 const invalid = await browseCatalog({ domain: "movies", genreId: "not-real", page: 1, env, fetchImpl: moviesFetch });
 check("invalid Browse genre fails closed", invalid.degraded && invalid.items.length === 0);

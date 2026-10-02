@@ -496,7 +496,7 @@ function renderNextSteps() {
   return `
     <div class="refresh-banner is-finished">
       <div>
-        <span class="refresh-kicker">Prototype checkpoint</span>
+        <span class="refresh-kicker">You’re caught up</span>
         <strong>No more eligible catalog matches right now${filter !== "all" ? ` for ${esc(filterLabel)}` : ""}.</strong>
         <p>${filter !== "all"
           ? `Tastemake doesn't have enough evidence in ${esc(filterLabel)} yet. Try All, or change your favorites or areas to give it a different starting point.`
@@ -536,7 +536,7 @@ export function renderRecommendations() {
             <span>rated</span>
           </div>
           <div class="progress-track" aria-hidden="true">${segments}</div>
-          <div class="progress-note">${currentRoundComplete(state) ? (outOfPicks(state) ? "prototype checkpoint" : "new set unlocked") : "react as you go"}</div>
+          <div class="progress-note">${currentRoundComplete(state) ? (outOfPicks(state) ? "caught up" : "new set unlocked") : "react as you go"}</div>
         </div>
       </div>
 
