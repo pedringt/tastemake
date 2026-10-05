@@ -86,7 +86,7 @@ if mode == "a11y":
                 print("       ", k, x)
     sys.exit(1 if bad else 0)
 if mode == "layout":
-    keys = ["stickerTextHits", "stickerBoxHits", "stickerOutside", "titleCollisions", "textUnderControls", "topbarOverlaps", "mapOverlaps", "lowContrast", "artworkHits", "clippedText", "chipMisalignment"]
+    keys = ["stickerTextHits", "stickerBoxHits", "stickerOutside", "titleCollisions", "textUnderControls", "topbarOverlaps", "mapOverlaps", "lowContrast", "artworkHits", "clippedText", "chipMisalignment", "titleCoverOverlap", "cardGaps"]
     import os
     # Collage is the original look; its decorative low-contrast labels are known and not gated (see visual-design-spec.md).
     gated = keys if os.environ.get("LOOK", "editorial") != "collage" else [k for k in keys if k != "lowContrast"]

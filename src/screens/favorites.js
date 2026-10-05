@@ -2,11 +2,12 @@ import { state } from "../state.js";
 import { starterItems } from "../model/starters.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { blurbOf } from "../catalog/synopsis.mjs";
 import { renderStickerField } from "../components/stickers.js";
 import { renderArtwork } from "../components/artwork.js";
 
 function starterCard(item, index) {
-  const blurb = item.about ?? item.note ?? "One of the things you love.";
+  const blurb = blurbOf(item, "One of the things you love.");
   return `
     <article class="starter-card ${item.artwork ? "has-artwork" : ""}" data-starter-id="${item.id}">
       ${item.artwork ? renderArtwork(item, "starter-artwork") : ""}

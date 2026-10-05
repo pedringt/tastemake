@@ -16,6 +16,13 @@
 //   mapOverlaps      Taste Map cards overlapping each other or leaving the map
 //   lowContrast      text below WCAG AA (4.5:1, or 3:1 for large text) against its background; skips text over
 //                    images/gradients, disabled controls, de-emphasized (unselected) tiles and decoration
+//   artworkHits      a card's decorative artwork title covered by a decorative shape
+//   clippedText      rationale/synopsis cut off by CSS overflow instead of at a clean boundary
+//   chipMisalignment status chips that do not share a band across a row of cards
+//   titleCoverOverlap  a title drawn over real cover art (it collides with the cover's own printed title/author),
+//                    or a card title that runs into the cover
+//   cardGaps         excessive empty vertical space between a card's title and its description (and between the
+//                    rationale and the synopsis), measured between the text itself rather than the element boxes
 //   hScroll          the page scrolls sideways
 // A clean run has every list empty and hScroll false.
 //
@@ -229,6 +236,8 @@ export function checkCurrentScreen() {
     artworkHits: checkArtwork(),   // #34: recommendation artwork title vs. decorative shapes
     clippedText: checkClippedText(screen),      // #121: rationale/synopsis must never be CSS-clipped
     chipMisalignment: checkChipAlignment(screen), // #121: status chips must share a band across a row
+    titleCoverOverlap: checkTitleCoverOverlap(screen), // titles must not sit on top of real cover art
+    cardGaps: checkCardGaps(screen),            // no large empty gaps between a card's title and description
     hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth
   };
 }
@@ -262,11 +271,16 @@ export async function runAll() {
     "A medium-length rationale that explains the connection to a favorite in a couple of clauses, enough to wrap onto more than one line without being extreme.",
     "Related to a favorite in the external catalog."
   ];
+  // Real cover art, as providers send it: the cover prints its own title and author, the author near the
+  // bottom edge. Inline SVG so the check needs no network. Cards 0, 1 and 3 get a cover (one-line,
+  // two-line and short titles) so the cover checks run against every title length; 2 and 4 stay generated.
+  const cover=(heading,author,fill)=>"data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><rect width="400" height="600" fill="${fill}"/><text x="200" y="130" font-size="40" font-family="Georgia" fill="#f4e7c5" text-anchor="middle">${heading}</text><text x="200" y="552" font-size="28" font-family="Georgia" fill="#f4e7c5" text-anchor="middle" letter-spacing="3">${author}</text></svg>`);
+  const covers={0:cover("THE HERO OF AGES","BRANDON SANDERSON","#3a2a5a"),1:cover("A LONGER TITLE","AUTHOR NAME","#1d4d4f"),3:cover("SHORT","SOME AUTHOR","#4a2b2b")};
   const picks=Array.from({length:5},(_,i)=>({
     id:`tmdb-movie-${820+i}`,provider:"tmdb",providerId:String(820+i),title:titles[i],
     type:"movie",domains:["movies"],about:i===1?"A real-catalog-style synopsis with enough copy to exercise the card layout and check that truncation ends cleanly instead of mid-sentence when the source text runs long.":"Short synopsis.",
     prediction:"Worth testing",fit:i===4?"Exploratory fit":"Catalog match",rank:i===4?null:i+1,surprise:i===4,
-    reason:reasons[i],artwork:null,ai:null
+    reason:reasons[i],artwork:covers[i]??null,ai:null
   }));
   state.recommendationSets=[picks];
   state.browseDomain="movies";
@@ -374,5 +388,61 @@ export function checkChipAlignment(root = document) {
       hits.push(`status band offsets vary by ${Math.round(spread)}px across a row (${offsets.map((o) => Math.round(o)).join(",")})`);
     }
   }
+  return hits;
+}
+
+// A title must never be drawn over real cover art: the cover already prints its own title and author
+// (the author usually near the bottom edge), so any overlay text on top collides with it -- e.g. "The
+// Hero of Ages" running over "Brandon Sanderson". Only the small kicker/corner labels at the top edge
+// are allowed on a real cover. Also checks that the card's own title (in the body below the art) does
+// not run up into the cover.
+export function checkTitleCoverOverlap(root = document) {
+  const hits = [];
+  root.querySelectorAll(".editorial-rec").forEach((card) => {
+    const art = card.querySelector(".editorial-art-real");
+    if (!art || !isVisible(art)) return;
+    const name = card.querySelector(".editorial-title-row h3")?.textContent?.trim().slice(0, 28) || "?";
+    const artBox = art.getBoundingClientRect();
+    art.querySelectorAll("*").forEach((el) => {
+      if (el.matches("img, .art-kicker, .art-corner") || !isVisible(el)) return;
+      if ((el.textContent ?? "").trim()) hits.push(`"${name}": overlay text "${el.textContent.trim().slice(0, 20)}" is drawn over the cover`);
+    });
+    const h3 = card.querySelector(".editorial-title-row h3");
+    if (h3) {
+      const t = h3.getBoundingClientRect();
+      if (overlapArea(t, artBox) > 1) hits.push(`"${name}": the card title overlaps the cover`);
+    }
+  });
+  return hits;
+}
+
+// "Excessive vertical gaps": measured between the text itself, not the element boxes -- the empty space
+// people see is mostly *inside* reserved boxes (a two-line title box holding one line, an empty status
+// band), which a box-to-box measurement would never see. Flags a card when the blank space between the
+// bottom of its title text and the top of its rationale, or between rationale and synopsis, is larger
+// than a normal paragraph gap.
+export const MAX_CARD_GAP = 24;
+
+export function checkCardGaps(root = document) {
+  const hits = [];
+  const textBox = (el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    return r.height ? r : null;
+  };
+  root.querySelectorAll(".editorial-rec").forEach((card) => {
+    if (!isVisible(card)) return;
+    const name = card.querySelector(".editorial-title-row h3")?.textContent?.trim().slice(0, 28) || "?";
+    const parts = [
+      ["title", card.querySelector(".editorial-title-row h3")],
+      ["rationale", card.querySelector(".editorial-rationale")],
+      ["synopsis", card.querySelector(".editorial-about")]
+    ].map(([label, el]) => [label, el && isVisible(el) ? textBox(el) : null]).filter(([, box]) => box);
+    for (let i = 1; i < parts.length; i += 1) {
+      const gap = parts[i][1].top - parts[i - 1][1].bottom;
+      if (gap > MAX_CARD_GAP) hits.push(`"${name}": ${Math.round(gap)}px gap between ${parts[i - 1][0]} and ${parts[i][0]} (max ${MAX_CARD_GAP}px)`);
+    }
+  });
   return hits;
 }

@@ -70,8 +70,7 @@
 
 .editorial-art-real { background:var(--navy); }
 .editorial-art-real img { width:100%; height:100%; display:block; object-fit:contain; background:linear-gradient(135deg,var(--navy),rgb(var(--ink-rgb,17 26 75) / .82)); }
-.editorial-art-real::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 55%,rgb(0 0 0 / .48)); pointer-events:none; }
-.editorial-art-real .art-kicker,.editorial-art-real .art-title,.editorial-art-real .art-corner { text-shadow:0 1px 4px rgb(0 0 0 / .55); }
+.editorial-art-real .art-kicker,.editorial-art-real .art-corner { text-shadow:0 1px 4px rgb(0 0 0 / .55); }
 
 @media (max-width:620px) {
   .starter-card.has-artwork { grid-template-columns:58px minmax(0,1fr); }
