@@ -5,6 +5,7 @@ import { displayLabel } from "../data/domains.js";
 import { itemStatus } from "../model/search.js";
 import { browseReadyForRecommendations } from "../model/browse.js";
 import { esc } from "../lib/html.js";
+import { blurbOf } from "../catalog/synopsis.mjs";
 import { pathForFeedback } from "../model/reaction-flow.js";
 
 function favoriteToggle(itemId) {
@@ -88,7 +89,7 @@ function browseCard(item) {
           </div>
           ${favoriteToggle(item.id)}
         </div>
-        <p class="browse-about">${esc(item.about ?? "")}</p>
+        <p class="browse-about">${esc(blurbOf(item))}</p>
 
         ${starterFavorite ? `
           <div class="reaction-complete">

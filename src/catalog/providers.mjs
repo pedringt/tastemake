@@ -2,6 +2,7 @@ import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, mergeCanonicalFacts } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { buildItemId } from "./item-id.mjs";
+import { fallbackSummary, sanitizeAbout } from "./synopsis.mjs";
 import { waitUntil } from "@vercel/functions";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
@@ -53,7 +54,7 @@ const uniq = (items) => {
 function tmdbItem(row, type) {
   const title = type === "tv" ? row.name : row.title;
   const date = type === "tv" ? row.first_air_date : row.release_date;
-  return {
+  const item = {
     id: buildItemId("tmdb", type, row.id),
     provider: "tmdb",
     providerId: String(row.id),
@@ -72,6 +73,8 @@ function tmdbItem(row, type) {
     // Search-only signal. Stripped before results leave searchCatalog so it never becomes product state.
     _searchPopularity: Number(row.popularity) || 0
   };
+  // Shared synopsis check (catalog/synopsis.mjs): TMDb's own adult flag plus the sensitive-term list.
+  return { ...item, ...sanitizeAbout(item, { adult: row.adult === true }) };
 }
 
 async function searchTmdb(query, env, fetchImpl, domain = "all") {
@@ -107,7 +110,7 @@ async function searchTmdb(query, env, fetchImpl, domain = "all") {
 
 function openLibraryItem(row) {
   const key = String(row.key ?? "").replace("/works/", "");
-  return {
+  const item = {
     id: buildItemId("openlibrary", "book", key),
     provider: "openlibrary",
     providerId: key,
@@ -130,6 +133,7 @@ function openLibraryItem(row) {
     // ties between equally relevant title matches in the combined All search.
     _searchPopularity: Number(row.edition_count) || 0
   };
+  return { ...item, ...sanitizeAbout(item) };
 }
 
 async function searchOpenLibrary(query, env, fetchImpl) {
@@ -155,7 +159,7 @@ async function igdbToken(env, fetchImpl) {
 
 function igdbItem(row) {
   const cover = row.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big_2x/${row.cover.image_id}.jpg` : null;
-  return {
+  const item = {
     id: buildItemId("igdb", "game", row.id),
     provider: "igdb",
     providerId: String(row.id),
@@ -177,6 +181,7 @@ function igdbItem(row) {
     // Search-only signal. Stripped before results leave searchCatalog.
     _searchPopularity: Number(row.total_rating_count) || 0
   };
+  return { ...item, ...sanitizeAbout(item) };
 }
 
 async function searchIgdb(query, env, fetchImpl) {
@@ -315,6 +320,41 @@ async function igdbDetail(providerId, env, fetchImpl) {
     publisher: publisher.length ? publisher.join(", ") : null,
     platforms: platforms.length ? platforms : null
   };
+}
+
+// A flagged synopsis is replaced with the provider's own tagline when TMDb has a clean one (the list
+// responses used for recommendations carry no tagline, so this is one small detail call per flagged
+// item -- never per recommendation). Anything that goes wrong leaves the genre-and-year fallback that
+// ingestion already put in `about`.
+async function fetchTmdbTagline(item, { env, fetchImpl }) {
+  const token = env.TASTEMAKE_TMDB_TOKEN;
+  if (!token || item.provider !== "tmdb" || !item.providerId) return null;
+  const kind = item.type === "tv" ? "tv" : "movie";
+  const load = async () => {
+    const response = await fetchWithTimeout(fetchImpl,
+      `https://api.themoviedb.org/3/${kind}/${encodeURIComponent(item.providerId)}?language=en-US`,
+      { headers: { authorization: `Bearer ${token}`, accept: "application/json" } },
+      3000
+    );
+    if (!response.ok) return null;
+    return clean((await response.json()).tagline, 160) || null;
+  };
+  try {
+    return fetchImpl !== fetch
+      ? await load()
+      : await cachedValue(`tmdb-tagline:v1:${kind}:${item.providerId}`, load, { ttl: 86400, tags: ["catalog-detail"] });
+  } catch {
+    return null;
+  }
+}
+
+export async function applyTaglineFallback(items, { env = process.env, fetchImpl = fetch } = {}) {
+  if (!Array.isArray(items) || !items.some((item) => item?.aboutFlag && item.provider === "tmdb")) return items;
+  return Promise.all(items.map(async (item) => {
+    if (!item?.aboutFlag || item.provider !== "tmdb") return item;
+    const tagline = await fetchTmdbTagline(item, { env, fetchImpl });
+    return tagline ? { ...item, about: fallbackSummary(item, { tagline }) } : item;
+  }));
 }
 
 // Books already carry their one required field (author) from search; Open Library's work-level

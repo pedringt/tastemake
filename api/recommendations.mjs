@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
+import { applyTaglineFallback } from "../src/catalog/providers.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { domainById } from "../src/data/domains.js";
@@ -604,6 +605,7 @@ export default async function handler(req, res) {
     if (!body.state || typeof body.state !== "object") return res.status(400).json({ error: "state is required" });
     const started = Date.now();
     const payload = await produceRecommendations({ rawState: body.state });
+    payload.picks = await applyTaglineFallback(payload.picks);
     console.info("[tastemake-recommendations]", JSON.stringify({
       ms: Date.now() - started,
       source: payload.source,

@@ -8,6 +8,7 @@ import { renderTastebreakPanel } from "../components/tastebreak.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { blurbOf } from "../catalog/synopsis.mjs";
 import { renderArtwork } from "../components/artwork.js";
 
 // #94: Library has one simple mental model — Recommendations is discovery, Library is your stuff.
@@ -75,7 +76,7 @@ function savedCard(feedback) {
       </summary>
       <div class="library-compact-detail">
         <div class="library-detail-meta-slot" data-detail-slot="${item.id}">${renderDetailMeta(item)}</div>
-        <p class="library-blurb">${esc(item.about ?? item.note ?? "")}</p>
+        <p class="library-blurb">${esc(blurbOf(item))}</p>
         ${item.reason ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${esc(item.reason)}</p>` : ""}
         <div class="library-favorite-row">
           <button

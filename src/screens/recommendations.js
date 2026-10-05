@@ -7,6 +7,7 @@ import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
+import { safeAbout } from "../catalog/synopsis.mjs";
 import { readableRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
@@ -209,12 +210,16 @@ function moreFeedbackToggle(itemId, expanded, panelId) {
 }
 
 function mediaArt(item, index) {
+  // Real cover art gets no title overlay: the cover already prints its own title and author (the author
+  // usually near the bottom edge), so a second title drawn on top ran over it -- "The Hero of Ages"
+  // across "Brandon Sanderson". The card's own heading below already names the pick, and the
+  // "Surprise Me" label sits in the card's meta line and burst badge. Generated art (no cover) keeps
+  // its title, because there the title is the art.
   if (item.artwork) {
     return `
       <div class="editorial-art editorial-art-real art-layout-${(index % 4) + 1}" aria-hidden="true">
         <img src="${esc(item.artwork)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
         <span class="art-kicker">${esc(displayLabel(item))}</span>
-        <span class="art-title">${item.surprise ? "SURPRISE ME" : esc(item.title)}</span>
         <span class="art-corner">TM/${String(index + 1).padStart(2, "0")}</span>
       </div>`;
   }
@@ -322,7 +327,8 @@ function recommendationCard(item, index, total) {
           <span>${esc(displayLabel(item))}${item.year ? ` · ${esc(item.year)}` : ""}</span>
         </div>
 
-        <div class="editorial-favorite-row">
+        <div class="editorial-status-row">
+          <span class="reaction-status-slot">${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}</span>
           ${favoriteToggle(item.id)}
         </div>
 
@@ -330,12 +336,8 @@ function recommendationCard(item, index, total) {
           <h3>${esc(item.title)}</h3>
         </div>
 
-        <div class="editorial-status-row">
-          <span class="reaction-status-slot">${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}</span>
-        </div>
-
         <p class="editorial-rationale">${esc(truncateCopy(readableRecommendationCopy(item.reason, item), RATIONALE_MAX_CHARS))}</p>
-        <p class="editorial-about">${esc(truncateCopy(item.about, ABOUT_MAX_CHARS))}</p>
+        <p class="editorial-about">${esc(truncateCopy(safeAbout(item), ABOUT_MAX_CHARS))}</p>
 
         <div class="editorial-why">
           <button

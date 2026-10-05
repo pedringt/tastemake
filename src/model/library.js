@@ -1,6 +1,7 @@
 import { starterItems } from "./starters.js";
 import { isPositiveExperience } from "./taste.js";
 import { isExperiencedNegative, isStrongPositive } from "./evidence.js";
+import { blurbOf, safeAbout } from "../catalog/synopsis.mjs";
 
 // The Library is derived from what the app already knows, never stored on its own, so it cannot
 // disagree with the Taste Profile and every correction (Loved -> Liked -> Didn't like) fixes it for free.
@@ -9,7 +10,7 @@ import { isExperiencedNegative, isStrongPositive } from "./evidence.js";
 // Only things the user has actually tried live here. Untried saves are Bookmarks.
 export function libraryItems(state) {
   const starters = starterItems(state)
-    .map((item) => ({ id: item.id, item, source: "starter", isFavorite: true, blurb: item.note ?? item.about ?? "One of your starter favorites." }));
+    .map((item) => ({ id: item.id, item, source: "starter", isFavorite: true, blurb: item.note ?? (item.about != null ? safeAbout(item) : "One of your starter favorites.") }));
 
   const reacted = Object.values(state.feedbackByRecommendation)
     .filter(isPositiveExperience)
@@ -20,7 +21,7 @@ export function libraryItems(state) {
       item: feedback.item,
       source: isStrongPositive(feedback) ? "loved" : "liked",
       isFavorite: isStrongPositive(feedback) && state.libraryFavorites.has(feedback.item.id),
-      blurb: feedback.item.about ?? feedback.item.note ?? "",
+      blurb: blurbOf(feedback.item),
       wasBookmarked: Boolean(feedback.wasBookmarked)
     }));
 

@@ -188,7 +188,7 @@ async function tmdbRelated(item, env, fetchImpl, queryImpl) {
   const storePromise = relatedCanonicalItems(item, item.genres ?? [], { env, query: queryImpl });
   const livePromise = fetchImpl !== fetch
     ? load()
-    : cachedValue(`related:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+    : cachedValue(`related:v2:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
   const [live, storeItems] = await Promise.all([livePromise, storePromise]);
   return mergeCanonicalCandidates(live, storeItems, {
     buildProviderMeta: (storeItem) => ({ genreIds: storeItem.genres ?? [], collectionId: null })
@@ -240,7 +240,7 @@ async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
     return (await response.json()).docs ?? [];
   };
   if (fetchImpl !== fetch) return load();
-  return cachedValue(`related:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });
+  return cachedValue(`related:v2:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });
 }
 
 // #131/#135: query more than one meaningful subject when the source book has them (the top 2-3,
@@ -338,7 +338,7 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
   const storePromise = relatedCanonicalItems(item, item.genres ?? [], { env, query: queryImpl });
   const livePromise = fetchImpl !== fetch
     ? load()
-    : cachedValue(`related:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+    : cachedValue(`related:v2:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
   const [live, storeItems] = await Promise.all([livePromise, storePromise]);
   // #144: store items canonicalized with IGDB genre *names* (see canonical-store.mjs), so overlap
   // is matched against genre names here, not the numeric genreIds used for the live query above.
