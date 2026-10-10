@@ -28,6 +28,8 @@ import { buildPickPrompt, callAnthropic, normalizeModelPicks, thinkingTypeFor } 
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { estimateCostUsd } from "../../src/server/ai-metrics.mjs";
+import { buildHypothesisPrompt, PROFILE_MAX_OUTPUT_TOKENS } from "../../api/hypotheses.mjs";
+import { normalizeHypothesisResponse } from "../../src/ai/validate.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -46,6 +48,13 @@ const EVAL_CANDIDATES = [...qaRecommendations, ...qaFollowUps];
 const liveModel = args.includes("--model") ? args[args.indexOf("--model") + 1] : (process.env.TASTEMAKE_RECOMMENDATIONS_MODEL || "claude-sonnet-5-5");
 const liveEffort = process.env.TASTEMAKE_RECOMMENDATIONS_EFFORT || "low";
 const liveThinking = thinkingTypeFor(liveModel, "between_tools");
+// Taste profile: production calls TASTEMAKE_AI_MODEL; --model sets both steps for an A/B and
+// --profile-model sets this one alone. --profile baseline keeps the deterministic profile.
+const liveProfileModel = args.includes("--profile-model") ? args[args.indexOf("--profile-model") + 1]
+  : args.includes("--model") ? liveModel : (process.env.TASTEMAKE_AI_MODEL || "claude-sonnet-5-5");
+const liveProfile = !(args.includes("--profile") && args[args.indexOf("--profile") + 1] === "baseline");
+// --tag names the report files (e.g. live-claude-haiku-5-5-run1-latest.json) so runs don't overwrite each other.
+const reportTag = args.includes("--tag") ? args[args.indexOf("--tag") + 1].replace(/[^a-zA-Z0-9._-]/g, "-") : "";
 // Cost uses the same verified per-model rates as production telemetry (src/server/ai-metrics.mjs);
 // TASTEMAKE_AI_PRICE_IN / _OUT ($ per M) override them for a model those rates don't know.
 const priceFor = (model, inputTokens, outputTokens) => {
@@ -86,7 +95,7 @@ const PRODUCERS = {
           spend.calls += 1;
           spend.inputTokens += payload.meta.usage.input_tokens ?? 0;
           spend.outputTokens += payload.meta.usage.output_tokens ?? 0;
-          spend.usd = priceFor(payload.meta.model || "claude-sonnet-5-5", spend.inputTokens, spend.outputTokens);
+          spend.usd += priceFor(payload.meta.model || "claude-sonnet-5-5", payload.meta.usage.input_tokens ?? 0, payload.meta.usage.output_tokens ?? 0);
         }
         await sleep(pauseMs);
         // A deterministic answer from the endpoint carries no citations: report it as a fallback, not as model output.
@@ -96,10 +105,26 @@ const PRODUCERS = {
     }
   },
   live: {
-    label: dryRun ? `Live model (DRY RUN: ${liveModel}, no calls made)` : `Live model (PAID: ${liveModel}, effort ${liveEffort}, thinking ${liveThinking})`,
-    // Hypothesis inference is not a live job yet (#31 v1 is picks only): use the baseline so the report
-    // still shows the profile side, and say so.
-    infer: async (state) => baseline.inferHypotheses(state),
+    label: dryRun ? `Live model (DRY RUN: picks ${liveModel}, profile ${liveProfile ? liveProfileModel : "baseline"}, no calls made)` : `Live model (PAID: picks ${liveModel}, effort ${liveEffort}, thinking ${liveThinking}; profile ${liveProfile ? liveProfileModel : "baseline"})`,
+    // Taste profile through production's own path (api/hypotheses.mjs): same prompt, call shape and
+    // normalization; run.mjs then validates it like every producer. --profile baseline skips it.
+    infer: async (state) => {
+      if (!liveProfile) return baseline.inferHypotheses(state);
+      const pctx = buildContext(state);
+      const prompt = buildHypothesisPrompt(pctx, state.modelHypotheses);
+      if (dryRun) {
+        dryRunPlan.push({ fixture: "(profile)", count: 0, promptChars: prompt.length, estIn: estimateTokens(prompt), prompt, profile: true });
+        return { hypotheses: [] };
+      }
+      if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run");
+      if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
+      const model = await callAnthropic({ prompt, model: liveProfileModel, maxTokens: PROFILE_MAX_OUTPUT_TOKENS });
+      spend.calls += 1;
+      spend.inputTokens += model.usage?.input_tokens ?? 0;
+      spend.outputTokens += model.usage?.output_tokens ?? 0;
+      spend.usd += priceFor(liveProfileModel, model.usage?.input_tokens ?? 0, model.usage?.output_tokens ?? 0);
+      return normalizeHypothesisResponse(model.json, pctx);
+    },
     pick: async (state, ctx) => {
       const count = Math.min(5, ctx.candidates.length);
       if (!count) return { picks: [] };
@@ -115,7 +140,7 @@ const PRODUCERS = {
       spend.calls += 1;
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;
-      spend.usd = priceFor(liveModel, spend.inputTokens, spend.outputTokens);
+      spend.usd += priceFor(liveModel, model.usage?.input_tokens ?? 0, model.usage?.output_tokens ?? 0);
       // Production fills in each pick's kind/tests from the compact answer before validating; without
       // this every live pick was rejected (Oct 10 A/B: 0 kept on both Sonnet 5.5 and Haiku 5.5).
       return normalizeModelPicks(model.json);
@@ -167,9 +192,9 @@ for (const id of ["about-10", "intent-heavy", "single-miss"]) {
 // ---- dry run: show exactly what would be sent, and what it would cost ----
 if (dryRun) {
   const totalIn = dryRunPlan.reduce((sum, p) => sum + p.estIn, 0);
-  const estOut = dryRunPlan.length * Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200);
-  const estUsd = priceFor(liveModel, totalIn, estOut);
-  console.log(`DRY RUN: ${dryRunPlan.length} call(s) would be made, one per fixture that has picks left.`);
+  const estOut = dryRunPlan.reduce((sum, p) => sum + (p.profile ? PROFILE_MAX_OUTPUT_TOKENS : Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200)), 0);
+  const estUsd = dryRunPlan.reduce((sum, p) => sum + priceFor(p.profile ? liveProfileModel : liveModel, p.estIn, p.profile ? PROFILE_MAX_OUTPUT_TOKENS : Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200)), 0);
+  console.log(`DRY RUN: ${dryRunPlan.length} call(s) would be made (${dryRunPlan.filter((p) => p.profile).length} taste-profile, ${dryRunPlan.filter((p) => !p.profile).length} picks).`);
   dryRunPlan.forEach((p) => console.log(`  ${p.fixture}: ${p.count} picks asked for, prompt ~${p.estIn} tokens (${p.promptChars} chars)`));
   console.log(`Estimated input ~${totalIn} tokens; output capped at ${estOut} tokens across all calls.`);
   console.log(`Estimated cost for ${liveModel}: about $${estUsd.toFixed(3)} (worst case; real output is usually far below the cap).`);
@@ -220,13 +245,16 @@ selfTest.forEach((t) => lines.push(`| ${t.fixture} | ${t.name} | ${t.caught ? "y
 
 const outDir = join(here, "reports");
 mkdirSync(outDir, { recursive: true });
-writeFileSync(join(outDir, `${producerName}-latest.md`), lines.join("\n") + "\n");
-writeFileSync(join(outDir, `${producerName}-latest.json`), JSON.stringify({
+const reportName = `${producerName}${reportTag ? `-${reportTag}` : ""}-latest`;
+writeFileSync(join(outDir, `${reportName}.md`), lines.join("\n") + "\n");
+writeFileSync(join(outDir, `${reportName}.json`), JSON.stringify({
   producer: producerName, contract: CONTRACT_VERSION,
+  models: producerName === "live" ? { picks: liveModel, profile: liveProfile ? liveProfileModel : "baseline" } : null,
+  spend,
   fixtures: results.map((r) => ({ id: r.fixture.id, error: r.error ?? null, scores: r.scores,
-    hypotheses: r.run?.hyp.accepted.map(({ label, level, crossDomain, evidence, counter }) => ({ label, level, crossDomain, evidence, counter })) ?? [],
+    hypotheses: r.run?.hyp.accepted.map(({ label, level, crossDomain, evidence, counter, summary, statement }) => ({ label, level, crossDomain, evidence, counter, summary: summary ?? statement ?? null })) ?? [],
     rejected: r.run?.hyp.rejected.map((x) => ({ label: x.proposal?.label, reasons: x.reasons })) ?? [],
-    picks: r.run?.picks.accepted.map((p) => ({ itemId: p.itemId, kind: p.kind, cites: p.cites })) ?? [] })),
+    picks: r.run?.picks.accepted.map((p) => ({ itemId: p.itemId, title: p.item?.title ?? null, kind: p.kind, why: p.why ?? null, cites: p.cites })) ?? [] })),
   selfTest
 }, null, 2) + "\n");
 
