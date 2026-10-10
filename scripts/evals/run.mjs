@@ -27,6 +27,7 @@ import * as baseline from "../../src/ai/baseline.js";
 import { buildPickPrompt, callAnthropic } from "../../api/recommendations.mjs";
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
+import { estimateCostUsd } from "../../src/server/ai-metrics.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -39,10 +40,19 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const endpointRuns = [];
 const EVAL_CANDIDATES = [...qaRecommendations, ...qaFollowUps];
 
-// Rough per-million-token prices, only for the estimate printed before a paid run. Override with
-// TASTEMAKE_AI_PRICE_IN / TASTEMAKE_AI_PRICE_OUT if the model's pricing differs.
-const PRICE_IN = Number(process.env.TASTEMAKE_AI_PRICE_IN || 3);
-const PRICE_OUT = Number(process.env.TASTEMAKE_AI_PRICE_OUT || 15);
+// The live producer measures what production's recommendation call runs: the same model setting
+// (TASTEMAKE_RECOMMENDATIONS_MODEL, default Sonnet 5.5), effort and thinking mode. --model overrides it
+// for an A/B (e.g. --model claude-haiku-5-5).
+const liveModel = args.includes("--model") ? args[args.indexOf("--model") + 1] : (process.env.TASTEMAKE_RECOMMENDATIONS_MODEL || "claude-sonnet-5-5");
+const liveEffort = process.env.TASTEMAKE_RECOMMENDATIONS_EFFORT || "low";
+// Cost uses the same verified per-model rates as production telemetry (src/server/ai-metrics.mjs);
+// TASTEMAKE_AI_PRICE_IN / _OUT ($ per M) override them for a model those rates don't know.
+const priceFor = (model, inputTokens, outputTokens) => {
+  if (process.env.TASTEMAKE_AI_PRICE_IN || process.env.TASTEMAKE_AI_PRICE_OUT) {
+    return (inputTokens / 1e6) * Number(process.env.TASTEMAKE_AI_PRICE_IN || 0) + (outputTokens / 1e6) * Number(process.env.TASTEMAKE_AI_PRICE_OUT || 0);
+  }
+  return estimateCostUsd({ model, inputTokens, outputTokens }) ?? 0;
+};
 const spend = { calls: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
 const dryRunPlan = [];
 const estimateTokens = (text) => Math.ceil(String(text).length / 4);   // ~4 characters per token
@@ -75,7 +85,7 @@ const PRODUCERS = {
           spend.calls += 1;
           spend.inputTokens += payload.meta.usage.input_tokens ?? 0;
           spend.outputTokens += payload.meta.usage.output_tokens ?? 0;
-          spend.usd = (spend.inputTokens / 1e6) * PRICE_IN + (spend.outputTokens / 1e6) * PRICE_OUT;
+          spend.usd = priceFor(payload.meta.model || "claude-sonnet-5-5", spend.inputTokens, spend.outputTokens);
         }
         await sleep(pauseMs);
         // A deterministic answer from the endpoint carries no citations: report it as a fallback, not as model output.
@@ -85,7 +95,7 @@ const PRODUCERS = {
     }
   },
   live: {
-    label: dryRun ? "Live model (DRY RUN: no calls made)" : `Live model (PAID: ${process.env.TASTEMAKE_AI_MODEL || "model not set"})`,
+    label: dryRun ? `Live model (DRY RUN: ${liveModel}, no calls made)` : `Live model (PAID: ${liveModel}, effort ${liveEffort}, thinking between_tools)`,
     // Hypothesis inference is not a live job yet (#31 v1 is picks only): use the baseline so the report
     // still shows the profile side, and say so.
     infer: async (state) => baseline.inferHypotheses(state),
@@ -97,13 +107,14 @@ const PRODUCERS = {
         dryRunPlan.push({ fixture: ctx.__fixture, count, promptChars: prompt.length, estIn: estimateTokens(prompt), prompt });
         return { picks: [] };   // nothing is called; the fixture will report the fallback
       }
-      if (!process.env.ANTHROPIC_API_KEY || !process.env.TASTEMAKE_AI_MODEL) throw new Error("ANTHROPIC_API_KEY and TASTEMAKE_AI_MODEL must be set for a live run");
+      if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run");
       if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
-      const model = await callAnthropic({ prompt });
+      // Same call shape as api/recommendations.mjs: model, effort and thinking mode.
+      const model = await callAnthropic({ prompt, model: liveModel, effort: liveEffort, thinkingMode: "between_tools" });
       spend.calls += 1;
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;
-      spend.usd = (spend.inputTokens / 1e6) * PRICE_IN + (spend.outputTokens / 1e6) * PRICE_OUT;
+      spend.usd = priceFor(liveModel, spend.inputTokens, spend.outputTokens);
       return model.json;
     }
   }
@@ -154,12 +165,12 @@ for (const id of ["about-10", "intent-heavy", "single-miss"]) {
 if (dryRun) {
   const totalIn = dryRunPlan.reduce((sum, p) => sum + p.estIn, 0);
   const estOut = dryRunPlan.length * Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200);
-  const estUsd = (totalIn / 1e6) * PRICE_IN + (estOut / 1e6) * PRICE_OUT;
+  const estUsd = priceFor(liveModel, totalIn, estOut);
   console.log(`DRY RUN: ${dryRunPlan.length} call(s) would be made, one per fixture that has picks left.`);
   dryRunPlan.forEach((p) => console.log(`  ${p.fixture}: ${p.count} picks asked for, prompt ~${p.estIn} tokens (${p.promptChars} chars)`));
   console.log(`Estimated input ~${totalIn} tokens; output capped at ${estOut} tokens across all calls.`);
-  console.log(`Estimated cost at $${PRICE_IN}/M in and $${PRICE_OUT}/M out: about $${estUsd.toFixed(2)} (worst case; real output is usually far below the cap).`);
-  console.log(`Model: ${process.env.TASTEMAKE_AI_MODEL || "(TASTEMAKE_AI_MODEL not set)"}; key ${process.env.ANTHROPIC_API_KEY ? "present" : "absent"}.`);
+  console.log(`Estimated cost for ${liveModel}: about $${estUsd.toFixed(3)} (worst case; real output is usually far below the cap).`);
+  console.log(`Model: ${liveModel} (effort ${liveEffort}, thinking between_tools); key ${process.env.ANTHROPIC_API_KEY ? "present" : "absent"}.`);
   const first = dryRunPlan[0];
   if (first) console.log(`\nFirst prompt (${first.fixture}), truncated:\n${first.prompt.slice(0, 1200)}\n...`);
   console.log("\nNo call was made. Re-run with --producer live --yes to spend.");

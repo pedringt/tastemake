@@ -1,12 +1,17 @@
 import { waitUntil } from "@vercel/functions";
 import { query as defaultQuery, isConfigured } from "./db.mjs";
 
-// Verified against Anthropic's published pricing on 2026-09-29.
-// Sonnet 5 pricing was made permanent on 2026-08-10: $2/M input, $10/M output.
-// Cache reads are $0.20/M for the current Sonnet generation.
-export const PRICING_AS_OF = "2026-09-29";
-const HAIKU_45 = { input: 1, output: 5, cacheRead: 0.10 };
-const SONNET_5 = { input: 2, output: 10, cacheRead: 0.20 };
+// Verified against platform.claude.com/docs/en/about-claude/pricing on 2026-10-10 ($ per million
+// tokens; cache writes at the 5-minute rate, which is what cache_control "ephemeral" uses).
+// Sonnet 5.5 cache reads are 0.05x input ($0.10), not Sonnet 5's $0.20. Haiku 5.5 has a
+// separate tier for prompts over 100,000 tokens.
+export const PRICING_AS_OF = "2026-10-10";
+const HAIKU_45 = { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.10 };
+const HAIKU_55 = { input: 0.10, output: 0.50, cacheWrite: 0.125, cacheRead: 0.01 };
+const HAIKU_55_LONG = { input: 0.50, output: 2.50, cacheWrite: 0.625, cacheRead: 0.05 };
+const SONNET_5 = { input: 2, output: 10, cacheWrite: 2.50, cacheRead: 0.20 };
+const SONNET_55 = { input: 2, output: 10, cacheWrite: 2.50, cacheRead: 0.10 };
+const HAIKU_55_LONG_PROMPT_TOKENS = 100_000;
 
 const KNOWN_OPERATIONS = new Set(["recommendations", "taste_profile"]);
 const KNOWN_OUTCOMES = new Set([
@@ -18,22 +23,30 @@ const KNOWN_OUTCOMES = new Set([
   "transport_error"
 ]);
 
-function ratesFor(model) {
+// promptTokens is one call's full prompt (input + cache read + cache write). Aggregated rows
+// (sums over many calls) pass null and get the base tier; Tastemake prompts are far below 100K.
+function ratesFor(model, promptTokens = null) {
   const value = String(model || "");
   if (/^claude-haiku-4-5(?:-|$)/.test(value)) return HAIKU_45;
+  if (/^claude-haiku-5-5(?:-|$)/.test(value)) {
+    return promptTokens != null && promptTokens > HAIKU_55_LONG_PROMPT_TOKENS ? HAIKU_55_LONG : HAIKU_55;
+  }
+  // Sonnet 5.5 before Sonnet 5: "claude-sonnet-5-5" also matches the Sonnet 5 pattern.
+  if (/^claude-sonnet-5-5(?:-|$)/.test(value)) return SONNET_55;
   if (/^claude-sonnet-5(?:-|$)/.test(value)) return SONNET_5;
-  if (/^claude-sonnet-5-5(?:-|$)/.test(value)) return SONNET_5;
   return null;
 }
 
-export function estimateCostUsd({ model, inputTokens, outputTokens, cacheReadTokens = 0 }) {
-  const rates = ratesFor(model);
+export function estimateCostUsd({ model, inputTokens, outputTokens, cacheReadTokens = 0, cacheWriteTokens = 0, perCall = false }) {
+  const prompt = Number(inputTokens || 0) + Number(cacheReadTokens || 0) + Number(cacheWriteTokens || 0);
+  const rates = ratesFor(model, perCall ? prompt : null);
   if (!rates) return null;
   const input = Number(inputTokens);
   const output = Number(outputTokens);
   const cacheRead = Number(cacheReadTokens || 0);
-  if (![input, output, cacheRead].every(Number.isFinite)) return null;
-  return (input * rates.input + output * rates.output + cacheRead * rates.cacheRead) / 1_000_000;
+  const cacheWrite = Number(cacheWriteTokens || 0);
+  if (![input, output, cacheRead, cacheWrite].every(Number.isFinite)) return null;
+  return (input * rates.input + output * rates.output + cacheRead * rates.cacheRead + cacheWrite * rates.cacheWrite) / 1_000_000;
 }
 
 export function aiOutcomeForError(error) {
@@ -64,6 +77,7 @@ async function ensureWriteSchema(runQuery) {
   `);
   await runQuery("alter table ai_call_metrics add column if not exists operation text not null default 'recommendations'");
   await runQuery("alter table ai_call_metrics add column if not exists outcome text not null default 'success'");
+  await runQuery("alter table ai_call_metrics add column if not exists cache_write_tokens integer");
   await runQuery("create index if not exists idx_ai_call_metrics_occurred_at on ai_call_metrics (occurred_at desc)");
   await runQuery("create index if not exists idx_ai_call_metrics_operation_outcome on ai_call_metrics (operation, outcome, occurred_at desc)");
 }
@@ -79,14 +93,15 @@ export async function recordAiCall(metric, { env = process.env, query: queryImpl
   const inputTokens = metric?.inputTokens == null ? null : Number(metric.inputTokens);
   const outputTokens = metric?.outputTokens == null ? null : Number(metric.outputTokens);
   const cacheReadTokens = metric?.cacheReadTokens == null ? 0 : Number(metric.cacheReadTokens);
-  const estimatedCostUsd = estimateCostUsd({ model, inputTokens, outputTokens, cacheReadTokens });
+  const cacheWriteTokens = metric?.cacheWriteTokens == null ? 0 : Number(metric.cacheWriteTokens);
+  const estimatedCostUsd = estimateCostUsd({ model, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, perCall: true });
 
   await ensureWriteSchema(runQuery);
   await runQuery(
     `insert into ai_call_metrics
-      (operation, outcome, model, duration_ms, input_tokens, output_tokens, cache_read_tokens, estimated_cost_usd, pricing_as_of)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [operation, outcome, model, durationMs, inputTokens, outputTokens, cacheReadTokens, estimatedCostUsd, estimatedCostUsd == null ? null : PRICING_AS_OF]
+      (operation, outcome, model, duration_ms, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, estimated_cost_usd, pricing_as_of)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    [operation, outcome, model, durationMs, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, estimatedCostUsd, estimatedCostUsd == null ? null : PRICING_AS_OF]
   );
   return true;
 }
@@ -121,7 +136,8 @@ function normalizeSummary(row = {}) {
     tokens: {
       input: Number(row.input_tokens || 0),
       output: Number(row.output_tokens || 0),
-      cache_read: Number(row.cache_read_tokens || 0)
+      cache_read: Number(row.cache_read_tokens || 0),
+      cache_write: Number(row.cache_write_tokens || 0)
     },
     last_call_at: row.last_call_at || null
   };
@@ -131,12 +147,13 @@ function costFromModelRows(rows = []) {
   let total = 0;
   let known = false;
   for (const row of rows) {
-    const tokens = Number(row.input_tokens || 0) + Number(row.output_tokens || 0) + Number(row.cache_read_tokens || 0);
+    const tokens = Number(row.input_tokens || 0) + Number(row.output_tokens || 0) + Number(row.cache_read_tokens || 0) + Number(row.cache_write_tokens || 0);
     const cost = estimateCostUsd({
       model: row.model,
       inputTokens: row.input_tokens,
       outputTokens: row.output_tokens,
-      cacheReadTokens: row.cache_read_tokens
+      cacheReadTokens: row.cache_read_tokens,
+      cacheWriteTokens: row.cache_write_tokens
     });
     // Never present a partial total as if it were complete. Unknown-model rows with no usage
     // (for example an early transport failure) do not make the known cost incomplete.
@@ -164,6 +181,8 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
   const columnNames = new Set((columns ?? []).map((row) => row.column_name));
   const operationExpr = columnNames.has("operation") ? "coalesce(operation, 'recommendations')" : "'recommendations'";
   const outcomeExpr = columnNames.has("outcome") ? "coalesce(outcome, 'success')" : "'success'";
+  // cache_write_tokens arrived Oct 10; older tables read as zero until the next write adds it.
+  const cacheWriteSum = columnNames.has("cache_write_tokens") ? "coalesce(sum(cache_write_tokens),0)::bigint" : "0::bigint";
 
   const summaryRows = await runQuery(
     `select
@@ -178,6 +197,7 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
        coalesce(sum(input_tokens),0)::bigint as input_tokens,
        coalesce(sum(output_tokens),0)::bigint as output_tokens,
        coalesce(sum(cache_read_tokens),0)::bigint as cache_read_tokens,
+       ${cacheWriteSum} as cache_write_tokens,
        max(occurred_at) as last_call_at
      from ai_call_metrics
      where occurred_at >= now() - ($1::int * interval '1 day')`,
@@ -198,6 +218,7 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
        coalesce(sum(input_tokens),0)::bigint as input_tokens,
        coalesce(sum(output_tokens),0)::bigint as output_tokens,
        coalesce(sum(cache_read_tokens),0)::bigint as cache_read_tokens,
+       ${cacheWriteSum} as cache_write_tokens,
        max(occurred_at) as last_call_at
      from ai_call_metrics
      where occurred_at >= now() - ($1::int * interval '1 day')
@@ -212,7 +233,8 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
        model,
        coalesce(sum(input_tokens),0)::bigint as input_tokens,
        coalesce(sum(output_tokens),0)::bigint as output_tokens,
-       coalesce(sum(cache_read_tokens),0)::bigint as cache_read_tokens
+       coalesce(sum(cache_read_tokens),0)::bigint as cache_read_tokens,
+       ${cacheWriteSum} as cache_write_tokens
      from ai_call_metrics
      where occurred_at >= now() - ($1::int * interval '1 day')
      group by ${operationExpr}, model`,

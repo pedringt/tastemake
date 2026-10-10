@@ -17,7 +17,18 @@ assert.equal(
   12.2
 );
 assert.equal(estimateCostUsd({ model: "claude-unknown", inputTokens: 1, outputTokens: 1 }), null);
-assert.equal(PRICING_AS_OF, "2026-09-29");
+assert.equal(PRICING_AS_OF, "2026-10-10");
+
+// Oct 10 pricing (platform.claude.com, $ per M): Sonnet 5.5 cache reads are $0.10 (not Sonnet 5's
+// $0.20), cache writes count, and Haiku 5.5 has a >100K-prompt tier.
+const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`);
+const M = 1_000_000;
+close(estimateCostUsd({ model: "claude-sonnet-5-5", inputTokens: M, outputTokens: M, cacheReadTokens: M, cacheWriteTokens: M }), 2 + 10 + 0.10 + 2.50);
+close(estimateCostUsd({ model: "claude-sonnet-5", inputTokens: M, outputTokens: M, cacheReadTokens: M, cacheWriteTokens: M }), 2 + 10 + 0.20 + 2.50);
+close(estimateCostUsd({ model: "claude-haiku-5-5", inputTokens: M, outputTokens: M, cacheReadTokens: M, cacheWriteTokens: M }), 0.10 + 0.50 + 0.01 + 0.125);
+close(estimateCostUsd({ model: "claude-haiku-5-5", inputTokens: 50_000, outputTokens: 1000, perCall: true }), (50_000 * 0.10 + 1000 * 0.50) / M);
+close(estimateCostUsd({ model: "claude-haiku-5-5", inputTokens: 120_000, outputTokens: 1000, perCall: true }), (120_000 * 0.50 + 1000 * 2.50) / M);
+close(estimateCostUsd({ model: "claude-haiku-4-5-20251001", inputTokens: 0, outputTokens: 0, cacheWriteTokens: M }), 1.25);
 
 const timeout=new Error("aborted"); timeout.name="AbortError";
 assert.equal(aiOutcomeForError(timeout),"timeout");
@@ -43,14 +54,18 @@ assert.equal(aiOutcomeForError(new Error("socket")),"transport_error");
     durationMs:1234,
     inputTokens:100,
     outputTokens:20,
-    cacheReadTokens:10
+    cacheReadTokens:10,
+    cacheWriteTokens:40
   },{query}),true);
   assert.equal(fakeRows.length,1);
   assert.equal(fakeRows[0][0],"taste_profile");
   assert.equal(fakeRows[0][1],"validation_fallback");
   assert.equal(fakeRows[0][2],"claude-sonnet-5");
   assert.equal(fakeRows[0][3],1234);
-  assert.equal(fakeRows[0][8],PRICING_AS_OF);
+  assert.equal(fakeRows[0][7],40,"cache-write tokens are stored");
+  close(fakeRows[0][8],(100*2+20*10+10*0.20+40*2.50)/M);
+  assert.equal(fakeRows[0][9],PRICING_AS_OF);
+  assert.ok(statements.some(({text})=>/alter table ai_call_metrics add column if not exists cache_write_tokens/i.test(text)));
   assert.ok(statements.some(({text})=>/alter table ai_call_metrics add column if not exists operation/i.test(text)));
   assert.ok(statements.some(({text})=>/alter table ai_call_metrics add column if not exists outcome/i.test(text)));
 }
