@@ -2,7 +2,7 @@
 // Free, no-network tests for the real-catalog recommendation endpoint.
 
 import { readFileSync } from "node:fs";
-import handler, { buildPickPrompt, callAnthropic, liveConfig, parseModelJson, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
+import handler, { buildPickPrompt, callAnthropic, liveConfig, normalizeModelPicks, parseModelJson, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
 
 let passed=0;
 const failures=[];
@@ -119,6 +119,16 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   eq("Anthropic transport accepts a recommendation-specific model override", body?.model, "claude-sonnet-5-5");
   eq("Anthropic transport sends low effort in output_config", body?.output_config?.effort, "low");
   eq("Sonnet 5.5 transport can request between-tools thinking mode", body?.thinking?.type, "between_tools");
+  // Oct 10: Haiku 5.5 rejects "between_tools" (400); it must get "disabled" so switching
+  // TASTEMAKE_RECOMMENDATIONS_MODEL to Haiku doesn't fail every recommendation.
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-haiku-5-5", effort:"low", thinkingMode:"between_tools" });
+  eq("Haiku 5.5 gets thinking disabled instead of Sonnet-only between_tools", body?.thinking?.type, "disabled");
+  // Oct 10: the live eval skipped this normalization and the validator rejected every pick
+  // ("kind undefined"); production and the eval now share normalizeModelPicks.
+  const normalized = normalizeModelPicks({ curveballItemId:"b", picks:[{ itemId:"a", why:"x", cites:[] }, { itemId:"b", why:"y", cites:[] }] });
+  eq("compact picks get kind pick by default", normalized.picks[0].kind, "pick");
+  eq("the curveball id gets kind curveball", normalized.picks[1].kind, "curveball");
+  eq("missing tests become null", normalized.picks[0].tests, null);
 
   await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch });
   eq("shared Anthropic transport still defaults to the existing env model", body?.model, ON.TASTEMAKE_AI_MODEL);

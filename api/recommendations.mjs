@@ -248,6 +248,29 @@ export function parseModelJson(text) {
   throw firstError ?? new SyntaxError("model response was not JSON");
 }
 
+// "between_tools" is Sonnet 5.5's way to turn off up-front thinking and only exists there; every
+// other model (Haiku 5.5 included) rejects it with 400 invalid_request_error and takes "disabled"
+// instead (platform.claude.com effort docs, checked 2026-10-10).
+export function thinkingTypeFor(model, requested) {
+  if (requested === "between_tools" && !/^claude-sonnet-5-5(?:-|$)/.test(String(model || ""))) return "disabled";
+  return requested || "disabled";
+}
+
+// The model answers in a compact shape (no per-pick kind/tests). Fill them in before validation;
+// shared with scripts/evals/run.mjs so the live eval validates exactly what production validates.
+export function normalizeModelPicks(compact) {
+  return compact && Array.isArray(compact.picks)
+    ? {
+        ...compact,
+        picks: compact.picks.map((pick) => ({
+          ...pick,
+          tests: pick.tests ?? null,
+          kind: pick.kind ?? (compact.curveballItemId && pick.itemId === compact.curveballItemId ? "curveball" : "pick")
+        }))
+      }
+    : compact;
+}
+
 export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null, model = null, effort = null, thinkingMode = null }) {
   const resolvedModel = model || env.TASTEMAKE_AI_MODEL;
   const controller = new AbortController();
@@ -265,7 +288,7 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
         // This is a short, strict JSON job. With thinking on by default, the model spent the whole budget
         // thinking and returned no text at all (stop_reason=max_tokens, blocks=thinking).
         // Set TASTEMAKE_AI_THINKING=enabled to turn it back on, with a much larger cap.
-        ...(env.TASTEMAKE_AI_THINKING === "enabled" ? {} : { thinking: { type: thinkingMode || "disabled" } }),
+        ...(env.TASTEMAKE_AI_THINKING === "enabled" ? {} : { thinking: { type: thinkingTypeFor(resolvedModel, thinkingMode) } }),
         ...(effort ? { output_config: { effort } } : {}),
         max_tokens: Number(maxTokens ?? env.TASTEMAKE_AI_MAX_TOKENS ?? MAX_OUTPUT_TOKENS),
         // No `temperature`: newer models reject it ("temperature is deprecated for this model"), which
@@ -508,17 +531,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     });
 
     started = Date.now();
-    const compact = model.json;
-    const normalizedModel = compact && Array.isArray(compact.picks)
-      ? {
-          ...compact,
-          picks: compact.picks.map((pick) => ({
-            ...pick,
-            tests: pick.tests ?? null,
-            kind: pick.kind ?? (compact.curveballItemId && pick.itemId === compact.curveballItemId ? "curveball" : "pick")
-          }))
-        }
-      : compact;
+    const normalizedModel = normalizeModelPicks(model.json);
     const validated = validatePicks(normalizedModel, promptCtx);
     // #120/QA-sweep follow-up (Paige's explicit call, 2026-09-28): this used to require every
     // candidate offered (up to 6) to individually pass validation, or the whole batch fell back to

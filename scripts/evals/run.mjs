@@ -24,7 +24,7 @@ import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
 import { CONTRACT_VERSION } from "../../src/ai/contract.js";
 import * as baseline from "../../src/ai/baseline.js";
-import { buildPickPrompt, callAnthropic } from "../../api/recommendations.mjs";
+import { buildPickPrompt, callAnthropic, normalizeModelPicks, thinkingTypeFor } from "../../api/recommendations.mjs";
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { estimateCostUsd } from "../../src/server/ai-metrics.mjs";
@@ -45,6 +45,7 @@ const EVAL_CANDIDATES = [...qaRecommendations, ...qaFollowUps];
 // for an A/B (e.g. --model claude-haiku-5-5).
 const liveModel = args.includes("--model") ? args[args.indexOf("--model") + 1] : (process.env.TASTEMAKE_RECOMMENDATIONS_MODEL || "claude-sonnet-5-5");
 const liveEffort = process.env.TASTEMAKE_RECOMMENDATIONS_EFFORT || "low";
+const liveThinking = thinkingTypeFor(liveModel, "between_tools");
 // Cost uses the same verified per-model rates as production telemetry (src/server/ai-metrics.mjs);
 // TASTEMAKE_AI_PRICE_IN / _OUT ($ per M) override them for a model those rates don't know.
 const priceFor = (model, inputTokens, outputTokens) => {
@@ -95,7 +96,7 @@ const PRODUCERS = {
     }
   },
   live: {
-    label: dryRun ? `Live model (DRY RUN: ${liveModel}, no calls made)` : `Live model (PAID: ${liveModel}, effort ${liveEffort}, thinking between_tools)`,
+    label: dryRun ? `Live model (DRY RUN: ${liveModel}, no calls made)` : `Live model (PAID: ${liveModel}, effort ${liveEffort}, thinking ${liveThinking})`,
     // Hypothesis inference is not a live job yet (#31 v1 is picks only): use the baseline so the report
     // still shows the profile side, and say so.
     infer: async (state) => baseline.inferHypotheses(state),
@@ -115,7 +116,9 @@ const PRODUCERS = {
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;
       spend.usd = priceFor(liveModel, spend.inputTokens, spend.outputTokens);
-      return model.json;
+      // Production fills in each pick's kind/tests from the compact answer before validating; without
+      // this every live pick was rejected (Oct 10 A/B: 0 kept on both Sonnet 5.5 and Haiku 5.5).
+      return normalizeModelPicks(model.json);
     }
   }
 };
@@ -170,7 +173,7 @@ if (dryRun) {
   dryRunPlan.forEach((p) => console.log(`  ${p.fixture}: ${p.count} picks asked for, prompt ~${p.estIn} tokens (${p.promptChars} chars)`));
   console.log(`Estimated input ~${totalIn} tokens; output capped at ${estOut} tokens across all calls.`);
   console.log(`Estimated cost for ${liveModel}: about $${estUsd.toFixed(3)} (worst case; real output is usually far below the cap).`);
-  console.log(`Model: ${liveModel} (effort ${liveEffort}, thinking between_tools); key ${process.env.ANTHROPIC_API_KEY ? "present" : "absent"}.`);
+  console.log(`Model: ${liveModel} (effort ${liveEffort}, thinking ${liveThinking}); key ${process.env.ANTHROPIC_API_KEY ? "present" : "absent"}.`);
   const first = dryRunPlan[0];
   if (first) console.log(`\nFirst prompt (${first.fixture}), truncated:\n${first.prompt.slice(0, 1200)}\n...`);
   console.log("\nNo call was made. Re-run with --producer live --yes to spend.");
