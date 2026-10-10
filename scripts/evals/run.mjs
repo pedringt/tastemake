@@ -24,7 +24,7 @@ import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
 import { CONTRACT_VERSION } from "../../src/ai/contract.js";
 import * as baseline from "../../src/ai/baseline.js";
-import { buildPickPrompt, callAnthropic, thinkingTypeFor } from "../../api/recommendations.mjs";
+import { buildPickPrompt, callAnthropic, normalizeModelPicks, thinkingTypeFor } from "../../api/recommendations.mjs";
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { estimateCostUsd } from "../../src/server/ai-metrics.mjs";
@@ -96,7 +96,7 @@ const PRODUCERS = {
     }
   },
   live: {
-    label: dryRun ? `Live model (DRY RUN: ${liveModel}, no calls made)` : `Live model (PAID: ${liveModel}, effort ${liveEffort}, thinking between_tools)`,
+    label: dryRun ? `Live model (DRY RUN: ${liveModel}, no calls made)` : `Live model (PAID: ${liveModel}, effort ${liveEffort}, thinking ${liveThinking})`,
     // Hypothesis inference is not a live job yet (#31 v1 is picks only): use the baseline so the report
     // still shows the profile side, and say so.
     infer: async (state) => baseline.inferHypotheses(state),
@@ -116,7 +116,9 @@ const PRODUCERS = {
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;
       spend.usd = priceFor(liveModel, spend.inputTokens, spend.outputTokens);
-      return model.json;
+      // Production fills in each pick's kind/tests from the compact answer before validating; without
+      // this every live pick was rejected (Oct 10 A/B: 0 kept on both Sonnet 5.5 and Haiku 5.5).
+      return normalizeModelPicks(model.json);
     }
   }
 };

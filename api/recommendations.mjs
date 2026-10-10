@@ -256,6 +256,21 @@ export function thinkingTypeFor(model, requested) {
   return requested || "disabled";
 }
 
+// The model answers in a compact shape (no per-pick kind/tests). Fill them in before validation;
+// shared with scripts/evals/run.mjs so the live eval validates exactly what production validates.
+export function normalizeModelPicks(compact) {
+  return compact && Array.isArray(compact.picks)
+    ? {
+        ...compact,
+        picks: compact.picks.map((pick) => ({
+          ...pick,
+          tests: pick.tests ?? null,
+          kind: pick.kind ?? (compact.curveballItemId && pick.itemId === compact.curveballItemId ? "curveball" : "pick")
+        }))
+      }
+    : compact;
+}
+
 export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null, model = null, effort = null, thinkingMode = null }) {
   const resolvedModel = model || env.TASTEMAKE_AI_MODEL;
   const controller = new AbortController();
@@ -516,17 +531,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     });
 
     started = Date.now();
-    const compact = model.json;
-    const normalizedModel = compact && Array.isArray(compact.picks)
-      ? {
-          ...compact,
-          picks: compact.picks.map((pick) => ({
-            ...pick,
-            tests: pick.tests ?? null,
-            kind: pick.kind ?? (compact.curveballItemId && pick.itemId === compact.curveballItemId ? "curveball" : "pick")
-          }))
-        }
-      : compact;
+    const normalizedModel = normalizeModelPicks(model.json);
     const validated = validatePicks(normalizedModel, promptCtx);
     // #120/QA-sweep follow-up (Paige's explicit call, 2026-09-28): this used to require every
     // candidate offered (up to 6) to individually pass validation, or the whole batch fell back to
