@@ -1,0 +1,97 @@
+name: ai-eval
+
+# PAID, manual only (Oct 10). Runs the live-model eval (scripts/evals/run.mjs --producer live) for one
+# or more models and writes a side-by-side page (scripts/evals/compare.mjs) to the run summary, so a
+# model change can be judged by reading the picks, explanations and taste-profile patterns in GitHub.
+# Both steps go through production's own code: the recommendation call (model, effort low, the
+# model's no-up-front-thinking mode) and the taste-profile call. Never runs on push or PR.
+#
+# Needs the repository secret ANTHROPIC_API_KEY. The run refuses to start when the planned number of
+# calls is above max_calls. About 21 calls per model per repeat (11 taste-profile + 10 picks).
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Comma-separated model ids (picks and taste profile both use each one)
+        default: claude-sonnet-5-5,claude-haiku-5-5
+      repeats:
+        description: Runs per model (run-to-run variance is real; 2-3 is a fair comparison)
+        default: "1"
+      max_calls:
+        description: Refuse to start above this many planned model calls
+        default: "150"
+
+concurrency:
+  group: ai-eval
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Plan and check the call budget (no model calls)
+        env:
+          MODELS: ${{ inputs.models }}
+          REPEATS: ${{ inputs.repeats }}
+          MAX_CALLS: ${{ inputs.max_calls }}
+        run: |
+          set -euo pipefail
+          total=0
+          IFS=',' read -ra list <<< "$MODELS"
+          for raw in "${list[@]}"; do
+            model="$(echo "$raw" | tr -d '[:space:]')"
+            [[ "$model" =~ ^claude-[a-z0-9.-]+$ ]] || { echo "Refusing: '$model' is not a model id"; exit 1; }
+            plan="$(node scripts/evals/run.mjs --producer live --dry-run --model "$model" | grep -E '^DRY RUN:')"
+            echo "$model: $plan"
+            calls="$(echo "$plan" | sed -E 's/^DRY RUN: ([0-9]+) call.*/\1/')"
+            total=$(( total + calls * REPEATS ))
+          done
+          echo "Planned calls: $total (max $MAX_CALLS)"
+          if (( total > MAX_CALLS )); then echo "Refusing: $total planned calls is above max_calls=$MAX_CALLS"; exit 1; fi
+
+      - name: Run the live eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODELS: ${{ inputs.models }}
+          REPEATS: ${{ inputs.repeats }}
+        run: |
+          set -uo pipefail
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then echo "The ANTHROPIC_API_KEY repository secret is not set."; exit 1; fi
+          IFS=',' read -ra list <<< "$MODELS"
+          for raw in "${list[@]}"; do
+            model="$(echo "$raw" | tr -d '[:space:]')"
+            for i in $(seq 1 "$REPEATS"); do
+              # A failed rule check exits 1; keep going so the comparison still gets written.
+              node scripts/evals/run.mjs --producer live --model "$model" --tag "$model-run$i" --yes || true
+            done
+          done
+
+      - name: Side-by-side summary
+        if: always()
+        run: |
+          shopt -s nullglob
+          reports=(scripts/evals/reports/live-claude-*-latest.json)
+          if [ ${#reports[@]} -eq 0 ]; then echo "No live reports were written." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          node scripts/evals/compare.mjs "${reports[@]}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-eval-reports
+          path: scripts/evals/reports/live-claude-*-latest.*
+          if-no-files-found: ignore

@@ -6,7 +6,7 @@ import { callAnthropic, hydrateState as hydrateBaseState, liveConfig } from "./r
 import { visibleDomains } from "../src/data/domains.js";
 
 const MAX_BODY_BYTES = 160_000;
-const PROFILE_MAX_OUTPUT_TOKENS = 3200;
+export const PROFILE_MAX_OUTPUT_TOKENS = 3200;
 
 // QA sweep real bug (fixed here): this used to be a second, hand-maintained copy of
 // recommendations.mjs's hydrateState -- it had already drifted (missing blindSpots,

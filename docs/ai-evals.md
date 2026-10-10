@@ -23,6 +23,14 @@ fixtures are over half the input). Override the prices with `TASTEMAKE_AI_PRICE_
 
 It writes `scripts/evals/reports/<producer>-latest.md` (for product review) and `.json` (for comparing runs). Exit code 1 means a **rule** failed or the validator let a deliberately bad answer through.
 
+## Compare models on GitHub (paid, Oct 10)
+
+The **ai-eval** workflow (Actions → ai-eval → Run workflow) runs the live eval for each model you list and writes a side-by-side page to the run summary: per fixture, each model's taste-profile patterns and its picks with the explanation a visitor would read, plus a table of picks kept/rejected, rule failures, quality findings and cost. It needs the repository secret `ANTHROPIC_API_KEY`, and it refuses to start when the planned calls (about 21 per model per repeat) exceed `max_calls`.
+
+- The live producer goes through production's own code: the recommendation call (`TASTEMAKE_RECOMMENDATIONS_MODEL` settings: effort low, and the model's no-up-front-thinking mode) and the taste-profile call (`api/hypotheses.mjs` prompt, normalization and validation).
+- `--model` sets both steps; `--profile-model` sets the taste profile alone; `--profile baseline` keeps the deterministic profile; `--tag` names the report files.
+- Locally: `node scripts/evals/run.mjs --producer live --model claude-haiku-5-5 --tag haiku --yes`, then `node scripts/evals/compare.mjs scripts/evals/reports/live-*-latest.json`.
+
 ## What runs
 1. **Fixtures** (`scripts/evals/fixtures.mjs`), fixed and deterministic: cold start with 4 favorites, the default 6, about 10 things (the first milestone size), intent-heavy, a single miss (with a before/after), recurring misses, support across two areas, "the user said this isn't me", and synthetic scale at ~50 and ~100 pieces of evidence.
 2. **Every answer goes through the product's validator** (`src/ai/validate.js`, see `docs/ai-contract.md`).
