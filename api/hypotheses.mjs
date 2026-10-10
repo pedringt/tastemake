@@ -101,7 +101,8 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
       durationMs,
       inputTokens: model.usage?.input_tokens ?? null,
       outputTokens: model.usage?.output_tokens ?? null,
-      cacheReadTokens: model.usage?.cache_read_input_tokens ?? null
+      cacheReadTokens: model.usage?.cache_read_input_tokens ?? null,
+      cacheWriteTokens: model.usage?.cache_creation_input_tokens ?? null
     };
     const normalizedResponse = normalizeHypothesisResponse(model.json, ctx);
     const validated = validateHypotheses(normalizedResponse, ctx);
@@ -143,7 +144,8 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
       durationMs: Math.max(1, Date.now() - started),
       inputTokens: error?.usage?.input_tokens ?? null,
       outputTokens: error?.usage?.output_tokens ?? null,
-      cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null
+      cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null,
+      cacheWriteTokens: error?.usage?.cache_creation_input_tokens ?? null
     }, { env });
     throw error;
   }

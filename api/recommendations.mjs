@@ -493,7 +493,8 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       durationMs: liveAiMs,
       inputTokens: model.usage?.input_tokens ?? null,
       outputTokens: model.usage?.output_tokens ?? null,
-      cacheReadTokens: model.usage?.cache_read_input_tokens ?? null
+      cacheReadTokens: model.usage?.cache_read_input_tokens ?? null,
+      cacheWriteTokens: model.usage?.cache_creation_input_tokens ?? null
     };
     // The live-AI call itself is the dominant cost in every measured production request (~85-95% of
     // total time). Logging real token counts (not just wall-clock ms) so a large prompt/context can
@@ -502,7 +503,8 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       model: aiMetric.model,
       inputTokens: aiMetric.inputTokens,
       outputTokens: aiMetric.outputTokens,
-      cacheReadTokens: aiMetric.cacheReadTokens
+      cacheReadTokens: aiMetric.cacheReadTokens,
+      cacheWriteTokens: aiMetric.cacheWriteTokens
     });
 
     started = Date.now();
@@ -571,7 +573,8 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       durationMs,
       inputTokens: error?.usage?.input_tokens ?? null,
       outputTokens: error?.usage?.output_tokens ?? null,
-      cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null
+      cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null,
+      cacheWriteTokens: error?.usage?.cache_creation_input_tokens ?? null
     }, { env });
     console.error("[tastemake-ai]", reason, error?.status ?? "", error?.anthropicType ?? "", error?.anthropicDetail ?? error?.message ?? "");
     return fallbackPayload(candidates, state, reason, {
