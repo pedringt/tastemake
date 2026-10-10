@@ -119,6 +119,10 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   eq("Anthropic transport accepts a recommendation-specific model override", body?.model, "claude-sonnet-5-5");
   eq("Anthropic transport sends low effort in output_config", body?.output_config?.effort, "low");
   eq("Sonnet 5.5 transport can request between-tools thinking mode", body?.thinking?.type, "between_tools");
+  // Oct 10: Haiku 5.5 rejects "between_tools" (400); it must get "disabled" so switching
+  // TASTEMAKE_RECOMMENDATIONS_MODEL to Haiku doesn't fail every recommendation.
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-haiku-5-5", effort:"low", thinkingMode:"between_tools" });
+  eq("Haiku 5.5 gets thinking disabled instead of Sonnet-only between_tools", body?.thinking?.type, "disabled");
 
   await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch });
   eq("shared Anthropic transport still defaults to the existing env model", body?.model, ON.TASTEMAKE_AI_MODEL);
