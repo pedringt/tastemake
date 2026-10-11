@@ -123,6 +123,11 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   // TASTEMAKE_RECOMMENDATIONS_MODEL to Haiku doesn't fail every recommendation.
   await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-haiku-5-5", effort:"low", thinkingMode:"between_tools" });
   eq("Haiku 5.5 gets thinking disabled instead of Sonnet-only between_tools", body?.thinking?.type, "disabled");
+  // Oct 10 (ai-eval): Sonnet 5.5 rejects "disabled"; the taste-profile call (no thinkingMode) failed on it.
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-sonnet-5-5" });
+  eq("Sonnet 5.5 with thinking off gets between_tools, not disabled", body?.thinking?.type, "between_tools");
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-sonnet-5" });
+  eq("Sonnet 5 keeps thinking disabled", body?.thinking?.type, "disabled");
   // Oct 10: the live eval skipped this normalization and the validator rejected every pick
   // ("kind undefined"); production and the eval now share normalizeModelPicks.
   const normalized = normalizeModelPicks({ curveballItemId:"b", picks:[{ itemId:"a", why:"x", cites:[] }, { itemId:"b", why:"y", cites:[] }] });

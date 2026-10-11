@@ -251,9 +251,13 @@ export function parseModelJson(text) {
 // "between_tools" is Sonnet 5.5's way to turn off up-front thinking and only exists there; every
 // other model (Haiku 5.5 included) rejects it with 400 invalid_request_error and takes "disabled"
 // instead (platform.claude.com effort docs, checked 2026-10-10).
+// The reverse also holds: Sonnet 5.5 rejects "disabled" (the Oct 10 ai-eval run's taste-profile
+// calls on Sonnet 5.5 all returned 400), so it always gets "between_tools" when thinking is off.
 export function thinkingTypeFor(model, requested) {
-  if (requested === "between_tools" && !/^claude-sonnet-5-5(?:-|$)/.test(String(model || ""))) return "disabled";
-  return requested || "disabled";
+  const sonnet55 = /^claude-sonnet-5-5(?:-|$)/.test(String(model || ""));
+  const off = !requested || requested === "disabled" || requested === "between_tools";
+  if (off) return sonnet55 ? "between_tools" : "disabled";
+  return requested;
 }
 
 // The model answers in a compact shape (no per-pick kind/tests). Fill them in before validation;
