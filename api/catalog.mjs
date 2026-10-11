@@ -1,13 +1,15 @@
 import { searchCatalog } from "../src/catalog/providers.mjs";
 import { cachedValue } from "../src/server/cache.mjs";
+import { requestQuery } from "../src/server/query.mjs";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("allow", "GET");
     return res.status(405).json({ error: "GET required" });
   }
-  const query = String(req.query?.q ?? "").trim();
-  const domain = ["all", "movies", "tv", "read", "play"].includes(req.query?.domain) ? req.query.domain : "all";
+  const params = requestQuery(req);
+  const query = String(params.q ?? "").trim();
+  const domain = ["all", "movies", "tv", "read", "play"].includes(params.domain) ? params.domain : "all";
   if (query.length < 2) return res.status(200).json({ items: [], providers: {} });
   try {
     const started = Date.now();

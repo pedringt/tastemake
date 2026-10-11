@@ -1,6 +1,7 @@
 import { browseCatalog } from "../src/catalog/browse.mjs";
 import { browseGenreById } from "../src/catalog/browse-genres.js";
 import { cachedValue } from "../src/server/cache.mjs";
+import { requestQuery } from "../src/server/query.mjs";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -8,9 +9,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "GET required" });
   }
 
-  const domain = ["movies", "tv", "read", "play"].includes(req.query?.domain) ? req.query.domain : null;
-  const genre = String(req.query?.genre ?? "");
-  const page = Math.max(1, Math.min(20, Number(req.query?.page) || 1));
+  const params = requestQuery(req);
+  const domain = ["movies", "tv", "read", "play"].includes(params.domain) ? params.domain : null;
+  const genre = String(params.genre ?? "");
+  const page = Math.max(1, Math.min(20, Number(params.page) || 1));
   if (!domain || !browseGenreById(domain, genre)) {
     return res.status(400).json({ error: "valid domain and genre are required" });
   }

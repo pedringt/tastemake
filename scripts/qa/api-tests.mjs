@@ -5,6 +5,11 @@ import { readFileSync } from "node:fs";
 import handler, { buildPickPrompt, normalizeModelPicks, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
 import { callAnthropic, liveConfig, parseModelJson } from "../../src/server/anthropic.mjs";
 import { createSuite } from "./lib/assert.mjs";
+import { requestQuery } from "../../src/server/query.mjs";
+import catalogHandler from "../../api/catalog.mjs";
+import browseHandler from "../../api/browse.mjs";
+import catalogDetailHandler from "../../api/catalog-detail.mjs";
+import resolveItemHandler from "../../api/resolve-item.mjs";
 
 const { check, eq, finish } = createSuite("api tests");
 
@@ -469,5 +474,24 @@ const res=()=>{const r={code:null,body:null,headers:{}};r.status=(code)=>{r.code
 let rr=res(); await handler({method:"GET",headers:{}},rr); eq("GET refused",rr.code,405);
 rr=res(); await handler({method:"POST",headers:{},body:{}},rr); eq("missing state refused",rr.code,400);
 rr=res(); await handler({method:"POST",headers:{"content-length":"999999"},body:{}},rr); eq("oversized body refused",rr.code,413);
+
+// #209: the GET endpoints read their query from req.url with the WHATWG URL API, so Vercel's lazy
+// req.query getter (built on the deprecated url.parse, DEP0169) is never touched.
+{
+  const q=requestQuery({url:"/api/catalog?q=lord+of%20the%20rings&domain=movies&tag=a&tag=b"});
+  eq("requestQuery decodes + and %20 as spaces",q.q,"lord of the rings");
+  eq("requestQuery reads a single value as a string",q.domain,"movies");
+  eq("requestQuery collects a repeated key into an array, like req.query",JSON.stringify(q.tag),'["a","b"]');
+  eq("requestQuery with no query string is empty",JSON.stringify(requestQuery({url:"/api/browse"})),"{}");
+  eq("requestQuery falls back to req.query when there is no url",requestQuery({query:{q:"x"}}).q,"x");
+  let touched=0;
+  const req=(url)=>({method:"GET",headers:{},url,get query(){touched+=1;return {};}});
+  let r=res(); await catalogHandler(req("/api/catalog?q=a&domain=all"),r);
+  eq("catalog: a one-letter query still returns the empty result",JSON.stringify(r.body),'{"items":[],"providers":{}}');
+  r=res(); await browseHandler(req("/api/browse?domain=nope&genre=x"),r); eq("browse: invalid domain still refused",r.code,400);
+  r=res(); await catalogDetailHandler(req("/api/catalog-detail?provider=tmdb"),r); eq("catalog-detail: missing providerId still refused",r.code,400);
+  r=res(); await resolveItemHandler(req("/api/resolve-item?title=x&type=movie"),r); eq("resolve-item: short title still refused",r.code,400);
+  eq("no GET endpoint touched req.query (the url.parse getter)",touched,0);
+}
 
 finish();

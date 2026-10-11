@@ -1,5 +1,6 @@
 import { searchCatalog } from "../src/catalog/providers.mjs";
 import { typeById } from "../src/data/domains.js";
+import { requestQuery } from "../src/server/query.mjs";
 
 const normalize = (value) => String(value ?? "")
   .normalize("NFD")
@@ -39,9 +40,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "GET required" });
   }
 
-  const title = String(req.query?.title ?? "").trim().slice(0, 120);
-  const type = String(req.query?.type ?? "").trim();
-  const creator = String(req.query?.creator ?? "").trim().slice(0, 120);
+  const params = requestQuery(req);
+  const title = String(params.title ?? "").trim().slice(0, 120);
+  const type = String(params.type ?? "").trim();
+  const creator = String(params.creator ?? "").trim().slice(0, 120);
   const typeInfo = typeById(type);
   if (title.length < 2 || !typeInfo?.domain) return res.status(400).json({ error: "title and supported type are required" });
 

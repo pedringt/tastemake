@@ -1,5 +1,6 @@
 import { fetchAndPersistItemDetail } from "../src/catalog/providers.mjs";
 import { cachedValue } from "../src/server/cache.mjs";
+import { requestQuery } from "../src/server/query.mjs";
 
 // #103 item 1/2: on-demand per-media-type metadata (director/cast, creator/cast,
 // developer/publisher/platforms), fetched only when a user expands a specific item so bulk
@@ -10,9 +11,10 @@ export default async function handler(req, res) {
     res.setHeader("allow", "GET");
     return res.status(405).json({ error: "GET required" });
   }
-  const provider = String(req.query?.provider ?? "");
-  const providerId = String(req.query?.providerId ?? "");
-  const type = String(req.query?.type ?? "");
+  const params = requestQuery(req);
+  const provider = String(params.provider ?? "");
+  const providerId = String(params.providerId ?? "");
+  const type = String(params.type ?? "");
   if (!provider || !providerId) return res.status(400).json({ error: "provider and providerId are required" });
 
   try {
