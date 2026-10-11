@@ -94,6 +94,10 @@
         </div>
       </dialog>
     </div>
+    <!-- #100: Vercel Web Analytics + Speed Insights via the plain-HTML script-tag method (no npm
+         import: a bare specifier breaks this no-bundler app, see #162). Its own module so it can
+         never stop app.js. -->
+    <script type="module" src="/src/lib/vercel-insights.js"></script>
     <script type="module" src="/src/app.js"></script>
   </body>
 </html>

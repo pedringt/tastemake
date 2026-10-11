@@ -41,7 +41,8 @@ const SUITES = [
   "cache-tests.mjs",
   "candidate-quality-tests.mjs",
   "synopsis-tests.mjs",
-  "search-meta-tests.mjs"
+  "search-meta-tests.mjs",
+  "insights-tests.mjs"
 ];
 
 // A new *-tests.mjs file that is not listed above would otherwise never run.
