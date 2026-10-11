@@ -92,7 +92,13 @@
   .topbar-aside .prototype-label,.topbar-aside .topbar-note { display:none; }
   .brand-word { font-size:32px; }
   .step > span[aria-hidden="true"] { display:none; }
-  .step { font-size:11px; }
+  /* During onboarding the nav has all five tabs (Favorites and Browse hide after it, #117). At the 860px
+     padding they measured 401px against 372px of room at a 390px phone, so Library sat off the right edge,
+     reachable only by swiping a scroller with no visible scrollbar. Tighter tabs fit five on one line at
+     390px (about 357px); on a narrower phone, or with a wider fallback font, they wrap to a second line
+     instead of hiding a destination off-screen. Tap targets keep their 44px height. */
+  .stepper { flex-wrap:wrap; overflow-x:visible; gap:2px; }
+  .step { font-size:11px; padding-inline:6px; }
 
   h1 { font-size:clamp(34px,10.5vw,42px); line-height:.98; }
   .favorites-screen { padding:22px 14px 28px; }

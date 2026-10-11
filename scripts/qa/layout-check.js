@@ -254,6 +254,12 @@ export async function runAll() {
   state.selectedFavorites=new Set(favorites.map(item=>item.id));
   state.setupComplete=true;
   state.displayName="QA";
+  // Start from a first-run profile on purpose, every run. state.onboarded persists in localStorage, and the
+  // headless profile is reused between runs, so leaving it unset made the header depend on whatever the
+  // previous run left behind: the five-tab onboarding nav (which overflowed at 390px) on some runs, the
+  // three-tab nav on others. Favorites and Browse are checked in the onboarding nav; opening
+  // Recommendations completes onboarding, so the later pages are checked in the three-tab nav.
+  state.onboarded=false;
   // #121: deliberately uneven titles and rationale/synopsis lengths (one-line, two-line, and an
   // unusually long title; short and very long rationale) so the layout checks below actually exercise
   // the clipping and chip-alignment fix rather than five near-identical cards.
