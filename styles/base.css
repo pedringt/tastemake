@@ -43,6 +43,12 @@ button { color: inherit; }
   padding: 18px 0 70px;
 }
 
+/* Back link to the portfolio, like State and Project Health have. Quiet, below every screen. */
+.site-footer { display:flex; justify-content:center; padding:28px 4px 0; }
+.portfolio-link { color:var(--muted,#66708d); font-family:var(--display); font-size:14px; text-decoration:none; padding:8px 4px; }
+.portfolio-link span:first-child { text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:1px; }
+.portfolio-link:hover, .portfolio-link:focus-visible { color:var(--ink); }
+
 .topbar {
   display: grid;
   grid-template-columns: minmax(300px,1fr) auto minmax(240px,.8fr);
