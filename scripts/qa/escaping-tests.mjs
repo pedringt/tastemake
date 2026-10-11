@@ -7,6 +7,8 @@
 // Untrusted here means: titles and notes the user typed, anything imported later, and anything a model
 // wrote (pick reasons, and hypothesis labels/claims once inference goes live).
 
+import { createSuite } from "./lib/assert.mjs";
+
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { state } = await import("../../src/state.js");
@@ -22,9 +24,7 @@ const PAYLOAD = `<img src=x onerror="alert(1)">`;
 const ATTR = `" onmouseover="alert(2)`;
 const ESCAPED = esc(PAYLOAD);
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
+const { check, finish } = createSuite("escaping tests");
 
 // the helper itself
 check("esc() turns every dangerous character into an entity", esc(`<>&"'`) === "&lt;&gt;&amp;&quot;&#39;", esc(`<>&"'`));
@@ -113,6 +113,4 @@ const libraryTried = screens.library();
 check("library Tried tab: no raw payload", !libraryTried.includes(PAYLOAD));
 state.libraryView = "saved";
 
-console.log(`escaping tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 import { cachedValue } from "../../src/server/cache.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
+const { check, finish } = createSuite("cache tests");
 
 // Regression for #120: a provider timeout/error after a successful cache miss must not be
 // interpreted as a cache failure and retried through the in-memory fallback.
@@ -37,6 +36,4 @@ const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.pu
   check("cache-set failure does not repeat the provider call", calls === 1, `calls=${calls}`);
 }
 
-console.log(`cache tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

@@ -2,10 +2,9 @@
 
 import { buildBackup, buildHtmlExport, htmlFileName, parseBackupText } from "../../src/model/export.js";
 import { renderArtwork } from "../../src/components/artwork.js";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => ok ? passed += 1 : failures.push(`${name}${detail ? ` (${detail})` : ""}`);
+const { check, finish } = createSuite("export tests");
 
 const saved = {
   item:{id:"book-1",title:"Saved Book",type:"book",domains:["read"],by:"Writer",year:2024},
@@ -66,6 +65,4 @@ const fallback=renderArtwork({title:"Portal Walk",type:"game",year:2025}, "libra
 check("missing artwork renders designed media fallback",fallback.includes("artwork-fallback-game")&&fallback.includes("Portal Walk")&&fallback.includes("2025"));
 check("fallback escapes titles",renderArtwork({title:"<script>",type:"book"}).includes("&lt;script&gt;"));
 
-console.log(`export tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f)=>console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

@@ -8,11 +8,9 @@ globalThis.document = { documentElement: { dataset: {} }, querySelector: () => n
 
 import { assessSynopsis, blurbOf, fallbackSummary, safeAbout } from "../../src/catalog/synopsis.mjs";
 import { applyTaglineFallback, igdbItem, openLibraryItem, tmdbItem } from "../../src/catalog/providers.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("synopsis tests");
 
 const FLAGGED = "A woman is brutally raped by an unseen force, and her psychiatrist struggles to explain it.";
 const NORMAL = "A single mother and her three children are tormented by a spirit that seems to be drawn to her family home.";
@@ -101,6 +99,4 @@ calls = 0;
 await applyTaglineFallback([normalMovie, normalGame], { env, fetchImpl: taglineFetch("x") });
 eq("no lookup at all when nothing is flagged", calls, 0);
 
-console.log(`synopsis tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

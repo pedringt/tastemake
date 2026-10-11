@@ -4,14 +4,14 @@
 //
 //   node scripts/qa/metadata-tests.mjs
 
+import { createSuite } from "./lib/assert.mjs";
+
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { renderDetailMeta } = await import("../../src/screens/library.js");
 const { fetchItemDetail, googleBooksSeriesDetail } = await import("../../src/catalog/providers.mjs");
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
+const { check, finish } = createSuite("metadata tests");
 
 // Sparse/missing metadata must never render an empty label (item 2).
 check(
@@ -74,11 +74,6 @@ check("Open Library detail returns description", /epic fantasy novel/.test(bookD
 check("Open Library detail returns subjects without inventing them", bookDetail.subjects?.includes("Epic fantasy"));
 check("Open Library detail preserves provider-supplied series when present", bookDetail.seriesKey === "The Stormlight Archive");
 
-console.log(`metadata tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
-
-
 // #142: Google Books structured series fallback. This is background-only in production; the unit
 // test verifies the exact API shape we consume without making a live network request.
 {
@@ -123,3 +118,5 @@ process.exit(failures.length ? 1 : 0);
   );
   check("Google Books fallback is a no-op without an API key", JSON.stringify(noKey) === "{}" && !calledWithoutKey);
 }
+
+finish();

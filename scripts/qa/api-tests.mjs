@@ -4,11 +4,9 @@
 import { readFileSync } from "node:fs";
 import handler, { buildPickPrompt, normalizeModelPicks, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
 import { callAnthropic, liveConfig, parseModelJson } from "../../src/server/anthropic.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed=0;
-const failures=[];
-const check=(name,ok,detail="")=>{if(ok) passed+=1; else failures.push(`${name}${detail?` (${detail})`:""}`);};
-const eq=(name,got,want)=>check(name,got===want,`got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("api tests");
 
 const BASE={
   TASTEMAKE_TMDB_TOKEN:"tmdb-test",
@@ -472,6 +470,4 @@ let rr=res(); await handler({method:"GET",headers:{}},rr); eq("GET refused",rr.c
 rr=res(); await handler({method:"POST",headers:{},body:{}},rr); eq("missing state refused",rr.code,400);
 rr=res(); await handler({method:"POST",headers:{"content-length":"999999"},body:{}},rr); eq("oversized body refused",rr.code,413);
 
-console.log(`api tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach(f=>console.log(`  x ${f}`));
-process.exit(failures.length?1:0);
+finish();

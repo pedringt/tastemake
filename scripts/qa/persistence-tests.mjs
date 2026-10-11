@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { createSuite } from "./lib/assert.mjs";
+
 const data = new Map();
 globalThis.localStorage = {
   getItem(key) { return data.get(key) ?? null; },
@@ -9,9 +11,7 @@ globalThis.localStorage = {
 
 const { persistState, loadPersistedState, clearPersistedState } = await import("../../src/persistence.js");
 
-let passed = 0;
-const failures = [];
-const check = (name, ok) => ok ? passed += 1 : failures.push(name);
+const { check, finish } = createSuite("persistence tests");
 
 const state = {
   selectedFavorites: new Set(["a"]),
@@ -61,6 +61,4 @@ check("does not persist transient request state", !("aiStatus" in restored) && !
 clearPersistedState();
 check("clear removes persisted test state", Object.keys(loadPersistedState()).length === 0);
 
-console.log(`persistence tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

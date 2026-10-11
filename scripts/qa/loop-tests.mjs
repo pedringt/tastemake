@@ -11,11 +11,9 @@
 import { canKeepDiscovering, currentRoundComplete, isBookmarked, recommendationDelta, tasteDelta } from "../../src/model/taste.js";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { serializeAiState } from "../../src/ai/live-client.js";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("recommendation-loop tests");
 
 const itemA = { id: "tmdb-movie-1", title: "First Pick", type: "movie", domains: ["movies"] };
 const itemB = { id: "tmdb-movie-2", title: "Second Pick", type: "movie", domains: ["movies"] };
@@ -308,6 +306,4 @@ check("isBookmarked does not call an experienced reaction 'saved'", !isBookmarke
   check("blindSpotDismissed is not sent on the wire at all", !("blindSpotDismissed" in serialized));
 }
 
-console.log(`recommendation-loop tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

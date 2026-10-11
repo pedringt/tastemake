@@ -6,10 +6,9 @@
 
 import { applyNoveltyGuard, isFranchiseContinuation } from "../../src/catalog/novelty.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
+const { check, finish } = createSuite("novelty guard tests");
 
 const fellowship = { id: "tmdb-movie-1", title: "The Lord of the Rings: The Fellowship of the Ring" };
 const twoTowers = { id: "tmdb-movie-2", title: "The Lord of the Rings: The Two Towers" };
@@ -187,6 +186,4 @@ check(
   !isFranchiseContinuation(tmdbWithNumericId, wayOfKings)
 );
 
-console.log(`novelty guard tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

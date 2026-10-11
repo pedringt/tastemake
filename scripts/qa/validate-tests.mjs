@@ -9,11 +9,9 @@ import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
 import { hypotheses, recommendations, followUpPool } from "./fixtures/catalog.js";
 import { emptyState, react } from "../evals/fixtures.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("validate tests");
 
 const catalogItems = [...recommendations, ...followUpPool];
 const byId = (id) => catalogItems.find((item) => item.id === id);
@@ -99,6 +97,4 @@ function proposal(refs) {
   eq("a dislike may appear as explicit contrast when positive evidence supports the pick", explicitContrast.accepted.length, 1);
 }
 
-console.log(`validate tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

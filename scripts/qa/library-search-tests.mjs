@@ -5,6 +5,8 @@
 //
 //   node scripts/qa/library-search-tests.mjs
 
+import { createSuite } from "./lib/assert.mjs";
+
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { resetState, state: sharedState } = await import("../../src/state.js");
@@ -13,10 +15,7 @@ const { isStrongPositive } = await import("../../src/model/evidence.js");
 
 const fresh = () => { resetState(); return sharedState; };
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("library-search");
 
 // Synthetic provider-style fixtures, following the same shape real catalog results carry
 // (provider/providerId/type), matching the convention used elsewhere for movie/game fixtures since
@@ -116,8 +115,4 @@ const game = { id: "igdb-game-7", title: "Signal Loss", type: "game", provider: 
   eq("status is back to none after remove", itemStatus(state, movie).key, "none");
 }
 
-console.log(`library-search: ${passed} passed, ${failures.length} failed`);
-if (failures.length) {
-  failures.forEach((failure) => console.error(`  FAIL: ${failure}`));
-  process.exit(1);
-}
+finish();

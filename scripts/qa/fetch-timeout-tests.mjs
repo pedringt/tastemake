@@ -7,10 +7,9 @@
 //   node scripts/qa/fetch-timeout-tests.mjs
 
 import { fetchWithTimeout } from "../../src/lib/fetch-timeout.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
+const { check, finish } = createSuite("fetch timeout tests");
 
 // ---- a fast response resolves normally, timer never fires -------------------------------------
 
@@ -52,6 +51,4 @@ const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.pu
   check("body passes through", seenOpts.body === "payload");
 }
 
-console.log(`fetch timeout tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

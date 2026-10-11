@@ -10,11 +10,9 @@
 //   TASTEMAKE_LIVE_OPEN_LIBRARY=1 node scripts/qa/candidate-quality-tests.mjs
 
 import { igdbGenreOverlap, igdbGenreWhereClause, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("candidate quality tests");
 
 const env = { TASTEMAKE_TMDB_TOKEN: "tmdb-token", IGDB_CLIENT_ID: "igdb-id", IGDB_CLIENT_SECRET: "igdb-secret" };
 
@@ -400,6 +398,4 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   console.log("  skipped live Open Library network case (set TASTEMAKE_LIVE_OPEN_LIBRARY=1 to run it)");
 }
 
-console.log(`candidate quality tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

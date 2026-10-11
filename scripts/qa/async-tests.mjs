@@ -6,6 +6,8 @@
 // The rule being protected: a model answer must never be shown if the evidence it was computed from has
 // changed, or if the user left the page, or if a newer request replaced it.
 
+import { createSuite } from "./lib/assert.mjs";
+
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { favorites, recommendations, hypotheses } = await import("./fixtures/catalog.js");
@@ -13,10 +15,7 @@ const { applySearchAction } = await import("../../src/model/search.js");
 const { setStatement } = await import("../../src/model/statements.js");
 const R = await import("../../src/ai/requests.js");
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("async tests");
 
 const mk = () => ({
   screen: "recommendations", selectedFavorites: new Set(favorites.filter((f) => f.selected).map((f) => f.id)),
@@ -95,6 +94,4 @@ eq("finishing clears the in-flight request", doneState.aiRequest, null);
 eq("...sets ready", doneState.aiStatus, R.AI_READY);
 eq("...and records the source", doneState.aiSource, "model");
 
-console.log(`async tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();
