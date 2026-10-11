@@ -307,6 +307,40 @@ async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
         }));
 }
 
+// Real report (2026-10-10): "Surprise me" offered Grand Theft Auto V to someone whose game favorite
+// was Outer Wilds. Every pick (the model's curveball included) comes from this candidate pool, and
+// the pool was the cause: `genres = (a,b,c)` in IGDB's query language means "shares ANY ONE of these
+// genres", sorted by total_rating_count. Outer Wilds and GTA V share only "Adventure" -- one of the
+// broadest genres on IGDB -- and GTA V is among the most-rated games there, so it topped the pool.
+// A related game must now share at least two of the anchor's genres (or its only genre, when it has
+// just one). The query asks IGDB for pairs of genres, and a client-side overlap check is the actual
+// guarantee for both the live rows and the canonical-store rows, which match on any genre name.
+const normalizeGenreName = (value) => String(value ?? "").trim().toLowerCase();
+
+// Returns how many genres the candidate shares with the anchor, and how many it must share: two,
+// or one when the anchor itself has only one genre. Live rows compare IGDB genre ids; canonical-store
+// rows carry only genre names, so they compare names.
+export function igdbGenreOverlap(anchor, candidate) {
+  const anchorIds = new Set((anchor?.providerMeta?.genreIds ?? []).map(Number).filter(Number.isFinite));
+  const candidateIds = (candidate?.providerMeta?.genreIds ?? []).map(Number).filter(Number.isFinite);
+  if (anchorIds.size && candidateIds.length) {
+    return { overlap: new Set(candidateIds.filter((id) => anchorIds.has(id))).size, required: Math.min(2, anchorIds.size) };
+  }
+  const anchorNames = new Set((anchor?.genres ?? []).map(normalizeGenreName).filter(Boolean));
+  const overlap = new Set((candidate?.genres ?? []).map(normalizeGenreName).filter((name) => anchorNames.has(name))).size;
+  return { overlap, required: Math.max(1, Math.min(2, anchorNames.size)) };
+}
+
+export function igdbGenreWhereClause(genreIds) {
+  const ids = genreIds.slice(0, 3);
+  if (ids.length < 2) return `genres = (${ids.join(",")})`;
+  const pairs = [];
+  for (let i = 0; i < ids.length; i += 1) {
+    for (let j = i + 1; j < ids.length; j += 1) pairs.push(`genres = [${ids[i]},${ids[j]}]`);
+  }
+  return `(${pairs.join(" | ")})`;
+}
+
 async function igdbRelated(item, env, fetchImpl, queryImpl) {
   if (item.provider !== "igdb") return [];
   const genreIds = item.providerMeta?.genreIds ?? [];
@@ -330,7 +364,7 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
         authorization: `Bearer ${token}`,
         "content-type": "text/plain"
       },
-      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where genres = (${genreIds.slice(0, 3).join(",")})${excludeClause}; sort total_rating_count desc; limit 12;`
+      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where ${igdbGenreWhereClause(genreIds)}${excludeClause}; sort total_rating_count desc; limit 12;`
     });
     if (!response.ok) return [];
     return (await response.json()).map(igdbItem).filter((row) => row.providerId !== item.providerId);
@@ -338,13 +372,18 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
   const storePromise = relatedCanonicalItems(item, item.genres ?? [], { env, query: queryImpl });
   const livePromise = fetchImpl !== fetch
     ? load()
-    : cachedValue(`related:v2:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+    : cachedValue(`related:v3:igdb:${genreIds.slice(0,3).join("-")}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
   const [live, storeItems] = await Promise.all([livePromise, storePromise]);
   // #144: store items canonicalized with IGDB genre *names* (see canonical-store.mjs), so overlap
   // is matched against genre names here, not the numeric genreIds used for the live query above.
-  return mergeCanonicalCandidates(live, storeItems, {
+  const merged = await mergeCanonicalCandidates(live, storeItems, {
     buildProviderMeta: (storeItem) => ({ genreIds: [], collectionId: null, franchiseId: null })
   });
+  return merged
+    .map((candidate, index) => ({ candidate, index, ...igdbGenreOverlap(item, candidate) }))
+    .filter((entry) => entry.overlap >= entry.required)
+    .sort((a, b) => b.overlap - a.overlap || a.index - b.index)
+    .map((entry) => entry.candidate);
 }
 
 // #135 "prefer anchors with richer metadata": a best-effort reorder of evidence items by their

@@ -10,7 +10,9 @@ export function hypothesisEvidenceKey(state) {
   return JSON.stringify({ evidence, statements });
 }
 
-function normalizeHypothesis(h, index, state) {
+// The shape a live hypothesis is stored in (state.modelHypotheses). Exported so the eval harness can
+// feed a fixture's earlier profile back exactly as the client would (#228).
+export function normalizeHypothesis(h, index, state) {
   const id = /^ai-[\w-]+$/.test(h.id ?? "") ? h.id : `ai-${slug(h.label) || index + 1}`;
   const evidenceMap = new Map(evidenceRecords(state).map((row) => [row.ref, row]));
   const evidenceTitles = (h.evidence ?? []).map((ref) => evidenceMap.get(ref)?.title).filter(Boolean);

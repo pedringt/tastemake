@@ -9,7 +9,7 @@
 //   node scripts/qa/candidate-quality-tests.mjs
 //   TASTEMAKE_LIVE_OPEN_LIBRARY=1 node scripts/qa/candidate-quality-tests.mjs
 
-import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
+import { igdbGenreOverlap, igdbGenreWhereClause, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 
 let passed = 0;
 const failures = [];
@@ -248,6 +248,7 @@ const bookState = (genres) => ({
 // Documents the current behavior so a future PR can compare against it if IGDB pool health
 // regresses; per #135's "audited, not necessarily rewritten" instruction, no production change was
 // made here because a genre-backed query already returns a full 12-row page from one anchor.
+// (Oct 10: the query now asks for genre pairs, so these rows share both of the anchor's genres.)
 {
   const igdbState = {
     selectedFavorites: new Set(["igdb-game-12"]),
@@ -258,16 +259,66 @@ const bookState = (genres) => ({
     recommendationFilter: "play"
   };
   const gameTitles = ["Amber Harbor", "Glass Orchard", "Night Signal", "Paper Kingdom", "Silent Atlas", "Copper Sky", "Velvet Transit", "Winter Circuit", "Crimson Static", "Moss Cathedral", "Silver Current", "Ivory Motel"];
-  const rows = gameTitles.map((name, i) => ({ id: 300 + i, name, summary: "x", first_release_date: 1600000000, genres: [{ id: 31, name: "Adventure" }] }));
+  const rows = gameTitles.map((name, i) => ({ id: 300 + i, name, summary: "x", first_release_date: 1600000000, genres: [{ id: 31, name: "Adventure" }, { id: 32, name: "Indie" }] }));
   const related = await retrieveCatalogCandidates(igdbState, { env, fetchImpl: async (url, init = {}) => {
     if (String(url).includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "fake-token" }) };
     if (String(url).includes("api.igdb.com/v4/games")) {
-      check("IGDB genre-only query still requests up to 3 genre ids from providerMeta", /genres = \(31,32\)/.test(init.body || ""), init.body);
+      check("IGDB genre query asks for the anchor's genre pair", /where \(genres = \[31,32\]\)/.test(init.body || ""), init.body);
       return { ok: true, json: async () => rows };
     }
     throw new Error(`unexpected igdb URL: ${url}`);
   } });
   eq("IGDB genre-only query from a single anchor already returns a healthy (12-row) pool", related.length, 12);
+}
+
+// ---- Real report (Oct 10): "Surprise me" offered GTA V for an Outer Wilds favorite --------------
+// IGDB's `genres = (a,b,c)` matches games sharing ANY one genre, sorted by rating count, so the
+// most-rated game sharing only "Adventure" topped the pool every pick (the surprise slot included)
+// is drawn from. A related game must now share two of the anchor's genres.
+{
+  const outerWilds = { id: "igdb-game-11737", provider: "igdb", providerId: "11737", title: "Outer Wilds", type: "game", domains: ["play"],
+    genres: ["Puzzle", "Adventure", "Indie"], providerMeta: { genreIds: [9, 31, 32] } };
+  const state = {
+    selectedFavorites: new Set([outerWilds.id]),
+    feedbackByRecommendation: {},
+    recommendationSets: [],
+    customItems: { [outerWilds.id]: outerWilds },
+    areas: { movies: true, tv: true, read: true, play: true },
+    recommendationFilter: "play",
+    curveball: true,
+    recommendationStyle: "adventurous"
+  };
+  let body = "";
+  const related = await retrieveCatalogCandidates(state, { env, fetchImpl: async (url, init = {}) => {
+    if (String(url).includes("id.twitch.tv/oauth2/token")) return { ok: true, json: async () => ({ access_token: "fake-token" }) };
+    if (String(url).includes("api.igdb.com/v4/games")) {
+      body = init.body || "";
+      // Most-rated first, as IGDB returns them: the AAA games share only "Adventure".
+      return { ok: true, json: async () => [
+        { id: 1020, name: "Grand Theft Auto V", summary: "x", first_release_date: 1379376000, genres: [{ id: 5, name: "Shooter" }, { id: 10, name: "Racing" }, { id: 31, name: "Adventure" }] },
+        { id: 1021, name: "Red Dead Redemption 2", summary: "x", first_release_date: 1540512000, genres: [{ id: 5, name: "Shooter" }, { id: 31, name: "Adventure" }] },
+        { id: 1022, name: "Firewatch", summary: "x", first_release_date: 1454976000, genres: [{ id: 31, name: "Adventure" }, { id: 32, name: "Indie" }] },
+        { id: 1023, name: "Return of the Obra Dinn", summary: "x", first_release_date: 1539734400, genres: [{ id: 9, name: "Puzzle" }, { id: 31, name: "Adventure" }, { id: 32, name: "Indie" }] },
+        { id: 1024, name: "The Witness", summary: "x", first_release_date: 1453766400, genres: [{ id: 9, name: "Puzzle" }, { id: 31, name: "Adventure" }, { id: 32, name: "Indie" }] },
+        { id: 1025, name: "Tunic", summary: "x", first_release_date: 1647820800, genres: [{ id: 31, name: "Adventure" }, { id: 32, name: "Indie" }] },
+        { id: 1026, name: "Myst", summary: "x", first_release_date: 748224000, genres: [{ id: 9, name: "Puzzle" }, { id: 31, name: "Adventure" }] },
+        { id: 1027, name: "Subnautica", summary: "x", first_release_date: 1516838400, genres: [{ id: 31, name: "Adventure" }, { id: 32, name: "Indie" }] }
+      ] };
+    }
+    throw new Error(`unexpected igdb URL: ${url}`);
+  } });
+  const titles = related.map((item) => item.title);
+  check("IGDB related query asks for genre pairs, not any single genre", body.includes("where (genres = [9,31] | genres = [9,32] | genres = [31,32])") && !body.includes("genres = (9,31,32)"), body);
+  check("a game sharing only one broad genre (GTA V) is never a related candidate", !titles.includes("Grand Theft Auto V") && !titles.includes("Red Dead Redemption 2"), titles.join(","));
+  check("games sharing two or more genres stay in the pool", ["Firewatch", "Return of the Obra Dinn", "The Witness", "Tunic", "Myst", "Subnautica"].every((title) => titles.includes(title)), titles.join(","));
+  check("the closest genre matches rank first", titles[0] === "Return of the Obra Dinn" && titles[1] === "The Witness", titles.join(","));
+  check("the adventurous surprise slot is still a two-genre match", related.length >= 6 && igdbGenreOverlap(outerWilds, related[5]).overlap >= 2, related[5]?.title);
+
+  // Canonical-store rows carry genre names only, and the store matches on any one name.
+  eq("store row sharing only Adventure fails the name overlap", igdbGenreOverlap(outerWilds, { genres: ["Adventure", "Shooter"], providerMeta: { genreIds: [] } }).overlap, 1);
+  eq("store row sharing Puzzle and Adventure passes the name overlap", igdbGenreOverlap(outerWilds, { genres: ["puzzle", "Adventure"], providerMeta: { genreIds: [] } }).overlap, 2);
+  eq("a one-genre anchor still needs only one shared genre", igdbGenreOverlap({ providerMeta: { genreIds: [31] } }, { providerMeta: { genreIds: [31, 5] } }).required, 1);
+  eq("a one-genre anchor keeps the single-genre query", igdbGenreWhereClause([31]), "genres = (31)");
 }
 
 // ---- QA sweep real bug: IGDB self-exclusion fallback let an anchor recommend itself -------------

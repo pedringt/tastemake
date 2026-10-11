@@ -44,6 +44,17 @@ export function allowedLevel(supportRecords, counterRecords) {
 const capLevel = (claimed, allowed) => LEVELS[Math.min(LEVELS.indexOf(claimed), LEVELS.indexOf(allowed))];
 
 const asRows = (records) => records.map((r) => ({ item: { id: r.itemId, domains: r.domains } }));
+
+// #228: the furthest a cross-domain link may go. Docs (evidence-contract.md): "Emerging: a starting
+// pattern. Nothing the user tried has tested it yet", and cross-domain links "must be supported by
+// evidence in both areas, not assumed". Starter favorites make a pattern plausible as a starting
+// point but do not test a link between areas, so only things the user tried (Loved / Liked / disliked
+// reactions) count here. The eval (cold-4, starter-6: at most "untested"; cross-domain: one loved
+// thing in each of two areas, at most "tentative") encodes the same rule.
+export function allowedCrossDomain(supportRecords, counterRecords) {
+  const tried = supportRecords.filter((r) => r.kind !== "starter-favorite");
+  return domainScope({ supports: asRows(tried), against: asRows(counterRecords), heldUp: [] }).crossDomain;
+}
 const hypothesisAliases = (id) => id === "H01/H07" ? ["H01", "H07", "H01/H07"] : [id];
 const sameHypothesis = (a, b) => hypothesisAliases(a).some((id) => hypothesisAliases(b).includes(id));
 
@@ -66,11 +77,12 @@ export function normalizeHypothesisResponse(response, ctx) {
         .filter((row) => row?.class === "experienced" && row.polarity < 0)
       : [];
 
-    const { scope, crossDomain } = domainScope({
+    const { scope } = domainScope({
       supports: asRows(supports),
       against: asRows(counters),
       heldUp: []
     });
+    const crossDomain = allowedCrossDomain(supports, counters);
     const claimedDomains = Array.isArray(proposal.domains) ? proposal.domains : [];
     const safeDomains = claimedDomains.filter((domain) => scope.supported.includes(domain));
     const safeCrossDomain = CROSS_DOMAIN.includes(proposal.crossDomain)
@@ -90,6 +102,64 @@ export function normalizeHypothesisResponse(response, ctx) {
   });
 
   return { ...response, hypotheses: normalized };
+}
+
+// #228: "One miss never weakens a pattern; two do" (evidence-contract.md, prototype-v1-spec.md). A
+// refresh used to be free to return a whole new set, and the client keeps earlier patterns only when
+// something in the new answer was rejected, so one disliked item could replace every pattern on the
+// profile (the eval's single-miss fixture: 0 of 4-6 kept). Software now carries an earlier pattern
+// forward when the model leaves it out and fewer than two things the user tried and disliked fall in
+// that pattern's areas. A carried pattern is re-checked like any proposal (its evidence must still
+// exist and support it, the level is re-capped, and a "not me" statement still removes it), so this
+// never keeps something the evidence or the user has since ruled out.
+export const MAX_PROFILE_HYPOTHESES = 12;
+const MISSES_TO_DROP = 2;
+
+function storedToProposal(stored) {
+  const level = String(stored.strength ?? stored.level ?? "emerging").toLowerCase();
+  return {
+    id: stored.id,
+    label: stored.title ?? stored.label,
+    claim: stored.claim,
+    evidence: stored.supports ?? stored.evidence ?? [],
+    counter: stored.counters ?? stored.counter ?? [],
+    domains: stored.domains ?? [],
+    crossDomain: CROSS_DOMAIN.includes(stored.crossDomain) ? stored.crossDomain : "untested",
+    level: LEVELS.includes(level) ? level : "emerging",
+    conditional: stored.status === "conditional" || stored.conditional === true,
+    context: stored.context ?? null,
+    carriedForward: true
+  };
+}
+
+export function preserveExistingHypotheses(response, ctx, existing = []) {
+  if (!response || !Array.isArray(response.hypotheses) || !Array.isArray(existing) || !existing.length) return response;
+  const proposed = response.hypotheses.filter((h) => h && typeof h === "object");
+  const proposedIds = new Set(proposed.map((h) => h.id).filter(Boolean));
+  const proposedLabels = new Set(proposed.map((h) => String(h.label ?? "").trim().toLowerCase()).filter(Boolean));
+  const misses = (ctx.evidence ?? []).filter((r) => r.class === "experienced" && r.polarity < 0);
+  const rejectedByUser = new Set((ctx.statements ?? []).filter((s) => s.says === "not-me").map((s) => s.hypothesisId));
+
+  const carried = [];
+  for (const stored of existing) {
+    if (!stored?.id || !stored.claim || !(stored.title ?? stored.label)) continue;
+    if (proposedIds.has(stored.id) || proposedLabels.has(String(stored.title ?? stored.label).trim().toLowerCase())) continue;
+    if (rejectedByUser.has(stored.id)) continue;
+    const domains = stored.domains ?? [];
+    const missesInArea = misses.filter((r) => (r.domains ?? []).some((d) => domains.includes(d))).length;
+    if (missesInArea >= MISSES_TO_DROP) continue;
+    carried.push(storedToProposal(stored));
+  }
+  if (!carried.length) return response;
+
+  const normalizedCarried = normalizeHypothesisResponse({ hypotheses: carried }, ctx).hypotheses;
+  // Keep the profile within its usual size: brand-new proposals give way before earlier patterns do.
+  const existingIds = new Set(existing.map((h) => h?.id).filter(Boolean));
+  let hypotheses = [...response.hypotheses, ...normalizedCarried];
+  for (let i = response.hypotheses.length - 1; hypotheses.length > MAX_PROFILE_HYPOTHESES && i >= 0; i -= 1) {
+    if (!existingIds.has(response.hypotheses[i]?.id)) hypotheses = hypotheses.filter((h) => h !== response.hypotheses[i]);
+  }
+  return { ...response, hypotheses: hypotheses.slice(0, MAX_PROFILE_HYPOTHESES) };
 }
 
 export function validateHypotheses(response, ctx) {
@@ -137,7 +207,8 @@ export function validateHypotheses(response, ctx) {
 
     if (!reasons.length) {
       // domains claimed must each have cited support there; cross-domain status is capped by the evidence
-      const { scope, crossDomain } = domainScope({ supports: asRows(supports), against: asRows(counters), heldUp: [] });
+      const { scope } = domainScope({ supports: asRows(supports), against: asRows(counters), heldUp: [] });
+      const crossDomain = allowedCrossDomain(supports, counters);
       const unsupportedDomains = h.domains.filter((d) => !scope.supported.includes(d));
       if (unsupportedDomains.length) reasons.push(`claims domains with no cited support: ${unsupportedDomains.join(", ")}`);
       if (CROSS_DOMAIN.indexOf(h.crossDomain) > CROSS_DOMAIN.indexOf(crossDomain)) reasons.push(`cross-domain overreach: claimed ${h.crossDomain}, evidence shows ${crossDomain}`);
