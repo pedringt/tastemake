@@ -588,7 +588,10 @@ check("Taste Profile prompt allows a deeper profile while keeping thin evidence 
 
 const live = await produceHypotheses({ rawState, env: AI_ENV, fetchImpl: anthroFetch });
 eq("validated live hypothesis output is accepted", live.source, "model");
-eq("Favorite evidence can support a live hypothesis", live.hypotheses[0]?.level, "supported");
+check("Favorite evidence can support a live hypothesis", live.hypotheses[0]?.evidence?.includes("ev:openlibrary-book-OL123W"));
+// A starter favorite supports the pattern but has not tested it (evidence-contract.md, "Emerging"), so a
+// "supported" claim resting only on it is capped to emerging.
+eq("a hypothesis resting only on a starter favorite is capped to emerging", live.hypotheses[0]?.level, "emerging");
 check("accepted live hypotheses stay inferred/model authority", live.hypotheses.every((x) => x.authority === "inferred" && x.source === "model"));
 
 const historyState = { hypothesisHistory: [] };
