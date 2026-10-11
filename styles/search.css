@@ -230,6 +230,8 @@
 .search-artwork .artwork-fallback-type { font-size:7px; letter-spacing:.08em; }
 .search-result-main { min-width:0; }
 .search-result-main b { overflow-wrap:anywhere; }
+/* Look-alike hint: a synopsis excerpt shown only when same-title rows would otherwise read the same. */
+.search-result-main .search-result-hint { display:block; margin-top:2px; color:var(--muted); font-size:12px; line-height:1.35; overflow-wrap:anywhere; }
 @media (max-width:620px) {
   .search-result {
     grid-template-columns:46px minmax(0,1fr);

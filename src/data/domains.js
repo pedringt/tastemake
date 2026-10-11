@@ -49,6 +49,11 @@ export function displayLabel(item) {
   return item?.displayLabel ?? item?.medium ?? typeById(item?.type)?.label ?? "";
 }
 
+// Enough to tell same-title works apart in a list: type label, year, then creator ("Film · 1982 · Ridley Scott").
+export function itemMeta(item, { withBy = true } = {}) {
+  return [displayLabel(item), item?.year, withBy ? item?.by : ""].filter(Boolean).join(" · ");
+}
+
 // The domains an item belongs to: explicit `domains`, else its type's domain.
 export function domainsOf(item) {
   if (item?.domains?.length) return item.domains;

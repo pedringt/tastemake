@@ -1,6 +1,6 @@
 import { state } from "../state.js";
-import { MEDIA, applyResolvedCatalogItem, applySearchAction, findExisting, itemStatus, makeCustomItem, markCustomResolution, searchableItems } from "../model/search.js";
-import { displayLabel, domainFilterOptions } from "../data/domains.js";
+import { MEDIA, applyResolvedCatalogItem, lookAlikeHints, applySearchAction, findExisting, itemStatus, makeCustomItem, markCustomResolution, searchableItems } from "../model/search.js";
+import { displayLabel, domainFilterOptions, itemMeta } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { resolveCustomCatalogItem, searchExternalCatalog } from "../catalog/client.js";
 import { renderArtwork } from "./artwork.js";
@@ -106,11 +106,12 @@ export function initSearch({ onChange, announce, goTo }) {
     } else if (ui.catalogError) {
       list = '<p class="search-hint search-hint-error" role="status">The catalog is unavailable right now. You can still add this title yourself below.</p>';
     } else if (hits.length) {
+      const hints = lookAlikeHints(hits);
       list = `<ul class="search-results" aria-label="Results">
           ${hits.map((item) => `
             <li>
               <button type="button" class="search-result" data-search-pick="${item.id}">
-                ${renderArtwork(item, "search-artwork")}<span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(displayLabel(item))}${item.by ? ` · ${esc(item.by)}` : ""}</span></span>
+                ${renderArtwork(item, "search-artwork")}<span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(itemMeta(item))}</span>${hints.has(item.id) ? `<small class="search-result-hint">${esc(hints.get(item.id))}</small>` : ""}</span>
                 ${statusChip(item)}
               </button>
             </li>`).join("")}
@@ -151,7 +152,7 @@ export function initSearch({ onChange, announce, goTo }) {
     const head = `
       <button type="button" class="search-back" data-search-back>&larr; Back to results</button>
       <h3 id="search-sheet-title" tabindex="-1">${esc(item.title)}</h3>
-      <p class="search-sheet-meta">${esc(displayLabel(item))} &middot; ${status.label}${resolution ? ` &middot; ${esc(resolution)}` : ""}</p>`;
+      <p class="search-sheet-meta">${esc(itemMeta(item))} &middot; ${status.label}${resolution ? ` &middot; ${esc(resolution)}` : ""}</p>`;
 
     const starterSelected = state.selectedFavorites.has(item.id);
     const starterLabel = state.starterReplaceId

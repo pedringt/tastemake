@@ -50,3 +50,4 @@
   .setup-form-actions { align-items:stretch; flex-direction:column; }
   .setup-next { width:100%; }
 }
+.setup-optional { color:var(--muted,#6b7280); font-size:.7em; font-weight:500; }
