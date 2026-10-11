@@ -8,11 +8,9 @@ import { BROWSE_DOMAINS, browseGenreById, browseGenresFor } from "../../src/cata
 import { mergeUniqueBrowseItems, browseReadyForRecommendations } from "../../src/model/browse.js";
 import { applySearchAction } from "../../src/model/search.js";
 import { evidenceKind, tasteWeight } from "../../src/model/evidence.js";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("browse tests");
 
 eq("Browse exposes Movies / TV / Read / Play", BROWSE_DOMAINS.map((x) => x.id).join(","), "movies,tv,read,play");
 check("every Browse domain has genres", BROWSE_DOMAINS.every((domain) => browseGenresFor(domain.id).length >= 8));
@@ -268,6 +266,4 @@ const onboarded = makeState();
 onboarded.onboarded = true;
 check("onboarded Browse stays recommendation-ready after starter migration", browseReadyForRecommendations(onboarded));
 
-console.log(`browse tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((failure) => console.log(`  x ${failure}`));
-process.exit(failures.length ? 1 : 0);
+finish();

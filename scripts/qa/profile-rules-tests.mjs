@@ -14,14 +14,12 @@
 import { buildContext } from "../../src/ai/context.js";
 import { allowedCrossDomain, allowedLevel, normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../../src/ai/validate.js";
 import { buildHypothesisPrompt, produceHypotheses } from "../../api/hypotheses.mjs";
-import { parseModelJson } from "../../api/recommendations.mjs";
+import { parseModelJson } from "../../src/server/anthropic.mjs";
 import { recommendations, followUpPool } from "./fixtures/catalog.js";
 import { emptyState, react } from "../evals/fixtures.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("profile rules tests");
 
 const catalogItems = [...recommendations, ...followUpPool];
 const byId = (id) => catalogItems.find((item) => item.id === id);
@@ -213,6 +211,4 @@ const earlierProfile = [
   eq("three loved things allow strong", allowedLevel(tried, []), "strong");
 }
 
-console.log(`profile rules tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

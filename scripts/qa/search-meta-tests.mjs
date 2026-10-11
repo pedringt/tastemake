@@ -2,15 +2,13 @@
 // Review #15/#17: same-title search results carry year and creator (plus a synopsis hint for look-alikes);
 // the display name is optional. Free, no network.
 import { readFileSync } from "node:fs";
+import { createSuite } from "./lib/assert.mjs";
 
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 const { itemMeta } = await import("../../src/data/domains.js");
 const { lookAlikeHints } = await import("../../src/model/search.js");
 
-let passed = 0;
-const failures = [];
-const eq = (name, got, want) => { if (got === want) passed += 1; else failures.push(`${name}: got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`); };
-const check = (name, ok) => { if (ok) passed += 1; else failures.push(name); };
+const { check, eq, finish } = createSuite("search-meta tests");
 
 const a = { type: "movie", year: 1982, by: "Ridley Scott" };
 const b = { type: "movie", year: 2017, by: "Denis Villeneuve" };
@@ -67,8 +65,4 @@ check("setup labels the display name optional", setup.includes("Display name (op
 check("finishSetup no longer blocks on an empty name", !app.includes("Add your name to continue."));
 check("typing a name no longer toggles the Next button", !/setupName\.value\.trim\(\)/.test(app));
 
-if (failures.length) {
-  console.error(`search-meta tests: ${failures.length} failed\n - ${failures.join("\n - ")}`);
-  process.exit(1);
-}
-console.log(`search-meta tests: ${passed} passed, 0 failed`);
+finish();

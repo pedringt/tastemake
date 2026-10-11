@@ -2,14 +2,15 @@ import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../src/ai/validate.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
-import { callAnthropic, hydrateState as hydrateBaseState, liveConfig } from "./recommendations.mjs";
+import { callAnthropic, liveConfig } from "../src/server/anthropic.mjs";
+import { hydrateState as hydrateBaseState } from "../src/server/request-state.mjs";
 import { visibleDomains } from "../src/data/domains.js";
 
 const MAX_BODY_BYTES = 160_000;
 export const PROFILE_MAX_OUTPUT_TOKENS = 3200;
 
-// QA sweep real bug (fixed here): this used to be a second, hand-maintained copy of
-// recommendations.mjs's hydrateState -- it had already drifted (missing blindSpots,
+// QA sweep real bug (fixed here): this used to be a second, hand-maintained copy of the shared
+// hydrateState (now in src/server/request-state.mjs) -- it had already drifted (missing blindSpots,
 // blindSpotDrafts, recommendationFilter). Sharing the base function means the two endpoints can
 // never drift again; modelHypotheses is the one field genuinely unique to this endpoint.
 function hydrateState(raw = {}) {

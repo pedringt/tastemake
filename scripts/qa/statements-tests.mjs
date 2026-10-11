@@ -1,9 +1,7 @@
 import { setStatement, toggleDomainExclusion } from "../../src/model/statements.js";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("statements tests");
 
 const pattern = { id:"ai-one", title:"Pattern one", claim:"A specific working claim" };
 const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothesisHistory:[] });
@@ -50,6 +48,4 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   eq("no refuses domain refinement", toggleDomainExclusion(state, pattern.id, "movies"), null);
 }
 
-console.log(`statements tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

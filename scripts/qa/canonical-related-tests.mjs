@@ -8,10 +8,9 @@
 import { relatedCanonicalItems } from "../../src/catalog/canonical-store.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { openLibraryItem, tmdbItem } from "../../src/catalog/providers.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
+const { check, finish } = createSuite("canonical related tests");
 
 // ---- fixtures --------------------------------------------------------------------------------
 
@@ -187,6 +186,4 @@ function fakeQuery(rows) {
   check("canonical related read starts in parallel before the live provider request resolves", providerSawRelatedRead === true);
 }
 
-console.log(`canonical related tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

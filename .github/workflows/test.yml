@@ -2,8 +2,9 @@ name: test
 
 # The required automated gate (#41). Runs on every push and PR: the three no-browser suites
 # (endpoint contract, escaping, async request state), one look's model/flow/layout/a11y checks,
-# and the free deterministic eval. No dependencies to install (this project has none), no build
-# step, and no model call — this workflow never spends money.
+# and the free deterministic eval. Dependencies install from the committed package-lock.json with
+# `npm ci` (#219), so CI and Vercel resolve the same locked versions. No build step and no model
+# call — this workflow never spends money.
 #
 # The full multi-look, multi-width sweep (`npm run test:full`) and the paid live-model eval
 # (`npm run test:eval:endpoint`) are NOT run here; they stay manual (see docs/ai-evals.md and
@@ -29,9 +30,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Install Chrome (for the headless browser suites)
         uses: browser-actions/setup-chrome@v1

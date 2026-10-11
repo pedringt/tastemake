@@ -3,6 +3,8 @@
 //
 //   node scripts/qa/library-tests.mjs
 
+import { createSuite } from "./lib/assert.mjs";
+
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { fresh } = await freshState();
@@ -21,10 +23,7 @@ const { isStrongPositive } = await import("../../src/model/evidence.js");
 const { routes, screenFromPath } = await import("../../src/router.js");
 const { findExisting } = await import("../../src/model/search.js");
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("library tests");
 
 // Saved is the default Library view.
 const state1 = fresh();
@@ -204,6 +203,4 @@ check("correcting it away from Loved clears its Favorite flag (no Disliked/Liked
   check("changing the detail chip from Loved to Liked also clears a stale Favorite flag", !state7.libraryFavorites.has(pick.id));
 }
 
-console.log(`library tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

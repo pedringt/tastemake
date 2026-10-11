@@ -14,10 +14,9 @@ import {
 } from "../../src/catalog/canonical-store.mjs";
 import { isConfigured, query } from "../../src/server/db.mjs";
 import { tmdbItem, openLibraryItem, igdbItem } from "../../src/catalog/providers.mjs";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
+const { check, finish } = createSuite("canonical store tests");
 
 // ---- fixtures --------------------------------------------------------------------------------
 
@@ -446,6 +445,4 @@ check("null item normalizes to null", normalizeCanonicalItem(null) === null);
     provenance.length === 3 && new Set(provenance.map((row) => row[1])).has("director"));
 }
 
-console.log(`canonical store tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

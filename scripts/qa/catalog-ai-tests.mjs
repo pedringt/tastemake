@@ -13,11 +13,9 @@ import { applyResolvedCatalogItem, applySearchAction, findExisting, makeCustomIt
 import { evidenceRecords } from "../../src/model/evidence.js";
 import { normalizeHypothesisResponse, validateHypotheses, validatePicks } from "../../src/ai/validate.js";
 import { hypothesisEvidenceKey, mergeHypotheses } from "../../src/ai/hypothesis-profile.js";
+import { createSuite } from "./lib/assert.mjs";
 
-let passed = 0;
-const failures = [];
-const check = (name, ok, detail = "") => { if (ok) passed += 1; else failures.push(`${name}${detail ? ` (${detail})` : ""}`); };
-const eq = (name, got, want) => check(name, got === want, `got ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+const { check, eq, finish } = createSuite("catalog/AI tests");
 
 const providerFetch = async (url, init = {}) => {
   const u = String(url);
@@ -649,6 +647,4 @@ eq("new revision supersedes the prior revision", historyState.hypothesisHistory[
   eq("positive evidence can still support multiple picks", validated.accepted.filter((row)=>row.cites.includes("ev:tv-like-0")).length, 2);
 }
 
-console.log(`catalog/AI tests: ${passed} passed, ${failures.length} failed`);
-failures.forEach((f) => console.log(`  x ${f}`));
-process.exit(failures.length ? 1 : 0);
+finish();

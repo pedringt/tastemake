@@ -12,7 +12,7 @@ node scripts/qa/api-tests.mjs                           # the live endpoint, wit
 ```
 
 The live producer uses the **same prompt builder and transport as the production endpoint**
-(`api/recommendations.mjs`), so the eval measures what production would actually send. A live run needs
+(`api/recommendations.mjs` for the prompt, `src/server/anthropic.mjs` for the transport), so the eval measures what production would actually send. A live run needs
 `ANTHROPIC_API_KEY` and `TASTEMAKE_AI_MODEL` in the environment **and** `--yes`; without both it refuses and
 explains why. Hypothesis inference is not a live job yet (v1 is picks only), so the profile side of a live
 report still comes from the baseline.
