@@ -35,7 +35,8 @@ A model's answer is only ever a **proposal**. It is validated, stamped and then 
 | Support cites intent (bookmark, untried More/Less, Not interested) | Rejected: interest is not experience |
 | Support cites something the user disliked | Rejected: contradicts explicit evidence |
 | Claims a domain with no cited support there | Rejected |
-| Cross-domain status beyond what the evidence shows | Rejected: cross-domain links start as hypotheses |
+| Cross-domain status beyond what the evidence shows | Rejected: cross-domain links start as hypotheses. The live profile clamps it first (#228): only things the user tried count, so a link resting on starter favorites alone is "untested", one tried thing in each of two areas is at most "tentative" |
+| A refresh leaves out an earlier pattern | **Carried forward** (#228) unless two or more tried-and-disliked items fall in its areas or the user said "not me"; it is re-checked like any proposal. One miss never rewrites the profile |
 | Confidence above what the evidence allows | **Kept, but lowered** to the product's level, and noted |
 | The user said this pattern is "not me" | Rejected: user-confirmed outranks inference |
 | States a single identity ("your aesthetic is...") | Rejected |

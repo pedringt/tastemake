@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
-import { normalizeHypothesisResponse, validateHypotheses } from "../src/ai/validate.js";
+import { normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../src/ai/validate.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { callAnthropic, hydrateState as hydrateBaseState, liveConfig } from "./recommendations.mjs";
 import { visibleDomains } from "../src/data/domains.js";
@@ -29,7 +29,9 @@ export function buildHypothesisPrompt(ctx, existing = []) {
     evidence: (ctx.evidence ?? []).filter((row) => row?.class === "experienced").map(({ ref, title, type, domains, kind, polarity, weight, facts, refinements }) => ({ ref, title, type, domains, kind, polarity, weight, facts, refinements: refinements ?? [] })),
     statements: ctx.statements,
     contexts: ctx.contexts,
-    existing: existing.map(({ id, title, claim, domains, strength }) => ({ id, label: title, claim, domains, level: strength }))
+    // #228: the earlier patterns carry their evidence, so the model can see what each rests on and
+    // keep it, instead of only a label it has no reason to repeat.
+    existing: (existing ?? []).map(({ id, title, claim, domains, strength, supports, counters }) => ({ id, label: title, claim, domains, level: strength, evidence: supports ?? [], counter: counters ?? [] }))
   };
   return [
     "You are the taste-interpretation layer inside Tastemake.",
@@ -37,12 +39,13 @@ export function buildHypothesisPrompt(ctx, existing = []) {
     "Return JSON only: {\"hypotheses\":[{\"id\":\"ai-stable-id\",\"label\":\"...\",\"claim\":\"...\",\"evidence\":[\"ev:...\"],\"counter\":[],\"domains\":[\"movies\"],\"crossDomain\":\"untested\",\"level\":\"emerging\",\"conditional\":false,\"context\":null}],\"insufficientEvidence\":false}.",
     `domains may contain only these exact product ids: ${allowedDomains.join(", ")}. Never use umbrella labels such as "watch"; movies and TV are separate domains. Every claimed domain must appear on at least one cited supporting evidence row.`,
     "level must be exactly one of: emerging, supported, strong. Never use established, confident, high, or any other synonym. When unsure, choose the lower allowed level.",
-    "crossDomain must be exactly one of: untested, tentative, supported. Use \"untested\" unless the cited evidence itself spans two or more domains — there is no \"none\" value.",
+    "crossDomain must be exactly one of: untested, tentative, supported — there is no \"none\" value. Only evidence the user tried counts toward it; rows with kind starter-favorite never do. Use \"untested\" unless the cited tried evidence spans two or more domains. One tried thing in each of two domains is at most \"tentative\"; \"supported\" needs two or more tried things in every claimed domain. A pattern resting only on starter favorites is always \"untested\", whatever domains they span.",
+    "existing lists the patterns already on the user's profile, with the evidence each rests on. Return each of them again, with the same id and label, unless the evidence now rules it out. One thing the user tried and disliked never removes or weakens a pattern: cite it in that pattern's counter if it pulls against it, keep the pattern, and do not lower its level for that one miss. Drop or lower an existing pattern only when two or more tried-and-disliked items count against it, or a user statement rejects it.",
     "Return up to 12 concise hypotheses when the evidence genuinely supports them. With thinner evidence, 4 to 6 is enough; only add 7 to 12 when they are meaningfully distinct and grounded. Order them from the most useful and well-supported working patterns to narrower or more tentative ones. Reuse an existing ai-* id when revising the same underlying idea; create a new ai-* id only for a genuinely new pattern.",
     "Every supporting/counter reference must exist. Intent, saved items, browsing and untried reactions are not taste evidence. User-confirmed corrections outrank inference. A says=not-me statement rejects that pattern; says=partial means do not broaden it beyond the user's context/domain refinements; says=unsure is not confirmation. Do not assign one global aesthetic or identity. Do not claim a domain without cited support in that domain. Prefer specific testable patterns over genres.",
     "Each evidence row may include facts. If facts.resolved is false, do not supply missing genres, themes, creator, series, or other properties from model memory; use only the title/type/reaction that the product actually knows. Specific claims should lean on resolved factual metadata or multiple independent evidence rows.",
     "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. They describe that one experience and are not independent evidence. Do not turn one refinement into a global preference; when refinements conflict across experienced items, prefer a narrower or conditional hypothesis and preserve uncertainty.",
-    "The first character must be { and the last must be }. No markdown or prose outside JSON.",
+    "Return exactly one JSON object. The first character must be { and the last must be }, with nothing after the closing brace. No markdown or prose outside JSON.",
     `CONTEXT\n${JSON.stringify(safe)}`
   ].join("\n\n");
 }
@@ -104,7 +107,9 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
       cacheReadTokens: model.usage?.cache_read_input_tokens ?? null,
       cacheWriteTokens: model.usage?.cache_creation_input_tokens ?? null
     };
-    const normalizedResponse = normalizeHypothesisResponse(model.json, ctx);
+    // #228: an earlier pattern the model left out is carried forward unless two misses count against
+    // it; shared with scripts/evals/run.mjs so the live eval measures what production keeps.
+    const normalizedResponse = preserveExistingHypotheses(normalizeHypothesisResponse(model.json, ctx), ctx, state.modelHypotheses);
     const validated = validateHypotheses(normalizedResponse, ctx);
     const rejectionCategories = rejectionCategoryCounts(validated.rejected);
     if (validated.rejected.length) {

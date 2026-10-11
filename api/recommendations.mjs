@@ -225,6 +225,34 @@ function repairMissingArrayCommas(text) {
   return out;
 }
 
+// #228: Sonnet 5.5 once answered with text after the JSON ("Unexpected non-whitespace character
+// after JSON"). Slicing from the first "{" to the LAST "}" fails whenever that trailing text has a
+// brace of its own, or a second object follows. This walks the text (string-aware) and returns the
+// first complete top-level object, so trailing prose is ignored rather than failing the paid call.
+export function firstJsonObject(text) {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
 export function parseModelJson(text) {
   const cleaned = String(text || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   const objectStart = cleaned.indexOf("{");
@@ -233,6 +261,8 @@ export function parseModelJson(text) {
   if (objectStart !== -1 && objectEnd !== -1 && objectEnd > objectStart && (objectStart > 0 || objectEnd < cleaned.length - 1)) {
     candidates.push(cleaned.slice(objectStart, objectEnd + 1));
   }
+  const balanced = firstJsonObject(cleaned);
+  if (balanced && !candidates.includes(balanced)) candidates.push(balanced);
 
   let firstError = null;
   for (const candidate of candidates) {

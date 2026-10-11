@@ -29,7 +29,8 @@ import { recommendations as qaRecommendations, followUpPool as qaFollowUps } fro
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { estimateCostUsd } from "../../src/server/ai-metrics.mjs";
 import { buildHypothesisPrompt, PROFILE_MAX_OUTPUT_TOKENS } from "../../api/hypotheses.mjs";
-import { normalizeHypothesisResponse } from "../../src/ai/validate.js";
+import { normalizeHypothesisResponse, preserveExistingHypotheses } from "../../src/ai/validate.js";
+import { normalizeHypothesis } from "../../src/ai/hypothesis-profile.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -123,7 +124,8 @@ const PRODUCERS = {
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;
       spend.usd += priceFor(liveProfileModel, model.usage?.input_tokens ?? 0, model.usage?.output_tokens ?? 0);
-      return normalizeHypothesisResponse(model.json, pctx);
+      // Same post-validation as api/hypotheses.mjs: earlier patterns are carried forward unless two misses count against them.
+      return preserveExistingHypotheses(normalizeHypothesisResponse(model.json, pctx), pctx, state.modelHypotheses);
     },
     pick: async (state, ctx) => {
       const count = Math.min(5, ctx.candidates.length);
@@ -151,13 +153,23 @@ const producer = PRODUCERS[producerName];
 if (!producer) { console.error(`unknown producer "${producerName}"`); process.exit(2); }
 
 async function runOne(fixture) {
+  // A before/after fixture runs the "before" profile first. Its accepted patterns are then stored on the
+  // "after" state the way the client stores them (state.modelHypotheses), because production sends the
+  // earlier profile with every refresh; without it the after-run was a fresh profile, not a refresh (#228).
+  let before = null;
+  let beforeProfile = [];
+  if (fixture.before) {
+    const s = fixture.before();
+    const beforeCtx = buildContext(s, EVAL_CANDIDATES);
+    before = validateHypotheses(await producer.infer(s, beforeCtx), beforeCtx);
+    beforeProfile = before.accepted.map((h, index) => normalizeHypothesis(h, index, s));
+  }
   const state = fixture.build();
+  if (beforeProfile.length) state.modelHypotheses = beforeProfile;
   const ctx = buildContext(state, EVAL_CANDIDATES);
   ctx.__fixture = fixture.id;
   const hyp = validateHypotheses(await producer.infer(state, ctx), ctx);
   const picks = validatePicks(await producer.pick(state, ctx), ctx);
-  let before = null;
-  if (fixture.before) { const s = fixture.before(); const beforeCtx = buildContext(s, EVAL_CANDIDATES); before = validateHypotheses(await producer.infer(s, beforeCtx), beforeCtx); }
   return { state, ctx, hyp, picks, before };
 }
 
