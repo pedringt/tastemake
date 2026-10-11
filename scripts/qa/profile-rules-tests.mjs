@@ -4,13 +4,15 @@
 //   1. cross-domain links resting only on starter favorites are "untested" (cold-4, starter-6), and one
 //      tried thing in each of two areas is at most "tentative";
 //   2. one miss never removes an earlier pattern (single-miss); two misses in its area may;
-//   3. a reply with text after the JSON still parses.
+//   3. a reply with text after the JSON still parses;
+//   4. confidence level counts only things the user tried: a pattern resting only on starter favorites
+//      stays "emerging" (cold-4, starter-6), however many it cites.
 // Free, no browser, no model call.
 //
 //   node scripts/qa/profile-rules-tests.mjs
 
 import { buildContext } from "../../src/ai/context.js";
-import { allowedCrossDomain, normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../../src/ai/validate.js";
+import { allowedCrossDomain, allowedLevel, normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../../src/ai/validate.js";
 import { buildHypothesisPrompt, produceHypotheses } from "../../api/hypotheses.mjs";
 import { parseModelJson } from "../../api/recommendations.mjs";
 import { recommendations, followUpPool } from "./fixtures/catalog.js";
@@ -166,6 +168,49 @@ const earlierProfile = [
   let threw = false;
   try { parseModelJson("no json here"); } catch { threw = true; }
   check("text with no object still fails", threw);
+}
+
+// ---- 4. level: starter favorites do not test a pattern ---------------------------------------------------
+{
+  // starter-6 / cold-4: only starter favorites exist. The contract (evidence-contract.md) allows at most
+  // "emerging" -- "Nothing the user tried has tested it yet" -- however many favorites a pattern cites.
+  const ctx = buildContext(emptyState(["lotr", "circe", "portal2", "thefall"]));
+  const starters = ["ev:lotr", "ev:circe", "ev:portal2", "ev:thefall"].map((ref) => ctx.evidence.find((r) => r.ref === ref));
+  check("cold-4 evidence is all starter favorites", starters.every((r) => r?.kind === "starter-favorite"));
+  eq("one starter favorite allows emerging, not supported", allowedLevel(starters.slice(0, 1), []), "emerging");
+  eq("four starter favorites allow emerging, not strong", allowedLevel(starters, []), "emerging");
+  for (const claimed of ["supported", "strong"]) {
+    const result = validateHypotheses({ hypotheses: [pattern({
+      id: `ai-cold-${claimed}`, label: "Mythic fantasy worlds", claim: "Mythic fantasy worlds with real weight seem to land across books and games.",
+      evidence: starters.map((r) => r.ref), domains: ["read"], level: claimed
+    })] }, ctx);
+    eq(`a starter-only pattern claimed ${claimed} is still accepted`, result.accepted.length, 1);
+    eq(`a starter-only pattern claimed ${claimed} is lowered to emerging`, result.accepted[0]?.level, "emerging");
+    check(`the product notes why a ${claimed} claim was lowered`, result.notes.some((n) => /level lowered from .* to emerging \(evidence allows emerging\)/.test(n)), result.notes.join(" | "));
+  }
+}
+{
+  // Tried things still count, and starter favorites cited alongside them add nothing to the level.
+  const s = emptyState(["lotr", "circe", "portal2", "thefall"]);
+  react(s, byId("eeaao"), "loved");
+  const ctx = buildContext(s);
+  const loved = ctx.evidence.find((r) => r.ref === "ev:eeaao");
+  const starters = ["ev:lotr", "ev:circe", "ev:portal2"].map((ref) => ctx.evidence.find((r) => r.ref === ref));
+  eq("one loved thing allows supported", allowedLevel([loved], []), "supported");
+  eq("one loved thing plus three starter favorites is still only supported", allowedLevel([loved, ...starters], []), "supported");
+  const missed = byId("wwdits");
+  react(s, missed, "disliked");
+  const ctx2 = buildContext(s);
+  const counter = ctx2.evidence.find((r) => r.ref === `ev:${missed.id}`);
+  eq("one loved + starters against one miss is emerging (starters do not outvote a miss)", allowedLevel([loved, ...starters], [counter]), "emerging");
+}
+{
+  // Three tried things, two clear of misses, still reach strong.
+  const s = emptyState();
+  ["eeaao", "barry", "wwdits"].forEach((id) => react(s, byId(id), "loved"));
+  const ctx = buildContext(s);
+  const tried = ["ev:eeaao", "ev:barry", "ev:wwdits"].map((ref) => ctx.evidence.find((r) => r.ref === ref));
+  eq("three loved things allow strong", allowedLevel(tried, []), "strong");
 }
 
 console.log(`profile rules tests: ${passed} passed, ${failures.length} failed`);

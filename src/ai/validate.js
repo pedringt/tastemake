@@ -31,11 +31,17 @@ function checkShape(obj, fields) {
   return problems;
 }
 
-// The strongest level the cited evidence allows (mirrors patternConfidence in tastemap.js):
-//   Favorites are explicit experienced/loved evidence. "strong" needs 3+ experienced things backing it,
-//   two clear of what counts against it.
+// Starter favorites make a pattern plausible as a starting point, but nothing the user tried has tested
+// it yet (evidence-contract.md, "Emerging"). Only Loved / Liked / disliked reactions test a pattern, so
+// the level and cross-domain caps below both count through this one filter.
+export const triedRecords = (records) => records.filter((r) => r.kind !== "starter-favorite");
+
+// The strongest level the cited evidence allows (evidence-contract.md, #26; mirrors patternConfidence in
+// tastemap.js): "supported" needs at least one tried thing backing it and more backing it than against;
+// "strong" needs 3+ tried things backing it, two clear of what counts against it. Starter favorites may
+// still be cited as support, but a pattern resting only on them stays "emerging".
 export function allowedLevel(supportRecords, counterRecords) {
-  const tried = supportRecords.length;
+  const tried = triedRecords(supportRecords).length;
   const against = counterRecords.length;
   if (tried >= 3 && tried - against >= 2) return "strong";
   if (tried >= 1 && tried > against) return "supported";
@@ -52,8 +58,7 @@ const asRows = (records) => records.map((r) => ({ item: { id: r.itemId, domains:
 // reactions) count here. The eval (cold-4, starter-6: at most "untested"; cross-domain: one loved
 // thing in each of two areas, at most "tentative") encodes the same rule.
 export function allowedCrossDomain(supportRecords, counterRecords) {
-  const tried = supportRecords.filter((r) => r.kind !== "starter-favorite");
-  return domainScope({ supports: asRows(tried), against: asRows(counterRecords), heldUp: [] }).crossDomain;
+  return domainScope({ supports: asRows(triedRecords(supportRecords)), against: asRows(counterRecords), heldUp: [] }).crossDomain;
 }
 const hypothesisAliases = (id) => id === "H01/H07" ? ["H01", "H07", "H01/H07"] : [id];
 const sameHypothesis = (a, b) => hypothesisAliases(a).some((id) => hypothesisAliases(b).includes(id));
