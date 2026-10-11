@@ -3,7 +3,6 @@
 scripts/evals/reports/live-*
 
 node_modules/
-package-lock.json
 
 # Local env files hold API keys (ANTHROPIC_API_KEY, TMDB, IGDB); never commit them (#218).
 .env

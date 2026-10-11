@@ -1,4 +1,5 @@
 {
+  "name": "tastemake",
   "private": true,
   "type": "module",
   "scripts": {
