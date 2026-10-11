@@ -205,13 +205,8 @@ function applySetupPreferences() {
 }
 
 function finishSetup() {
-  const name = state.displayName.trim();
-  if (!name) {
-    announce("Add your name to continue.");
-    app.querySelector("[data-setup-name]")?.focus();
-    return;
-  }
-  state.displayName = name;
+  // The display name is optional: it is only shown back on the profile and never reaches the AI.
+  state.displayName = state.displayName.trim();
   applySetupPreferences();
   state.setupComplete = true;
   const target = canAccess(state.setupReturn) ? state.setupReturn : "favorites";
@@ -941,8 +936,6 @@ app.addEventListener("input", (event) => {
   const setupName = event.target.closest("[data-setup-name]");
   if (setupName) {
     state.displayName = setupName.value;
-    const next = app.querySelector('[data-action="setup-done"]');
-    if (next) next.disabled = !setupName.value.trim();
     return;
   }
   const note = event.target.closest("[data-tastebreak-note]");

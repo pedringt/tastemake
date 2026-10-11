@@ -1,6 +1,7 @@
 import { isBookmarked, isPositiveExperience } from "./taste.js";
 import { isDeclined, isExperiencedNegative, isExperiencedPositive, isStrongPositive } from "./evidence.js";
-import { addableTypes, displayLabel } from "../data/domains.js";
+import { addableTypes, displayLabel, itemMeta } from "../data/domains.js";
+import { safeAbout } from "../catalog/synopsis.mjs";
 
 // Search and "add something" (#13).
 //
@@ -52,6 +53,42 @@ function editDistance(a, b) {
 
 // Persistent items Tastemake already knows because the user acted on them. Public search comes from
 // the real catalog providers; there is no built-in title inventory in product state.
+// Provider placeholders that say nothing about which work this is.
+const GENERIC_ABOUT = /^(no description (available|shown)|game from igdb|book from open library|first published \d+)\.?$/i;
+
+function shortAbout(item, max = 80) {
+  const text = String(safeAbout(item) ?? "").replace(/\s+/g, " ").trim();
+  if (!text || GENERIC_ABOUT.test(text)) return "";
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  return `${cut.slice(0, cut.lastIndexOf(" ") > max / 2 ? cut.lastIndexOf(" ") : max).replace(/[\s,;:.]+$/, "")}…`;
+}
+
+// Look-alikes in a result list: TMDb returns many unrelated films called "Arrival", and its search rows
+// carry no director, so two can read "Movie · 2016" (and some have no year at all). For each row that
+// shares a title with another row and is still not told apart by itemMeta (same meta, or no year and
+// no creator to go on), return a short synopsis excerpt to show under it. Uses only data the search
+// response already carries -- no extra per-result call. Rows that are already distinct get no hint.
+export function lookAlikeHints(items) {
+  const byTitle = new Map();
+  for (const item of items) {
+    const key = normalize(item?.title);
+    if (!byTitle.has(key)) byTitle.set(key, []);
+    byTitle.get(key).push(item);
+  }
+  const hints = new Map();
+  for (const group of byTitle.values()) {
+    if (group.length < 2) continue;
+    for (const item of group) {
+      const meta = itemMeta(item);
+      const ambiguous = (!item.year && !item.by) || group.some((other) => other !== item && itemMeta(other) === meta);
+      const hint = ambiguous ? shortAbout(item) : "";
+      if (hint) hints.set(item.id, hint);
+    }
+  }
+  return hints;
+}
+
 export function searchableItems(state) {
   return Object.values(state?.customItems ?? {});
 }

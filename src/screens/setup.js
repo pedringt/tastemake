@@ -82,9 +82,9 @@ export function renderSetup() {
           <div class="setup-grid ${editing ? "" : "is-first-run"}">
             <section class="setup-card" aria-labelledby="setup-name-title">
               <p class="setup-step">01</p>
-              <h2 id="setup-name-title">Your name</h2>
+              <h2 id="setup-name-title">Your name <span class="setup-optional">(optional)</span></h2>
               <label class="setup-field">
-                <span>Display name</span>
+                <span>Display name (optional)</span>
                 <input type="text" data-setup-name maxlength="40" autocomplete="name" value="${esc(state.displayName)}" placeholder="Your name" />
               </label>
             </section>
@@ -92,7 +92,7 @@ export function renderSetup() {
           </div>
           <div class="setup-form-actions">
             <p class="setup-note">${editing ? "These settings change what Tastemake serves you, not what it thinks you like." : "Next: choose four favorites and get your first recommendations."}</p>
-            <button class="button button-primary setup-next" type="button" data-action="setup-done" ${state.displayName.trim() ? "" : "disabled"}>${editing ? "Save" : "Next"}</button>
+            <button class="button button-primary setup-next" type="button" data-action="setup-done">${editing ? "Save" : "Next"}</button>
           </div>
         </div>
         ${setupSummary()}
