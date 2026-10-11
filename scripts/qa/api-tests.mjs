@@ -2,7 +2,8 @@
 // Free, no-network tests for the real-catalog recommendation endpoint.
 
 import { readFileSync } from "node:fs";
-import handler, { buildPickPrompt, callAnthropic, liveConfig, normalizeModelPicks, parseModelJson, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
+import handler, { buildPickPrompt, normalizeModelPicks, produceRecommendations, selectPromptEvidence } from "../../api/recommendations.mjs";
+import { callAnthropic, liveConfig, parseModelJson } from "../../src/server/anthropic.mjs";
 
 let passed=0;
 const failures=[];

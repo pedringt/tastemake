@@ -14,7 +14,7 @@
 import { buildContext } from "../../src/ai/context.js";
 import { allowedCrossDomain, allowedLevel, normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../../src/ai/validate.js";
 import { buildHypothesisPrompt, produceHypotheses } from "../../api/hypotheses.mjs";
-import { parseModelJson } from "../../api/recommendations.mjs";
+import { parseModelJson } from "../../src/server/anthropic.mjs";
 import { recommendations, followUpPool } from "./fixtures/catalog.js";
 import { emptyState, react } from "../evals/fixtures.mjs";
 

@@ -9,8 +9,9 @@
 //                                                         # endpoint, so the API key stays in Vercel
 //
 // The live producer uses the same prompt builder and transport as the production endpoint
-// (api/recommendations.mjs), so what is measured here is what production would send. It needs
-// ANTHROPIC_API_KEY and TASTEMAKE_AI_MODEL in the environment, and --yes to actually spend.
+// (api/recommendations.mjs, src/server/anthropic.mjs), so what is measured here is what production
+// would send. It needs ANTHROPIC_API_KEY and TASTEMAKE_AI_MODEL in the environment, and --yes to
+// actually spend.
 //
 // Output: scripts/evals/reports/<producer>-latest.md (+ .json). Exit code 1 if a hard check fails or the
 // validator lets a deliberately bad answer through.
@@ -24,7 +25,8 @@ import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
 import { CONTRACT_VERSION } from "../../src/ai/contract.js";
 import * as baseline from "../../src/ai/baseline.js";
-import { buildPickPrompt, callAnthropic, normalizeModelPicks, thinkingTypeFor } from "../../api/recommendations.mjs";
+import { buildPickPrompt, normalizeModelPicks } from "../../api/recommendations.mjs";
+import { callAnthropic, thinkingTypeFor } from "../../src/server/anthropic.mjs";
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { estimateCostUsd } from "../../src/server/ai-metrics.mjs";
