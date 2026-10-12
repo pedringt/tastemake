@@ -90,8 +90,7 @@ Full rulebook: [evidence-contract.md](evidence-contract.md). Validator rules: [a
 
 **Open:**
 - **#243:** "The Making of …" documentaries still rank high in search (the derivative-word rule in `src/catalog/search-ranking.mjs` misses that case). Next small fix.
-- **#191:** simplify reactions further. The first version shipped in #192 (Sept 30). Paige has a full plan for the next step; wait for her go-ahead. The plan is not in the issue thread, so ask her for it.
-- **#103:** its audit comment says it closes when #239 and #240 ship. Both shipped in #241, but the issue is still open. Confirm with Paige, then close it.
+- **#191:** simplify reactions. The two-step "Tried it / Not tried" flow shipped in #192 (Sept 30). The full plan for the rest is in the issue description itself: an optional, structured "why" layer (e.g. atmosphere, pacing, humour) only on experienced reactions. It's a product change to the core interaction, so wait for Paige's go-ahead.
 - **Backlog:** #28 (reasoning at scale), #29 (Library information architecture), #37 (hypothesis history).
 - **Parked by Paige; leave them parked:** #6, #7, #9, #10, #11, #14, #15, #17, #19, #48, #69.
 
