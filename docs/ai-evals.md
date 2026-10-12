@@ -13,13 +13,14 @@ node scripts/qa/api-tests.mjs                           # the live endpoint, wit
 
 The live producer uses the **same prompt builder and transport as the production endpoint**
 (`api/recommendations.mjs` for the prompt, `src/server/anthropic.mjs` for the transport), so the eval measures what production would actually send. A live run needs
-`ANTHROPIC_API_KEY` and `TASTEMAKE_AI_MODEL` in the environment **and** `--yes`; without both it refuses and
-explains why. Hypothesis inference is not a live job yet (v1 is picks only), so the profile side of a live
-report still comes from the baseline.
+`ANTHROPIC_API_KEY` in the environment **and** `--yes`; without both it refuses and explains why. The model
+comes from `--model`, else `TASTEMAKE_RECOMMENDATIONS_MODEL` (picks) and `TASTEMAKE_AI_MODEL` (taste profile),
+else `claude-sonnet-5-5`. Since #225 a live run includes the live taste-profile step (`--profile baseline` skips it).
 
-Dry run as of Sept 22, 2026: 10 calls, about 23,400 input tokens, output capped at 12,000, worst case about
-**$0.25** at $3/M in and $15/M out (real output is usually far below the cap; the two synthetic scale
-fixtures are over half the input). Override the prices with `TASTEMAKE_AI_PRICE_IN` / `TASTEMAKE_AI_PRICE_OUT`.
+Dry run as of Oct 12, 2026: 21 calls per model (11 taste-profile, 10 picks), about 34,400 input tokens, output
+capped at 47,200. Worst case about **$0.03** on `claude-haiku-5-5` and **$0.54** on `claude-sonnet-5-5`, priced
+with the per-model rates in `src/server/ai-metrics.mjs` (real output is usually far below the cap). Override the
+prices with `TASTEMAKE_AI_PRICE_IN` / `TASTEMAKE_AI_PRICE_OUT`.
 
 It writes `scripts/evals/reports/<producer>-latest.md` (for product review) and `.json` (for comparing runs). Exit code 1 means a **rule** failed or the validator let a deliberately bad answer through.
 

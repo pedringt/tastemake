@@ -7,7 +7,7 @@
 //   node scripts/qa/full-sweep.mjs                 # same thing
 //   node scripts/qa/full-sweep.mjs --widths 1440,390   # override the width list
 //
-// Never runs a paid producer. For the live model eval, run `npm run test:eval:live` by hand.
+// Never runs a paid producer. The live model eval runs only through the manual ai-eval workflow (docs/ai-evals.md).
 
 import { spawnSync } from "node:child_process";
 

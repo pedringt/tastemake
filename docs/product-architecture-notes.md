@@ -1,5 +1,7 @@
 # Tastemake Product Architecture Notes
 
+> **Historical (Sept 19, 2026).** The taste-model and evidence principles still hold. The structure and domain list are out of date: there are now four visible domains (Movies, TV, Books, Games, in `src/data/domains.js`), plus more screens and routes (Browse, Library, My Tastemake). Current layout: `docs/HANDOFF.md`.
+
 ## Current app structure
 
 Tastemake should stay simple, but it should no longer grow as one large app file.

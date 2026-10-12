@@ -23,17 +23,20 @@ Every action falls into exactly one class:
 - **Evidence** is `src/model/evidence.js`: `evidenceKind(feedback)` maps every stored reaction to a generic kind, and `EVIDENCE_KINDS` holds the class and taste weight. `tasteDelta` reads its weight from there, so there is one table. `evidenceRecords(state)` returns typed records (`ref: "ev:<itemId>"`, kind, class, domains, source, authority `user`), which is what a model is handed and what its citations must point at.
 - **Interpretations** are `src/model/interpretations.js`: working hypotheses with evidence refs, counter-evidence, domain scope and cross-domain status. They are never stored as evidence.
 
-| Generic kind | Class | Taste weight | UI today |
+| Generic kind | Class | Taste weight | UI today (Oct 2026) |
 |---|---|---:|---|
-| experienced-strong-positive | experienced | +2 | Loved it before |
-| experienced-positive | experienced | +1.25 | Liked it before |
-| experienced-negative | experienced | −2 | Tried it and disliked it |
-| starter-favorite | experienced | +2 | Picked on Favorites (experienced + loved by definition) |
-| intent-positive | intent | 0 | More (untried) |
-| intent-negative | intent | 0 | Less (untried) |
-| intent-declined | intent | 0 | Not interested |
-| saved | intent | 0 | Bookmark |
-| neutral / unknown | neutral | 0 | Not tried |
+| experienced-favorite | experienced | +3 | A Loved item the user also marked Favorite (after onboarding) |
+| experienced-strong-positive | experienced | +2 | Tried it → Loved it |
+| experienced-positive | experienced | +1.25 | Tried it → Liked it |
+| experienced-negative | experienced | −2 | Tried it → Didn't like it |
+| starter-favorite | experienced | +3 | Picked on Favorites (experienced + loved by definition). Not counted as *tried* when setting a pattern's level (#231) |
+| intent-positive | intent | 0 | Legacy: untried "More" (no longer offered since #192; old saved data may still carry it) |
+| intent-negative | intent | 0 | Legacy: untried "Less" (same) |
+| intent-declined | intent | 0 | Not tried → Not interested |
+| saved | intent | 0 | Not tried → Save (Library's Saved tab) |
+| neutral / unknown | neutral | 0 | Not tried, nothing chosen |
+
+Reactions are still stored as `{ rating, detail }` with the older `more` / `less` / `not-tried` ratings (`src/actions/library.js`); `evidenceKind()` is the only place that decodes them.
 
 Kind names carry no media words, so a jacket that was "worn a lot" and a film that was "loved" are the same kind.
 
@@ -43,19 +46,19 @@ Weights are the current values in code. "Taste" is `tasteDelta`; "Steer" is `rec
 
 | Action | Class | Taste | Steer | Notes |
 |---|---|---:|---:|---|
-| **Favorite picked** | Experienced | **+2** | n/a | Favorites are explicitly things the user already tried and loved |
-| **Loved it before** | Experienced | **+2** | +1.75 | Only offered after "More" |
-| **Liked it before** | Experienced | **+1.25** | +1.45 | Only offered after "More" |
-| **Tried it and disliked it** | Experienced | **−2** | −1.75 | Only offered after "Less". One never weakens a pattern; two do |
-| More (untried) | Intent | 0 | +1 | Reaction to a pitch, not an experience |
-| Less (untried) | Intent | 0 | −1 | Means "less like this in what you show me". It does **not** mean "I dislike this kind of thing" |
-| Not interested | Intent | 0 | −1.5 | Stronger negative steer than plain Less; still not taste, and not a dislike |
-| Try Next save | Intent | 0 | +0.35 | Save marker on an untried item. Leaves Try Next once the user tries it |
+| **Favorite picked** | Experienced | **+3** | n/a | Favorites are explicitly things the user already tried and loved |
+| **Loved it** | Experienced | **+2** | +1.75 | Offered after "Tried it" |
+| **Liked it** | Experienced | **+1.25** | +1.45 | Offered after "Tried it" |
+| **Didn't like it** | Experienced | **−2** | −1.75 | Offered after "Tried it". One never weakens a pattern; two do |
+| More (untried), legacy | Intent | 0 | +1 | No longer offered (#192); still decoded for old data |
+| Less (untried), legacy | Intent | 0 | −1 | Same. It never meant "I dislike this kind of thing" |
+| Not interested | Intent | 0 | −1.5 | Offered after "Not tried". A negative steer; not taste, and not a dislike |
+| Save | Intent | 0 | +0.35 | Offered after "Not tried". Lives in Library → Saved (the old Try Next / Bookmarks pages redirect there) and leaves it once the user tries it |
 | Not tried (not saved) | Neutral | 0 | 0 | |
 | Too predictable | Discovery note | 0 | 0 | Says the pick was low-novelty; must never weaken taste |
 | Surprised me | Discovery note | 0 | 0 | Only after Loved/Liked it before; adds no weight of its own |
 | Search, typing, opening a result | Lookup | 0 | 0 | Only the explicit action buttons write anything |
-| Areas (Watch / Read / Play) | Setting | 0 | 0 | Hides a kind of thing from *new* sets. Says nothing about what the user likes |
+| Areas (Movies / TV / Books / Games) | Setting | 0 | 0 | Hides a kind of thing from *new* sets. Says nothing about what the user likes |
 | Include a curveball | Setting | 0 | 0 | Four picks plus Surprise Me, or the five best fits |
 | Look (design) | Setting | 0 | 0 | Never evidence |
 | Blind Spot | Correction | see below | see below | The user names which patterns *did* hold up; a miss is not counted against those |
@@ -65,7 +68,7 @@ Anything reacted to (even through search) is never recommended again.
 ### Decisions this table records
 - **Less** is a steering preference, not a dislike. (#27)
 - **Not interested** only steers ranking; it creates no negative lean in the Taste Profile. (#27)
-- **Try Next saves** are intent only, with their own page, and are never taste. (#12, #24)
+- **Saves** are intent only and are never taste. (#12, #24; their page is now Library → Saved, #94)
 - A **repeated intent signal** does not become taste no matter how many there are. Untried reactions are shown on the Taste Profile only as a separate, labeled **lean** ("from N picks you haven't tried"), and only when the net signal is clear.
 - One experienced dislike never weakens a pattern; it takes two. (Sept 20)
 

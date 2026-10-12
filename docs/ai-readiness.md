@@ -1,5 +1,7 @@
 # Before live AI: readiness plan
 
+> **Historical plan (Sept 22, 2026).** Live AI has since shipped (picks and Taste Profile, behind the gate in `src/server/anthropic.mjs`). The status table and "Not started" items below describe Sept 22, not today. Sections 8 and 9 were updated in October (#120, #100). For the current setup, see `docs/HANDOFF.md`.
+
 **North star:** Tastemake helps people understand the patterns in what they're drawn to across different parts of their life, without assuming they have one single aesthetic, then uses that understanding to find and test more things that might fit.
 
 **The core live-AI package is #31, #32 and #35, read together:** the authority boundary and structured output contract (#31), the eval suite (#32), and the future-proof data model (#35). Related: #30 (framing), #33 ("Why this one?" as a hypothesis test), #34 (artwork long titles).
@@ -102,7 +104,7 @@ Nothing is asynchronous today. Needed: a clear "thinking" state that doesn't mov
 
 Taste data would go to a third party. Before any live call, write down: exactly what is sent (typed evidence, no names or contact details), what is logged and for how long, what visitors are told, and update the header label ("Prototype - no live AI"). No new categories of data should be sent without updating this note.
 
-**Site analytics (#100).** Production loads Vercel Web Analytics and Speed Insights with Vercel's plain-HTML script tags (`src/lib/vercel-insights.js`; no npm package, and nothing loads on localhost). Web Analytics is cookieless and aggregated: page views, referrer, country, browser/OS and device type, with no cookies and no visitor identifier kept across days. Speed Insights reports page-performance metrics (Core Web Vitals) per route. Neither receives favorites, reactions, taste evidence, search text or anything else the user typed, and neither data set leaves Vercel. Both need to be switched on per project in the Vercel dashboard; until they are, the two script URLs return 404 and nothing is collected.
+**Site analytics (#100).** Production loads Vercel Web Analytics and Speed Insights with Vercel's plain-HTML script tags (`src/lib/vercel-insights.js`; no npm package, and nothing loads on localhost). Web Analytics is cookieless and aggregated: page views, referrer, country, browser/OS and device type, with no cookies and no visitor identifier kept across days. Speed Insights reports page-performance metrics (Core Web Vitals) per route. Neither receives favorites, reactions, taste evidence, search text or anything else the user typed, and neither data set leaves Vercel. Both have to be switched on per project in the Vercel dashboard; while they're off, the two script URLs return 404 and nothing is collected. On production both URLs returned 200 on Oct 12, 2026, so both are on.
 
 ## Suggested order
 
