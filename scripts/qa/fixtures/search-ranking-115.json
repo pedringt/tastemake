@@ -1,0 +1,1654 @@
+{
+ "_note": "Captured 2026-10-11 from production GET https://tastemake.vercel.app/api/catalog?q=<query>&domain=<domain> (#115). Rows are in production's returned order, trimmed to the fields ranking reads (about cut to 120 chars). /api/catalog strips provider popularity before responding, so TMDb popularity and IGDB total_rating_count were NOT captured. editionCount on Open Library rows is the real edition_count from GET https://openlibrary.org/search.json for the same query, the same call the server makes.",
+ "queries": {
+  "Crouching Tiger|all": {
+   "q": "Crouching Tiger",
+   "domain": "all",
+   "items": [
+    {
+     "id": "openlibrary-book-OL16470054W",
+     "provider": "openlibrary",
+     "providerId": "OL16470054W",
+     "title": "Crouching tiger",
+     "type": "book",
+     "year": "2011",
+     "artwork": "https://covers.openlibrary.org/b/id/7025964-L.jpg?default=false",
+     "genres": [
+      "Racially mixed people",
+      "Chinese Americans",
+      "Grandfathers",
+      "Chinese",
+      "Fiction",
+      "Stories",
+      "Children's fiction",
+      "Chinese americans, fiction",
+      "Racially mixed people, fiction",
+      "Grandparents, fiction"
+     ],
+     "by": "Ying Chang Compestine, Yan Nascimbene",
+     "about": "First published 2011.",
+     "editionCount": 3
+    },
+    {
+     "id": "openlibrary-book-OL20013118W",
+     "provider": "openlibrary",
+     "providerId": "OL20013118W",
+     "title": "Crouching tiger",
+     "type": "book",
+     "year": "2015",
+     "artwork": "https://covers.openlibrary.org/b/id/12483871-L.jpg?default=false",
+     "genres": [
+      "International Security",
+      "World politics",
+      "National security",
+      "Military policy",
+      "Militarism, china",
+      "China, foreign relations, united states",
+      "United states, foreign relations, china"
+     ],
+     "by": "Peter Navarro",
+     "about": "First published 2015.",
+     "editionCount": 2
+    },
+    {
+     "id": "tmdb-tv-80610",
+     "provider": "tmdb",
+     "providerId": "80610",
+     "title": "Crouching Tiger",
+     "type": "tv",
+     "year": "2016",
+     "artwork": null,
+     "genres": [],
+     "genreIds": [],
+     "about": "A 5 episode companion web series to the book of the same title."
+    },
+    {
+     "id": "openlibrary-book-OL8890744W",
+     "provider": "openlibrary",
+     "providerId": "OL8890744W",
+     "title": "Crouching Tiger",
+     "type": "book",
+     "year": "2002",
+     "artwork": "https://covers.openlibrary.org/b/id/2078813-L.jpg?default=false",
+     "genres": [
+      "Martial arts",
+      "Fiction, media tie-in",
+      "China, fiction",
+      "Fiction, action & adventure"
+     ],
+     "by": "Loren W. Christenson",
+     "about": "First published 2002.",
+     "editionCount": 1
+    },
+    {
+     "id": "tmdb-movie-146",
+     "provider": "tmdb",
+     "providerId": "146",
+     "title": "Crouching Tiger, Hidden Dragon",
+     "type": "movie",
+     "year": "2000",
+     "artwork": "https://image.tmdb.org/t/p/w780/iNDVBFNz4XyYzM9Lwip6atSTFqf.jpg",
+     "genres": [
+      "12",
+      "18",
+      "28"
+     ],
+     "genreIds": [
+      12,
+      18,
+      28
+     ],
+     "about": "Two warriors in pursuit of a stolen sword and a notorious fugitive are led to an impetuous, physically-skilled, teenage "
+    },
+    {
+     "id": "openlibrary-book-OL8966294W",
+     "provider": "openlibrary",
+     "providerId": "OL8966294W",
+     "title": "Crouching tiger, hidden dragon",
+     "type": "book",
+     "year": "2003",
+     "artwork": "https://covers.openlibrary.org/b/id/1053339-L.jpg?default=false",
+     "genres": [
+      "Adventure / thriller",
+      "Graphic novels",
+      "Children: Young Adult (Gr. 7-9)",
+      "Juvenile Fiction",
+      "Children's Books/Young Adult Graphic Novels",
+      "Comics & Graphic Novels - General",
+      "Comics & Graphic Novels / General",
+      "Action & Adventure - General",
+      "Man-woman relationships",
+      "Kung fu",
+      "Cartoons and comics",
+      "Revenge"
+     ],
+     "by": "Andy Seto, 王度庐",
+     "about": "First published 2003.",
+     "editionCount": 11
+    },
+    {
+     "id": "openlibrary-book-OL13724451W",
+     "provider": "openlibrary",
+     "providerId": "OL13724451W",
+     "title": "Crouching tiger, hidden dragon",
+     "type": "book",
+     "year": "2002",
+     "artwork": "https://covers.openlibrary.org/b/id/8224510-L.jpg?default=false",
+     "genres": [
+      "Man-woman relationships",
+      "Graphic novels",
+      "Martial artists",
+      "Fiction",
+      "Graphic Novels-Manga",
+      "Fiction - Fantasy",
+      "Juvenile Fiction",
+      "Children: Young Adult (Gr. 7-9)",
+      "Graphic Novels - Manga",
+      "Comics & Graphic Novels / General",
+      "Comics & Graphic Novels - General",
+      "Action & Adventure - General"
+     ],
+     "by": "Andy Seto, 王度庐, Andy Seto",
+     "about": "First published 2002.",
+     "editionCount": 5
+    },
+    {
+     "id": "tmdb-tv-210962",
+     "provider": "tmdb",
+     "providerId": "210962",
+     "title": "Crouching Tiger, Hidden Dragon",
+     "type": "tv",
+     "year": "2001",
+     "artwork": "https://image.tmdb.org/t/p/w780/tjpHHzeNeCongw3AhyjRD4i7CwY.jpg",
+     "genres": [
+      "18"
+     ],
+     "genreIds": [
+      18
+     ],
+     "about": "No description available."
+    },
+    {
+     "id": "openlibrary-book-OL18995585W",
+     "provider": "openlibrary",
+     "providerId": "OL18995585W",
+     "title": "Crouching tiger, hidden dragon",
+     "type": "book",
+     "year": "2000",
+     "artwork": "https://covers.openlibrary.org/b/id/779220-L.jpg?default=false",
+     "genres": [
+      "Wo hu cang long (Motion picture)",
+      "Movie/Tv Tie-Ins",
+      "Wo hu zang long (Motion picture)",
+      "Film & Video - History & Criticism",
+      "Performing Arts",
+      "Pop Arts / Pop Culture",
+      "Film & Video - Screenwriting",
+      "Film & Video - Direction & Production",
+      "Film - History & Criticism",
+      "Film - Screenwriting",
+      "Film - Direction & Production",
+      "Film - General"
+     ],
+     "by": "Huiling Wang, Richard Corliss, David Bordwell",
+     "about": "First published 2000.",
+     "editionCount": 3
+    },
+    {
+     "id": "igdb-game-5794",
+     "provider": "igdb",
+     "providerId": "5794",
+     "title": "Crouching Tiger, Hidden Dragon",
+     "type": "game",
+     "year": "2003",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/agdmjbfwsg4hxasrlytm.jpg",
+     "genres": [
+      "Fighting",
+      "Adventure"
+     ],
+     "genreIds": [
+      4,
+      31
+     ],
+     "about": "The epic story has been split up in three parts, one for each character. The game mimics the film's famous martial arts,"
+    },
+    {
+     "id": "tmdb-tv-126695",
+     "provider": "tmdb",
+     "providerId": "126695",
+     "title": "Crouching Tiger Hidden Ghost",
+     "type": "tv",
+     "year": "2021",
+     "artwork": "https://image.tmdb.org/t/p/w780/og2UJ12vtWMFfnsmlzhlhi0U7Am.jpg",
+     "genres": [
+      "18",
+      "9648"
+     ],
+     "genreIds": [
+      18,
+      9648
+     ],
+     "about": "No description available."
+    },
+    {
+     "id": "igdb-game-248616",
+     "provider": "igdb",
+     "providerId": "248616",
+     "title": "Crouching Tiger, Hidden Dragon",
+     "type": "game",
+     "year": "2003",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co6h2d.jpg",
+     "genres": [],
+     "genreIds": [],
+     "about": "Game from IGDB."
+    },
+    {
+     "id": "openlibrary-book-OL20868686W",
+     "provider": "openlibrary",
+     "providerId": "OL20868686W",
+     "title": "Crouching tiger, leaping meerkat",
+     "type": "book",
+     "year": "2011",
+     "artwork": "https://covers.openlibrary.org/b/id/10187366-L.jpg?default=false",
+     "genres": [
+      "Ninja",
+      "Juvenile fiction",
+      "Meerkat"
+     ],
+     "by": "Gareth P. Jones",
+     "about": "First published 2011.",
+     "editionCount": 1
+    },
+    {
+     "id": "tmdb-movie-263341",
+     "provider": "tmdb",
+     "providerId": "263341",
+     "title": "Crouching Tiger, Hidden Dragon: Sword of Destiny",
+     "type": "movie",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/te3aeAyhkfqgpa5BSTq3oNxGqQD.jpg",
+     "genres": [
+      "28",
+      "12",
+      "18"
+     ],
+     "genreIds": [
+      28,
+      12,
+      18
+     ],
+     "about": "A story of lost love, young love, a legendary sword and one last opportunity at redemption."
+    }
+   ]
+  },
+  "Crouching Tiger|movies": {
+   "q": "Crouching Tiger",
+   "domain": "movies",
+   "items": [
+    {
+     "id": "tmdb-movie-146",
+     "provider": "tmdb",
+     "providerId": "146",
+     "title": "Crouching Tiger, Hidden Dragon",
+     "type": "movie",
+     "year": "2000",
+     "artwork": "https://image.tmdb.org/t/p/w780/iNDVBFNz4XyYzM9Lwip6atSTFqf.jpg",
+     "genres": [
+      "12",
+      "18",
+      "28"
+     ],
+     "genreIds": [
+      12,
+      18,
+      28
+     ],
+     "about": "Two warriors in pursuit of a stolen sword and a notorious fugitive are led to an impetuous, physically-skilled, teenage "
+    },
+    {
+     "id": "tmdb-movie-263341",
+     "provider": "tmdb",
+     "providerId": "263341",
+     "title": "Crouching Tiger, Hidden Dragon: Sword of Destiny",
+     "type": "movie",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/te3aeAyhkfqgpa5BSTq3oNxGqQD.jpg",
+     "genres": [
+      "28",
+      "12",
+      "18"
+     ],
+     "genreIds": [
+      28,
+      12,
+      18
+     ],
+     "about": "A story of lost love, young love, a legendary sword and one last opportunity at redemption."
+    },
+    {
+     "id": "tmdb-movie-673160",
+     "provider": "tmdb",
+     "providerId": "673160",
+     "title": "Crouching Tiger, Hidden Dragon: A Retrospective",
+     "type": "movie",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/uZlTEz42RvaWgfOaeaxiuwrHcnf.jpg",
+     "genres": [
+      "99"
+     ],
+     "genreIds": [
+      99
+     ],
+     "about": "A three-part feature in which Cultural Critic/Film Journalist Tasha R. Robinson interviews three key members of the film"
+    },
+    {
+     "id": "tmdb-movie-768877",
+     "provider": "tmdb",
+     "providerId": "768877",
+     "title": "Crouching Tiger, Hidden Dragon, in 1 minute",
+     "type": "movie",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/gP0FRWqD5ibWxEpNoJRGfpIys8g.jpg",
+     "genres": [
+      "16"
+     ],
+     "genreIds": [
+      16
+     ],
+     "about": "Crouching Tiger, Hidden Dragon, told in a 1 minute animation."
+    },
+    {
+     "id": "tmdb-movie-73344",
+     "provider": "tmdb",
+     "providerId": "73344",
+     "title": "New Crouching Tiger, Hidden Dragon",
+     "type": "movie",
+     "year": "2004",
+     "artwork": "https://image.tmdb.org/t/p/w780/2Sc2nIR1aFFA3x4tj1lXXdx6pkh.jpg",
+     "genres": [
+      "28"
+     ],
+     "genreIds": [
+      28
+     ],
+     "about": "Yuk Jiao Lung takes up kung fu with the former rebel master Jade Fox as a way to escape an undesirable arranged marriage"
+    },
+    {
+     "id": "tmdb-movie-1535928",
+     "provider": "tmdb",
+     "providerId": "1535928",
+     "title": "The Making of 'Crouching Tiger, Hidden Dragon'",
+     "type": "movie",
+     "year": "2000",
+     "artwork": "https://image.tmdb.org/t/p/w780/ocA3dH9gUDLUtCRg4HuAFCeAS3a.jpg",
+     "genres": [
+      "99"
+     ],
+     "genreIds": [
+      99
+     ],
+     "about": "Documentary on the making of 'Crouching Tiger, Hidden Dragon'."
+    }
+   ]
+  },
+  "Resident Evil 7|all": {
+   "q": "Resident Evil 7",
+   "domain": "all",
+   "items": [
+    {
+     "id": "openlibrary-book-OL22001605W",
+     "provider": "openlibrary",
+     "providerId": "OL22001605W",
+     "title": "Resident Evil 7",
+     "type": "book",
+     "year": "2020",
+     "artwork": null,
+     "genres": [
+      "Recreation"
+     ],
+     "by": "Capcom",
+     "about": "First published 2020.",
+     "editionCount": 1
+    },
+    {
+     "id": "igdb-game-19562",
+     "provider": "igdb",
+     "providerId": "19562",
+     "title": "Resident Evil 7: Biohazard",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/cobtwh.jpg",
+     "genres": [
+      "Shooter",
+      "Puzzle",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      9,
+      31
+     ],
+     "about": "Resident Evil 7: Biohazard is the first game of the Resident Evil series to switch from 3rd-person to fully 1st-person p"
+    },
+    {
+     "id": "igdb-game-57692",
+     "provider": "igdb",
+     "providerId": "57692",
+     "title": "Resident Evil 7: Biohazard - Gold Edition",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co9fad.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      31
+     ],
+     "about": "Set in modern day rural America and taking place after the dramatic events of Resident Evil 6, players experience the te"
+    },
+    {
+     "id": "igdb-game-27395",
+     "provider": "igdb",
+     "providerId": "27395",
+     "title": "Resident Evil 7: Biohazard - Not A Hero",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co5yf8.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      31
+     ],
+     "about": "The third DLC for Resident Evil 7. It features the character that introduces himself as Chris Redfield at the end of the"
+    },
+    {
+     "id": "igdb-game-75236",
+     "provider": "igdb",
+     "providerId": "75236",
+     "title": "Resident Evil 7: Biohazard - End of Zoe",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co5yf7.jpg",
+     "genres": [
+      "Shooter",
+      "Puzzle",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      9,
+      31
+     ],
+     "about": "End of Zoe is the epilogue chronicling the final events of Resident Evil 7. Zoe Baker helped protagonist Ethan Winters t"
+    },
+    {
+     "id": "igdb-game-90566",
+     "provider": "igdb",
+     "providerId": "90566",
+     "title": "Resident Evil 7 Teaser: Beginning Hour",
+     "type": "game",
+     "year": "2016",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co3dnw.jpg",
+     "genres": [
+      "Adventure"
+     ],
+     "genreIds": [
+      31
+     ],
+     "about": "You wake up alone on the floor of an abandoned farmhouse. Daylight is quickly fading. You must find a way out. A thrilli"
+    },
+    {
+     "id": "igdb-game-27018",
+     "provider": "igdb",
+     "providerId": "27018",
+     "title": "Resident Evil 7: Biohazard - Banned Footage Vol. 1",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co94ks.jpg",
+     "genres": [
+      "Shooter",
+      "Puzzle",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      9,
+      31
+     ],
+     "about": "This newly unearthed footage exposes further secrets from the dark past of the Baker family: - Escape a bedroom turned p"
+    },
+    {
+     "id": "igdb-game-27019",
+     "provider": "igdb",
+     "providerId": "27019",
+     "title": "Resident Evil 7: Biohazard - Banned Footage Vol. 2",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co94l0.jpg",
+     "genres": [
+      "Shooter",
+      "Puzzle",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      9,
+      31
+     ],
+     "about": "In this DLC, this newly unearthed footage exposes further secrets from the dark past of the Baker family: - Gamble with "
+    },
+    {
+     "id": "openlibrary-book-OL30868162W",
+     "provider": "openlibrary",
+     "providerId": "OL30868162W",
+     "title": "Resident Evil 7 Story",
+     "type": "book",
+     "year": "2021",
+     "artwork": null,
+     "genres": [],
+     "by": "Vedar Everon",
+     "about": "First published 2021.",
+     "editionCount": 2
+    },
+    {
+     "id": "tmdb-tv-333213",
+     "provider": "tmdb",
+     "providerId": "333213",
+     "title": "Resident Evil 7: Biohazard",
+     "type": "tv",
+     "year": "2017",
+     "artwork": "https://image.tmdb.org/t/p/w780/rBohj99cfV2hLGAOCZOSAuZUvOy.jpg",
+     "genres": [],
+     "genreIds": [],
+     "about": "2017 first-person survival horror video game developed and published by Capcom"
+    },
+    {
+     "id": "igdb-game-75449",
+     "provider": "igdb",
+     "providerId": "75449",
+     "title": "Resident Evil 7: Biohazard - Season Pass",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co4toe.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      31
+     ],
+     "about": "The Season Pass for Resident Evil 7. \"Not A Hero\" is a free update for the base game, instead of a DLC included in the s"
+    },
+    {
+     "id": "openlibrary-book-OL40284911W",
+     "provider": "openlibrary",
+     "providerId": "OL40284911W",
+     "title": "Resident Evil 7 Biohazard Guide Book",
+     "type": "book",
+     "year": "2017",
+     "artwork": null,
+     "genres": [],
+     "by": "Daniel Winston",
+     "about": "First published 2017.",
+     "editionCount": 2
+    },
+    {
+     "id": "openlibrary-book-OL41184544W",
+     "provider": "openlibrary",
+     "providerId": "OL41184544W",
+     "title": "Resident Evil 7 Biohazard Game Guide",
+     "type": "book",
+     "year": "2017",
+     "artwork": null,
+     "genres": [],
+     "by": "Daniel Winston",
+     "about": "First published 2017.",
+     "editionCount": 1
+    },
+    {
+     "id": "openlibrary-book-OL41311240W",
+     "provider": "openlibrary",
+     "providerId": "OL41311240W",
+     "title": "Resident Evil 7 Biohazard Game Guide Unofficial",
+     "type": "book",
+     "year": "2017",
+     "artwork": null,
+     "genres": [],
+     "by": "The Yuw",
+     "about": "First published 2017.",
+     "editionCount": 1
+    }
+   ]
+  },
+  "Breaking Bad|all": {
+   "q": "Breaking Bad",
+   "domain": "all",
+   "items": [
+    {
+     "id": "tmdb-tv-1396",
+     "provider": "tmdb",
+     "providerId": "1396",
+     "title": "Breaking Bad",
+     "type": "tv",
+     "year": "2008",
+     "artwork": "https://image.tmdb.org/t/p/w780/anFx9aTOOYqgS3v7x3R84Kz67ly.jpg",
+     "genres": [
+      "18",
+      "80"
+     ],
+     "genreIds": [
+      18,
+      80
+     ],
+     "about": "Walter White, a New Mexico chemistry teacher, is diagnosed with Stage III cancer and given a prognosis of only two years"
+    },
+    {
+     "id": "igdb-game-277201",
+     "provider": "igdb",
+     "providerId": "277201",
+     "title": "Breaking Bad DS",
+     "type": "game",
+     "year": "2023",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co7dwr.jpg",
+     "genres": [
+      "Puzzle",
+      "Simulator",
+      "Arcade"
+     ],
+     "genreIds": [
+      9,
+      13,
+      33
+     ],
+     "about": "Breaking Bad, as a Nintendo DS game, complete with 3D graphics and models. Master the art of the cook on your Nintendo D"
+    },
+    {
+     "id": "tmdb-movie-635602",
+     "provider": "tmdb",
+     "providerId": "635602",
+     "title": "Breaking Bad Wolf",
+     "type": "movie",
+     "year": null,
+     "artwork": "https://image.tmdb.org/t/p/w780/bKiGcZ13r8nkYiuKUBakbzAjmwn.jpg",
+     "genres": [
+      "99"
+     ],
+     "genreIds": [
+      99
+     ],
+     "about": "Veteran cop John Mark Dougan left the force, appalled by corruption within. He started a forum for honest cops to anonym"
+    },
+    {
+     "id": "tmdb-tv-232533",
+     "provider": "tmdb",
+     "providerId": "232533",
+     "title": "Breaking Bad Fortune Teller",
+     "type": "tv",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/n8dKkbPkdEPFCFmjNvrUl1gUAYr.jpg",
+     "genres": [
+      "18",
+      "9648"
+     ],
+     "genreIds": [
+      18,
+      9648
+     ],
+     "about": "During the Ming Dynasty, the emperor sets out for Xinjiang to advocate peace. Shortly after his absence, mysterious occu"
+    },
+    {
+     "id": "tmdb-tv-337563",
+     "provider": "tmdb",
+     "providerId": "337563",
+     "title": "Breaking Bad: Original Minisodes",
+     "type": "tv",
+     "year": "2009",
+     "artwork": "https://image.tmdb.org/t/p/w780/dMXwKX2u98yuAXrslSRmteztMoE.jpg",
+     "genres": [
+      "35",
+      "80",
+      "18"
+     ],
+     "genreIds": [
+      35,
+      80,
+      18
+     ],
+     "about": "No description available."
+    },
+    {
+     "id": "igdb-game-114003",
+     "provider": "igdb",
+     "providerId": "114003",
+     "title": "Breaking Bad: Criminal Elements",
+     "type": "game",
+     "year": "2019",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2gez.jpg",
+     "genres": [
+      "Real Time Strategy (RTS)",
+      "Strategy"
+     ],
+     "genreIds": [
+      11,
+      15
+     ],
+     "about": "Run your own meth business alongside your favourite characters from the hit AMC show Breaking Bad."
+    },
+    {
+     "id": "igdb-game-36757",
+     "provider": "igdb",
+     "providerId": "36757",
+     "title": "Breaking Bad: VR Experience",
+     "type": "game",
+     "year": null,
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co53mb.jpg",
+     "genres": [],
+     "genreIds": [],
+     "about": "Game from IGDB."
+    },
+    {
+     "id": "openlibrary-book-OL21808611W",
+     "provider": "openlibrary",
+     "providerId": "OL21808611W",
+     "title": "Breaking Bad - Wish You Were Here! Postcard Book",
+     "type": "book",
+     "year": "2015",
+     "artwork": "https://covers.openlibrary.org/b/id/14041276-L.jpg?default=false",
+     "genres": [],
+     "by": "Breaking Bad",
+     "about": "First published 2015.",
+     "editionCount": 1
+    },
+    {
+     "id": "tmdb-movie-1739202",
+     "provider": "tmdb",
+     "providerId": "1739202",
+     "title": "Untold Raygun: Breaking Badly",
+     "type": "movie",
+     "year": "2026",
+     "artwork": "https://image.tmdb.org/t/p/w780/3pnlJjsGtrUp3cPEOLzkR0sPQAK.jpg",
+     "genres": [
+      "99"
+     ],
+     "genreIds": [
+      99
+     ],
+     "about": "Nobody, least of all Rachael Gunn, expected to be an Olympian. But as Raygun’s performance at the 2024 Paris Olympics we"
+    },
+    {
+     "id": "tmdb-movie-559969",
+     "provider": "tmdb",
+     "providerId": "559969",
+     "title": "El Camino: A Breaking Bad Movie",
+     "type": "movie",
+     "year": "2019",
+     "artwork": "https://image.tmdb.org/t/p/w780/ePXuKdXZuJx8hHMNr2yM4jY2L7Z.jpg",
+     "genres": [
+      "80",
+      "18",
+      "53"
+     ],
+     "genreIds": [
+      80,
+      18,
+      53
+     ],
+     "about": "In the wake of his dramatic escape from captivity, Jesse Pinkman must come to terms with his past in order to forge some"
+    },
+    {
+     "id": "tmdb-movie-1089398",
+     "provider": "tmdb",
+     "providerId": "1089398",
+     "title": "Daniel Brühl: Breaking Bad",
+     "type": "movie",
+     "year": "2023",
+     "artwork": "https://image.tmdb.org/t/p/w780/kxwtTdHquKObHiT8LAWsHDQricj.jpg",
+     "genres": [
+      "99",
+      "10770"
+     ],
+     "genreIds": [
+      99,
+      10770
+     ],
+     "about": "A portrait of the Spanish-German actor Daniel Brühl, a versatile performer capable of moving easily from the gentlest to"
+    },
+    {
+     "id": "tmdb-movie-1309626",
+     "provider": "tmdb",
+     "providerId": "1309626",
+     "title": "ISMO – Breaking Bad English",
+     "type": "movie",
+     "year": "2024",
+     "artwork": "https://image.tmdb.org/t/p/w780/gXvhYtXGct4soepY5TyiG7rkHwb.jpg",
+     "genres": [
+      "99"
+     ],
+     "genreIds": [
+      99
+     ],
+     "about": "ISMO – Breaking Bad English is a cinematic version of the saying “through hardships to the stars.” Ismo, who grew up in "
+    },
+    {
+     "id": "openlibrary-book-OL21283406W",
+     "provider": "openlibrary",
+     "providerId": "OL21283406W",
+     "title": "Better Call Saul - Breaking Bad",
+     "type": "book",
+     "year": "2015",
+     "artwork": null,
+     "genres": [],
+     "by": "Breaking Bad",
+     "about": "First published 2015.",
+     "editionCount": 1
+    },
+    {
+     "id": "tmdb-movie-675519",
+     "provider": "tmdb",
+     "providerId": "675519",
+     "title": "Snow Globe: A Breaking Bad Short",
+     "type": "movie",
+     "year": "2020",
+     "artwork": "https://image.tmdb.org/t/p/w780/2KOPxe7fy7sizottwvMk0s7YxL1.jpg",
+     "genres": [
+      "35",
+      "80"
+     ],
+     "genreIds": [
+      35,
+      80
+     ],
+     "about": "Todd finds the courage to reach out to his Breaking Bad co-conspirator Lydia with a very important question."
+    }
+   ]
+  },
+  "Control|play": {
+   "q": "Control",
+   "domain": "play",
+   "items": [
+    {
+     "id": "igdb-game-103329",
+     "provider": "igdb",
+     "providerId": "103329",
+     "title": "Control",
+     "type": "game",
+     "year": "2019",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2evj.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      31
+     ],
+     "about": "Control is a third-person action-adventure game set in the Federal Bureau of Control, a secretive U.S. government agency"
+    },
+    {
+     "id": "igdb-game-136604",
+     "provider": "igdb",
+     "providerId": "136604",
+     "title": "Control: Ultimate Edition",
+     "type": "game",
+     "year": "2020",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2ewb.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      31
+     ],
+     "about": "Control Ultimate Edition contains the main game and all previously released Expansions (\"The Foundation\" and \"AWE\") in o"
+    },
+    {
+     "id": "igdb-game-122313",
+     "provider": "igdb",
+     "providerId": "122313",
+     "title": "Control: AWE",
+     "type": "game",
+     "year": "2020",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co97ix.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "genreIds": [
+      5,
+      31
+     ],
+     "about": "The Bureau studied its most dangerous Altered World Events in this lost sector. The records were sealed, the objects con"
+    },
+    {
+     "id": "igdb-game-225582",
+     "provider": "igdb",
+     "providerId": "225582",
+     "title": "Control Resonant",
+     "type": "game",
+     "year": "2026",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coc64f.jpg",
+     "genres": [
+      "Role-playing (RPG)",
+      "Hack and slash/Beat 'em up",
+      "Adventure"
+     ],
+     "genreIds": [
+      12,
+      25,
+      31
+     ],
+     "about": "Explore a warped Manhattan on the brink of paranatural annihilation in this thrilling action-adventure RPG. Unleash the "
+    },
+    {
+     "id": "igdb-game-181066",
+     "provider": "igdb",
+     "providerId": "181066",
+     "title": "Control Headlights!",
+     "type": "game",
+     "year": "2021",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co5d3r.jpg",
+     "genres": [],
+     "genreIds": [],
+     "about": "In Control Headlights! You guide a boat through lighthouses, dodging obstacles on the way, reach the flag to pass the le"
+    },
+    {
+     "id": "igdb-game-300497",
+     "provider": "igdb",
+     "providerId": "300497",
+     "title": "Control Monger",
+     "type": "game",
+     "year": "2005",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co86l5.jpg",
+     "genres": [
+      "Shooter"
+     ],
+     "genreIds": [
+      5
+     ],
+     "about": "Control Monger is a freeware team-based vehicular FPS."
+    },
+    {
+     "id": "igdb-game-150437",
+     "provider": "igdb",
+     "providerId": "150437",
+     "title": "Control Over",
+     "type": "game",
+     "year": "2020",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co3nj2.jpg",
+     "genres": [
+      "Adventure",
+      "Indie"
+     ],
+     "genreIds": [
+      31,
+      32
+     ],
+     "about": "Control Over is a story that begins when a player who loses his memory and falls down in a basement wakes up. And you ha"
+    },
+    {
+     "id": "igdb-game-139615",
+     "provider": "igdb",
+     "providerId": "139615",
+     "title": "Control: Override",
+     "type": "game",
+     "year": "2021",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2j0h.jpg",
+     "genres": [
+      "Platform",
+      "Puzzle",
+      "Adventure",
+      "Indie"
+     ],
+     "genreIds": [
+      8,
+      9,
+      31,
+      32
+     ],
+     "about": "Control: Override is a puzzle game where control itself is a powerup. Solve puzzles, Break through a rogue AI's security"
+    }
+   ]
+  },
+  "Arrival|all": {
+   "q": "Arrival",
+   "domain": "all",
+   "items": [
+    {
+     "id": "tmdb-movie-329865",
+     "provider": "tmdb",
+     "providerId": "329865",
+     "title": "Arrival",
+     "type": "movie",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/pEzNVQfdzYDzVK0XqxERIw2x2se.jpg",
+     "genres": [
+      "18",
+      "878",
+      "9648"
+     ],
+     "genreIds": [
+      18,
+      878,
+      9648
+     ],
+     "about": "Taking place after alien crafts land around the world, an expert linguist is recruited by the military to determine whet"
+    },
+    {
+     "id": "openlibrary-book-OL27774W",
+     "provider": "openlibrary",
+     "providerId": "OL27774W",
+     "title": "The Arrival",
+     "type": "book",
+     "year": "2000",
+     "artwork": "https://covers.openlibrary.org/b/id/6901034-L.jpg?default=false",
+     "genres": [
+      "Science fiction",
+      "Juvenile fiction",
+      "Extraterrestrial beings",
+      "Metamorphosis",
+      "Fiction",
+      "Love",
+      "Love stories",
+      "Animorphs #38",
+      "Children's fiction",
+      "Extraterrestrial beings, fiction",
+      "Animorphs (fictitious characters), fiction",
+      "series:Animorphs"
+     ],
+     "by": "Katherine Applegate",
+     "about": "First published 2000.",
+     "editionCount": 10
+    },
+    {
+     "id": "tmdb-movie-10547",
+     "provider": "tmdb",
+     "providerId": "10547",
+     "title": "The Arrival",
+     "type": "movie",
+     "year": "1996",
+     "artwork": "https://image.tmdb.org/t/p/w780/4H3VwvIQC1dsMFb2DEGZpbS0JiI.jpg",
+     "genres": [
+      "878",
+      "53",
+      "9648"
+     ],
+     "genreIds": [
+      878,
+      53,
+      9648
+     ],
+     "about": "Zane Ziminski is an astrophysicist who receives a message that seems to have extraterrestrial origins. Eerily soon after"
+    },
+    {
+     "id": "openlibrary-book-OL5934430W",
+     "provider": "openlibrary",
+     "providerId": "OL5934430W",
+     "title": "The Arrival",
+     "type": "book",
+     "year": "2006",
+     "artwork": "https://covers.openlibrary.org/b/id/1230299-L.jpg?default=false",
+     "genres": [
+      "Novela gráfica",
+      "Immigrants",
+      "Stories without words",
+      "Inmigrantes",
+      "Juvenile fiction",
+      "Graphic novels",
+      "Fiction",
+      "Ficción juvenil",
+      "Cuentos sin palabras",
+      "Emigration and immigration",
+      "Cartoons and comics",
+      "Spanish language materials"
+     ],
+     "by": "Shaun Tan",
+     "about": "First published 2006.",
+     "editionCount": 6
+    },
+    {
+     "id": "tmdb-movie-1738637",
+     "provider": "tmdb",
+     "providerId": "1738637",
+     "title": "Arrival",
+     "type": "movie",
+     "year": "2026",
+     "artwork": "https://image.tmdb.org/t/p/w780/4JtRTwCdoM592DtQnCVAdIcUR40.jpg",
+     "genres": [
+      "18"
+     ],
+     "genreIds": [
+      18
+     ],
+     "about": "After arriving in Aotearoa as refugees, a mother and daughter find their roles upended in the face of a new and unfamili"
+    },
+    {
+     "id": "tmdb-movie-247620",
+     "provider": "tmdb",
+     "providerId": "247620",
+     "title": "Arrival",
+     "type": "movie",
+     "year": "2013",
+     "artwork": "https://image.tmdb.org/t/p/w780/kCelMaZk3IH8oi94js729bJNOtw.jpg",
+     "genres": [
+      "12",
+      "99"
+     ],
+     "genreIds": [
+      12,
+      99
+     ],
+     "about": "Step into our world, as we bring you a raw look at the talents of the next wave of riders and photographers. Come face t"
+    },
+    {
+     "id": "tmdb-movie-472349",
+     "provider": "tmdb",
+     "providerId": "472349",
+     "title": "Arrival",
+     "type": "movie",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/yRkKfIrNQRqX2MIzckFNAtGWEOd.jpg",
+     "genres": [
+      "16",
+      "18",
+      "10749"
+     ],
+     "genreIds": [
+      16,
+      18,
+      10749
+     ],
+     "about": "This traditionally animated film tells the journey of how a young boy's personal discovery affects the long-distance rel"
+    },
+    {
+     "id": "tmdb-movie-1453473",
+     "provider": "tmdb",
+     "providerId": "1453473",
+     "title": "arrival",
+     "type": "movie",
+     "year": "2025",
+     "artwork": "https://image.tmdb.org/t/p/w780/nbreB8QhPeaDLmWGMEsTK2ttBfq.jpg",
+     "genres": [
+      "878",
+      "18"
+     ],
+     "genreIds": [
+      878,
+      18
+     ],
+     "about": "A psychological sci-fi drama about love, identity, and the unknown. After a mysterious encounter with an otherworldly li"
+    },
+    {
+     "id": "tmdb-movie-1520078",
+     "provider": "tmdb",
+     "providerId": "1520078",
+     "title": "Arrival",
+     "type": "movie",
+     "year": "2025",
+     "artwork": "https://image.tmdb.org/t/p/w780/2YLfugaOJOsUDFzihuS9NWrTRif.jpg",
+     "genres": [],
+     "genreIds": [],
+     "about": "A man sees warnings about an ongoing alien invasion while he is heating up his TV dinner. It's all over the news. He pan"
+    },
+    {
+     "id": "tmdb-movie-1100190",
+     "provider": "tmdb",
+     "providerId": "1100190",
+     "title": "Arrival",
+     "type": "movie",
+     "year": "1957",
+     "artwork": "https://image.tmdb.org/t/p/w780/ku6sU89sIJlNCBO6jN140c9wylL.jpg",
+     "genres": [
+      "18"
+     ],
+     "genreIds": [
+      18
+     ],
+     "about": "This drama portrays an immigrant family and the mingled feelings of hope and despair that characterize their life in a s"
+    },
+    {
+     "id": "tmdb-movie-696430",
+     "provider": "tmdb",
+     "providerId": "696430",
+     "title": "Arrival",
+     "type": "movie",
+     "year": "2018",
+     "artwork": "https://image.tmdb.org/t/p/w780/56PZVQtSvrzdGCHv6AKHLljk7aR.jpg",
+     "genres": [
+      "12"
+     ],
+     "genreIds": [
+      12
+     ],
+     "about": "After an alien escapes from a government facility, a town is sent into chaos trying to capture it."
+    },
+    {
+     "id": "igdb-game-256831",
+     "provider": "igdb",
+     "providerId": "256831",
+     "title": "Arrival",
+     "type": "game",
+     "year": "2021",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co6rge.jpg",
+     "genres": [
+      "Shooter"
+     ],
+     "genreIds": [
+      5
+     ],
+     "about": "9 + 1 (+ 1?) limit-removing levels for Doom II. Designed with stock Doom II resources in mind, utilizing the lovely skie"
+    },
+    {
+     "id": "tmdb-movie-1567483",
+     "provider": "tmdb",
+     "providerId": "1567483",
+     "title": "The Arrival",
+     "type": "movie",
+     "year": null,
+     "artwork": null,
+     "genres": [
+      "10751",
+      "18"
+     ],
+     "genreIds": [
+      10751,
+      18
+     ],
+     "about": "As two long-lost blood brothers grow closer, seduced by the idea of their shared history finally making sense, they must"
+    },
+    {
+     "id": "igdb-game-73566",
+     "provider": "igdb",
+     "providerId": "73566",
+     "title": "The Arrival",
+     "type": "game",
+     "year": "1997",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1kpg.jpg",
+     "genres": [
+      "Adventure"
+     ],
+     "genreIds": [
+      31
+     ],
+     "about": "You've been abducted. You're in a cold, steel room. A window provides you a view of outer space. Your assignment is to e"
+    }
+   ]
+  },
+  "Breath of the Wild|play": {
+   "q": "Breath of the Wild",
+   "domain": "play",
+   "items": [
+    {
+     "id": "igdb-game-243459",
+     "provider": "igdb",
+     "providerId": "243459",
+     "title": "Breath of the Wild Multiplayer",
+     "type": "game",
+     "year": "2023",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co6uhb.jpg",
+     "genres": [
+      "Role-playing (RPG)",
+      "Adventure"
+     ],
+     "genreIds": [
+      12,
+      31
+     ],
+     "about": "An online multiplayer mod for The Legend of Zelda: Breath of the Wild. Its development started due to the streamer Point"
+    },
+    {
+     "id": "igdb-game-7346",
+     "provider": "igdb",
+     "providerId": "7346",
+     "title": "The Legend of Zelda: Breath of the Wild",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co3p2d.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure"
+     ],
+     "genreIds": [
+      9,
+      31
+     ],
+     "about": "The Legend of Zelda: Breath of the Wild is the first 3D open-world game in the Zelda series. Link can travel anywhere an"
+    },
+    {
+     "id": "igdb-game-41826",
+     "provider": "igdb",
+     "providerId": "41826",
+     "title": "The Legend of Zelda: Breath of the Wild - The Champions' Ballad",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1ujd.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure"
+     ],
+     "genreIds": [
+      9,
+      31
+     ],
+     "about": "DLC Pack 2 cannot be purchased outside of the expansion pass. The Champions' Ballad. Following the guidance of an unseen"
+    },
+    {
+     "id": "igdb-game-41829",
+     "provider": "igdb",
+     "providerId": "41829",
+     "title": "The Legend of Zelda: Breath of the Wild - Expansion Pass",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coa24j.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure"
+     ],
+     "genreIds": [
+      9,
+      31
+     ],
+     "about": "The expansion pass is the only way to purchase the DLC packs for the game. The pass includes 2 DLC packs: The Master Tri"
+    },
+    {
+     "id": "igdb-game-41825",
+     "provider": "igdb",
+     "providerId": "41825",
+     "title": "The Legend of Zelda: Breath of the Wild - The Master Trials",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1ujg.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure"
+     ],
+     "genreIds": [
+      9,
+      31
+     ],
+     "about": "DLC pack 1 cannot be purchased outside of the expansion pass. This first DLC pack for The Legend of Zelda: Breath of the"
+    },
+    {
+     "id": "igdb-game-210652",
+     "provider": "igdb",
+     "providerId": "210652",
+     "title": "The Legend of Zelda: Breath of the Wild Multiplayer",
+     "type": "game",
+     "year": "2022",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co5w9j.jpg",
+     "genres": [
+      "Role-playing (RPG)",
+      "Adventure"
+     ],
+     "genreIds": [
+      12,
+      31
+     ],
+     "about": "A mod which adds the ability to play in local multiplayer in Breath of the Wild."
+    },
+    {
+     "id": "igdb-game-240878",
+     "provider": "igdb",
+     "providerId": "240878",
+     "title": "The Legend of Zelda: Breath of the Wild Randomizer",
+     "type": "game",
+     "year": "2021",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co68ke.jpg",
+     "genres": [
+      "Adventure"
+     ],
+     "genreIds": [
+      31
+     ],
+     "about": "This Randomizer will randomize items you will find in chests and be given by NPCs. Randomized enemy drops are included t"
+    },
+    {
+     "id": "igdb-game-50598",
+     "provider": "igdb",
+     "providerId": "50598",
+     "title": "The Legend of Zelda: Breath of the Wild - Limited Edition",
+     "type": "game",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co5wrs.jpg",
+     "genres": [
+      "Role-playing (RPG)",
+      "Sport",
+      "Adventure"
+     ],
+     "genreIds": [
+      12,
+      14,
+      31
+     ],
+     "about": "Forget everything you know about The Legend of Zelda games. Step into a world of discovery, exploration and adventure in"
+    }
+   ]
+  },
+  "Eternal Sunshine|all": {
+   "q": "Eternal Sunshine",
+   "domain": "all",
+   "items": [
+    {
+     "id": "tmdb-movie-1483576",
+     "provider": "tmdb",
+     "providerId": "1483576",
+     "title": "eternal sunshine",
+     "type": "movie",
+     "year": "2025",
+     "artwork": "https://image.tmdb.org/t/p/w780/rtGNUhg1jut2v0NesOXAMDa6xXm.jpg",
+     "genres": [
+      "10749",
+      "18"
+     ],
+     "genreIds": [
+      10749,
+      18
+     ],
+     "about": "Under the setting sun, Astrid and Achilles' souls intertwine in a dance of love and longing. Bound by time yet unbroken "
+    },
+    {
+     "id": "tmdb-movie-779549",
+     "provider": "tmdb",
+     "providerId": "779549",
+     "title": "Eternal Sunshine",
+     "type": "movie",
+     "year": null,
+     "artwork": null,
+     "genres": [],
+     "genreIds": [],
+     "about": "Appearances can be deceptive at Eternal Sunshine, an unusual nursing home where female care givers seem to go the extra "
+    },
+    {
+     "id": "tmdb-movie-745908",
+     "provider": "tmdb",
+     "providerId": "745908",
+     "title": "Eternal Sunshine",
+     "type": "movie",
+     "year": "2020",
+     "artwork": "https://image.tmdb.org/t/p/w780/iyQPQhfsjc8YHQ2ricIrjookqPt.jpg",
+     "genres": [
+      "18"
+     ],
+     "genreIds": [
+      18
+     ],
+     "about": "For years single parent Mei Chun has been raising her mentally handicapped son Ray on her own. She is used to the challe"
+    },
+    {
+     "id": "openlibrary-book-OL28953115W",
+     "provider": "openlibrary",
+     "providerId": "OL28953115W",
+     "title": "Eternal Sunshine",
+     "type": "book",
+     "year": "2017",
+     "artwork": null,
+     "genres": [],
+     "by": "Londrelle",
+     "about": "First published 2017.",
+     "editionCount": 1
+    },
+    {
+     "id": "tmdb-movie-1578432",
+     "provider": "tmdb",
+     "providerId": "1578432",
+     "title": "ETERNAL SUNSHINE",
+     "type": "movie",
+     "year": "2018",
+     "artwork": "https://image.tmdb.org/t/p/w780/yAoetuxNfAYuRJIYWpczGIV6DmU.jpg",
+     "genres": [],
+     "genreIds": [],
+     "about": "an etude of decomposition exploring the shape of the image in a sequence from the film ETERNAL SUNSHINE OF THE SPOTLESS "
+    },
+    {
+     "id": "tmdb-movie-38",
+     "provider": "tmdb",
+     "providerId": "38",
+     "title": "Eternal Sunshine of the Spotless Mind",
+     "type": "movie",
+     "year": "2004",
+     "artwork": "https://image.tmdb.org/t/p/w780/5MwkWH9tYHv3mV9OdYTMR5qreIz.jpg",
+     "genres": [
+      "878",
+      "18",
+      "10749"
+     ],
+     "genreIds": [
+      878,
+      18,
+      10749
+     ],
+     "about": "Joel Barish, heartbroken that his girlfriend underwent a procedure to erase him from her memory, decides to do the same."
+    },
+    {
+     "id": "openlibrary-book-OL25205629W",
+     "provider": "openlibrary",
+     "providerId": "OL25205629W",
+     "title": "Eternal Sunshine of the Spotless Mind",
+     "type": "book",
+     "year": "2009",
+     "artwork": null,
+     "genres": [],
+     "by": "Christopher Grau",
+     "about": "First published 2009.",
+     "editionCount": 3
+    },
+    {
+     "id": "tmdb-movie-1205856",
+     "provider": "tmdb",
+     "providerId": "1205856",
+     "title": "Eternal Sunshine Life-saving Squad",
+     "type": "movie",
+     "year": null,
+     "artwork": null,
+     "genres": [],
+     "genreIds": [],
+     "about": "In 2000, cases of charcoal-burning suicide were increasing on the island Cheung Chau. The islanders' livelihood was affe"
+    },
+    {
+     "id": "openlibrary-book-OL3099644W",
+     "provider": "openlibrary",
+     "providerId": "OL3099644W",
+     "title": "Eternal sunshine of the spotless mind",
+     "type": "book",
+     "year": "2003",
+     "artwork": "https://covers.openlibrary.org/b/id/779296-L.jpg?default=false",
+     "genres": [],
+     "by": "Charlie Kaufman",
+     "about": "First published 2003.",
+     "editionCount": 2
+    },
+    {
+     "id": "openlibrary-book-OL16955470W",
+     "provider": "openlibrary",
+     "providerId": "OL16955470W",
+     "title": "Eternal sunshine of the spotless mind",
+     "type": "book",
+     "year": "2009",
+     "artwork": "https://covers.openlibrary.org/b/id/10271204-L.jpg?default=false",
+     "genres": [
+      "Philosophy in motion pictures",
+      "Memory in motion pictures",
+      "Identity (Psychology) in motion pictures",
+      "Eternal sunshine of the spotless mind (Motion picture)",
+      "Motion pictures, philosophy"
+     ],
+     "by": "Christopher Grau",
+     "about": "First published 2009.",
+     "editionCount": 2
+    },
+    {
+     "id": "openlibrary-book-OL20336242W",
+     "provider": "openlibrary",
+     "providerId": "OL20336242W",
+     "title": "Eternal Sunshine of the Spotless Mind",
+     "type": "book",
+     "year": "2014",
+     "artwork": "https://covers.openlibrary.org/b/id/9000179-L.jpg?default=false",
+     "genres": [
+      "Motion pictures",
+      "Eternal sunshine of the spotless mind (Motion picture)"
+     ],
+     "by": "Andrew Butler",
+     "about": "First published 2014.",
+     "editionCount": 2
+    },
+    {
+     "id": "openlibrary-book-OL15030602W",
+     "provider": "openlibrary",
+     "providerId": "OL15030602W",
+     "title": "Eternal Sunshine of the Spotless Mind: The Shooting Script",
+     "type": "book",
+     "year": "2004",
+     "artwork": "https://covers.openlibrary.org/b/id/8545952-L.jpg?default=false",
+     "genres": [
+      "Eternal sunshine of the spotless mind (Motion picture)",
+      "Motion picture plays",
+      "Manuskript",
+      "Eternal sunshine of the spotless mind (US, Michel Gondry, 20",
+      "Eternal sunshine of the spotless mind"
+     ],
+     "by": "Charlie Kaufman",
+     "about": "First published 2004.",
+     "editionCount": 1
+    },
+    {
+     "id": "openlibrary-book-OL20755736W",
+     "provider": "openlibrary",
+     "providerId": "OL20755736W",
+     "title": "Quest for Eternal Sunshine",
+     "type": "book",
+     "year": "2020",
+     "artwork": null,
+     "genres": [
+      "Biography"
+     ],
+     "by": "Myra Goodman, Mendek Rubin",
+     "about": "First published 2020.",
+     "editionCount": 2
+    },
+    {
+     "id": "tmdb-movie-1635723",
+     "provider": "tmdb",
+     "providerId": "1635723",
+     "title": "A Look Inside Eternal Sunshine of the Spotless Mind",
+     "type": "movie",
+     "year": "2004",
+     "artwork": "https://image.tmdb.org/t/p/w780/qCts6KGlSjHbDPt1f3wifSPpPCt.jpg",
+     "genres": [
+      "99"
+     ],
+     "genreIds": [
+      99
+     ],
+     "about": "a 12-minute EPK making-of featurette."
+    }
+   ]
+  }
+ }
+}
