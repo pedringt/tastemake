@@ -2,6 +2,7 @@ import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, mergeCanonicalFacts } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { buildItemId } from "./item-id.mjs";
+import { bookSeriesFromRow } from "./book-series.mjs";
 import { fallbackSummary, sanitizeAbout } from "./synopsis.mjs";
 import { waitUntil } from "@vercel/functions";
 import { rankSearchResults, searchRelevance } from "./search-ranking.mjs";
@@ -90,7 +91,9 @@ function openLibraryItem(row) {
     // already work for movies/TV/games. Genuinely absent on many real books (confirmed directly
     // against the API for two popular in-print series) -- this is a real, honest improvement where
     // the upstream data supports it, not a claim that book sequel-suppression is now complete.
-    providerMeta: { seriesKey: row.series_key ?? null, isbns: (row.isbn ?? []).slice(0, 24) },
+    // Follow-up: series_key arrives as an array; bookSeriesFromRow keeps the first id as a string
+    // and also reads series names from series_name, "series:..." subjects and "(X, Book 2)" titles.
+    providerMeta: { ...bookSeriesFromRow(row), isbns: (row.isbn ?? []).slice(0, 24) },
     sourceUrl: key ? `https://openlibrary.org/works/${key}` : "https://openlibrary.org/",
     // Open Library already exposes edition_count in search. Keep it only long enough to break
     // ties between equally relevant title matches in the combined All search.
@@ -100,7 +103,7 @@ function openLibraryItem(row) {
 }
 
 async function searchOpenLibrary(query, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,isbn,edition_count";
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,isbn,edition_count";
   const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });

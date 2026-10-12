@@ -1,5 +1,6 @@
 import { enrichCanonicalItemWriteBehind, igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
+import { withBookSeriesEvidence } from "./book-series-editions.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
@@ -231,7 +232,7 @@ function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
 }
 
 async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key";
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name";
   const load = async () => {
     const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
@@ -519,8 +520,17 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   const providerKey = (item) => item?.provider && item?.providerId ? `${item.provider}:${item.type ?? ""}:${item.providerId}` : null;
   const blockedProviderKeys = new Set(allEvidence.map(providerKey).filter(Boolean));
   let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
+  // #142: before each guard pass, read Open Library edition series names for same-author book pairs
+  // the cheaper signals did not settle (bounded, cached, fail-open; see book-series-editions.mjs).
+  const bookSeriesMemo = new Map();
+  const guard = async () => {
+    const lookupStarted = Date.now();
+    const enriched = await withBookSeriesEvidence(eligible, evidenceItems, { env, fetchImpl, memo: bookSeriesMemo });
+    if (enriched.lookups) console.info("[tastemake-related]", JSON.stringify({ bookSeriesLookups: enriched.lookups, ms: Date.now() - lookupStarted }));
+    return applyMixedNoveltyGuard(enriched.candidates, enriched.evidenceItems, mode);
+  };
   const guardStarted = Date.now();
-  let guarded = applyMixedNoveltyGuard(eligible, evidenceItems, mode);
+  let guarded = await guard();
   console.info("[tastemake-related]", JSON.stringify({ noveltyGuardMs: Date.now() - guardStarted, eligible: eligible.length, primary: guarded.primary.length }));
 
   const domainSet = (items) => new Set(items.flatMap((item) => item.domains ?? []));
@@ -545,7 +555,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     rows.push(...await loadEvidence(laterWave));
     console.info("[tastemake-related]", JSON.stringify({ wave: "second", items: laterWave.length, ms: Date.now() - secondWaveStarted }));
     eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
-    guarded = applyMixedNoveltyGuard(eligible, evidenceItems, mode);
+    guarded = await guard();
   }
 
   const stillMissingDomains = missingEvidenceDomains();
@@ -560,7 +570,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
       console.info("[tastemake-related]", JSON.stringify({ wave: "coverage-fallback", items: fallbackAnchors.length, ms: Date.now() - fallbackStarted }));
       evidenceItems = [...evidenceItems, ...fallbackAnchors];
       eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
-      guarded = applyMixedNoveltyGuard(eligible, evidenceItems, mode);
+      guarded = await guard();
     }
   }
 

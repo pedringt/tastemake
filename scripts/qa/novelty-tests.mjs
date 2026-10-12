@@ -4,8 +4,12 @@
 // and the live-AI path run through, via retrieveCatalogCandidates), plus retrieveCatalogCandidates
 // itself so the guard is proven wired into the actual retrieval path both paths call.
 
-import { applyNoveltyGuard, isFranchiseContinuation } from "../../src/catalog/novelty.mjs";
+import { readFileSync } from "node:fs";
+import { applyNoveltyGuard, isFranchiseContinuation, seriesKey } from "../../src/catalog/novelty.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
+import { openLibraryItem } from "../../src/catalog/providers.mjs";
+import { normalizeSeriesName, seriesNamesFromEditions } from "../../src/catalog/book-series.mjs";
+import { withBookSeriesEvidence } from "../../src/catalog/book-series-editions.mjs";
 import { createSuite } from "./lib/assert.mjs";
 
 const { check, finish } = createSuite("novelty guard tests");
@@ -167,13 +171,12 @@ check(
   !isFranchiseContinuation(unrelatedSeriesBook, wayOfKings)
 );
 
-// Honest documentation of the real, accepted residual gap from #142: when Open Library itself has
-// no series data for a book (confirmed true for real popular series against the live API), this
-// guard genuinely cannot catch it via provider metadata, and title heuristics don't help when the
-// titles share no common words. This is expected, not a bug to "fix" by inventing a relationship.
+// With no author and no Open Library series data at all, nothing ties these two titles together, and
+// the guard does not invent a relationship. (The real records do carry data: see the fixture tests
+// below, where "Words of Radiance" is linked through its edition series "The Stormlight Archive, 2".)
 const sparseMetadataSequel = { id: "openlibrary-book-4", title: "Words of Radiance", provider: "openlibrary" };
 check(
-  "known/accepted gap: a real sequel with no series_key and no title overlap is NOT flagged (residual limitation, not silently claimed as fixed)",
+  "a sequel with no author, no series data and no title overlap is NOT flagged (no invented relationship)",
   !isFranchiseContinuation(sparseMetadataSequel, wayOfKings)
 );
 
@@ -185,5 +188,132 @@ check(
   "a coincidentally-matching id string across different providers is NOT flagged (namespaced by provider)",
   !isFranchiseContinuation(tmdbWithNumericId, wayOfKings)
 );
+
+// ---- #142 follow-up: book series from real Open Library data ------------------------------------
+// scripts/qa/fixtures/openlibrary-series-142.json holds real search.json rows and real edition
+// lists captured from openlibrary.org (Oct 2026). Items are built with the production
+// openLibraryItem(), and edition lookups are served from the fixture, so these run offline.
+const olFixture = JSON.parse(readFileSync(new URL("./fixtures/openlibrary-series-142.json", import.meta.url), "utf8"));
+const olBook = (workId) => openLibraryItem(olFixture.search[workId]);
+const olTitle = (workId) => olFixture.search[workId].title;
+const fixtureEditionCalls = [];
+const fixtureEditionsFetch = async (url) => {
+  fixtureEditionCalls.push(String(url));
+  const match = String(url).match(/\/works\/(OL\d+W)\/editions\.json/);
+  if (!match || !olFixture.editions[match[1]]) throw new Error(`unexpected fixture URL: ${url}`);
+  return { ok: true, json: async () => olFixture.editions[match[1]] };
+};
+async function guardBooks(candidates, evidence, fetchImpl = fixtureEditionsFetch) {
+  const enriched = await withBookSeriesEvidence(candidates, evidence, { env: {}, fetchImpl });
+  return applyNoveltyGuard(enriched.candidates, enriched.evidenceItems);
+}
+
+check("Open Library series_key arrives as an array and is stored as a string", olBook("OL893414W").providerMeta.seriesKey === "OL331367L");
+check("a 'Serie:The_Hunger_Games' subject deep in the list (index 90) becomes a series name",
+  olBook("OL5735363W").providerMeta.seriesNames.includes("hunger games"));
+check("series names normalize sequence markers and generic words",
+  ["The Mistborn Saga #2", "Mistborn, Book Two", "Mistborn -- [bk. 3]", "The Mistborn trilogy -- bk. 3"].every((name) => normalizeSeriesName(name) === "mistborn"));
+check("edition series need two editions and skip publisher lines",
+  seriesNamesFromEditions([{ series: ["Penguin Modern Classics"] }, { series: ["Penguin Modern Classics"] }, { series: ["One-off Line No. 4"] }]).length === 0);
+
+const seriesGroups = Object.entries(olFixture.groups).filter(([group]) => !group.startsWith("control"));
+for (const [group, [firstId, ...sequelIds]] of seriesGroups) {
+  for (const sequelId of sequelIds) {
+    const result = await guardBooks([olBook(sequelId)], [olBook(firstId)]);
+    check(`real fixture (${group}): loved "${olTitle(firstId)}" suppresses "${olTitle(sequelId)}"`, result.suppressed.length === 1 && result.primary.length === 0);
+  }
+}
+
+// The reported case (#142): "The Way of Kings" -> "Words of Radiance", alongside an unrelated book that
+// must still fill the slot.
+const stormlight = await guardBooks([olBook("OL16813053W"), olBook("OL17091839W")], [olBook("OL15358691W")]);
+check("the reported case: Words of Radiance is suppressed after loving The Way of Kings", stormlight.suppressed.some((x) => x.title === "Words of Radiance"));
+check("...and a different author's book stays in the primary pool", stormlight.primary.some((x) => x.title === "The Martian"));
+
+// Same author, not a series (or a different series): must stay eligible, even after edition lookups.
+const sameAuthorControls = [
+  ["OL17091839W", "OL21745884W"], ["OL17091839W", "OL17837968W"], ["OL21745884W", "OL17837968W"], // Weir standalones
+  ["OL59038W", "OL59048W"], ["OL59038W", "OL20883297W"], // Ishiguro standalones
+  ["OL1168083W", "OL1168007W"], // Orwell: Nineteen Eighty-Four / Animal Farm
+  ["OL5738147W", "OL5738149W"], // Sanderson standalones: Elantris / Warbreaker
+  ["OL15358691W", "OL5738148W"], ["OL5738148W", "OL15358691W"], ["OL15358691W", "OL5738147W"], // Sanderson, different series
+  ["OL5735363W", "OL5735348W"], // Collins: The Hunger Games / Gregor the Overlander (another series)
+  ["OL82563W", "OL16796166W"] // Rowling: Harry Potter / The Casual Vacancy
+];
+for (const [lovedId, candidateId] of sameAuthorControls) {
+  const result = await guardBooks([olBook(candidateId)], [olBook(lovedId)]);
+  check(`real fixture control: loved "${olTitle(lovedId)}" keeps same-author "${olTitle(candidateId)}" eligible`, result.primary.length === 1);
+}
+
+// Items saved before this fix kept series_key as an array, no series names, and only the first 12
+// subjects (which drops The Hunger Games' series subject at index 90). They still work: the array id
+// matches, and the nameless anchor's own editions are read.
+const legacy = (workId) => {
+  const item = olBook(workId);
+  return { ...item, providerMeta: { seriesKey: olFixture.search[workId].series_key ?? null, isbns: [] } };
+};
+check("a legacy anchor with an array series_key still suppresses its sequel",
+  (await guardBooks([olBook("OL893461W")], [legacy("OL893414W")])).suppressed.length === 1);
+check("a legacy nameless anchor (The Hunger Games) is resolved from its editions",
+  (await guardBooks([olBook("OL5735360W")], [legacy("OL5735363W")])).suppressed.length === 1);
+
+// Lookups are bounded, skipped when nothing needs them, memoized, and fail open.
+fixtureEditionCalls.length = 0;
+await withBookSeriesEvidence([olBook("OL17091839W"), olBook("OL82537W")], [olBook("OL5738148W")], { env: {}, fetchImpl: fixtureEditionsFetch });
+check("no edition lookup when no candidate shares an author with a loved book", fixtureEditionCalls.length === 0);
+fixtureEditionCalls.length = 0;
+await withBookSeriesEvidence([olBook("OL82537W")], [olBook("OL82563W")], { env: {}, fetchImpl: fixtureEditionsFetch });
+check("no edition lookup when cheaper signals already link the pair", fixtureEditionCalls.length === 0);
+const manySanderson = Array.from({ length: 10 }, (_, index) => ({ ...olBook("OL5738149W"), id: `openlibrary-book-s${index}`, providerId: `OL${900 + index}W` }));
+const countingFetch = async (url) => { fixtureEditionCalls.push(String(url)); return { ok: true, json: async () => ({ entries: [] }) }; };
+fixtureEditionCalls.length = 0;
+const lookupMemo = new Map();
+await withBookSeriesEvidence(manySanderson, [olBook("OL5738147W")], { env: {}, fetchImpl: countingFetch, memo: lookupMemo });
+check("edition lookups are capped at 6 per request", fixtureEditionCalls.length === 6);
+await withBookSeriesEvidence(manySanderson, [olBook("OL5738147W")], { env: {}, fetchImpl: countingFetch, memo: lookupMemo });
+check("a second guard pass in the same request does not refetch", fixtureEditionCalls.length === 6);
+const failing = await guardBooks([olBook("OL16813053W")], [olBook("OL15358691W")], async () => { throw new Error("network down"); });
+check("a failed edition lookup fails open (the guard behaves as without it)", failing.primary.length === 1);
+
+// Batch diversity and declared series experience use the same book rule.
+const batch = await guardBooks([olBook("OL5735360W"), olBook("OL14908941W"), olBook("OL17091839W")], []);
+check("two Hunger Games sequels do not share one recommendation batch", batch.primary.filter((x) => x.by === "Suzanne Collins").length === 1);
+check("a named book series gives the series-experience prompt a key", seriesKey(olBook("OL5738148W")) === "series:mistborn");
+
+// End to end through retrieveCatalogCandidates: a subject search for a loved "The Way of Kings" returns
+// "Words of Radiance" (real rows), which must not reach the candidates.
+const wokRow = olFixture.search.OL15358691W;
+const bookState = {
+  selectedFavorites: new Set(["openlibrary-anchor"]),
+  feedbackByRecommendation: {},
+  recommendationSets: [],
+  recommendationFilter: "read",
+  customItems: { "openlibrary-anchor": { ...openLibraryItem(wokRow), id: "openlibrary-anchor" } },
+  areas: { movies: true, tv: true, read: true, play: true }
+};
+const subjectRows = ["OL16813053W", "OL17091839W", "OL59038W"].map((id) => ({ ...olFixture.search[id], subject: [...(olFixture.search[id].subject ?? []), ...wokRow.subject.slice(0, 3)] }));
+const bookFetch = async (url) => {
+  if (String(url).includes("/search.json")) return { ok: true, json: async () => ({ docs: subjectRows }) };
+  return fixtureEditionsFetch(url);
+};
+const bookCandidates = await retrieveCatalogCandidates(bookState, { env: {}, fetchImpl: bookFetch });
+check("end to end: Words of Radiance is not a candidate after loving The Way of Kings", !bookCandidates.some((x) => x.title === "Words of Radiance"));
+const noEditionsFetch = async (url) => {
+  if (String(url).includes("/search.json")) return { ok: true, json: async () => ({ docs: subjectRows }) };
+  throw new Error("editions unavailable");
+};
+const withoutEditions = await retrieveCatalogCandidates(bookState, { env: {}, fetchImpl: noEditionsFetch });
+check("(control: without the edition data, Words of Radiance would have been a candidate)", withoutEditions.some((x) => x.title === "Words of Radiance"));
+check("...while other-author books still are", bookCandidates.some((x) => x.title === "The Martian") && bookCandidates.some((x) => x.title === "Never Let Me Go"));
+
+// Films and games keep their behaviour: the book rules never apply to them, even with a shared `by`.
+const filmA = { id: "tmdb-movie-40", title: "Dune", type: "movie", provider: "tmdb", by: "Denis Villeneuve", providerMeta: { collectionId: null } };
+const filmB = { id: "tmdb-movie-41", title: "Children of Dune", type: "movie", provider: "tmdb", by: "Denis Villeneuve", providerMeta: { collectionId: null } };
+check("film titles extending each other by the same director are not caught by the book rule", !isFranchiseContinuation(filmB, filmA));
+check("...while the same pair as books is", isFranchiseContinuation({ ...filmB, type: "book", provider: "openlibrary" }, { ...filmA, type: "book", provider: "openlibrary" }));
+const gameA = { id: "igdb-game-40", title: "Halo", type: "game", provider: "igdb", providerMeta: { franchiseId: 7 } };
+const gameB = { id: "igdb-game-41", title: "Something Else", type: "game", provider: "igdb", providerMeta: { franchiseId: 7 } };
+check("IGDB franchise ids still link games", isFranchiseContinuation(gameB, gameA));
+check("TMDb collection ids still need the same provider", !isFranchiseContinuation({ ...gameB, provider: "tmdb", providerMeta: { collectionId: 7 } }, gameA));
 
 finish();

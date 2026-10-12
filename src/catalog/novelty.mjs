@@ -20,6 +20,13 @@
 //
 // Deliberately NOT triggered by: same single leading word alone (keeps "Legend of Zelda" and
 // "Legend of Korra" both eligible), or same author/creator/genre with an unrelated title.
+//
+// Books (#142) add two same-author signals, because Open Library's series id is often missing:
+//   - the same Open Library series name (subject "series:...", edition series, "(Mistborn, Book 2)");
+//   - one title extending the other ("Dune" -> "Dune Messiah", "Children of Dune").
+// Both require a shared author, so two standalone novels by one author stay eligible.
+
+import { bookSeriesIds, bookSeriesNames, booksShareSeriesName, isBook, sameBookAuthor } from "./book-series.mjs";
 
 const STOPWORDS = new Set(["the", "a", "an", "of", "in", "and", "at", "to", "part", "book", "vol", "volume", "chapter", "season", "episode"]);
 const SEQUEL_MARKER = /(^|\s)(part|chapter|book|volume|vol|season|episode)\s*\d+(\s|$)|\b(ii|iii|iv|v|vi|vii|viii|ix|x)\b|\b\d+\b/i;
@@ -54,8 +61,10 @@ export function seriesKey(item) {
   // distinct from TMDb/IGDB's numeric collectionId/franchiseId -- keeping the `provider:` prefix
   // on all three still guarantees no cross-provider collision even though the underlying values
   // have different shapes.
-  const providerKey = item?.providerMeta?.collectionId ?? item?.providerMeta?.franchiseId ?? item?.providerMeta?.seriesKey ?? null;
+  const providerKey = item?.providerMeta?.collectionId ?? item?.providerMeta?.franchiseId ?? bookSeriesIds(item)[0] ?? null;
   if (providerKey != null) return `provider:${item?.provider || "unknown"}:${providerKey}`;
+  const seriesName = isBook(item) ? bookSeriesNames(item)[0] : null;
+  if (seriesName) return `series:${seriesName}`;
   const prefix = titleSeriesPrefix(item?.title);
   if (prefix.length) return `title:${prefix.join(" ")}`;
   const words = stripSequenceTokens(significantWords(item?.title));
@@ -66,15 +75,42 @@ export function hasSeriesSignal(item) {
   return Boolean(seriesKey(item));
 }
 
+// #142 follow-up: Open Library returns series_key as an array (["OL331367L"]), and items stored
+// before this fix kept the array, so the old `aId === bId` compared two arrays and never matched
+// (Dune -> Dune Messiah slipped through despite both carrying "OL331367L"). Book ids are compared as
+// sets of strings now.
+function providerRelationIds(item) {
+  const id = item.providerMeta?.collectionId ?? item.providerMeta?.franchiseId ?? null;
+  if (id != null) return [String(id)];
+  return bookSeriesIds(item);
+}
+
 // #142: Open Library's series_key (a string like "/works/OL...S") joins collectionId/franchiseId
 // as a real relationship signal for books, the same way those two already work for movies/TV/games.
 // Namespacing by provider (via `a.provider`/`b.provider`) means a numeric TMDb collectionId can
 // never collide with an Open Library series_key string just because two unrelated ids happened to
 // stringify the same way.
 function shareCollection(a, b) {
-  const aId = a.providerMeta?.collectionId ?? a.providerMeta?.franchiseId ?? a.providerMeta?.seriesKey ?? null;
-  const bId = b.providerMeta?.collectionId ?? b.providerMeta?.franchiseId ?? b.providerMeta?.seriesKey ?? null;
-  return Boolean(aId != null && bId != null && a.provider === b.provider && aId === bId);
+  if (a.provider !== b.provider) return false;
+  const aIds = new Set(providerRelationIds(a));
+  return aIds.size > 0 && providerRelationIds(b).some((id) => aIds.has(id));
+}
+
+// #142: same author, and one title's significant words are the other's opening or closing words:
+// "Dune" -> "Dune Messiah", "Children of Dune", "God Emperor of Dune". Needs at least four letters
+// of shared title so a very short title cannot match by accident.
+function extendsSameAuthorTitle(a, b) {
+  if (!isBook(a) || !isBook(b) || !sameBookAuthor(a, b)) return false;
+  const wa = significantWords(a.title);
+  const wb = significantWords(b.title);
+  const [shorter, longer] = wa.length <= wb.length ? [wa, wb] : [wb, wa];
+  if (!shorter.length || shorter.length === longer.length || shorter.join("").length < 4) return false;
+  const matchesAt = (offset) => shorter.every((word, index) => longer[offset + index] === word);
+  return matchesAt(0) || matchesAt(longer.length - shorter.length);
+}
+
+function isSameBookSeries(a, b) {
+  return booksShareSeriesName(a, b) || extendsSameAuthorTitle(a, b);
 }
 
 function isNearDuplicateTitle(candidate, evidenceItem) {
@@ -107,6 +143,7 @@ function isBatchContinuation(candidate, picked) {
   if (!candidate?.title || !picked?.title) return false;
   if (candidate.id === picked.id) return true;
   if (shareCollection(candidate, picked)) return true;
+  if (isSameBookSeries(candidate, picked)) return true;
   if (isNearDuplicateTitle(candidate, picked)) return true;
   if (isNumberedContinuation(candidate, picked)) return true;
   const prefixA = titleSeriesPrefix(candidate.title);
@@ -121,6 +158,7 @@ export function isFranchiseContinuation(candidate, evidenceItem) {
   if (!candidate?.title || !evidenceItem?.title) return false;
   if (candidate.id === evidenceItem.id) return true;
   if (shareCollection(candidate, evidenceItem)) return true;
+  if (isSameBookSeries(candidate, evidenceItem)) return true;
   if (isNearDuplicateTitle(candidate, evidenceItem)) return true;
   if (isNumberedContinuation(candidate, evidenceItem)) return true;
   if (sharesFranchiseName(candidate, evidenceItem)) return true;
@@ -152,7 +190,7 @@ export function applyNoveltyGuard(candidates, evidenceItems = []) {
       if (!item.seriesExperience || item.seriesExperience === "unseen-rest") return false;
       const a = seriesKey(candidate);
       const b = seriesKey(item);
-      return Boolean(a && b && a === b);
+      return Boolean(a && b && a === b) || shareCollection(candidate, item) || isSameBookSeries(candidate, item);
     });
 
     // Batch diversity: once one installment has earned a slot, obvious sibling installments do not
