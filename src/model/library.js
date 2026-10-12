@@ -59,3 +59,12 @@ export function migrateStarterFavorites(state) {
   }
   state.selectedFavorites.clear();
 }
+
+// Where "Change favorites" goes (#103 item 7, #117). Before onboarding finishes, the four-slot
+// Favorites screen is how favorites are chosen. After it, migrateStarterFavorites has moved them into
+// Library and emptied selectedFavorites, so that screen would read "0 of 4" with onboarding copy.
+// Returning users manage favorites where they now live: Library, Tried, filtered to Favorites.
+export function favoritesDestination(state) {
+  if (!state.onboarded) return { screen: "favorites" };
+  return { screen: "library", libraryView: "tried", libraryReactionFilter: "favorites" };
+}

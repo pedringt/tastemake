@@ -25,6 +25,27 @@ const { findExisting } = await import("../../src/model/search.js");
 
 const { check, eq, finish } = createSuite("library tests");
 
+const { favoritesDestination } = await import("../../src/model/library.js");
+
+// #103 item 7 / #117: "Change favorites" must not send a returning user to the onboarding screen,
+// which after migration reads "0 of 4". It opens Library > Tried > Favorites instead.
+{
+  const s = fresh();
+  eq("before onboarding, Change favorites opens the Favorites setup screen", favoritesDestination(s).screen, "favorites");
+  const item = { id: "openlibrary-book-OL1W", provider: "openlibrary", providerId: "OL1W", title: "A Book", type: "book", domains: ["read"] };
+  s.customItems[item.id] = item;
+  s.selectedFavorites.add(item.id);
+  s.onboarded = true;
+  migrateStarterFavorites(s);
+  eq("after onboarding the setup screen's selection is empty (why it cannot be the destination)", s.selectedFavorites.size, 0);
+  const dest = favoritesDestination(s);
+  eq("a returning user's Change favorites opens Library", dest.screen, "library");
+  eq("on the Tried view", dest.libraryView, "tried");
+  eq("filtered to Favorites", dest.libraryReactionFilter, "favorites");
+  check("where the migrated favorite is listed", libraryItems(s).favorites.some((entry) => entry.id === item.id));
+}
+
+
 // Saved is the default Library view.
 const state1 = fresh();
 eq("Saved is the default library view on a fresh visit", state1.libraryView, "saved");

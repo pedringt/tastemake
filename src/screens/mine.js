@@ -151,29 +151,6 @@ function tastebreakList() {
     </section>`;
 }
 
-// #29 (2026-09-23): a one-sentence definition for each concept, so the navigation doesn't have to be
-// figured out by trial and error. Deliberately just definitions — no new UX, no attempt at testing
-// whether they land with a new user (that needs someone other than Paige, tracked separately in #29).
-const CONCEPTS = [
-  ["Favorites", "The handful of already-known loves you started from."],
-  ["Browse", "A catalog to explore by category and genre. Looking around never counts as taste evidence."],
-  ["Recommendations", "Tastemake's current best guesses at what fits, and a way to test them."],
-  ["Taste Profile", "What Tastemake thinks the patterns in your reactions add up to, and how sure it is."],
-  ["Library", "Things you've actually tried and reacted to."],
-  ["Saved", "Things you want to try. Saved, not evidence yet."],
-  ["My Tastemake (here)", "Everything you've told it, including the things that count against a pattern, kept in the background rather than a big visible list."]
-];
-
-function conceptsBlock() {
-  return `
-    <section class="mine-block mine-concepts" aria-labelledby="mine-concepts">
-      <h2 id="mine-concepts">What each part means</h2>
-      <dl class="mine-concept-list">
-        ${CONCEPTS.map(([term, def]) => `<div class="mine-concept"><dt>${esc(term)}</dt><dd>${esc(def)}</dd></div>`).join("")}
-      </dl>
-    </section>`;
-}
-
 function setupBlock() {
   const scope = state.setupAreas.has("all")
     ? "All"
@@ -229,7 +206,7 @@ function resetBlock() {
   return `
     <section class="mine-block" aria-labelledby="mine-reset">
       <h2 id="mine-reset">Start over</h2>
-      <p class="mine-blurb">Clears everything you told Tastemake in this visit: favorites, reactions, Saved saves, things you added, corrections and these settings. Your look stays.</p>
+      <p class="mine-blurb">Clears everything you have told Tastemake in this browser, including on earlier visits: favorites, reactions, Saved items, things you added, corrections and these settings. Your look stays.</p>
       ${state.resetArmed
         ? `<div class="mine-actions"><button class="button button-primary" type="button" data-mine-reset="confirm">Yes, clear everything</button><button class="button button-quiet" type="button" data-mine-reset="cancel">Cancel</button></div>`
         : `<div class="mine-actions"><button class="button button-secondary" type="button" data-mine-reset="arm">Start over</button></div>`}

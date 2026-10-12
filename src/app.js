@@ -13,6 +13,7 @@ import { screenFromPath, writeRoute } from "./router.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
 import { migrateStarterFavorites } from "./model/library.js";
 import { renderFavorites } from "./screens/favorites.js";
+import { favoritesDestination } from "./model/library.js";
 import { renderBrowse } from "./screens/browse.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
@@ -330,11 +331,12 @@ async function resolveExistingCustomItems() {
   }
 }
 
-function navigate(screen, { replace = false, scroll = true } = {}) {
+function navigate(screen, { replace = false, scroll = true, libraryView = "saved" } = {}) {
   if (!canAccess(screen)) return;
   // Saved is the Library's actionable home. Re-entering Library starts there rather than
-  // resurrecting whichever secondary tab happened to be open last time.
-  if (screen === "library" && state.screen !== "library") state.libraryView = "saved";
+  // resurrecting whichever secondary tab happened to be open last time, unless the caller is
+  // deliberately opening another view (Change favorites opens Tried > Favorites).
+  if (screen === "library" && state.screen !== "library") state.libraryView = libraryView;
   // Leaving the page a request was started from makes its answer irrelevant (#42).
   if (state.aiRequest && screen !== state.aiRequest.screen) cancelRequest(state, "you moved to another page while it was thinking");
   if (screen !== "browse") {
@@ -894,7 +896,11 @@ app.addEventListener("click", async (event) => {
     navigate("setup");
   }
   if (action === "setup-done") finishSetup();
-  if (action === "back-favorites") navigate("favorites");
+  if (action === "back-favorites") {
+    const destination = favoritesDestination(state);
+    if (destination.libraryReactionFilter) state.libraryReactionFilter = destination.libraryReactionFilter;
+    navigate(destination.screen, destination.libraryView ? { libraryView: destination.libraryView } : {});
+  }
   if (action === "view-model") navigate("model");
   if (action === "retry-profile") maybeRefreshProfile({ force: true });
   if (action === "show-recs") {
