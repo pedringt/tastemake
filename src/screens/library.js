@@ -8,7 +8,7 @@ import { renderTastebreakPanel } from "../components/tastebreak.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
-import { blurbOf } from "../catalog/synopsis.mjs";
+import { assessSynopsis, blurbOf } from "../catalog/synopsis.mjs";
 import { renderArtwork } from "../components/artwork.js";
 
 // #94: Library has one simple mental model — Recommendations is discovery, Library is your stuff.
@@ -31,16 +31,31 @@ function resolutionLabel(item) {
 // #103 items 1/2/10: per-media-type detail fields, rendered only when present. `detail` comes from
 // fetchCatalogItemDetail (fetched lazily on expand, see app.js) and every field is optional — sparse
 // upstream data means an omitted line, never a label with nothing after it.
+export function formatRuntime(minutes) {
+  const total = Math.round(Number(minutes));
+  if (!Number.isFinite(total) || total <= 0) return "";
+  const hours = Math.floor(total / 60);
+  const rest = total % 60;
+  if (!hours) return `${rest} min`;
+  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+}
+
 export function renderDetailMeta(item, detail = {}) {
   const lines = [];
-  if (item.type === "book" && item.by) lines.push(["Author", item.by]);
+  if (item.type === "book") {
+    if (item.by) lines.push(["Author", item.by]);
+    const pages = Math.round(Number(detail.pageCount));
+    if (Number.isFinite(pages) && pages > 0) lines.push(["Pages", String(pages)]);
+  }
   if (item.type === "movie") {
     if (detail.director) lines.push(["Director", detail.director]);
     if (detail.cast) lines.push(["Cast", detail.cast.join(", ")]);
+    if (formatRuntime(detail.runtime)) lines.push(["Runtime", formatRuntime(detail.runtime)]);
   }
   if (item.type === "tv") {
     if (detail.creator) lines.push(["Creator", detail.creator]);
     if (detail.cast) lines.push(["Cast", detail.cast.join(", ")]);
+    if (detail.yearsRun) lines.push(["Years", detail.yearsRun]);
   }
   if (item.type === "game") {
     if (detail.developer) lines.push(["Developer", detail.developer]);
@@ -52,6 +67,30 @@ export function renderDetailMeta(item, detail = {}) {
     <dl class="library-detail-meta">
       ${lines.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join("")}
     </dl>`;
+}
+
+// Open Library search gives books no synopsis, so a book's `about` is a placeholder ("First published
+// 1965.") until the expanded card fetches the work's own description. That description replaces the
+// placeholder only: a real synopsis already on the item is kept. It goes through the same synopsis
+// check as every other provider text, and Open Library's trailing source notes/links are dropped.
+const BOOK_PLACEHOLDER = /^(First published \d{3,4}\.|Book from Open Library\.)$/;
+
+export function detailDescription(item, detail = {}) {
+  if (item?.type !== "book" || !detail?.description) return null;
+  if (item.about && !BOOK_PLACEHOLDER.test(String(item.about).trim())) return null;
+  let text = String(detail.description)
+    .split(/\s-{3,}\s|\s\(\[source\]|\s\[\d+\]:\s/i)[0]
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return null;
+  if (text.length > 480) {
+    const cut = text.slice(0, 480);
+    const sentence = cut.lastIndexOf(". ");
+    text = sentence > 200 ? cut.slice(0, sentence + 1) : `${cut.slice(0, cut.lastIndexOf(" "))}…`;
+  }
+  if (!assessSynopsis({ about: text }).ok) return null;
+  return text;
 }
 
 // ---- Saved (formerly the standalone "Try Next" screen) -------------------------------------

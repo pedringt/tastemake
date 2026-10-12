@@ -11,12 +11,13 @@
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
-import { migrateStarterFavorites } from "./model/library.js";
+import { libraryItemById, migrateStarterFavorites } from "./model/library.js";
 import { renderFavorites } from "./screens/favorites.js";
+import { favoritesDestination } from "./model/library.js";
 import { renderBrowse } from "./screens/browse.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
-import { renderDetailMeta, renderLibrary } from "./screens/library.js";
+import { detailDescription, renderDetailMeta, renderLibrary } from "./screens/library.js";
 import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/client.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
@@ -27,7 +28,7 @@ import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
 import { fetchBrowsePage } from "./catalog/browse-client.js";
 import { mergeUniqueBrowseItems } from "./model/browse.js";
-import { applyResolvedCatalogItem, applySearchAction, markCustomResolution, searchableItems } from "./model/search.js";
+import { applyResolvedCatalogItem, applySearchAction, markCustomResolution } from "./model/search.js";
 import { isExperienced, isStrongPositive } from "./model/evidence.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
@@ -330,11 +331,12 @@ async function resolveExistingCustomItems() {
   }
 }
 
-function navigate(screen, { replace = false, scroll = true } = {}) {
+function navigate(screen, { replace = false, scroll = true, libraryView = "saved" } = {}) {
   if (!canAccess(screen)) return;
   // Saved is the Library's actionable home. Re-entering Library starts there rather than
-  // resurrecting whichever secondary tab happened to be open last time.
-  if (screen === "library" && state.screen !== "library") state.libraryView = "saved";
+  // resurrecting whichever secondary tab happened to be open last time, unless the caller is
+  // deliberately opening another view (Change favorites opens Tried > Favorites).
+  if (screen === "library" && state.screen !== "library") state.libraryView = libraryView;
   // Leaving the page a request was started from makes its answer irrelevant (#42).
   if (state.aiRequest && screen !== state.aiRequest.screen) cancelRequest(state, "you moved to another page while it was thinking");
   if (screen !== "browse") {
@@ -894,7 +896,11 @@ app.addEventListener("click", async (event) => {
     navigate("setup");
   }
   if (action === "setup-done") finishSetup();
-  if (action === "back-favorites") navigate("favorites");
+  if (action === "back-favorites") {
+    const destination = favoritesDestination(state);
+    if (destination.libraryReactionFilter) state.libraryReactionFilter = destination.libraryReactionFilter;
+    navigate(destination.screen, destination.libraryView ? { libraryView: destination.libraryView } : {});
+  }
   if (action === "view-model") navigate("model");
   if (action === "retry-profile") maybeRefreshProfile({ force: true });
   if (action === "show-recs") {
@@ -963,13 +969,25 @@ document.addEventListener("keydown", (event) => {
   trigger.focus({ preventScroll: true });
 });
 
+// #103 (Paige, Oct 12): a returning user who opens /favorites directly lands on their Favorites
+// in the Library (as "Change favorites" does), not on the first-run "0 of 4" setup step.
+function redirectReturningFavorites() {
+  if (!state.onboarded || state.screen !== "favorites") return false;
+  const destination = favoritesDestination(state);
+  state.screen = destination.screen;
+  state.libraryView = destination.libraryView;
+  state.libraryReactionFilter = destination.libraryReactionFilter;
+  return true;
+}
+
 window.addEventListener("popstate", () => {
   const next = screenFromPath(undefined, { onboarded: state.onboarded });
   const fallback = state.onboarded ? "recommendations" : "favorites";
   state.screen = canAccess(next) ? next : fallback;
   if (state.screen === "library") state.libraryView = "saved";
+  redirectReturningFavorites();
   markOnboarded(state.screen);
-  if (state.screen !== next) writeRoute(fallback, { replace: true });
+  if (state.screen !== next) writeRoute(state.screen, { replace: true });
   render();
   updateStepper();
   focusApp();
@@ -977,22 +995,25 @@ window.addEventListener("popstate", () => {
   maybeLoadBrowse();
 });
 
-// #103 items 1/2: per-media-type detail (director/cast, creator/cast, developer/publisher/platforms)
-// is fetched lazily the first time a Library card is actually expanded, never during bulk render, so
-// it never adds latency to Recommendations/search. Injected directly into the placeholder slot so a
-// slow/failed fetch cannot blank out the rest of an already-open card.
-const loadedDetailFor = new Set();
+// #103 items 1/2: per-media-type detail (director/cast/runtime, creator/cast/years, author/pages/
+// description, developer/publisher/platforms) is fetched lazily when a Library card is expanded, never
+// during bulk render, so it never adds latency to Recommendations/search. Injected directly into the
+// placeholder slot so a slow/failed fetch cannot blank out the rest of an already-open card.
+// fetchCatalogItemDetail caches per item, so re-opening a card after a re-render refills it without
+// another request. libraryItemById finds reacted-to items too, not only added/search ones.
 app.addEventListener("toggle", async (event) => {
   const card = event.target.closest?.(".library-card-compact[open]");
-  if (!card) return;
+  if (!card || event.target !== card) return;
   const itemId = card.dataset.libraryId || card.dataset.bookmarkId;
-  if (!itemId || loadedDetailFor.has(itemId)) return;
-  const item = searchableItems(state).find((candidate) => candidate.id === itemId);
+  if (!itemId) return;
+  const item = libraryItemById(state, itemId);
   if (!item) return;
-  loadedDetailFor.add(itemId);
   const detail = await fetchCatalogItemDetail(item);
   const slot = card.querySelector(`[data-detail-slot="${CSS.escape(itemId)}"]`);
   if (slot) slot.innerHTML = renderDetailMeta(item, detail);
+  const description = detailDescription(item, detail);
+  const blurb = card.querySelector(".library-blurb");
+  if (description && blurb) blurb.textContent = description;
 }, true);
 
 initSearch({
@@ -1013,6 +1034,7 @@ initSearch({
 const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
 state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "setup");
 if (state.screen === "library") state.libraryView = "saved";
+redirectReturningFavorites();
 markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();

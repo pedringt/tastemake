@@ -176,6 +176,17 @@ export async function run() {
   check("Keep discovering makes a second catalog request",recCalls===2,recCalls);
   check("second request never uses a seeded local pool",state.recommendationSets.length===2&&state.recommendationSets.flat().every(x=>/^tmdb-movie-7/.test(x.id)),state.recommendationSets.flat().map(x=>x.id).join(","));
 
+  // #103 (Paige, Oct 12): a returning user who opens /favorites directly lands on their Favorites in
+  // the Library, not the first-run "0 of 4" setup step. Back/forward goes through the same path.
+  check("this user is onboarded by now",state.onboarded===true);
+  history.pushState({}, "", "/favorites");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  await sleep(150);
+  check("returning /favorites opens the Library",state.screen==="library",state.screen);
+  check("on Tried, filtered to Favorites",state.libraryView==="tried"&&state.libraryReactionFilter==="favorites",`${state.libraryView}/${state.libraryReactionFilter}`);
+  check("the address no longer reads /favorites",location.pathname.replace(/\/$/,"")!=="/favorites",location.pathname);
+  check("no first-run '0 of 4' screen",!/0 of 4/.test(document.body.textContent));
+
   // Look picker reflects the two replacement concepts and retained skins.
   document.querySelector("[data-open-look]")?.click();
   await sleep(120);
