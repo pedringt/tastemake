@@ -11,12 +11,12 @@
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
-import { migrateStarterFavorites } from "./model/library.js";
+import { libraryItemById, migrateStarterFavorites } from "./model/library.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { renderBrowse } from "./screens/browse.js";
 import { renderProfile } from "./screens/profile.js";
 import { renderRecommendations } from "./screens/recommendations.js";
-import { renderDetailMeta, renderLibrary } from "./screens/library.js";
+import { detailDescription, renderDetailMeta, renderLibrary } from "./screens/library.js";
 import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/client.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
@@ -27,7 +27,7 @@ import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
 import { fetchBrowsePage } from "./catalog/browse-client.js";
 import { mergeUniqueBrowseItems } from "./model/browse.js";
-import { applyResolvedCatalogItem, applySearchAction, markCustomResolution, searchableItems } from "./model/search.js";
+import { applyResolvedCatalogItem, applySearchAction, markCustomResolution } from "./model/search.js";
 import { isExperienced, isStrongPositive } from "./model/evidence.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
@@ -977,22 +977,25 @@ window.addEventListener("popstate", () => {
   maybeLoadBrowse();
 });
 
-// #103 items 1/2: per-media-type detail (director/cast, creator/cast, developer/publisher/platforms)
-// is fetched lazily the first time a Library card is actually expanded, never during bulk render, so
-// it never adds latency to Recommendations/search. Injected directly into the placeholder slot so a
-// slow/failed fetch cannot blank out the rest of an already-open card.
-const loadedDetailFor = new Set();
+// #103 items 1/2: per-media-type detail (director/cast/runtime, creator/cast/years, author/pages/
+// description, developer/publisher/platforms) is fetched lazily when a Library card is expanded, never
+// during bulk render, so it never adds latency to Recommendations/search. Injected directly into the
+// placeholder slot so a slow/failed fetch cannot blank out the rest of an already-open card.
+// fetchCatalogItemDetail caches per item, so re-opening a card after a re-render refills it without
+// another request. libraryItemById finds reacted-to items too, not only added/search ones.
 app.addEventListener("toggle", async (event) => {
   const card = event.target.closest?.(".library-card-compact[open]");
-  if (!card) return;
+  if (!card || event.target !== card) return;
   const itemId = card.dataset.libraryId || card.dataset.bookmarkId;
-  if (!itemId || loadedDetailFor.has(itemId)) return;
-  const item = searchableItems(state).find((candidate) => candidate.id === itemId);
+  if (!itemId) return;
+  const item = libraryItemById(state, itemId);
   if (!item) return;
-  loadedDetailFor.add(itemId);
   const detail = await fetchCatalogItemDetail(item);
   const slot = card.querySelector(`[data-detail-slot="${CSS.escape(itemId)}"]`);
   if (slot) slot.innerHTML = renderDetailMeta(item, detail);
+  const description = detailDescription(item, detail);
+  const blurb = card.querySelector(".library-blurb");
+  if (description && blurb) blurb.textContent = description;
 }, true);
 
 initSearch({

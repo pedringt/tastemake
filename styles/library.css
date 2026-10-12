@@ -207,6 +207,9 @@
   min-width:0;
 }
 .library-card-compact .library-tape { display:none; }
+/* #103 item 5: a closed card keeps its own height. Stretched to an open neighbour's row height it read
+   as a large blank card with a lone "+". */
+.library-card-compact:not([open]) { align-self:start; }
 .library-compact-summary {
   list-style:none;
   display:grid;

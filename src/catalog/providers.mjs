@@ -239,10 +239,35 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
   return {
     creator: creator.length ? creator.join(", ") : null,
     cast: cast.length ? cast : null,
-    yearsRun: row.first_air_date && row.last_air_date
-      ? `${String(row.first_air_date).slice(0, 4)}–${String(row.last_air_date).slice(0, 4)}`
-      : null
+    yearsRun: tvYearsRun(row)
   };
+}
+
+// A series still in production has a last_air_date (its latest episode), not an end year, so it
+// reads "2023–present" rather than a run that looks finished.
+export function tvYearsRun(row) {
+  const start = row?.first_air_date ? String(row.first_air_date).slice(0, 4) : "";
+  if (!start) return null;
+  if (row.in_production === true) return `${start}–present`;
+  const end = row.last_air_date ? String(row.last_air_date).slice(0, 4) : "";
+  if (!end) return null;
+  return end === start ? start : `${start}–${end}`;
+}
+
+// Page count is not on the work record. Open Library's search index carries a median across editions
+// for the work, so it is one small keyed lookup, made only alongside the work detail on expand.
+async function openLibraryPageCount(providerId, env, fetchImpl) {
+  try {
+    const url = `${OL_SEARCH}?q=${encodeURIComponent(`key:/works/${providerId}`)}&fields=key,number_of_pages_median&limit=1`;
+    const response = await fetchWithTimeout(fetchImpl, url, {
+      headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
+    });
+    if (!response.ok) return null;
+    const pages = Math.round(Number((await response.json()).docs?.[0]?.number_of_pages_median));
+    return Number.isFinite(pages) && pages > 0 ? pages : null;
+  } catch {
+    return null;
+  }
 }
 
 async function openLibraryDetail(providerId, env, fetchImpl) {
@@ -357,14 +382,19 @@ export async function applyTaglineFallback(items, { env = process.env, fetchImpl
   }));
 }
 
-// Books already carry their one required field (author) from search; Open Library's work-level
-// response does not reliably add more per-item detail beyond what search already returns, so there
-// is no separate detail call for books.
+// Books carry author and year from search. The detail adds what search does not have: the work's
+// own description and subjects, and a page count from the search index (both calls run together).
 export async function fetchItemDetail(item, { env = process.env, fetchImpl = fetch } = {}) {
   if (!item?.providerId) return {};
   try {
     if (item.provider === "tmdb") return await tmdbDetail(item.providerId, item.type, env, fetchImpl);
-    if (item.provider === "openlibrary") return await openLibraryDetail(item.providerId, env, fetchImpl);
+    if (item.provider === "openlibrary") {
+      const [detail, pageCount] = await Promise.all([
+        openLibraryDetail(item.providerId, env, fetchImpl),
+        openLibraryPageCount(item.providerId, env, fetchImpl)
+      ]);
+      return { ...detail, pageCount };
+    }
     if (item.provider === "igdb") return await igdbDetail(item.providerId, env, fetchImpl);
   } catch {
     // Sparse/unavailable detail is expected (item 2): omit the fields rather than fail the card.
@@ -378,7 +408,7 @@ export async function fetchItemDetail(item, { env = process.env, fetchImpl = fet
 // This never blocks recommendation generation when called through enrichCanonicalItemWriteBehind.
 export async function fetchAndPersistItemDetail(item, { env = process.env, fetchImpl = fetch, query } = {}) {
   if (!item?.provider || !item?.providerId || !item?.type) return {};
-  const cacheKey = `canonical-enrichment:v1:${item.provider}:${item.type}:${item.providerId}`;
+  const cacheKey = `canonical-enrichment:v2:${item.provider}:${item.type}:${item.providerId}`;
   const detail = fetchImpl !== fetch
     ? await fetchItemDetail(item, { env, fetchImpl })
     : await cachedValue(cacheKey, () => fetchItemDetail(item, { env, fetchImpl }), { ttl: 86400, tags: ["canonical-enrichment"] });

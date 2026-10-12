@@ -8,8 +8,8 @@ import { createSuite } from "./lib/assert.mjs";
 
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
-const { renderDetailMeta } = await import("../../src/screens/library.js");
-const { fetchItemDetail, googleBooksSeriesDetail } = await import("../../src/catalog/providers.mjs");
+const { detailDescription, formatRuntime, renderDetailMeta } = await import("../../src/screens/library.js");
+const { fetchItemDetail, googleBooksSeriesDetail, tvYearsRun } = await import("../../src/catalog/providers.mjs");
 
 const { check, finish } = createSuite("metadata tests");
 
@@ -55,8 +55,12 @@ const detailNoId = await fetchItemDetail({ provider: "tmdb", type: "movie" }, { 
 check("fetchItemDetail resolves to {} when there is no providerId to look up", JSON.stringify(detailNoId) === "{}");
 
 // #135: Open Library work detail is authoritative provider enrichment, not AI inference.
+const openLibraryUrls = [];
 const openLibraryFetch = async (url) => {
-  check("book detail uses the Open Library work endpoint", String(url).includes("/works/OL262758W.json"), String(url));
+  openLibraryUrls.push(String(url));
+  if (String(url).includes("/search.json")) {
+    return { ok: true, json: async () => ({ docs: [{ key: "/works/OL262758W", number_of_pages_median: 1007.4 }] }) };
+  }
   return {
     ok: true,
     json: async () => ({
@@ -73,6 +77,61 @@ const bookDetail = await fetchItemDetail(
 check("Open Library detail returns description", /epic fantasy novel/.test(bookDetail.description ?? ""));
 check("Open Library detail returns subjects without inventing them", bookDetail.subjects?.includes("Epic fantasy"));
 check("Open Library detail preserves provider-supplied series when present", bookDetail.seriesKey === "The Stormlight Archive");
+check("book detail uses the Open Library work endpoint", openLibraryUrls.some((url) => url.includes("/works/OL262758W.json")));
+check("book page count is a keyed search-index lookup for the same work", openLibraryUrls.some((url) => url.includes("/search.json") && decodeURIComponent(url).includes("key:/works/OL262758W") && url.includes("number_of_pages_median")));
+check("Open Library detail returns the median page count as a whole number", bookDetail.pageCount === 1007);
+
+{
+  const noPages = await fetchItemDetail(
+    { provider: "openlibrary", providerId: "OL1W", type: "book" },
+    { env: {}, fetchImpl: async (url) => String(url).includes("/search.json")
+      ? { ok: true, json: async () => ({ docs: [{}] }) }
+      : { ok: true, json: async () => ({ description: "A book." }) } }
+  );
+  check("a missing page count is null, and the rest of the book detail survives", noPages.pageCount === null && noPages.description === "A book.");
+  const pagesFail = await fetchItemDetail(
+    { provider: "openlibrary", providerId: "OL1W", type: "book" },
+    { env: {}, fetchImpl: async (url) => { if (String(url).includes("/search.json")) throw new Error("down"); return { ok: true, json: async () => ({ description: "A book." }) }; } }
+  );
+  check("a failed page-count lookup does not lose the work description", pagesFail.description === "A book." && pagesFail.pageCount === null);
+}
+
+// TV run years: an ongoing series must not read as finished.
+check("tv still in production reads start–present", tvYearsRun({ first_air_date: "2023-01-15", last_air_date: "2025-05-25", in_production: true }) === "2023–present");
+check("ended tv reads start–end", tvYearsRun({ first_air_date: "2011-04-17", last_air_date: "2019-05-19", in_production: false }) === "2011–2019");
+check("a one-season ended show reads as one year", tvYearsRun({ first_air_date: "2019-05-06", last_air_date: "2019-06-03", in_production: false }) === "2019");
+check("tv with no first air date has no run years", tvYearsRun({ last_air_date: "2019-06-03" }) === null);
+
+// Each media type shows its own extra fields, and only when present.
+{
+  const movie = renderDetailMeta({ id: "m9", type: "movie" }, { director: "Andrew Lau", runtime: 128 });
+  check("movie shows a runtime in hours and minutes", movie.includes("Runtime") && movie.includes("2h 8m"));
+  check("movie with no runtime omits the Runtime line", !renderDetailMeta({ id: "m9", type: "movie" }, { director: "X" }).includes("Runtime"));
+  check("short runtimes read in minutes", formatRuntime(45) === "45 min" && formatRuntime(120) === "2h" && formatRuntime(0) === "" && formatRuntime(null) === "");
+  const tv = renderDetailMeta({ id: "t9", type: "tv" }, { creator: "Neil Druckmann", yearsRun: "2023–present" });
+  check("tv shows its run years", tv.includes("Years") && tv.includes("2023–present"));
+  check("tv never shows a Runtime or Pages line", !tv.includes("Runtime") && !tv.includes("Pages"));
+  const book = renderDetailMeta({ id: "b9", type: "book", by: "Frank Herbert" }, { pageCount: 608 });
+  check("book shows Author and Pages", book.includes("Author") && book.includes("Pages") && book.includes("608"));
+  check("book with no page count omits Pages", !renderDetailMeta({ id: "b9", type: "book", by: "Frank Herbert" }, { pageCount: null }).includes("Pages"));
+}
+
+// Book description: replaces only Open Library's placeholder about, cleaned and checked.
+{
+  const book = { id: "b10", type: "book", about: "First published 1997." };
+  check("a book description replaces the 'First published' placeholder", detailDescription(book, { description: "Harry Potter has never heard of Hogwarts." }) === "Harry Potter has never heard of Hogwarts.");
+  check("a book description replaces the 'Book from Open Library.' placeholder", detailDescription({ ...book, about: "Book from Open Library." }, { description: "A real summary." }) === "A real summary.");
+  check("a real synopsis already on the item is kept", detailDescription({ ...book, about: "A long-running epic about a desert planet." }, { description: "Other text." }) === null);
+  check("no description means no replacement", detailDescription(book, {}) === null && detailDescription(book, { description: null }) === null);
+  check("movies and games never take a book description", detailDescription({ id: "m", type: "movie", about: "First published 1997." }, { description: "x" }) === null);
+  check("Open Library source notes and markdown links are dropped",
+    detailDescription(book, { description: "A boy finds a [wizard school](https://example.com). ---------- Contains: [Book 1][1] [1]: https://openlibrary.org/x" }) === "A boy finds a wizard school.");
+  check("Open Library '([source][1])' trailers are dropped", detailDescription(book, { description: "A quiet novel. ([source][1]) [1]: https://x" }) === "A quiet novel.");
+  const long = `${"A sentence that goes on for a while. ".repeat(20)}`;
+  const clipped = detailDescription(book, { description: long });
+  check("a long description is clipped at a sentence end", clipped.length <= 480 && clipped.endsWith("."));
+  check("a flagged description is not shown", detailDescription(book, { description: "The story includes a graphic rape scene." }) === null);
+}
 
 // #142: Google Books structured series fallback. This is background-only in production; the unit
 // test verifies the exact API shape we consume without making a live network request.

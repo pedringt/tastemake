@@ -16,7 +16,7 @@ async function freshState() {
 const { saveBookmarkAction, saveLibraryAction } = await import("../../src/actions/library.js");
 const { saveQuickFeedback, saveFeedbackDetail, setRecommendationFavorite } = await import("../../src/actions/recommendations.js");
 const { bookmarkedFeedback, isBookmarked, isPositiveExperience } = await import("../../src/model/taste.js");
-const { libraryItems, migrateStarterFavorites } = await import("../../src/model/library.js");
+const { libraryItemById, libraryItems, migrateStarterFavorites } = await import("../../src/model/library.js");
 const { browseReadyForRecommendations } = await import("../../src/model/browse.js");
 const { itemStatus, applySearchAction } = await import("../../src/model/search.js");
 const { isStrongPositive } = await import("../../src/model/evidence.js");
@@ -201,6 +201,21 @@ check("correcting it away from Loved clears its Favorite flag (no Disliked/Liked
   state7.libraryFavorites.add(pick.id);
   saveFeedbackDetail(pick.id, "liked-before");
   check("changing the detail chip from Loved to Liked also clears a stale Favorite flag", !state7.libraryFavorites.has(pick.id));
+}
+
+// #103 items 1/2: an expanded Library card fetches detail for its item. Items reacted to from
+// Recommendations are only in feedbackByRecommendation, never customItems, so the lookup must find
+// them there (before this, director/cast never loaded for the main way items reach the Library).
+{
+  const s = fresh();
+  const recItem = { id: "tmdb-movie-2137", provider: "tmdb", providerId: "2137", title: "The Storm Riders", type: "movie", domains: ["movies"] };
+  s.feedbackByRecommendation[recItem.id] = { item: recItem, rating: "more", detail: "loved-before" };
+  check("a recommendation-sourced Library item is found for detail loading", libraryItemById(s, recItem.id) === recItem);
+  check("that item is not in customItems (the old lookup's only source)", !s.customItems[recItem.id]);
+  const added = { id: "custom-1", custom: true, title: "Hand added", type: "book", domains: ["read"] };
+  s.customItems[added.id] = added;
+  check("an added item with no reaction is still found", libraryItemById(s, added.id) === added);
+  check("an unknown id is null", libraryItemById(s, "nope") === null);
 }
 
 finish();
