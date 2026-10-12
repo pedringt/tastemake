@@ -96,6 +96,8 @@ Recommendation: start with option 3 (a larger curated pool the model ranks and e
 
 Nothing is asynchronous today. Needed: a clear "thinking" state that doesn't move the layout, keyboard focus and screen-reader announcements for arrival, a slow-response state, and a visible message when it fell back to deterministic picks.
 
+**Wait time (#120).** Measured, not guessed: live model time for recommendations runs about 6.7s at p50 and 11.4s at p95 (`/api/ai-metrics`, 30 days), with candidate retrieval on top. Three things make the wait shorter or feel shorter without touching the model, prompt, or any evidence rule: (1) once four favorites are chosen, the client sends the same state with `warm: true`, and the server runs candidate retrieval only (no model call, nothing returned) so the provider results are cached before the user asks; the real request waits for a still-running warm-up rather than repeating it. (2) The loading banner shows what the set starts from, the user's own favorites and tried count, as soon as the click lands. (3) Click-to-first-pick is recorded with `performance.measure("tastemake:recommendations:click-to-first-pick")` and, when Vercel Web Analytics is loaded, one "Recommendations shown" custom event carrying only the duration rounded to 100ms, first/more set, catalog/model source and whether a warm-up was used. No titles, ids or user text.
+
 ## 9. Privacy
 
 Taste data would go to a third party. Before any live call, write down: exactly what is sent (typed evidence, no names or contact details), what is logged and for how long, what visitors are told, and update the header label ("Prototype - no live AI"). No new categories of data should be sent without updating this note.

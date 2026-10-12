@@ -31,6 +31,7 @@ import { applyResolvedCatalogItem, applySearchAction, markCustomResolution, sear
 import { isExperienced, isStrongPositive } from "./model/evidence.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
+import { createCandidatePrefetcher } from "./ai/prefetch.js";
 import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
@@ -73,9 +74,14 @@ function canAccess(screen) {
   return screen === "favorites" || hasEnoughFavorites();
 }
 
+// #120: once four favorites are chosen, warm the first set's catalog candidates server-side while the
+// user is still on Favorites/Setup (see src/ai/prefetch.js). Retrieval only, never a model call.
+const candidatePrefetcher = createCandidatePrefetcher({ getState: () => state });
+
 function render() {
   persistState(state);
   app.innerHTML = views[state.screen]();
+  candidatePrefetcher.schedule(state);
 }
 
 function updateStepper() {
@@ -893,7 +899,7 @@ app.addEventListener("click", async (event) => {
   if (action === "retry-profile") maybeRefreshProfile({ force: true });
   if (action === "show-recs") {
     if (state.recommendationSets.length) navigate("recommendations");
-    else if (state.aiStatus !== AI_LOADING) await runInitialRecommendations({ render, updateStepper, announce, navigate });
+    else if (state.aiStatus !== AI_LOADING) await runInitialRecommendations({ render, updateStepper, announce, navigate, prefetch: candidatePrefetcher });
   }
 
   if (action === "view-bookmarks") {
@@ -920,7 +926,7 @@ document.addEventListener("click", (event) => {
 
   event.preventDefault();
   if (jump.dataset.stepJump === "recommendations" && !state.recommendationSets.length && state.aiStatus !== AI_LOADING) {
-    void runInitialRecommendations({ render, updateStepper, announce, navigate });
+    void runInitialRecommendations({ render, updateStepper, announce, navigate, prefetch: candidatePrefetcher });
     return;
   }
   navigate(jump.dataset.stepJump);
