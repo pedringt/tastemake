@@ -969,13 +969,25 @@ document.addEventListener("keydown", (event) => {
   trigger.focus({ preventScroll: true });
 });
 
+// #103 (Paige, Oct 12): a returning user who opens /favorites directly lands on their Favorites
+// in the Library (as "Change favorites" does), not on the first-run "0 of 4" setup step.
+function redirectReturningFavorites() {
+  if (!state.onboarded || state.screen !== "favorites") return false;
+  const destination = favoritesDestination(state);
+  state.screen = destination.screen;
+  state.libraryView = destination.libraryView;
+  state.libraryReactionFilter = destination.libraryReactionFilter;
+  return true;
+}
+
 window.addEventListener("popstate", () => {
   const next = screenFromPath(undefined, { onboarded: state.onboarded });
   const fallback = state.onboarded ? "recommendations" : "favorites";
   state.screen = canAccess(next) ? next : fallback;
   if (state.screen === "library") state.libraryView = "saved";
+  redirectReturningFavorites();
   markOnboarded(state.screen);
-  if (state.screen !== next) writeRoute(fallback, { replace: true });
+  if (state.screen !== next) writeRoute(state.screen, { replace: true });
   render();
   updateStepper();
   focusApp();
@@ -1019,6 +1031,7 @@ initSearch({
 const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
 state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "setup");
 if (state.screen === "library") state.libraryView = "saved";
+redirectReturningFavorites();
 markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();
