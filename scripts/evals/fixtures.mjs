@@ -150,3 +150,71 @@ export function badResponses(ctx) {
   if (intent) picks.push({ name: "pick resting only on intent", p: { itemId: ctx.candidates[0]?.id, why: "Tests whether a bookmark means real interest.", cites: [intent.ref], tests: null, kind: "pick" }, reason: /intent/ });
   return { hypotheses: cases, picks };
 }
+
+// Prompt-size fixture (#236 follow-up): a state shaped like a long-running production profile, for
+// measuring the Taste Profile prompt offline. Not in FIXTURES (it has no behavioral expectations) and
+// never sent to a model. It mirrors what the wire actually carries (src/ai/live-client.js): up to 96
+// experienced reactions with provider ids, resolved facts (year, creator, up to 12 genres) and refinements,
+// plus starter favorites and a full 12-pattern earlier profile citing that evidence (#228/#229).
+export function productionShapedState({ favoritesCount = 8, reactions = 96, patterns = 12, seedValue = 11 } = {}) {
+  seed = seedValue;
+  const pick = (list) => list[Math.floor(rnd() * list.length)];
+  const GENRES = {
+    movie: ["Drama", "Comedy", "Science Fiction", "Thriller", "Fantasy", "Horror", "Mystery", "Animation", "Adventure", "Romance"],
+    tv: ["Drama", "Comedy", "Sci-Fi & Fantasy", "Crime", "Mystery", "Animation", "Action & Adventure"],
+    book: ["Fiction", "Fantasy fiction", "Fiction, fantasy, epic", "Science fiction", "Mythology, Greek", "Literary fiction", "Fiction, historical, general", "Magic", "Dragons", "Women authors", "Fiction, coming of age", "Large type books"],
+    game: ["Adventure", "Puzzle", "Role-playing (RPG)", "Indie", "Shooter", "Platform", "Strategy"]
+  };
+  const PROVIDER = { movie: "tmdb", tv: "tmdb", book: "openlibrary", game: "igdb" };
+  const DOMAIN = { movie: "movies", tv: "tv", book: "read", game: "play" };
+  const REFS = { movie: ["characters", "story", "performances", "visual-style", "atmosphere-style"], tv: ["characters", "humor", "performances", "pacing"], book: ["writing-prose", "world-setting", "characters", "structure"], game: ["gameplay", "exploration", "atmosphere-style", "difficulty-challenge"] };
+  const makeItem = (i, type) => {
+    const provider = PROVIDER[type];
+    const providerId = provider === "openlibrary" ? `/works/OL${100000 + i * 37}W` : String(20000 + i * 113);
+    const id = provider === "openlibrary" ? `openlibrary-book-worksOL${100000 + i * 37}W` : provider === "tmdb" ? `tmdb-${type}-${providerId}` : `igdb-game-${providerId}`;
+    const genreCount = type === "book" ? 6 + Math.floor(rnd() * 7) : 2 + Math.floor(rnd() * 2);
+    const genres = [...new Set(Array.from({ length: genreCount }, () => pick(GENRES[type])))];
+    return { id, title: `Production-shaped ${type} title number ${i}`, type, domains: [DOMAIN[type]], provider, providerId, year: 1975 + Math.floor(rnd() * 50), by: `Creator Name ${i % 17}`, genres };
+  };
+  const types = ["movie", "tv", "book", "game"];
+  const favoritesList = Array.from({ length: favoritesCount }, (_, i) => makeItem(i, types[i % 4]));
+  const s = emptyState([]);
+  s.selectedFavorites = new Set(favoritesList.map((item) => item.id));
+  s.customItems = Object.fromEntries(favoritesList.map((item) => [item.id, item]));
+  const reacted = [];
+  for (let i = 0; i < reactions; i += 1) {
+    const item = makeItem(favoritesCount + i, types[i % 4]);
+    const how = i % 5 === 4 ? "disliked" : Math.floor(i / 4) % 2 ? "loved" : "liked";
+    react(s, item, how);
+    if (i % 3 === 0) s.feedbackByRecommendation[item.id].refinements = REFS[item.type].slice(0, 1 + (i % 3));
+    if (i % 3 === 1 && how === "loved") s.libraryFavorites.add(item.id);
+    reacted.push({ item, how });
+  }
+  const positive = [...favoritesList.map((item) => ({ item, how: "favorite" })), ...reacted.filter((r) => r.how !== "disliked")];
+  const negative = reacted.filter((r) => r.how === "disliked");
+  s.modelHypotheses = Array.from({ length: patterns }, (_, p) => {
+    const supports = [...new Set(Array.from({ length: 5 + (p % 5) }, () => pick(positive).item))];
+    const counters = p % 3 === 0 ? [pick(negative).item] : [];
+    const domains = [...new Set(supports.flatMap((item) => item.domains))];
+    return {
+      id: `ai-production-shaped-pattern-${p + 1}`,
+      title: `Production-shaped pattern ${p + 1}`,
+      claim: `Things land when they pair a specific, testable quality number ${p + 1} with deliberate pacing and a clear point of view, rather than relying on genre alone.`,
+      evidence: supports.map((item) => item.title).join(", "),
+      supports: supports.map((item) => `ev:${item.id}`),
+      counters: counters.map((item) => `ev:${item.id}`),
+      domains,
+      strength: p % 4 === 0 ? "strong" : p % 2 ? "supported" : "emerging",
+      status: "supported",
+      crossDomain: domains.length > 1 ? "tentative" : "untested",
+      context: null,
+      aiGenerated: true,
+      provenance: "Based on your reactions so far."
+    };
+  });
+  s.patternStatements = [
+    { hypothesisId: "ai-production-shaped-pattern-2", label: "Production-shaped pattern 2", says: "not-me", weight: null, context: null, authority: "user-confirmed" },
+    { hypothesisId: "ai-production-shaped-pattern-3", label: "Production-shaped pattern 3", says: "partial", weight: null, context: "some", excludedDomains: ["play"], authority: "user-confirmed" }
+  ];
+  return s;
+}

@@ -30,7 +30,8 @@ import { callAnthropic, thinkingTypeFor } from "../../src/server/anthropic.mjs";
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { estimateCostUsd } from "../../src/server/ai-metrics.mjs";
-import { buildHypothesisPrompt, PROFILE_MAX_OUTPUT_TOKENS } from "../../api/hypotheses.mjs";
+import { buildHypothesisRequest, PROFILE_MAX_OUTPUT_TOKENS } from "../../api/hypotheses.mjs";
+import { expandProfileRefs } from "../../src/ai/profile-context.js";
 import { normalizeHypothesisResponse, preserveExistingHypotheses } from "../../src/ai/validate.js";
 import { normalizeHypothesis } from "../../src/ai/hypothesis-profile.js";
 
@@ -114,7 +115,7 @@ const PRODUCERS = {
     infer: async (state) => {
       if (!liveProfile) return baseline.inferHypotheses(state);
       const pctx = buildContext(state);
-      const prompt = buildHypothesisPrompt(pctx, state.modelHypotheses);
+      const { prompt, refs } = buildHypothesisRequest(pctx, state.modelHypotheses);
       if (dryRun) {
         dryRunPlan.push({ fixture: "(profile)", count: 0, promptChars: prompt.length, estIn: estimateTokens(prompt), prompt, profile: true });
         return { hypotheses: [] };
@@ -127,7 +128,7 @@ const PRODUCERS = {
       spend.outputTokens += model.usage?.output_tokens ?? 0;
       spend.usd += priceFor(liveProfileModel, model.usage?.input_tokens ?? 0, model.usage?.output_tokens ?? 0);
       // Same post-validation as api/hypotheses.mjs: earlier patterns are carried forward unless two misses count against them.
-      return preserveExistingHypotheses(normalizeHypothesisResponse(model.json, pctx), pctx, state.modelHypotheses);
+      return preserveExistingHypotheses(normalizeHypothesisResponse(expandProfileRefs(model.json, refs), pctx), pctx, state.modelHypotheses);
     },
     pick: async (state, ctx) => {
       const count = Math.min(5, ctx.candidates.length);
