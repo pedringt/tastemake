@@ -31,6 +31,15 @@ export function libraryItems(state) {
   };
 }
 
+// The item behind a Library card, from where Library itself reads it: a reaction's own item (anything
+// reacted to from Recommendations or Browse lives only there), then an added/search item (starter
+// favorites live there too). Used to fetch an expanded card's detail.
+export function libraryItemById(state, id) {
+  return state.feedbackByRecommendation?.[id]?.item
+    ?? state.customItems?.[id]
+    ?? null;
+}
+
 // Tried and disliked stays out of the Library but is kept (as background evidence) and correctable.
 export function dislikedItems(state) {
   return Object.values(state.feedbackByRecommendation)
