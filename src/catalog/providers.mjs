@@ -4,6 +4,7 @@ import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { buildItemId } from "./item-id.mjs";
 import { fallbackSummary, sanitizeAbout } from "./synopsis.mjs";
 import { waitUntil } from "@vercel/functions";
+import { rankSearchResults, searchRelevance } from "./search-ranking.mjs";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
@@ -12,40 +13,6 @@ const GOOGLE_BOOKS = "https://www.googleapis.com/books/v1";
 
 const domainAllows = (domain, wanted) => domain === "all" || domain === wanted;
 const clean = (value, n = 280) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, n);
-const normalizeSearch = (value) => String(value ?? "")
-  .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, " ")
-  .trim();
-
-const stripLeadingArticle = (value) => normalizeSearch(value).replace(/^(the|a|an)\s+/, "");
-
-function searchRelevance(title, query, popularity = 0) {
-  const wanted = normalizeSearch(query);
-  const got = normalizeSearch(title);
-  const wantedCore = stripLeadingArticle(query);
-  const gotCore = stripLeadingArticle(title);
-  if (!wanted || !got) return 0;
-  const wantedWords = wanted.split(" ");
-  const gotWords = got.split(" ");
-  let score = 0;
-  if (got === wanted || (wantedCore && gotCore === wantedCore)) score = 10_000;
-  // Treat canonical title-family matches as near-exact. This puts things like
-  // "The Lord of the Rings: The Fellowship of the Ring" near a "lord of the rings"
-  // query instead of below obscure titles that merely happen to have a cleaner prefix.
-  else if (wantedCore && (gotCore.startsWith(`${wantedCore} `) || gotCore.startsWith(`${wantedCore}:`) || wantedCore.startsWith(`${gotCore} `))) score = 8_500;
-  else if (got.startsWith(wanted) || (wantedCore && gotCore.startsWith(wantedCore))) score = 7_000;
-  else if (got.includes(wanted) || (wantedCore && gotCore.includes(wantedCore))) score = 5_000;
-  else if (wantedWords.every((word) => gotWords.some((candidate) => candidate.startsWith(word)))) score = 3_000;
-  else if (wantedWords.every((word) => gotWords.includes(word))) score = 2_000;
-
-  // Within the same textual match class, prefer the provider's better-known/canonical result.
-  // This is especially useful when a title exists as both a flagship show and a minor documentary,
-  // or when a game search returns multiple editions of the same work.
-  return score - Math.max(0, gotWords.length - wantedWords.length) * 0.25 + Math.log10(Math.max(1, Number(popularity) || 0) + 1);
-}
-
 const uniq = (items) => {
   const seen = new Set();
   return items.filter((item) => item?.id && !seen.has(item.id) && seen.add(item.id));
@@ -98,14 +65,10 @@ async function searchTmdb(query, env, fetchImpl, domain = "all") {
   if (movies?.ok) rows.push(...((await movies.json()).results ?? []).slice(0, 12).map((row) => ({ row, type: "movie" })));
   if (tv?.ok) rows.push(...((await tv.json()).results ?? []).slice(0, 12).map((row) => ({ row, type: "tv" })));
 
-  // TMDb ranks movie and TV searches independently. Merge them by title relevance before returning
-  // Watch results so an exact flagship series is not automatically buried behind six weaker movies.
-  rows.sort((a, b) => {
-    const aTitle = a.type === "tv" ? a.row.name : a.row.title;
-    const bTitle = b.type === "tv" ? b.row.name : b.row.title;
-    return searchRelevance(bTitle, query, b.row.popularity) - searchRelevance(aTitle, query, a.row.popularity);
-  });
-  return rows.slice(0, 12).map(({ row, type }) => tmdbItem(row, type));
+  // TMDb ranks movie and TV searches independently. Merge them with the shared ranking (title match,
+  // popularity, record completeness, work type) so an exact flagship series is not buried behind
+  // weaker movies (#106) and a stub with a short exact title does not bury the well-known work (#115).
+  return rankSearchResults(rows.map(({ row, type }) => tmdbItem(row, type)), query).slice(0, 12);
 }
 
 function openLibraryItem(row) {
@@ -198,8 +161,7 @@ async function searchIgdb(query, env, fetchImpl) {
   });
   if (!response.ok) throw new Error(`igdb ${response.status}`);
   const rows = await response.json();
-  rows.sort((a, b) => searchRelevance(b.name, query, b.total_rating_count) - searchRelevance(a.name, query, a.total_rating_count));
-  return rows.slice(0, 8).map(igdbItem);
+  return rankSearchResults(rows.map(igdbItem), query).slice(0, 8);
 }
 
 // ---- Per-media-type detail metadata (#103 item 1/2) --------------------------------------------
@@ -452,11 +414,7 @@ export async function searchCatalog(query, { domain = "all", env = process.env, 
   // result set globally so obvious/canonical matches rise to the top regardless of
   // whether they came from TMDb, Open Library, or IGDB. Provider diversity still
   // emerges naturally farther down instead of being forced ahead of stronger matches.
-  const combined = uniq(buckets.flat());
-  combined.sort((a, b) =>
-    searchRelevance(b.title, q, b._searchPopularity) - searchRelevance(a.title, q, a._searchPopularity)
-    || a.title.localeCompare(b.title)
-  );
+  const combined = rankSearchResults(uniq(buckets.flat()), q);
 
   const configured = settled.filter(([, , , isConfigured]) => isConfigured);
   const degraded = configured.length === 0 || configured.every(([, , , , available]) => !available);
