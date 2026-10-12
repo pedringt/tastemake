@@ -100,6 +100,8 @@ Nothing is asynchronous today. Needed: a clear "thinking" state that doesn't mov
 
 Taste data would go to a third party. Before any live call, write down: exactly what is sent (typed evidence, no names or contact details), what is logged and for how long, what visitors are told, and update the header label ("Prototype - no live AI"). No new categories of data should be sent without updating this note.
 
+**Site analytics (#100).** Production loads Vercel Web Analytics and Speed Insights with Vercel's plain-HTML script tags (`src/lib/vercel-insights.js`; no npm package, and nothing loads on localhost). Web Analytics is cookieless and aggregated: page views, referrer, country, browser/OS and device type, with no cookies and no visitor identifier kept across days. Speed Insights reports page-performance metrics (Core Web Vitals) per route. Neither receives favorites, reactions, taste evidence, search text or anything else the user typed, and neither data set leaves Vercel. Both need to be switched on per project in the Vercel dashboard; until they are, the two script URLs return 404 and nothing is collected.
+
 ## Suggested order
 
 1. Decide pattern corrections (section 3) and record it in `evidence-contract.md`.
