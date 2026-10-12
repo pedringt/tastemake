@@ -30,8 +30,13 @@ export async function run() {
     surprise:i===4,reason:"Related to a favorite from the real catalog. Live AI did not rank this fallback set.",ai:null
   }));
   let recCalls=0;
+  // #120: candidate warm-ups (src/ai/prefetch.js) are counted apart from real recommendation requests.
+  let warmCalls=0, warmBodies=[];
+  // The first real request is held open until the test releases it, so the loading state can be checked.
+  let releaseFirst=null;
+  const firstGate=new Promise(resolve=>{releaseFirst=resolve;});
 
-  window.fetch=async(input)=>{
+  window.fetch=async(input,init={})=>{
     const url=new URL(String(input),location.href);
     if(url.pathname==="/api/catalog"){
       const q=(url.searchParams.get("q")||"").toLowerCase();
@@ -41,7 +46,14 @@ export async function run() {
       return {ok:true,status:200,json:async()=>({items,providers:{qa:{available:true,configured:true,error:null}},degraded:false})};
     }
     if(url.pathname==="/api/recommendations"){
-      const picks=recSet(recCalls++ ? 710 : 700);
+      const body=JSON.parse(init.body||"{}");
+      if(body.warm===true){
+        warmCalls++; warmBodies.push(body);
+        return {ok:true,status:200,json:async()=>({warmed:true,candidates:5,ms:1,meta:{paidCallMade:false}})};
+      }
+      const call=recCalls++;
+      if(call===0) await firstGate;
+      const picks=recSet(call ? 710 : 700);
       return {ok:true,status:200,json:async()=>({source:"catalog",reason:"live AI off in browser QA",picks,meta:{paidCallMade:false,catalogCandidates:picks.length}})};
     }
     if(url.pathname==="/api/hypotheses"){
@@ -98,9 +110,21 @@ export async function run() {
   check("Favorites screen shows exactly four chosen cards",$$(".starter-card").length===4,$$(".starter-card").length);
   check("Recommendations is unlocked",$('[data-step-jump="recommendations"]')?.getAttribute("aria-disabled")==="false");
 
+  // #120: four favorites chosen -> one candidate warm-up, retrieval only, before any real request.
+  await sleep(700);
+  check("four favorites trigger exactly one candidate warm-up",warmCalls===1,warmCalls);
+  check("warm-up is flagged warm and carries the four favorites",warmBodies[0]?.warm===true&&warmBodies[0]?.state?.selectedFavorites?.length===4,JSON.stringify(warmBodies[0]?.state?.selectedFavorites));
+  check("warm-up did not count as a recommendation request",recCalls===0,recCalls);
+
   // First recommendations must call the real-catalog endpoint, not appear from a local seed.
-  await act('[data-action="show-recs"]',300);
+  await act('[data-action="show-recs"]',200);
+  check("loading state shows skeleton cards immediately",$$(".editorial-rec-skeleton").length===6,$$(".editorial-rec-skeleton").length);
+  check("loading state names the favorites it starts from",/Starting from your favorites: .*Moon Garden/.test($(".loading-basis")?.textContent||""),$(".loading-basis")?.textContent);
+  releaseFirst();
+  await sleep(300);
   check("first recommendation request happened",recCalls===1,recCalls);
+  check("no second warm-up after onboarding",warmCalls===1,warmCalls);
+  check("click-to-first-pick is measured",performance.getEntriesByName("tastemake:recommendations:click-to-first-pick").length>=1,performance.getEntriesByName("tastemake:recommendations:click-to-first-pick").length);
   check("first set has five real-catalog QA ids",state.recommendationSets[0]?.length===5&&state.recommendationSets[0].every(x=>x.id.startsWith("tmdb-movie-7")),JSON.stringify(state.recommendationSets[0]?.map(x=>x.id)));
   check("legacy seeded recommendation is absent",!document.body.textContent.includes("Everything Everywhere All at Once"));
   check("five recommendation cards render",$$(".editorial-rec").length===5,$$(".editorial-rec").length);

@@ -6,7 +6,8 @@ import { clearInvalidRefinements, refinablePolarity, toggleRefinement } from "..
 import { pathForFeedback, storedReactionForOutcome } from "../model/reaction-flow.js";
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
-import { cancelRequest, finishRequest, staleReason, startRequest } from "../ai/requests.js";
+import { cancelRequest, finishRequest, isCurrent, staleReason, startRequest } from "../ai/requests.js";
+import { cancelRecommendationTiming, markRecommendationStart, measureRecommendationShown } from "../lib/timing.js";
 import { plural } from "../lib/format.js";
 
 // #52: the discovery-quality note defaults to open once answered, closed otherwise (see qualityExpanded
@@ -200,7 +201,12 @@ function scheduleLoadingStages(request, { render }) {
 
 // Recommendation request orchestration. Both the first set and later sets now come from the
 // real catalog pipeline; there is no local hand-written fallback.
-async function runRecommendationRequest({ render, updateStepper, announce, navigate, initial = false }) {
+const NO_WARM_UP = Object.freeze({ warmed: false, wait: Promise.resolve() });
+
+async function runRecommendationRequest({ render, updateStepper, announce, navigate, initial = false, prefetch = null }) {
+  // #120: claim a matching candidate warm-up (src/ai/prefetch.js) before navigate(), because reaching
+  // Recommendations migrates the starter favorites out of selectedFavorites, which is the warm-up key.
+  const warmUp = initial && prefetch ? prefetch.claim(state) : NO_WARM_UP;
   // #91: transition to the Recommendations surface immediately, before the request even starts, so
   // the Continue/More-recommendations click gets visible acknowledgement right away. navigate() first
   // (so state.screen is already "recommendations" when startRequest fingerprints the request's
@@ -208,6 +214,7 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
   // same paint because state.aiStatus is already "loading".
   navigate("recommendations", { replace: true });
   const request = startRequest(state);
+  markRecommendationStart(request.id);
   state.aiMessage = initial
     ? "Tastemake is finding real catalog matches from the favorites you chose."
     : `Tastemake is finding another ${state.recommendationFilter === "all" ? "mixed" : state.recommendationFilter} set from what you have told it.`;
@@ -219,8 +226,14 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
   const clearLoadingStages = scheduleLoadingStages(request, { render });
 
   try {
-    const result = await requestRecommendations(state, { signal: request.controller?.signal });
+    // If the warm-up for these favorites is still running, let it finish so this request finds the
+    // provider results cached instead of fetching them a second time in parallel (capped wait).
+    await warmUp.wait;
+    const result = isCurrent(state, request)
+      ? await requestRecommendations(state, { signal: request.controller?.signal })
+      : null;
     const stale = staleReason(state, request);
+    if (stale) cancelRecommendationTiming(request.id);
     if (stale === "you moved to another page while it was thinking" || (stale && request.cancelled)) {
       cancelRequest(state, stale);
       state.aiStatus = "idle";
@@ -254,10 +267,14 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
 
     if (picks.length) state.recommendationSets.push(picks);
     navigate("recommendations", { replace: true, scroll: false });
+    // #120: click -> first pick on screen. navigate() has rendered the cards synchronously by here.
+    if (picks.length) measureRecommendationShown(request.id, { source, initial, warmed: warmUp.warmed });
+    else cancelRecommendationTiming(request.id);
     announce(picks.length
       ? `New set: ${plural(picks.length, "pick", "picks")}. ${source === "model" ? "Live AI was used and validated." : "Real catalog fallback was used."}`
       : "No more eligible catalog picks were found.");
   } catch {
+    cancelRecommendationTiming(request.id);
     const stale = staleReason(state, request);
     if (stale) {
       cancelRequest(state, stale);

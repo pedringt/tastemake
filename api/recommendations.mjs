@@ -268,6 +268,22 @@ function promptSizeBreakdown(ctx, count, prompt) {
   };
 }
 
+// #120: candidate prefetch ("warm"). Production timing shows candidate retrieval (TMDb / Open Library
+// / IGDB fan-out) can take as long as the model call, and its results already go through the shared
+// runtime cache per anchor item (related.mjs, 15 min). The client sends the same serialized state
+// with `warm: true` while the user is still choosing favorites, so the provider calls happen then
+// and the real request a few seconds later finds them cached. This runs retrieval only: it never
+// calls the model, never builds a prompt, never returns candidates, and changes no ranking,
+// eligibility, validation or novelty rule -- the real request still does all of that itself.
+export async function warmRecommendationCandidates({ rawState, env = process.env, fetchImpl = fetch } = {}) {
+  const state = hydrateState(rawState);
+  const started = Date.now();
+  const retrieved = await retrieveCatalogCandidates(state, { env, fetchImpl });
+  const ms = Date.now() - started;
+  logStage("warmRetrieval", ms, { candidates: retrieved.length });
+  return { warmed: true, candidates: retrieved.length, ms, meta: { paidCallMade: false } };
+}
+
 export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch } = {}) {
   const state = hydrateState(rawState);
 
@@ -432,12 +448,20 @@ export default async function handler(req, res) {
   console.info("[tastemake-recommendations-payload]", JSON.stringify({ bytes: contentLength, capBytes: MAX_BODY_BYTES, pctOfCap: contentLength ? Math.round((contentLength / MAX_BODY_BYTES) * 100) : null }));
   if (contentLength > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
   if (typeof req.body === "string" && Buffer.byteLength(req.body, "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
-  if (!underBestEffortRateLimit(clientIp(req))) return res.status(429).json({ error: "too many requests" });
+  let body;
+  try { body = parseBody(req); } catch { return res.status(400).json({ error: "invalid request" }); }
+  const warm = body?.warm === true;
+  // A warm request makes no model call, so it has its own bucket and never uses up the visitor's
+  // live-AI allowance; it still has one, since it does make provider calls.
+  if (!underBestEffortRateLimit(`${warm ? "warm:" : ""}${clientIp(req)}`)) return res.status(429).json({ error: "too many requests" });
 
   try {
-    const body = parseBody(req);
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
     if (!body.state || typeof body.state !== "object") return res.status(400).json({ error: "state is required" });
+    if (warm) {
+      res.setHeader("cache-control", "no-store");
+      return res.status(200).json(await warmRecommendationCandidates({ rawState: body.state }));
+    }
     const started = Date.now();
     const payload = await produceRecommendations({ rawState: body.state });
     payload.picks = await applyTaglineFallback(payload.picks);

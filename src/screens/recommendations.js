@@ -11,6 +11,7 @@ import { safeAbout } from "../catalog/synopsis.mjs";
 import { readableRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
+import { basisSentence, recommendationBasis } from "../model/loading-basis.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -429,6 +430,9 @@ function renderFirstInsightNudge() {
 function renderAiStatus() {
   if (state.aiStatus === "loading") {
     const hasCurrentSet = activeRecommendations(state).length > 0;
+    // #120: show what the set is being built from straight away -- the user's own favorites and
+    // reactions, which the client already knows -- instead of only a waiting message.
+    const basis = basisSentence(recommendationBasis(state));
     return `
       <div class="refresh-banner ${hasCurrentSet ? "is-refreshing-set" : "is-first-set-loading"}" role="status" aria-live="polite" aria-busy="true">
         <div>
@@ -437,6 +441,7 @@ function renderAiStatus() {
           <p>${state.aiMessage || (hasCurrentSet
             ? "Finding a fresh mix from what you have told Tastemake so far."
             : "Finding a first set from what you have told Tastemake so far.")}</p>
+          ${basis ? `<p class="loading-basis">${esc(basis)}</p>` : ""}
         </div>
       </div>`;
   }
