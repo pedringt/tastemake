@@ -1,119 +1,108 @@
-# Tastemake handoff — Sept 29, 2026 (end of session)
+# Tastemake handoff: start here
 
-This is the current continuation guide for Tastemake. If older notes conflict with this file, issue #16, newer issue-specific acceptance criteria, or current `main`, trust the newer material.
+Last refreshed **Oct 12, 2026**, against `main` at `631d257` (#242). If `main` has moved on, run `git log --oneline 631d257..origin/main` and read those PRs before trusting the "Current state" section. Where this file and the code disagree, the code wins; fix this file.
 
-## Current repo / production
+## What Tastemake is
 
-- Repo: https://github.com/pedringt/tastemake
-- Production: https://tastemake.vercel.app
-- Current `main`: **5c85c854151af89b04fd41ce4c3b0a20bba28e56**
-- Vercel production deployment for that exact commit is confirmed `READY` directly against the Vercel API, and re-verified live in a fresh (non-cached) browser tab with a clean console.
-- CI is green on `main`.
-- **Draft PR #101** ("Refresh Claude Code handoff") is still stale — do not merge it.
+A portfolio/learning product (not a commercial launch) that builds an inspectable, correctable **Taste Profile** from what someone has actually tried across Movies, TV, Books and Games, and uses it to recommend more.
 
-### Real incident this session: an automated bot PR broke production for every visitor
+Loop: **Favorites → Recommendations → react (Tried it: Loved / Liked / Didn't like; Not tried: Save / Not interested) → Taste Profile learns → better recommendations.** Library holds the ongoing relationship (Saved / Tried / Favorites). Product overview: [README.md](../README.md).
 
-An automated Vercel bot PR (#162, "Install Vercel Web Analytics") added `import { inject } from "@vercel/analytics"` to `src/app.js`. This app has **no build step** — `app.js` loads as a native browser ES module, and a bare package-name specifier only resolves under Node/bundler resolution, never in a real browser. Every page load threw `Failed to resolve module specifier` synchronously, aborting `app.js`'s entire module evaluation before any of the app's own code ran. The static HTML shell (header/nav) still rendered, which is why it read as a confusing partial blank rather than fully blank — but nothing else worked: no routing, no recommendations, nothing. This is what Paige reported as "tastemake is down" / a black screen, and it also explains why CI had been failing on every run since #162 merged (not flaky GPU drivers, a real regression).
+Authority model, in one line: **AI interprets, ranks and explains; the software owns evidence, state, eligibility and every change.** See [ai-contract.md](ai-contract.md).
 
-**Fix**: reverted the import and `inject()` call, removed the unusable `@vercel/analytics` dependency (PR #168, hotfix). Verified live in a fresh tab.
+## Where things live
 
-**Standing lesson**: automated bot PRs (Vercel's own installers, "codex/project-health-*" branches) merge into `main` in this repo outside of Paige's or Claude's review. If something that used to work suddenly breaks with no corresponding human-authored change, check `git log main` for an unreviewed automated commit first. Still an open, unresolved gap in this repo's process (see "what's open" below) — it has not recurred since, but nothing prevents it from recurring.
+| What | Where |
+|---|---|
+| Repo | https://github.com/pedringt/tastemake (squash merges to `main`; `main` has no branch protection) |
+| Production | https://tastemake.vercel.app, Vercel project `tastemake`, team `cairn10`, Hobby plan. Every push to `main` deploys production; PR branches get Vercel previews |
+| Front end | `index.html` + native ES modules in `src/` (no build step, no bundler). `src/screens/` (one file per screen), `src/model/` (evidence, taste, library rules), `src/actions/`, `src/components/`, `src/catalog/` (providers, search ranking, novelty and series rules), `src/ai/` (contract, validator, deterministic baseline, prompt context), `src/data/domains.js` (the one domain registry) |
+| Serverless API (`api/`) | `recommendations.mjs` (picks), `hypotheses.mjs` (Taste Profile), `catalog.mjs` / `catalog-detail.mjs` / `browse.mjs` / `resolve-item.mjs` (TMDb, Open Library, IGDB), `ai-metrics.mjs` (read-only telemetry) |
+| Server helpers | `src/server/`: `anthropic.mjs` (live gate, Messages API call, `thinkingTypeFor`, JSON parsing), `ai-metrics.mjs` (per-model rates, telemetry), `db.mjs` (Neon Postgres via `TASTEMAKE_DATABASE_URL`), `request-state.mjs`, `cache.mjs`, `query.mjs` |
+| User data | The browser's `localStorage` only (`src/persistence.js`). No accounts. The Neon database holds the canonical catalog store and AI-call telemetry, not user profiles |
+| Tests | `scripts/qa/` (unit suites, headless-Chrome suites, `full-sweep.mjs`) |
+| Evals | `scripts/evals/` (`run.mjs`, `fixtures.mjs`, `scorers.mjs`, `compare.mjs`, `reports/`) |
+| CI | `.github/workflows/test.yml` (free gate on every push/PR), `.github/workflows/ai-eval.yml` (paid, manual) |
+| Background | `experiments/` (the original taste-model experiments), `notes/` (case-study notes) |
 
-## Product north star
+## Run, test, eval
 
-Tastemake helps people understand patterns in what they are drawn to, then uses those patterns to discover and test more things they may like.
+- **Install:** `npm ci` (Node 24 in CI; the lockfile is committed, #233).
+- **Run locally:** `python3 -m http.server 4173`, open http://localhost:4173. This serves the front end only; the `api/` functions and their keys run on Vercel, so try live AI on production or a preview.
+- **`npm test`** is the required gate and what CI runs. It never calls a model. It runs:
+  - `test:unit` (`scripts/qa/run-unit.mjs`: every no-browser suite, with a per-suite summary);
+  - `test:model`, `test:flow`, `test:layout`, `test:a11y`, `test:browse-ui` (headless Chrome via `scripts/qa/headless.sh`);
+  - `test:eval` (the free deterministic eval).
+- **`npm run test:full`** is the slower manual sweep (every look and width). Run it before a risky change.
+- **Evals:** [ai-evals.md](ai-evals.md). The free baseline runs inside `npm test`. `node scripts/evals/run.mjs --producer live --dry-run` shows the exact prompts, call count and cost estimate, and makes no call.
 
-> Most recommenders let you react to items. Tastemake also lets you react to the model it builds from those reactions.
+## AI setup and costs
 
-Core authority model (unchanged, do not re-litigate without new evidence):
-- software owns evidence, state, eligibility and mutation;
-- AI interprets, ranks and explains;
-- only experienced items become taste evidence;
-- Saved / intent does not become experience;
-- user-confirmed correction outranks model inference;
-- Taste Profile patterns are working hypotheses, not personality labels;
-- search/browse/opening an item is never taste evidence;
-- model output must remain grounded in real evidence;
-- novelty / repeat / franchise suppression is deterministic and cannot be overridden by the model.
+- **Models (per Paige, Oct 12; the Vercel env values are not readable from the repo, and must never be read or printed):**
+  - Recommendations: `claude-haiku-5-5` via `TASTEMAKE_RECOMMENDATIONS_MODEL`. Rollback: `claude-sonnet-5-5`. If the variable is unset, the code defaults to `claude-sonnet-5-5`.
+  - Taste Profile: `claude-haiku-5-5` via `TASTEMAKE_AI_MODEL`. Rollback: `claude-sonnet-5`. Required; live AI is off without it.
+  - Paige sets these in Vercel. Don't change Vercel settings yourself.
+- **Thinking mode:** Sonnet 5.5 needs `thinking: between_tools` and rejects `disabled`. Haiku 5.5 (and every other model) needs `disabled` and rejects `between_tools`. `thinkingTypeFor` in `src/server/anthropic.mjs` maps this; keep it when changing models (#224, #226).
+- **Live gate (fail-closed):** `liveConfig()` in `src/server/anthropic.mjs` needs all of these: `TASTEMAKE_AI_ENABLED`, the API key, the model, `TASTEMAKE_AI_RATE_LIMIT_CONFIRMED`, `TASTEMAKE_AI_SPEND_CAP_CONFIRMED`, and on production `TASTEMAKE_AI_PRODUCTION_APPROVED`. The Taste Profile also needs `TASTEMAKE_AI_HYPOTHESES_ENABLED`. Recommendations have a per-visitor rate limit (`DEFAULT_VISITOR_LIMIT` in `api/recommendations.mjs`). Any failure falls back to deterministic picks.
+- **Live metrics:** https://tastemake.vercel.app/api/ai-metrics. Aggregate counts, latency, tokens and estimated cost by operation, over 30 days. No content and no model names. On Oct 12 it showed:
+  - 98 calls, 91% success, about $2.16 estimated;
+  - recommendations p50 about 6.5s;
+  - Taste Profile p50 about 9s.
+- **Paid evals:** only through the **ai-eval** GitHub workflow (Actions → ai-eval → Run workflow).
+  - Inputs: `models`, `repeats`, `max_calls`. It checks the call budget first, then uses the `ANTHROPIC_API_KEY` repo secret.
+  - About 21 calls per model per repeat (11 Taste Profile, 10 picks). Worst-case cost from the Oct 12 dry run: about $0.03 for Haiku 5.5 and about $0.54 for Sonnet 5.5 per model per repeat.
+  - Every paid run needs Paige's OK, with the call count and cost stated first.
+- **Analytics:** Vercel Web Analytics and Speed Insights load with plain script tags (`src/lib/vercel-insights.js`, #234). Both script URLs returned 200 on production on Oct 12. Click-to-first-pick is measured as a `performance.measure` plus one "Recommendations shown" event with no titles or ids (#235). Privacy notes: [ai-readiness.md](ai-readiness.md) sections 8 and 9.
 
-## Current product model
+## Release process
 
-- **Recommendations = discovery**
-- **Library = ongoing relationship management** (Saved / Tried / Favorite / Disliked)
-- **Favorite = strongest explicit experienced-positive signal** — Library is the single durable source of truth. The Recommendations screen can also toggle a Favorite directly on a card, using the exact same invariant (and the same invariant is now also enforced there when a reaction changes away from strong-positive — see the QA sweep below).
-- **Taste Profile = inspectable/correctable working model of taste**
-- **Domains are five, not three, and the labels are nouns**: `movies` ("Movies"), `tv` ("TV"), `read` ("Books"), `play` ("Games") are visible/recommendable. `watch` no longer exists anywhere in the codebase. If you find a stray `"watch"` string or a "Read"/"Play" label anywhere, it's a leftover bug, not intentional.
-- **My Tastemake** (`src/screens/mine.js`) rows now collapse their reaction-change buttons behind a "Change" disclosure by default, same pattern as Library's Tried cards — a long real history no longer renders as a wall of always-open buttons.
+1. Branch from a freshly fetched `origin/main`. Batch related changes into **one branch and one PR**: the Hobby plan's deploy limit is shared with Paige's other projects.
+2. Run `npm test` locally. CI (`test`) and the Vercel preview must pass.
+3. Model, prompt or context changes are product changes. Do a free dry run, then (with Paige's OK) a paid before/after on the `ai-eval` workflow. Never loosen a scorer to pass ([ai-evals.md](ai-evals.md)).
+4. **Merge only with Paige's explicit OK, each time.** Squash merge. Merging deploys production.
+5. After a merge, check production yourself (load the site; `/api/ai-metrics` for AI changes). Don't rely only on green checks.
 
-## This session's real thread: a recurring wire-payload 413, a live production incident, a feature backlog, a deep QA sweep, and then a real multi-round debugging chase on the domain filters
+## Product rules (do not break)
 
-Distinct pieces of work, in order. Every fix here was driven by a real report from Paige or a deliberate QA pass — none of it is speculative hardening.
+Full rulebook: [evidence-contract.md](evidence-contract.md). Validator rules: [ai-contract.md](ai-contract.md).
 
-### 1. The 413 bug recurred a third time, then got a structural fix instead of another field trim
+- **Untried items are never taste evidence.** Save, Not interested, searching, browsing and filters can only steer what comes next.
+- **Favorites means tried only.** A Favorite is a strong positive layered on an experienced item.
+- **One miss never weakens a pattern**; it takes two tried-and-disliked items.
+- **Starter favorites are not tried evidence.** They can be cited, but they can't raise a pattern above "emerging" (#231).
+- **Cross-domain patterns need tried evidence in both areas** (#229).
+- User corrections ("Not really me", etc.) outrank model inference. Novelty, sequel and franchise suppression is deterministic and the model can't override it.
+- No seeded or demo data.
 
-Real report: **"getting the same 3 video game recs now no matter the filter or what i do."** Confirmed in Vercel logs: `POST /api/recommendations 413`. Same failure class fixed twice before (trim `recommendationSets` to ids, then trim `about`/`artwork`/`sourceUrl`) — a long session with many reactions grows `feedbackByRecommendation`/`customItems` back past the 160KB body cap.
+## Current state and open work (Oct 12)
 
-Immediate fix (PR #163): two more purely-display fields — `reason` and `ai` (`cites`/`tests`/`kind`/`contract`) — were never trimmed.
+**Recently shipped (all on production):**
+- #229: portfolio link, related-games genre overlap, Taste Profile rules (cross-domain and carry-forward).
+- #230: search meta and same-title hints; display name optional.
+- #231: starter favorites cap the confidence level.
+- #232: phone nav (five onboarding tabs fit at 390px).
+- #233: tech debt (`.env` ignored, lockfile + `npm ci`, shared `src/server/anthropic.mjs`, unit runner `scripts/qa/run-unit.mjs`).
+- #234: Web Analytics and Speed Insights.
+- #235: warm candidates early, show the basis while loading, time click-to-first-pick.
+- #236: compact Taste Profile prompt (about 44% smaller).
+- #241: Library details; returning users who open `/favorites` go to Library → Tried → Favorites.
+- #242: search ranking (#115) and book sequels (#142).
 
-Paige then asked directly: **"how do we keep it from happening again?"** PR #165 bounds the *shape* instead of trimming another field list:
-- `feedbackByRecommendation`: an **intent-only** reaction's id can never be dropped (that would silently un-exclude an already-seen item), but its item payload shrinks to just `id/title/type/domains/custom`. **Experienced** reactions keep their full trimmed item.
-- `customItems`: only ever read server-side for ids already in `selectedFavorites` or carrying *experienced* feedback — any other entry is dropped entirely.
-- `blindSpots`/`blindSpotDrafts`/`blindSpotDismissed` (found by the QA sweep, folded into #165): sent whole and unbounded despite being read nowhere server-side. Not sent at all now.
-- `[tastemake-recommendations-payload]` now logs the request's content-length on **every** call, so a rising payload shows up in logs before anyone hits a 413 again.
+**Open:**
+- **#243:** "The Making of …" documentaries still rank high in search (the derivative-word rule in `src/catalog/search-ranking.mjs` misses that case). Next small fix.
+- **#191:** simplify reactions further. The first version shipped in #192 (Sept 30). Paige has a full plan for the next step; wait for her go-ahead. The plan is not in the issue thread, so ask her for it.
+- **#103:** its audit comment says it closes when #239 and #240 ship. Both shipped in #241, but the issue is still open. Confirm with Paige, then close it.
+- **Backlog:** #28 (reasoning at scale), #29 (Library information architecture), #37 (hypothesis history).
+- **Parked by Paige; leave them parked:** #6, #7, #9, #10, #11, #14, #15, #17, #19, #48, #69.
 
-**This is genuinely load-bearing**: if a 413 recurs a fourth time, look at *new* fields being added to pick/feedback objects — don't just trim another field and call it done.
+## Gotchas
 
-### 2. Feature backlog cleared: TV/Movie filter split, Add to Favorites from Recommendations, canonical-store batching
-
-- **PR #159**: `upsertManyCanonicalItems()` batches the write-behind canonicalization path into one tuple-IN lookup + one multi-row UPDATE + per-item atomic-CTE inserts only for genuinely new items + one multi-row provenance INSERT.
-- **PR #160**: split the "Watch" domain into separate `movies`/`tv` domains everywhere (`src/data/domains.js` is the single source of truth). TMDb browse/search queries are now movie-only or TV-only depending on which is selected.
-- **PR #161**: an explicit "Add to Favorites" toggle on recommendation cards, gated the same way Library/Search gate favoriting.
-
-### 3. Deep QA sweep: 6 parallel review agents, 6 real bugs found and fixed (PR #167, one folded into #165)
-
-1. **AI prompt/validation read the full eligible-candidate pool, not the 6 actually offered.** Fixed with a `promptCtx` (candidates capped to the offered set) used everywhere the model's answer is built or checked.
-2. **Filter change mid-request went undetected** by `evidenceFingerprint` — became directly relevant again in the filter-click saga below.
-3. **Favorite↔reaction invariant could be silently violated on the Recommendations screen** — `saveQuickFeedback`/`saveFeedbackDetail` now clear `libraryFavorites` when a reaction moves away from strong-positive, same as Library/Search.
-4. `api/hypotheses.mjs` now has the same pre-parse content-length guard as `api/recommendations.mjs`.
-5. `canonical-store.mjs`'s per-field provenance inserts are now parallelized (`Promise.all`) instead of sequential.
-6. (Folded into #165) `blindSpots`/`blindSpotDrafts`/`blindSpotDismissed` unbounded on the wire.
-
-### 4. The domain-filter saga: three real reports, three real fixes, only the third one was the actual root cause
-
-This is the part worth reading carefully if a filter bug ever gets reported again. Paige reported, across several messages, that the Movies/TV/Books/Games filter chips "don't seem to be working" — and it took three passes to find the *actual* cause, not because the earlier fixes were wrong, but because there were genuinely three separate real bugs stacked on top of each other:
-
-1. **First report** ("switching to TV filter doesn't seem to work... not able to generate recs"): confirmed real — filtering to a domain with zero evidence in it (she has no TV reactions at all) returns zero candidates by design, but the UI showed the exact same generic "no eligible picks" message as true exhaustion, with the message computed server-side but never actually read by the client (hardcoded string). **Fixed in PR #170**: server names the real cause, client reads `result.reason` instead of a hardcoded string.
-2. **Second report** ("no button to get new recs" / screenshot showing two identical "Recommendations" buttons on the Taste Profile footer): once `recommendationExhausted` is true (exactly the state #1 leaves you in), the entire "More recommendations" footer is replaced by a "Prototype checkpoint" banner whose only actions were Change favorites / See profile — **no way to switch the filter back at all**, a genuine dead end, not just a confusing one. **Fixed in PR #171**: added a "Show all instead" recovery action to the banner, reusing the SHOW ME bar's own attributes.
-3. **Third report, after both of the above were live** ("filters still don't appear to be working for movies/tv/books/games etc.", broader than just TV): dug into real production logs and found the actual mechanism — **a real request routinely takes 11-20+ seconds** (candidate retrieval fan-out plus the live model call is the dominant cost). The SHOW ME filter click handler only re-fetched when `state.aiStatus !== AI_LOADING`. Clicking through filter chips at a normal pace (not knowing to wait out a 20-second load between each click) hit this on nearly every click: the button visually flipped to "selected," but **no request was ever sent for it** — it looked exactly like "nothing happens" for any domain, not just one with no evidence. When the original in-flight request finally resolved, `staleReason`'s filter check (from #167, item 2 above) correctly caught the mismatch and discarded it — but that only explained the problem one click too late, and never actually fetched the filter that was clicked. **Fixed in PR #172**: removed the `AI_LOADING` gate entirely. `startRequest()` already cancels any in-flight request safely via its own `AbortController`, so the gate was not just unnecessary but actively wrong. Verified in a browser by patching `fetch` to simulate the real ~20s delay and confirming two rapid filter clicks now both produce real requests (before the fix, only the first one ever did).
-
-**Why this matters for next time**: #3 was the actual root cause of the majority of what Paige experienced as "filters broken." #1 and #2 were real, independently worth fixing, but a user who never waited out a full load would have hit #3 regardless of whether #1/#2 existed. If a similar "X doesn't seem to work" report comes in again for a slow, async part of this app, check the request's actual latency in the logs *first* — a slow request plus an overly conservative "don't retry while loading" guard is an extremely easy trap to fall into and very hard to diagnose from the UI alone.
-
-## What's genuinely still open, in rough priority order
-
-1. **The automated-PR review gap is still unresolved.** Nothing currently prevents another bot PR (Vercel installer, "codex/project-health-*", etc.) from merging straight to `main` unreviewed the way #162 did. Worth a real decision: branch protection requiring review, or at minimum checking `git log main` for unreviewed automated commits at the start of every session.
-2. **`api/ai-metrics.mjs` / `src/server/ai-metrics.mjs`** — added by an automated PR (#166) that also merged without review. Still not investigated beyond confirming it doesn't conflict with anything.
-3. **Canonical-store race-condition fix — still only verified against a real Neon database once**, before this session's batching rewrite (#159) landed on top of it. Worth a real-DB spot check that `upsertManyCanonicalItems` doesn't reintroduce the race the single-item path already closed.
-4. **Confirm the filter-click fix (PR #172) actually resolves it from Paige's real usage.** It's verified by direct reproduction in a browser, but hasn't yet been confirmed against her real account/history since deploy.
-5. **Kids' profiles idea (parked, not scoped)**: Paige wants separate Tastemake profiles for her kids so she doesn't have to rate kids' movies on her own profile. Explicitly told to not worry about it "for now." There is currently no concept of profiles/accounts at all — everything is one global state object in a single browser's localStorage. The lightweight approach discussed: a profile-switcher that swaps which localStorage key state reads/writes (still local-only, no server-side identity), not a full multi-user backend. Tradeoff: stays single-device. Saved as a memory; don't start without Paige picking it back up explicitly.
-6. **#135's remaining half** — lazy web-enrichment for thin metadata is still entirely unbuilt.
-7. **#142** — book sequel suppression now reads Open Library series ids, "series:" subjects and (bounded, cached) edition series names, plus a same-author title rule; real-fixture tests cover Hunger Games, Dune, Expanse, Red Rising, Mistborn, Harry Potter and Stormlight. A book with no series data anywhere in Open Library is still not caught.
-8. **#115** — exact-match search ranking can promote an obscure title over a well-known one with a longer official title. Two real reproductions on file.
-9. Long-tail future/idea issues, parked, no new signal to revisit: #6, #7, #9, #10, #11, #14, #15, #17, #19, #28, #37, #48, #69, #29, #100.
-
-## Standing workflow rules (followed carefully this session, keep following them)
-
-- Only merge to `main` on Paige's explicit instruction, every time — passing CI is never permission by itself.
-- Before any *intentional* paid Anthropic call: state expected call count + cost estimate, get explicit approval, every time.
-- Do not weaken validation/grounding/novelty-suppression to make a metric look better.
-- No seeded/demo data, ever.
-- **When something claims to fix a backend/infra bug, verify it against the real deployed system before believing it — not just green tests, and not just "the first fix I found."** This session's clearest example is the domain-filter saga above: two real, shippable fixes (#170, #171) still weren't the actual root cause of what Paige was experiencing. Pull real production logs (request timing, not just error status) before declaring a UX bug fixed.
-- After a hard-to-reproduce report, try to reproduce the *exact* real-world conditions (e.g. real request latency, not an instant local mock) rather than only testing the happy path — the filter-click bug was invisible in every earlier manual check because those checks didn't wait through a realistic 11-20s load before clicking again.
-- Before branching for new work, check `git log`/`git status` against `origin/main` for anything unexpected (an automated bot merge, a leftover local commit from a prior tool run).
-
-## Suggested next sequence
-
-1. Sync with current `main` at `5c85c854151af89b04fd41ce4c3b0a20bba28e56`.
-2. Read this file, then issue #16, then whichever open item above you're picking up.
-3. Check `git log --oneline -20 main` for any automated-bot commits that landed since this handoff was written, and read what they changed before doing anything else.
-4. If a filter/UX report comes in that sounds similar to the saga above, check real request latency in Vercel logs before assuming the bug is in the filtering logic itself.
-5. Any paid-model verification: state count + cost, wait for explicit approval.
+- **No `.env` in commits, ever** (`.gitignore` covers it). Never read or print key or model env values.
+- **No model calls in `npm test`.** Paid runs only via `ai-eval`, with Paige's OK.
+- **Browser suites in a worktree:** `scripts/qa/headless.sh` writes its harness pages and Chrome profile under `.git/`. In a worktree `.git` is a file, so run the browser suites from a plain copy of the tree (for example `rsync` without `.git`, then `git init`).
+- **Flow suite fails on leftover onboarded state:** delete the reused Chrome profile `.git/tm-chrome-profile` and re-run.
+- **No build step:** a bare npm import in `src/` (`import x from "pkg"`) breaks the whole app in the browser. Production went blank once this way (#162, fixed in #168). Analytics now loads by script tag for this reason.
+- **`main` is unprotected,** and automated PRs (Vercel installers, bots) have merged unreviewed before. At the start of a session, check `git log origin/main` for commits nobody expected.
+- **Payload size:** `/api/recommendations` caps the request body. If a 413 comes back, look for new fields added to pick or feedback objects. Don't just trim another field (#163, #165).
+- **Slow requests:** a recommendation request can take 10–20s. Before blaming the logic for an "X doesn't work" report, check the real latency in the Vercel logs or `/api/ai-metrics` (the #172 filter-click bug).
+- **Unverified:** the canonical-store batching (#159) has not been spot-checked against a real Neon database since it landed.

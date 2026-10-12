@@ -1,5 +1,13 @@
 # Tastemake Prototype v1 Spec
 
+> **Historical (Sept 21, 2026).** This is the original prototype spec. Several details have since changed:
+> - More / Less were replaced by Tried it / Not tried (#192).
+> - Bookmarks became Save in Library → Saved.
+> - The areas are now Movies / TV / Books / Games.
+> - Live AI now writes the patterns.
+>
+> The principles still hold. For current rules, see `docs/evidence-contract.md`; for the current state, see `docs/HANDOFF.md`.
+
 ## Goal
 Validate whether Tastemake can make useful cross-media recommendations and improve them from low-friction feedback.
 

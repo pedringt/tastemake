@@ -78,4 +78,4 @@ The `experiments/` folder contains taste-model and recommendation experiments th
 
 ## Deployment
 
-Vercel preview deployments are used for feature branches and pull requests. Production remains tied to `main` and is promoted separately after review.
+Vercel builds a preview deployment for each pull request. Merging to `main` deploys production (https://tastemake.vercel.app), so merges to `main` happen only after review. For contributors and new sessions, [docs/HANDOFF.md](docs/HANDOFF.md) is the place to start.

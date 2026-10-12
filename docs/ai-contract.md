@@ -32,7 +32,7 @@ A model's answer is only ever a **proposal**. It is validated, stamped and then 
 |---|---|
 | Invalid structure | That proposal is rejected; if nothing valid is left, fall back |
 | A citation points at evidence that doesn't exist | Rejected |
-| Support cites intent (bookmark, untried More/Less, Not interested) | Rejected: interest is not experience |
+| Support cites intent (Save, Not interested, or a legacy untried More/Less) | Rejected: interest is not experience |
 | Support cites something the user disliked | Rejected: contradicts explicit evidence |
 | Claims a domain with no cited support there | Rejected |
 | Cross-domain status beyond what the evidence shows | Rejected: cross-domain links start as hypotheses. The live profile clamps it first (#228): only things the user tried count, so a link resting on starter favorites alone is "untested", one tried thing in each of two areas is at most "tentative" |
@@ -54,6 +54,6 @@ Everything accepted is stamped `authority: "inferred"`, `source: "model"` and th
 `acceptOrFallback(result, deterministic)`: on an error, a timeout, or fewer valid items than needed, the product uses the deterministic answer (`src/ai/baseline.js`) and records why. It never fills gaps with invented certainty. Too little evidence is an acceptable answer.
 
 ## Not yet
-- User-confirmed pattern statements are honored by the validator but can't be made in the UI yet (next step).
 - Contexts (taste modes) aren't collected, so any context a model offers is rejected.
-- The live call itself (a Vercel serverless function with the Anthropic API) comes after this.
+
+(Since this was written: the live calls shipped as `api/recommendations.mjs` and `api/hypotheses.mjs`, with transport in `src/server/anthropic.mjs`, and pattern statements can be made from the Taste Profile and My Tastemake. Current models and setup: `docs/HANDOFF.md`.)
