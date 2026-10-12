@@ -5,6 +5,7 @@ import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-me
 import { callAnthropic, liveConfig } from "../src/server/anthropic.mjs";
 import { hydrateState as hydrateBaseState } from "../src/server/request-state.mjs";
 import { visibleDomains } from "../src/data/domains.js";
+import { compactProfileContext, expandProfileRefs } from "../src/ai/profile-context.js";
 
 const MAX_BODY_BYTES = 160_000;
 export const PROFILE_MAX_OUTPUT_TOKENS = 3200;
@@ -24,31 +25,34 @@ export function hypothesisConfig(env = process.env) {
   return { enabled: reasons.length === 0, reasons, model: base.model };
 }
 
-export function buildHypothesisPrompt(ctx, existing = []) {
+// #236: the CONTEXT block is compacted (src/ai/profile-context.js): experienced rows grouped by kind, short
+// ids (e1, e2, ...) instead of `ev:<provider id>` refs, no derivable or empty fields. `refs` maps the short
+// ids back; produceHypotheses and the eval run the model's answer through expandProfileRefs before the
+// normalizer and validator, which still work on the full ctx.evidence.
+export function buildHypothesisRequest(ctx, existing = []) {
   const allowedDomains = visibleDomains().map((domain) => domain.id);
-  const safe = {
-    evidence: (ctx.evidence ?? []).filter((row) => row?.class === "experienced").map(({ ref, title, type, domains, kind, polarity, weight, facts, refinements }) => ({ ref, title, type, domains, kind, polarity, weight, facts, refinements: refinements ?? [] })),
-    statements: ctx.statements,
-    contexts: ctx.contexts,
-    // #228: the earlier patterns carry their evidence, so the model can see what each rests on and
-    // keep it, instead of only a label it has no reason to repeat.
-    existing: (existing ?? []).map(({ id, title, claim, domains, strength, supports, counters }) => ({ id, label: title, claim, domains, level: strength, evidence: supports ?? [], counter: counters ?? [] }))
-  };
-  return [
+  const { context, refs } = compactProfileContext(ctx, existing);
+  const prompt = [
     "You are the taste-interpretation layer inside Tastemake.",
     "Software owns evidence and state. You may only propose working hypotheses from the experienced evidence supplied below.",
-    "Return JSON only: {\"hypotheses\":[{\"id\":\"ai-stable-id\",\"label\":\"...\",\"claim\":\"...\",\"evidence\":[\"ev:...\"],\"counter\":[],\"domains\":[\"movies\"],\"crossDomain\":\"untested\",\"level\":\"emerging\",\"conditional\":false,\"context\":null}],\"insufficientEvidence\":false}.",
+    "Return JSON only: {\"hypotheses\":[{\"id\":\"ai-stable-id\",\"label\":\"...\",\"claim\":\"...\",\"evidence\":[\"e1\"],\"counter\":[],\"domains\":[\"movies\"],\"crossDomain\":\"untested\",\"level\":\"emerging\",\"conditional\":false,\"context\":null}],\"insufficientEvidence\":false}.",
     `domains may contain only these exact product ids: ${allowedDomains.join(", ")}. Never use umbrella labels such as "watch"; movies and TV are separate domains. Every claimed domain must appear on at least one cited supporting evidence row.`,
     "level must be exactly one of: emerging, supported, strong. Never use established, confident, high, or any other synonym. When unsure, choose the lower allowed level.",
     "crossDomain must be exactly one of: untested, tentative, supported — there is no \"none\" value. Only evidence the user tried counts toward it; rows with kind starter-favorite never do. Use \"untested\" unless the cited tried evidence spans two or more domains. One tried thing in each of two domains is at most \"tentative\"; \"supported\" needs two or more tried things in every claimed domain. A pattern resting only on starter favorites is always \"untested\", whatever domains they span.",
     "existing lists the patterns already on the user's profile, with the evidence each rests on. Return each of them again, with the same id and label, unless the evidence now rules it out. One thing the user tried and disliked never removes or weakens a pattern: cite it in that pattern's counter if it pulls against it, keep the pattern, and do not lower its level for that one miss. Drop or lower an existing pattern only when two or more tried-and-disliked items count against it, or a user statement rejects it.",
     "Return up to 12 concise hypotheses when the evidence genuinely supports them. With thinner evidence, 4 to 6 is enough; only add 7 to 12 when they are meaningfully distinct and grounded. Order them from the most useful and well-supported working patterns to narrower or more tentative ones. Reuse an existing ai-* id when revising the same underlying idea; create a new ai-* id only for a genuinely new pattern.",
     "Every supporting/counter reference must exist. Intent, saved items, browsing and untried reactions are not taste evidence. User-confirmed corrections outrank inference. A says=not-me statement rejects that pattern; says=partial means do not broaden it beyond the user's context/domain refinements; says=unsure is not confirmation. Do not assign one global aesthetic or identity. Do not claim a domain without cited support in that domain. Prefer specific testable patterns over genres.",
-    "Each evidence row may include facts. If facts.resolved is false, do not supply missing genres, themes, creator, series, or other properties from model memory; use only the title/type/reaction that the product actually knows. Specific claims should lean on resolved factual metadata or multiple independent evidence rows.",
-    "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. They describe that one experience and are not independent evidence. Do not turn one refinement into a global preference; when refinements conflict across experienced items, prefer a narrower or conditional hypothesis and preserve uncertainty.",
+    "Each evidence row may include facts: y (year), by (creator), g (genres). If a row has u:1 (unresolved), do not supply missing genres, themes, creator, series, or other properties from model memory; use only the title/type/reaction that the product actually knows. Specific claims should lean on resolved factual metadata or multiple independent evidence rows.",
+    "An evidence row may include refinements (r): explicit reasons the user said that specific item worked or did not work. They describe that one experience and are not independent evidence. Do not turn one refinement into a global preference; when refinements conflict across experienced items, prefer a narrower or conditional hypothesis and preserve uncertainty.",
+    "CONTEXT: evidence lists only experienced items, grouped by kind, then domain (\"read+movies\" = both). starter-favorite = picked on Favorites (tried and loved, not a tested reaction); experienced-favorite = starred; experienced-strong-positive = loved; experienced-positive = liked; experienced-negative = tried and disliked. Cite rows only by their short id (\"e1\"); existing uses the same ids. t = title; type appears only when the domain does not imply it. A missing field is unknown.",
     "Return exactly one JSON object. The first character must be { and the last must be }, with nothing after the closing brace. No markdown or prose outside JSON.",
-    `CONTEXT\n${JSON.stringify(safe)}`
+    `CONTEXT\n${JSON.stringify(context)}`
   ].join("\n\n");
+  return { prompt, refs };
+}
+
+export function buildHypothesisPrompt(ctx, existing = []) {
+  return buildHypothesisRequest(ctx, existing).prompt;
 }
 
 function rejectionCategory(reason) {
@@ -97,7 +101,8 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
 
   let started = Date.now();
   try {
-    const model = await callAnthropic({ prompt: buildHypothesisPrompt(ctx, state.modelHypotheses), env, fetchImpl, maxTokens: PROFILE_MAX_OUTPUT_TOKENS });
+    const request = buildHypothesisRequest(ctx, state.modelHypotheses);
+    const model = await callAnthropic({ prompt: request.prompt, env, fetchImpl, maxTokens: PROFILE_MAX_OUTPUT_TOKENS });
     const durationMs = Math.max(1, Date.now() - started);
     const baseMetric = {
       operation: "taste_profile",
@@ -110,7 +115,7 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
     };
     // #228: an earlier pattern the model left out is carried forward unless two misses count against
     // it; shared with scripts/evals/run.mjs so the live eval measures what production keeps.
-    const normalizedResponse = preserveExistingHypotheses(normalizeHypothesisResponse(model.json, ctx), ctx, state.modelHypotheses);
+    const normalizedResponse = preserveExistingHypotheses(normalizeHypothesisResponse(expandProfileRefs(model.json, request.refs), ctx), ctx, state.modelHypotheses);
     const validated = validateHypotheses(normalizedResponse, ctx);
     const rejectionCategories = rejectionCategoryCounts(validated.rejected);
     if (validated.rejected.length) {

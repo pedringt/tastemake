@@ -154,7 +154,11 @@ const earlierProfile = [
   finally { console.log = originalLog; console.info = originalInfo; }
   eq("endpoint answer with trailing text is still a model answer", payload.source, "model");
   check("endpoint keeps every earlier pattern after one miss", earlierProfile.every((p) => payload.hypotheses.some((h) => h.id === p.id)), payload.hypotheses.map((h) => h.id).join(","));
-  check("the earlier patterns are sent with their evidence", sentPrompt.includes('"id":"ai-teeth"') && sentPrompt.includes('"evidence":["ev:eeaao","ev:barry"]'));
+  // #236: evidence is cited by short ids in the prompt; the earlier pattern's ids must name the same items.
+  const sent = JSON.parse(sentPrompt.slice(sentPrompt.indexOf("CONTEXT\n") + 8));
+  const titleById = new Map(Object.values(sent.evidence).flatMap((byDomain) => Object.values(byDomain).flat()).map((row) => [row.id, row.t]));
+  const teeth = sent.existing.find((h) => h.id === "ai-teeth");
+  check("the earlier patterns are sent with their evidence", Boolean(teeth) && teeth.evidence.map((id) => titleById.get(id)).join("|") === [byId("eeaao").title, byId("barry").title].join("|"), JSON.stringify(teeth));
 }
 
 // ---- 3. tolerant JSON extraction -------------------------------------------------------------------------

@@ -403,7 +403,7 @@ const promptContract = buildHypothesisPrompt({
 check("Taste Profile prompt names the exact allowed domain ids", promptContract.includes("movies, tv, read, play"));
 check("Taste Profile prompt explicitly forbids the production 'watch' alias", promptContract.includes('Never use umbrella labels such as "watch"'));
 check("Taste Profile prompt explicitly forbids the production 'established' level", promptContract.includes("Never use established"));
-check("Taste Profile prompt refuses to invent facts for unresolved manual evidence", promptContract.includes("facts.resolved is false"));
+check("Taste Profile prompt refuses to invent facts for unresolved manual evidence", promptContract.includes("If a row has u:1 (unresolved), do not supply missing genres"));
 check("Taste Profile prompt allows a deeper profile while keeping thin evidence concise", promptContract.includes("Return up to 12 concise hypotheses") && promptContract.includes("4 to 6 is enough"));
 
 // Production regression: software should repair mechanical contract mistakes that it can resolve
