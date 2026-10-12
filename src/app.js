@@ -5,8 +5,9 @@
 // this entire module's evaluation before any of the app's own code ran -- the static HTML shell
 // (header/nav) still rendered, but nothing else did: no routing, no recommendations, nothing. This
 // was the exact cause of a live "black screen" report. If Web Analytics is wanted here, Vercel's own
-// non-framework guide uses a plain `<script defer src="/_vercel/insights/script.js">` tag in
-// index.html instead, which needs no module resolution.
+// non-framework guide uses a plain `<script defer src="/_vercel/insights/script.js">` tag instead,
+// which needs no module resolution. #100 does exactly that, in src/lib/vercel-insights.js (its own
+// module in index.html, so it can never stop this one from running).
 import { state } from "./state.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";

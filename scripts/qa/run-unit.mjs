@@ -42,6 +42,7 @@ const SUITES = [
   "candidate-quality-tests.mjs",
   "synopsis-tests.mjs",
   "search-meta-tests.mjs",
+  "insights-tests.mjs",
   "latency-tests.mjs"
 ];
 
