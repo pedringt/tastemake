@@ -1,0 +1,6064 @@
+{
+ "capturedAt": "2026-10-12T14:31:29.512Z",
+ "source": "https://openlibrary.org (search.json + /works/{id}/editions.json?limit=50)",
+ "groups": {
+  "hunger-games": [
+   "OL5735363W",
+   "OL5735360W",
+   "OL14908941W"
+  ],
+  "dune": [
+   "OL893414W",
+   "OL893461W",
+   "OL893516W"
+  ],
+  "expanse": [
+   "OL16114008W",
+   "OL16117275W",
+   "OL17074648W"
+  ],
+  "red-rising": [
+   "OL17076473W",
+   "OL19340986W",
+   "OL19650409W"
+  ],
+  "mistborn": [
+   "OL5738148W",
+   "OL5738150W",
+   "OL5738154W"
+  ],
+  "harry-potter": [
+   "OL82563W",
+   "OL82537W",
+   "OL82536W"
+  ],
+  "stormlight": [
+   "OL15358691W",
+   "OL16813053W"
+  ],
+  "control-weir": [
+   "OL17091839W",
+   "OL21745884W",
+   "OL17837968W"
+  ],
+  "control-ishiguro": [
+   "OL59038W",
+   "OL59048W",
+   "OL20883297W"
+  ],
+  "control-orwell": [
+   "OL1168083W",
+   "OL1168007W"
+  ],
+  "control-sanderson-standalones": [
+   "OL5738147W",
+   "OL5738149W"
+  ],
+  "control-collins-other-series": [
+   "OL5735348W"
+  ],
+  "control-rowling-standalone": [
+   "OL16796166W"
+  ]
+ },
+ "search": {
+  "OL5735363W": {
+   "author_name": [
+    "Suzanne Collins"
+   ],
+   "edition_count": 143,
+   "first_publish_year": 2008,
+   "key": "/works/OL5735363W",
+   "title": "The Hunger Games",
+   "subject": [
+    "severe poverty",
+    "starvation",
+    "oppression",
+    "effects of war",
+    "self-sacrifice",
+    "Science fiction",
+    "Apocalyptic fiction",
+    "Dystopian fiction",
+    "Fiction",
+    "Juvenile works",
+    "Novels",
+    "Young adult works",
+    "Juvenile fiction",
+    "contensts",
+    "Young adult fiction",
+    "Game shows",
+    "Television programs",
+    "New York Times bestseller",
+    "Contests",
+    "nyt:series_books=2010-08-21",
+    "Long Now Manual for Civilization",
+    "Reality television programs",
+    "Television game shows",
+    "Survival",
+    "Interpersonal relations",
+    "Roman",
+    "Amerikanisches Englisch",
+    "Sisters",
+    "Young women",
+    "Dystopias",
+    "Survival skills",
+    "Blind",
+    "Books and reading",
+    "Reading Level-Grade 9",
+    "Reading Level-Grade 8",
+    "Reading Level-Grade 11",
+    "Reading Level-Grade 10",
+    "Reading Level-Grade 12",
+    "Survival Stories",
+    "Action & Adventure",
+    "Children's fiction",
+    "Survival, fiction",
+    "Interpersonal relations, fiction",
+    "Contests, fiction",
+    "Television, fiction",
+    "Large type books",
+    "Future",
+    "violent",
+    "life risking",
+    "bravery.",
+    "Roman pour jeunes adultes",
+    "Habiletés de survie",
+    "Roman d'aventures",
+    "Concours et compétitions",
+    "Relations humaines",
+    "Romans, nouvelles",
+    "Émissions televiseés",
+    "Spanish language materials",
+    "Supervivencia",
+    "Novela juvenil",
+    "Relaciones humanas",
+    "Programas de televisión",
+    "Concursos",
+    "Fantastische Erzahlung",
+    "Fantastische Literatur",
+    "Action and adventure fiction",
+    "Contests Fiction",
+    "Fictional Work",
+    "Interpersonal relations Fiction",
+    "Jeux télévisés Romans, nouvelles, etc. pour la jeunesse",
+    "Reality television programs Fiction",
+    "Reality television programs Juvenile fiction",
+    "Romans",
+    "Survival Fiction",
+    "Survival skills Fiction",
+    "Television game shows Juvenile fiction",
+    "Television programs Fiction",
+    "Émissions télévisées",
+    "Novela",
+    "Televisión",
+    "Programas",
+    "Competencias",
+    "American fiction",
+    "Translations into Chinese",
+    "Chinese language materials",
+    "Romans, nouvelles, etc. pour la jeunesse",
+    "Literature and fiction, juvenile",
+    "Short stories",
+    "Fantasy fiction",
+    "American literature, study and teaching",
+    "Serie:The_Hunger_Games"
+   ]
+  },
+  "OL5735360W": {
+   "author_name": [
+    "Suzanne Collins"
+   ],
+   "edition_count": 118,
+   "first_publish_year": 2009,
+   "key": "/works/OL5735360W",
+   "title": "Catching Fire",
+   "subject": [
+    "Action/Adventure",
+    "Fantasy",
+    "teen fiction",
+    "juvenile works",
+    "interdependence",
+    "independence",
+    "Games",
+    "Apocalyptic literature",
+    "Competition",
+    "teenage girls",
+    "sisters",
+    "poverty",
+    "Contests",
+    "Insurgency",
+    "Open Library Staff Picks",
+    "Survival",
+    "Fiction",
+    "Interpersonal relations",
+    "Television programs",
+    "Dystopias",
+    "Adventures and Adventurers",
+    "Television",
+    "Courage",
+    "Bravery",
+    "Heroism",
+    "Defiance and Talking Back",
+    "Adventure and adventurers",
+    "Girls",
+    "Blind",
+    "Books and reading",
+    "Young adult fiction",
+    "Television game shows",
+    "Dystopian",
+    "Science fiction",
+    "Survival Stories",
+    "Self-Esteem & Self-Reliance",
+    "Action & Adventure",
+    "JUVENILE FICTION",
+    "Social Themes",
+    "Survival skills",
+    "Reading Level-Grade 9",
+    "Reading Level-Grade 8",
+    "Reading Level-Grade 11",
+    "Reading Level-Grade 10",
+    "Reading Level-Grade 12",
+    "Children's fiction",
+    "Interpersonal relations, fiction",
+    "Contests, fiction",
+    "Television, fiction",
+    "Survival, fiction",
+    "Reality television programs",
+    "Large type books",
+    "Katniss Everdeen (Fictitious character)",
+    "Spanish language materials",
+    "Supervivencia",
+    "Novela juvenil",
+    "Relaciones humanas",
+    "Insurgencia",
+    "Programas de televisión",
+    "Concursos",
+    "Distopías",
+    "Spanish language",
+    "nyt:chapter-books=2009-09-20",
+    "New York Times bestseller",
+    "Novela",
+    "Televisión",
+    "Programas",
+    "Reading materials",
+    "Phantastische Erzahlung",
+    "Phantastische Literatur",
+    "Wilderness survival",
+    "Révoltes",
+    "Romans, nouvelles, etc. pour la jeunesse",
+    "Habiletés de survie",
+    "Jeux télévisés",
+    "Concours et compétitions",
+    "Dystopies",
+    "Filles",
+    "Fiction, science fiction, general",
+    "Serie:The_Hunger_Games",
+    "Insurgency -- Fiction"
+   ]
+  },
+  "OL14908941W": {
+   "author_name": [
+    "Suzanne Collins"
+   ],
+   "edition_count": 98,
+   "first_publish_year": 2010,
+   "key": "/works/OL14908941W",
+   "title": "Mockingjay",
+   "subject": [
+    "New York Times bestseller",
+    "Sci-fi",
+    "Young Adult",
+    "nyt:series_books=2010-08-21",
+    "Science fiction",
+    "Interpersonal relations",
+    "Television programs",
+    "Insurgency",
+    "Survival",
+    "Contests",
+    "Fiction",
+    "Large type books",
+    "Survival skills",
+    "Young adult fiction",
+    "Juvenile fiction",
+    "Revenge",
+    "Children's stories",
+    "Survival Stories",
+    "Dystopian",
+    "Self-Esteem & Self-Reliance",
+    "Action & Adventure",
+    "Social Themes",
+    "Television game shows",
+    "Dystopias",
+    "Girls",
+    "Courage",
+    "Children's fiction",
+    "Television, fiction",
+    "Contests, fiction",
+    "Survival, fiction",
+    "Interpersonal relations, fiction",
+    "Reading Level-Grade 7",
+    "Reading Level-Grade 9",
+    "Reading Level-Grade 8",
+    "Reading Level-Grade 11",
+    "Reading Level-Grade 10",
+    "Reading Level-Grade 12",
+    "Katniss Everdeen (Fictitious character)",
+    "Reality television programs",
+    "nyt:series-books=2010-09-12",
+    "New York Times reviewed",
+    "Telerealites",
+    "Romans",
+    "Dystopies",
+    "Science-fiction",
+    "Dictature",
+    "Television-verite",
+    "Concours et competitions",
+    "Habiletes de survie",
+    "Spanish language materials",
+    "Révoltes",
+    "Romans, nouvelles, etc. pour la jeunesse",
+    "Habiletés de survie",
+    "Supervivencia",
+    "Novela juvenil",
+    "Televisión",
+    "Programas",
+    "Relaciones humanas",
+    "Novela joven",
+    "Spanish language",
+    "Reading materials",
+    "Téléréalité",
+    "Insurgency -- Juvenile fiction",
+    "Survival -- Juvenile fiction",
+    "Television programs -- Juvenile fiction",
+    "Interpersonal relations -- Juvenile fiction",
+    "Contests -- Juvenile fiction",
+    "Insurgency -- Fiction",
+    "Survival skills -- Fiction",
+    "Television programs -- Fiction",
+    "Interpersonal relations -- Fiction",
+    "Contests -- Fiction",
+    "Serie:The_Hunger_Games"
+   ]
+  },
+  "OL893414W": {
+   "author_name": [
+    "Frank Herbert"
+   ],
+   "edition_count": 155,
+   "first_publish_year": 1965,
+   "key": "/works/OL893414W",
+   "series_key": [
+    "OL331367L"
+   ],
+   "series_name": [
+    "Dune"
+   ],
+   "series_position": [
+    "1"
+   ],
+   "title": "Dune",
+   "subject": [
+    "Dune (Imaginary place)",
+    "Fiction",
+    "Fiction, science fiction, general",
+    "Dune (imaginary place), fiction",
+    "New York Times reviewed",
+    "Science fiction",
+    "Science-fiction",
+    "American literature",
+    "nyt:mass-market-monthly=2021-11-07",
+    "New York Times bestseller",
+    "award:nebula_award=novel",
+    "nyt:trade-fiction-paperback=2021-11-07",
+    "Hugo Award Winner",
+    "award:hugo_award=1966",
+    "award:hugo_award=novel",
+    "American Science fiction",
+    "Long Now Manual for Civilization",
+    "Ecology",
+    "Fantasy fiction",
+    "Large type books"
+   ]
+  },
+  "OL893461W": {
+   "author_name": [
+    "Frank Herbert"
+   ],
+   "edition_count": 101,
+   "first_publish_year": 1969,
+   "key": "/works/OL893461W",
+   "series_key": [
+    "OL331367L"
+   ],
+   "series_name": [
+    "Dune"
+   ],
+   "series_position": [
+    "2"
+   ],
+   "title": "Dune Messiah",
+   "subject": [
+    "American Science fiction",
+    "Dune (Imaginary place)",
+    "Fiction",
+    "Imaginary places",
+    "Science Fiction",
+    "Translations into Russian",
+    "Novela",
+    "Dune (Lugar imaginario)",
+    "Lectures et morceaux choisis",
+    "Anglais (langue)",
+    "Roman ame ricain",
+    "Science-fiction ame ricaine",
+    "Long Now Manual for Civilization",
+    "Roman américain",
+    "Science-fiction américaine",
+    "Dune (imaginary place), fiction",
+    "Fiction, science fiction, general",
+    "American fiction",
+    "Translations into Vietnamese"
+   ]
+  },
+  "OL893516W": {
+   "author_name": [
+    "Frank Herbert"
+   ],
+   "edition_count": 77,
+   "first_publish_year": 1976,
+   "key": "/works/OL893516W",
+   "series_key": [
+    "OL331367L"
+   ],
+   "series_name": [
+    "Dune"
+   ],
+   "series_position": [
+    "3"
+   ],
+   "title": "Children of Dune",
+   "subject": [
+    "Dune (Imaginary place)",
+    "Fiction",
+    "Fiction in English",
+    "Science Fiction",
+    "Dune (imaginary place), fiction",
+    "Fiction, science fiction, general",
+    "Fiction, fantasy, general",
+    "American Science fiction",
+    "Reading Level-Grade 7",
+    "Reading Level-Grade 9",
+    "Reading Level-Grade 8",
+    "Reading Level-Grade 11",
+    "Reading Level-Grade 10",
+    "Reading Level-Grade 12",
+    "American literature"
+   ]
+  },
+  "OL16114008W": {
+   "author_name": [
+    "James S. A. Corey"
+   ],
+   "edition_count": 29,
+   "first_publish_year": 2009,
+   "key": "/works/OL16114008W",
+   "series_key": [
+    "OL334747L"
+   ],
+   "series_name": [
+    "The Expanse"
+   ],
+   "series_position": [
+    "1"
+   ],
+   "title": "Leviathan Wakes",
+   "subject": [
+    "Space warfare",
+    "Fiction",
+    "Interplanetary voyages",
+    "Conspiracies",
+    "Fiction, science fiction, general",
+    "American literature",
+    "series:The Expanse"
+   ]
+  },
+  "OL16117275W": {
+   "author_name": [
+    "James S. A. Corey"
+   ],
+   "edition_count": 17,
+   "first_publish_year": 2012,
+   "key": "/works/OL16117275W",
+   "series_key": [
+    "OL334747L"
+   ],
+   "series_name": [
+    "The Expanse"
+   ],
+   "series_position": [
+    "2"
+   ],
+   "title": "Caliban's war",
+   "subject": [
+    "Extraterrestrial beings",
+    "Space warfare",
+    "Interplanetary voyages",
+    "Fiction",
+    "Fiction, science fiction, general",
+    "series:The Expanse"
+   ]
+  },
+  "OL17074648W": {
+   "author_name": [
+    "James S. A. Corey"
+   ],
+   "edition_count": 13,
+   "first_publish_year": 2013,
+   "key": "/works/OL17074648W",
+   "series_key": [
+    "OL334747L"
+   ],
+   "series_name": [
+    "The Expanse"
+   ],
+   "series_position": [
+    "3"
+   ],
+   "title": "Abaddon’s Gate",
+   "subject": [
+    "Space warfare",
+    "Life on other planets",
+    "Conspiracies",
+    "Fiction",
+    "Fiction, science fiction, general",
+    "Science-Fiction",
+    "Amerikanisches Englisch",
+    "series:The Expanse"
+   ]
+  },
+  "OL17076473W": {
+   "author_name": [
+    "Pierce Brown"
+   ],
+   "edition_count": 26,
+   "first_publish_year": 2014,
+   "key": "/works/OL17076473W",
+   "series_key": [
+    "OL327572L"
+   ],
+   "series_name": [
+    "Red Rising"
+   ],
+   "series_position": [
+    "1"
+   ],
+   "title": "Red Rising",
+   "subject": [
+    "franchise:Red Rising",
+    "series:Red Rising Trilogy",
+    "series:Red Rising Saga",
+    "form:novel",
+    "genre:science fiction",
+    "Fantasy",
+    "Fiction",
+    "Dystopia",
+    "Young Adult",
+    "Resistance to Government",
+    "Amerikanisches Englisch",
+    "Social classes",
+    "Adventure"
+   ]
+  },
+  "OL19340986W": {
+   "author_name": [
+    "Pierce Brown"
+   ],
+   "edition_count": 21,
+   "first_publish_year": 2015,
+   "key": "/works/OL19340986W",
+   "series_key": [
+    "OL327572L"
+   ],
+   "series_name": [
+    "Red Rising"
+   ],
+   "series_position": [
+    "2"
+   ],
+   "title": "Golden Son",
+   "subject": [
+    "franchise:Red Rising",
+    "series:Red Rising Trilogy",
+    "series:Red Rising Saga",
+    "form:novel",
+    "genre:science fiction",
+    "Resistance to Government",
+    "nyt:hardcover-fiction=2015-01-25",
+    "New York Times bestseller",
+    "Undercover operations",
+    "Space colonies",
+    "Dystopias",
+    "Fiction",
+    "Large type books"
+   ]
+  },
+  "OL19650409W": {
+   "author_name": [
+    "Pierce Brown"
+   ],
+   "edition_count": 20,
+   "first_publish_year": 2016,
+   "key": "/works/OL19650409W",
+   "series_key": [
+    "OL327572L"
+   ],
+   "series_name": [
+    "Red Rising"
+   ],
+   "series_position": [
+    "3"
+   ],
+   "title": "Morning Star",
+   "subject": [
+    "franchise:Red Rising",
+    "series:Red Rising Trilogy",
+    "series:Red Rising Saga",
+    "form:novel",
+    "genre:science fiction",
+    "Resistance to Government",
+    "Space colonies",
+    "nyt:hardcover-fiction=2016-02-28",
+    "New York Times bestseller",
+    "Large type books",
+    "Dystopias",
+    "Fiction",
+    "FICTION / Science Fiction / Adventure",
+    "FICTION / Science Fiction / High Tech"
+   ]
+  },
+  "OL5738148W": {
+   "author_name": [
+    "Brandon Sanderson"
+   ],
+   "edition_count": 45,
+   "first_publish_year": 2001,
+   "key": "/works/OL5738148W",
+   "title": "The Final Empire",
+   "subject": [
+    "form:novel",
+    "series:The Mistborn Saga",
+    "series:Mistborn Original Trilogy",
+    "genre:high fantasy",
+    "Courts and courtiers",
+    "Women revolutionaries",
+    "Fiction",
+    "Adventure",
+    "Magic",
+    "Thieves",
+    "Nobility",
+    "Covert Operations",
+    "Mystical powers",
+    "Upraising",
+    "Epic",
+    "Good and evil",
+    "Slaves",
+    "Fantasía",
+    "Ficción",
+    "Magia",
+    "Adulto"
+   ]
+  },
+  "OL5738150W": {
+   "author_name": [
+    "Brandon Sanderson"
+   ],
+   "edition_count": 36,
+   "first_publish_year": 2007,
+   "key": "/works/OL5738150W",
+   "title": "The Well of Ascension",
+   "subject": [
+    "Courts and courtiers",
+    "Sieges",
+    "Fiction",
+    "Fiction, fantasy, general",
+    "Fiction, fantasy, epic",
+    "Magic",
+    "Imaginary places",
+    "Fantasy fiction",
+    "Courts and courtiers -- Fiction",
+    "Sieges -- Fiction",
+    "Imaginary places -- Fiction",
+    "Good and evil -- Fiction",
+    "Magic -- Fiction",
+    "Cours et courtisans -- Romans, nouvelles, etc",
+    "Sièges (Histoire) -- Romans, nouvelles, etc",
+    "Lieux imaginaires -- Romans, nouvelles, etc",
+    "Good and evil",
+    "Fantasía"
+   ]
+  },
+  "OL5738154W": {
+   "author_name": [
+    "Brandon Sanderson"
+   ],
+   "edition_count": 27,
+   "first_publish_year": 2008,
+   "key": "/works/OL5738154W",
+   "title": "The Hero of Ages",
+   "subject": [
+    "Fiction",
+    "Fantasy",
+    "Epic Fantasy",
+    "Fantasy fiction",
+    "Fiction, fantasy, general",
+    "Children's fiction",
+    "Imaginary places",
+    "Magic"
+   ]
+  },
+  "OL82563W": {
+   "author_name": [
+    "J. K. Rowling"
+   ],
+   "edition_count": 400,
+   "first_publish_year": 1997,
+   "key": "/works/OL82563W",
+   "series_key": [
+    "OL326110L"
+   ],
+   "series_name": [
+    "Harry Potter"
+   ],
+   "series_position": [
+    "1"
+   ],
+   "title": "Harry Potter and the Philosopher's Stone",
+   "subject": [
+    "series:Harry_Potter",
+    "Ghosts",
+    "Monsters",
+    "Vampires",
+    "Witches",
+    "Challenges and Overcoming Obstacles",
+    "Magic and Supernatural",
+    "Cleverness",
+    "School Life",
+    "school stories",
+    "Wizards",
+    "Magic",
+    "MAGIA",
+    "MAGOS",
+    "Juvenile fiction",
+    "Fiction",
+    "NOVELAS INGLESAS",
+    "Schools",
+    "orphans",
+    "fantasy fiction",
+    "England in fiction",
+    "Witches in fiction",
+    "Wizards in fiction",
+    "Alchemy",
+    "New York Times bestseller",
+    "Juvenile literature",
+    "Magic in fiction",
+    "Open Library Staff Picks",
+    "Juvenile audience",
+    "Children's stories",
+    "Juvenile works",
+    "Schools in fiction",
+    "Fantasy",
+    "Hogwarts School of Witchcraft and Wizardry (Imaginary place)",
+    "Harry Potter (Fictitious character)",
+    "Ficción juvenil",
+    "Escuelas",
+    "Hogwarts School of Witchcraft and Wizardry (Imaginary organization)",
+    "Translations from English",
+    "Chinese fiction",
+    "Hermione Granger (Fictitious character)",
+    "Reading Level-Grade 9",
+    "Reading Level-Grade 11",
+    "Reading Level-Grade 10",
+    "Reading Level-Grade 12",
+    "Hogwarts school of witchcraft and wizardry (imaginary organization), fiction",
+    "Children's fiction",
+    "Schools, fiction",
+    "England, fiction",
+    "Potter, harry (fictitious character), fiction",
+    "Wizards, fiction",
+    "Magic, fiction",
+    "Fiction, fantasy, general",
+    "Magier",
+    "Fabeltiere",
+    "Lehrling",
+    "Kinderbuch",
+    "Stein der Weisen",
+    "Ungeheuer",
+    "Junge",
+    "English language",
+    "Translating into Welsh",
+    "Modern history to 20th century: c 1700 to c 1900",
+    "Literary theory",
+    "English literature",
+    "Ron Weasley (Fictitious character)",
+    "Latin language materials",
+    "Romans, nouvelles, etc. pour la jeunesse",
+    "Poudlard, école de sorcellerie (Organisation imaginaire)",
+    "Sorciers",
+    "Sorcières",
+    "Magie",
+    "Internats",
+    "Adventure and adventurers, fiction",
+    "Action & Adventure",
+    "Fantasy & Magic",
+    "Social Themes",
+    "Friendship",
+    "Harry Potter (Fictional character)",
+    "Friendship, fiction",
+    "German language materials",
+    "Witchcraft, fiction",
+    "Wizard",
+    "NOVELAS FANTÁSTICAS",
+    "NOVELAS JUVENILES INGLESAS",
+    "LITERATURA JUVENIL ESTADOUNIDENSE",
+    "Écoles",
+    "Hechicería",
+    "Novela juvenil",
+    "Ingleterra",
+    "Mystery",
+    "roman",
+    "English Fantasy literature",
+    "Translations into Marathi",
+    "English fiction",
+    "Translations into Chinese",
+    "Children - harry potter",
+    "Teen fiction",
+    "Children - fiction & literature",
+    "Science fiction & fantasy",
+    "Fiction - people",
+    "Places & cultures",
+    "Adventure",
+    "Supernatural",
+    "harry potter",
+    "j.k rowling",
+    "spanish",
+    "Spanish language materials"
+   ]
+  },
+  "OL82537W": {
+   "author_name": [
+    "J. K. Rowling"
+   ],
+   "edition_count": 306,
+   "first_publish_year": 1998,
+   "key": "/works/OL82537W",
+   "series_key": [
+    "OL326110L"
+   ],
+   "series_name": [
+    "Harry Potter"
+   ],
+   "series_position": [
+    "2"
+   ],
+   "title": "Harry Potter and the Chamber of Secrets",
+   "subject": [
+    "series:Harry_Potter",
+    "Fantasy fiction",
+    "school stories",
+    "Fiction",
+    "Fantasy",
+    "Nestlé Smarties Book Prize winner",
+    "Juvenile fiction",
+    "Wizards",
+    "Magic",
+    "Schools",
+    "Spanish language materials",
+    "Magia",
+    "Escuelas",
+    "Ficción juvenil",
+    "Novela fantástica",
+    "Hogwarts School of Witchcraft and Wizardry (Imaginary place)",
+    "Harry Potter (Fictitious character)",
+    "Wizards -- Juvenile fiction",
+    "Witches",
+    "Hogwarts School of Witchcraft and Wizardry (Imaginary organization)",
+    "Magos",
+    "Translations from English",
+    "Chinese fiction",
+    "Orphans",
+    "Aunts",
+    "Uncles",
+    "Cousins",
+    "Determination (Personality trait) in children",
+    "Friendship",
+    "Potter, Harry (Fictitious character)",
+    "Witches Fiction",
+    "Wizards Fiction",
+    "Schools Fiction",
+    "England Fiction",
+    "Magic -- Juvenile fiction",
+    "Hogwarts School of Witchcraft and Wizardry (Imaginary place) -- Juvenile fiction",
+    "Schools -- Juvenile fiction",
+    "Wizards -- Fiction",
+    "Magic -- Fiction",
+    "Schools -- Fiction",
+    "England -- Juvenile fiction",
+    "England -- Fiction",
+    "Fantasy & Magic",
+    "Action & Adventure",
+    "Witchcraft",
+    "Harry Potter (Fictional character)",
+    "Engels",
+    "Social Themes",
+    "Reading Level-Grade 11",
+    "Reading Level-Grade 12",
+    "Schools, fiction",
+    "England, fiction",
+    "Potter, harry (fictitious character), fiction",
+    "Hogwarts school of witchcraft and wizardry (imaginary organization), fiction",
+    "Wizards, fiction",
+    "Magic, fiction",
+    "Children's fiction",
+    "Adventure and adventurers, fiction",
+    "English literature",
+    "Fiction, fantasy, general",
+    "Hermione Granger (Fictitious character)",
+    "Ron Weasley (Fictitious character)",
+    "Latin language materials",
+    "Children's stories",
+    "Magiciens",
+    "Romans, nouvelles, etc. pour la jeunesse",
+    "Nécromancie",
+    "Écoles",
+    "Potter, Harry (Personnage fictif)",
+    "Romans, nouvelles",
+    "Magie",
+    "Family",
+    "Orphans & Foster Homes",
+    "Magía",
+    "Novela juvenil",
+    "Juvenile",
+    "Children's stories, English",
+    "Sieg",
+    "Basilisk",
+    "Das Böse",
+    "Das Gute",
+    "Internat",
+    "Lebensgefahr",
+    "Lebensrettung",
+    "List",
+    "Magier",
+    "Jugendbuch",
+    "Kampf",
+    "Schule",
+    "Basilisk (Fabeltier)",
+    "Junge",
+    "Phönix",
+    "Deutschland Grenzschutzkommando Mitte Schule",
+    "Deutschland",
+    "Friendship, fiction",
+    "Hogwartes School of Witchcraft and Wizardry (Imaginary place)",
+    "General",
+    "Social Issues",
+    "Witches, fiction",
+    "English Fantasy literature",
+    "Translations into Marathi",
+    "Humor",
+    "Toy and movable books",
+    "New York Times bestseller",
+    "Specimens",
+    "Juvenile literature",
+    "Adventure",
+    "Open Library Staff Picks",
+    "Books and reading",
+    "Blind",
+    "Braille books",
+    "Warlocks",
+    "Boarding schools",
+    "Poudlard, école de sorcellerie (Organisation imaginaire)",
+    "Sorciers",
+    "Sorcières",
+    "Internats",
+    "Poudlard (Organisation imaginaire)",
+    "Schools in fiction",
+    "Wizards in fiction",
+    "Magic in fiction",
+    "England in fiction",
+    "Accessible book",
+    "Protected DAISY"
+   ]
+  },
+  "OL82536W": {
+   "author_name": [
+    "J. K. Rowling"
+   ],
+   "edition_count": 279,
+   "first_publish_year": 1999,
+   "key": "/works/OL82536W",
+   "series_key": [
+    "OL326110L"
+   ],
+   "series_name": [
+    "Harry Potter"
+   ],
+   "series_position": [
+    "3"
+   ],
+   "title": "Harry Potter and the Prisoner of Azkaban",
+   "subject": [
+    "Fantasy fiction",
+    "orphans",
+    "foster homes",
+    "fantasy",
+    "literature",
+    "juvenile fantasy fiction",
+    "Locus Award winner",
+    "Bram Stoker Award winner",
+    "Whitbread Book Award winner",
+    "Adventure",
+    "Juvenile literature",
+    "Juvenile works",
+    "Juvenile audience",
+    "Children's books",
+    "Magic",
+    "Open Library Staff Picks",
+    "Juvenile fiction",
+    "Wizards",
+    "New York Times bestseller",
+    "Schools",
+    "nyt:series_books=2006-09-16",
+    "Science Fiction, Fantasy, & Magic",
+    "Hogwarts School of Witchcraft and Wizardry (Imaginary place)",
+    "Witches",
+    "Harry Potter (Fictitious character)",
+    "Ficción juvenil",
+    "Magos",
+    "Magia",
+    "Hogwarts School of Witchcraft and Wizardry (Imaginary organization)",
+    "Children's Books/Ages 9-12 Fiction",
+    "Spanish: Grades 4-7",
+    "General",
+    "Potter, Harry (Fictitious character)",
+    "Potter, Harry (Caracter ficticio)",
+    "Hogwarts School of Witchcraft and Wizardry (Lugar imaginario)",
+    "Escuelas",
+    "Spanish language",
+    "Literatura juvenil",
+    "Harry Potter (Fictional character)",
+    "Orphans & Foster Homes",
+    "Fantasy & Magic",
+    "French language materials",
+    "School stories",
+    "Family",
+    "Fiction",
+    "Social Themes",
+    "Friendship",
+    "Reading Level-Grade 9",
+    "Reading Level-Grade 11",
+    "Reading Level-Grade 10",
+    "Reading Level-Grade 12",
+    "Translations from English",
+    "Chinese language materials",
+    "England",
+    "Chinese fiction",
+    "Tong hua",
+    "England, fiction",
+    "Potter, harry (fictitious character), fiction",
+    "Schools, fiction",
+    "Children's fiction",
+    "Wizards, fiction",
+    "Hogwarts school of witchcraft and wizardry (imaginary organization), fiction",
+    "Magic, fiction",
+    "Fiction, fantasy, general",
+    "Magie",
+    "Magiciens",
+    "Schulferien",
+    "Deutschland",
+    "Verrat",
+    "Freundschaft",
+    "Romans, nouvelles, etc. pour la jeunesse",
+    "Junge",
+    "Good and evil",
+    "Jugendgruppe",
+    "Fabeltiere",
+    "Lüge",
+    "Rache",
+    "Boarding schools",
+    "Deutschland Grenzschutzkommando Mitte Schule",
+    "Potter, Harry (Personnage fictif)",
+    "English literature",
+    "Hermione Granger (Fictitious character)",
+    "Ron Weasley (Fictitious character)",
+    "Large type books",
+    "Juvenile films",
+    "Películas cinematográficas juveniles",
+    "Hechiceros",
+    "Potter, Harry (Personaje literario)",
+    "Children stories",
+    "Novela juvenil",
+    "Reading materials",
+    "Adventure and adventurers, fiction",
+    "Friendship, fiction",
+    "Witches, fiction",
+    "English Fantasy literature",
+    "Translations into Marathi"
+   ]
+  },
+  "OL15358691W": {
+   "author_name": [
+    "Brandon Sanderson"
+   ],
+   "edition_count": 30,
+   "first_publish_year": 2010,
+   "key": "/works/OL15358691W",
+   "title": "The Way of Kings",
+   "subject": [
+    "New York Times Bestseller",
+    "Fantasy",
+    "Epic Fantasy",
+    "Imaginary places",
+    "Kings and rulers",
+    "Magic",
+    "Imaginary wars and battles",
+    "Manuscripts",
+    "Slavery",
+    "Fiction",
+    "Fiction, fantasy, epic",
+    "high fantasy",
+    "nyt:hardcover-fiction=2010-09-19",
+    "Fiction, fantasy, general",
+    "American literature",
+    "series:Stormlight Archive"
+   ]
+  },
+  "OL16813053W": {
+   "author_name": [
+    "Brandon Sanderson"
+   ],
+   "edition_count": 23,
+   "first_publish_year": 2012,
+   "key": "/works/OL16813053W",
+   "title": "Words of Radiance",
+   "subject": [
+    "Imaginary wars and battles",
+    "Fiction",
+    "Fiction, fantasy, epic",
+    "high fantasy",
+    "epic fantasy",
+    "nyt:combined-print-and-e-book-fiction=2014-03-23",
+    "New York Times bestseller",
+    "Magic",
+    "Life on other planets",
+    "Fantasy fiction",
+    "Great powers",
+    "Guerres et batailles imaginaires",
+    "Romans, nouvelles",
+    "Grandes puissances",
+    "Imaginary wars and battles -- Fiction"
+   ]
+  },
+  "OL17091839W": {
+   "author_name": [
+    "Andy Weir"
+   ],
+   "edition_count": 74,
+   "first_publish_year": 2011,
+   "key": "/works/OL17091839W",
+   "title": "The Martian",
+   "subject": [
+    "Science-Fiction",
+    "Science Fiction & Fantasy",
+    "Suspense & Thriller",
+    "Science fiction",
+    "Amerikanisches Englisch",
+    "Astronauts",
+    "Survival",
+    "Fiction",
+    "Survival skills",
+    "Supervivencia",
+    "Novela",
+    "Astronautas",
+    "Reading Level-Grade 7",
+    "Reading Level-Grade 9",
+    "Reading Level-Grade 8",
+    "Reading Level-Grade 11",
+    "Reading Level-Grade 10",
+    "Reading Level-Grade 12",
+    "Fiction, science fiction, action & adventure",
+    "Fiction, science fiction, general",
+    "Large type books",
+    "Arabic language materials",
+    "Romans, nouvelles",
+    "nyt:hardcover-fiction=2014-03-02",
+    "New York Times bestseller",
+    "Chang pian xiao shuo",
+    "Children's fiction",
+    "Adventure and adventurers, fiction",
+    "Fantasy fiction"
+   ]
+  },
+  "OL21745884W": {
+   "author_name": [
+    "Andy Weir"
+   ],
+   "edition_count": 32,
+   "first_publish_year": 2021,
+   "key": "/works/OL21745884W",
+   "title": "Project Hail Mary",
+   "subject": [
+    "hard science-fiction",
+    "science-fiction",
+    "sci-fi",
+    "hard sci-fi",
+    "nyt:hardcover-fiction=2021-05-23",
+    "New York Times bestseller",
+    "New York Times reviewed",
+    "Fiction, science fiction, action & adventure",
+    "Fiction, science fiction, hard science fiction",
+    "End of the world",
+    "Fiction",
+    "Astronauts",
+    "Space flight",
+    "Memory disorders",
+    "Survival",
+    "Fin du monde",
+    "Romans, nouvelles",
+    "Astronautes",
+    "Vol spatial",
+    "Habiletés de survie",
+    "FICTION / Science Fiction / Action & Adventure",
+    "FICTION / Science Fiction / Hard Science Fiction",
+    "FICTION / Thrillers / Suspense",
+    "Survival after airplane accidents, shipwrecks",
+    "nyt:trade-fiction-paperback=2022-11-13"
+   ]
+  },
+  "OL17837968W": {
+   "author_name": [
+    "Andy Weir"
+   ],
+   "edition_count": 34,
+   "first_publish_year": 2017,
+   "key": "/works/OL17837968W",
+   "title": "Artemis",
+   "subject": [
+    "Fiction",
+    "Science fiction",
+    "Smuggling",
+    "Conspiracies",
+    "Fiction, science fiction, hard science fiction",
+    "Fiction, science fiction, action & adventure",
+    "Conspiraciones",
+    "Contrabando",
+    "Luna",
+    "Ficción",
+    "Spanish language materials",
+    "nyt:combined-print-and-e-book-fiction=2017-12-03",
+    "New York Times bestseller",
+    "Suspense fiction",
+    "Moon",
+    "Hard Science Fiction"
+   ]
+  },
+  "OL59038W": {
+   "author_name": [
+    "Kazuo Ishiguro"
+   ],
+   "edition_count": 61,
+   "first_publish_year": 2005,
+   "key": "/works/OL59038W",
+   "title": "Never Let Me Go",
+   "subject": [
+    "Fiction",
+    "Organ donors",
+    "Cloning",
+    "Donation of organs, tissues",
+    "Women",
+    "Literature",
+    "New York Times bestseller",
+    "nyt:trade_fiction_paperback=2010-09-05",
+    "Human cloning",
+    "Science fiction",
+    "Fiction, psychological",
+    "Fiction, science fiction, general",
+    "England, fiction",
+    "Large type books",
+    "School children",
+    "Reminiscing",
+    "Friendship",
+    "English literature",
+    "Ishiguro, kazuo, 1954-",
+    "Powieść angielska",
+    "Tłumaczenia polskie",
+    "Femmes",
+    "Romans, nouvelles",
+    "Clonage",
+    "Donneurs d'organes",
+    "Dons d'organes, de tissus",
+    "Novela inglesa",
+    "Psychological fiction",
+    "Literary",
+    "Donation of organs, tissues, etc",
+    "Donation of organs, tissues, etc--fiction",
+    "Women--fiction",
+    "Cloning--fiction",
+    "Organ donors--fiction",
+    "Pr6059.s5 n48 2006",
+    "Fic"
+   ]
+  },
+  "OL59048W": {
+   "author_name": [
+    "Kazuo Ishiguro"
+   ],
+   "edition_count": 87,
+   "first_publish_year": 1989,
+   "key": "/works/OL59048W",
+   "title": "The Remains of the Day",
+   "subject": [
+    "Man Booker Prize Winner",
+    "award:man_booker_prize=1989",
+    "Literature",
+    "Household employees",
+    "Butlers",
+    "Country homes",
+    "Domestics",
+    "Fiction",
+    "Country homes -- Fiction",
+    "Man-woman relationships",
+    "History",
+    "Historical fiction",
+    "Man-woman relationships, fiction",
+    "Fiction, historical",
+    "British and irish fiction (fictional works by one author)",
+    "England, fiction",
+    "Readers",
+    "Diener",
+    "Fiction, historical, general",
+    "Social classes",
+    "Country homes--history",
+    "Country homes--england--history--20th century--fiction",
+    "Man-woman relationships--england--fiction",
+    "Household employees--england--fiction",
+    "Pr6059.s5 r46 1993x",
+    "Samfundsskildringer",
+    "Employés de maison",
+    "Romans, nouvelles"
+   ]
+  },
+  "OL20883297W": {
+   "author_name": [
+    "Kazuo Ishiguro"
+   ],
+   "edition_count": 31,
+   "first_publish_year": 2019,
+   "key": "/works/OL20883297W",
+   "title": "Klara and the Sun",
+   "subject": [
+    "Fiction, science fiction, general",
+    "speculative fiction",
+    "nyt:combined-print-and-e-book-fiction=2021-03-21",
+    "New York Times bestseller",
+    "Fiction, dystopian",
+    "British and irish fiction (fictional works by one author)",
+    "The Future",
+    "Fiction",
+    "Artificial intelligence",
+    "Robots",
+    "Romance fiction",
+    "Friendship",
+    "Love",
+    "Paid companions (Household employees)",
+    "Intelligence artificielle",
+    "Romans, nouvelles",
+    "Amitié",
+    "Literary",
+    "Electronic books",
+    "FICTION / Literary",
+    "FICTION / Science Fiction / General",
+    "FICTION / Visionary & Metaphysical"
+   ]
+  },
+  "OL1168083W": {
+   "author_name": [
+    "George Orwell"
+   ],
+   "edition_count": 727,
+   "first_publish_year": 1949,
+   "key": "/works/OL1168083W",
+   "title": "Nineteen Eighty-Four",
+   "subject": [
+    "futurology",
+    "censorship",
+    "surveillance",
+    "rebels",
+    "sting operations",
+    "historical negationism",
+    "memory holes",
+    "thoughtcrime",
+    "Outer Party",
+    "resistance movements",
+    "Newspeak",
+    "perpetual war",
+    "telescreens",
+    "cult of personality",
+    "Ingsoc",
+    "Satirical literature",
+    "English science fiction",
+    "FICTION CLASSICS",
+    "CLASSICS",
+    "CONTEMPORARY FICTION",
+    "Man-woman relationships",
+    "Politique",
+    "Political fiction",
+    "Totalitarisme",
+    "Fiction",
+    "Romans",
+    "Facsimiles",
+    "Totalitarismo",
+    "Husbands",
+    "Classic Literature",
+    "Manuscripts",
+    "Novela política",
+    "Middle aged men",
+    "Insurance agents",
+    "open_syllabus_project",
+    "Distopías",
+    "Dystopias",
+    "Ficción",
+    "Ciencia-ficción",
+    "Cautionary tales and verse",
+    "Dystopias in literature",
+    "Suburban life",
+    "English fiction",
+    "Totalitarianism",
+    "Indic fiction (English)",
+    "Science Fiction",
+    "Traducciones al español",
+    "Novela",
+    "Novela inglesa",
+    "Zukunft",
+    "Polizeistaat",
+    "English Political fiction",
+    "Totalitarianism and literature",
+    "History and criticism",
+    "Reading Level-Grade 11",
+    "Reading Level-Grade 12",
+    "British and irish fiction (fictional works by one author)",
+    "London (england), fiction",
+    "Fiction, political",
+    "Fiction, dystopian",
+    "Fiction, science fiction, general",
+    "English literature",
+    "Correspondence",
+    "Journalists",
+    "English Authors",
+    "Correspondence..",
+    "Authors and publishers",
+    "Fiction, short stories (single author)",
+    "British and irish drama (dramatic works by one author)",
+    "Brainwashing",
+    "Authoritarianism",
+    "NOVELAS INGLESAS",
+    "Fiction, historical, general",
+    "Political science",
+    "Satire",
+    "Romans, nouvelles",
+    "Literature",
+    "Fiction, general",
+    "Psychological fiction",
+    "Drama",
+    "Dystopian plays",
+    "Essays",
+    "Literary",
+    "Nationalism",
+    "Lexicography",
+    "Language & literary studies",
+    "English manuscripts",
+    "Translations into russian",
+    "Translations into urdu",
+    "Fantasy",
+    "Translations into spanish",
+    "Nineteen eighty-four (orwell, george)",
+    "Translating and interpreting",
+    "Comic books, strips",
+    "Adaptations",
+    "Totalitarianism--fiction",
+    "Pr6029.r8 n49 2003",
+    "Long now manual for civilization",
+    "Dystopies",
+    "SciFi",
+    "Fiction, visionary & metaphysical",
+    "Social sciences",
+    "Computers",
+    "1984",
+    "mil novecientos ochenta y cuatro",
+    "Big Brother",
+    "Translations into Arabic"
+   ]
+  },
+  "OL1168007W": {
+   "author_name": [
+    "George Orwell"
+   ],
+   "edition_count": 653,
+   "first_publish_year": 1945,
+   "key": "/works/OL1168007W",
+   "title": "Animal Farm",
+   "subject": [
+    "British and Irish fiction (fictional works by one author)",
+    "political satire",
+    "classic",
+    "animal drama",
+    "Fiction, political",
+    "English literature: literary criticism",
+    "For National Curriculum Key Stage 4 & GCSE",
+    "Fiction, satire",
+    "English literature",
+    "Fiction",
+    "Literature",
+    "Drama (dramatic works by one author)",
+    "Animals, fiction",
+    "Behavior, fiction",
+    "Totalitarianism",
+    "Domestic animals",
+    "Large type books",
+    "Zhong pian xiao shuo",
+    "Lectures et morceaux choisis",
+    "Roman",
+    "English Political satire",
+    "Animales domésticos",
+    "Ficción",
+    "Totalitarismo",
+    "Translations into Chinese",
+    "Animals in literature",
+    "Animals",
+    "Power (Social sciences)",
+    "Fiction, science fiction, general",
+    "Farms",
+    "Livestock",
+    "Political corruption",
+    "Englischunterricht",
+    "Skönlitteratur",
+    "Fiction, general",
+    "Political science",
+    "Fables",
+    "Satire",
+    "Political fiction",
+    "Politique-fiction",
+    "Animaux domestiques",
+    "Romans, nouvelles",
+    "Totalitarisme",
+    "In literature",
+    "Allegories",
+    "Long now manual for civilization",
+    "Englisch",
+    "Regensburg"
+   ]
+  },
+  "OL5738147W": {
+   "author_name": [
+    "Brandon Sanderson"
+   ],
+   "edition_count": 33,
+   "first_publish_year": 2005,
+   "key": "/works/OL5738147W",
+   "title": "Elantris",
+   "subject": [
+    "Princes",
+    "Blessing and cursing",
+    "Fiction",
+    "Princesses",
+    "City and town life",
+    "Fiction, fantasy, epic",
+    "FICTION / Fantasy / Epic",
+    "Fantasy fiction",
+    "Fiction, fantasy, general",
+    "Bénédiction et malédiction",
+    "Romans, nouvelles",
+    "Vie urbaine",
+    "Fantasy",
+    "Epic",
+    "Klątwa",
+    "Wojna"
+   ]
+  },
+  "OL5738149W": {
+   "author_name": [
+    "Brandon Sanderson"
+   ],
+   "edition_count": 18,
+   "first_publish_year": 2009,
+   "key": "/works/OL5738149W",
+   "title": "Warbreaker",
+   "subject": [
+    "Magic",
+    "Gods",
+    "Fiction",
+    "Imaginary places",
+    "Princesses",
+    "Sisters",
+    "Fiction, fantasy, general",
+    "Sisters, fiction",
+    "Imaginary places, fiction",
+    "Fantasy",
+    "Gods and goddesses",
+    "Geographical myths",
+    "Bóstwa",
+    "Księżniczki i królewny (postacie fikcyjne)",
+    "Magia",
+    "Rodzeństwo"
+   ]
+  },
+  "OL5735348W": {
+   "author_name": [
+    "Suzanne Collins"
+   ],
+   "edition_count": 41,
+   "first_publish_year": 2003,
+   "key": "/works/OL5735348W",
+   "series_key": [
+    "OL327006L"
+   ],
+   "series_name": [
+    "The Underland Chronicles"
+   ],
+   "series_position": [
+    "1"
+   ],
+   "title": "Gregor the Overlander",
+   "subject": [
+    "Children's fiction",
+    "Adventure and adventurers, fiction",
+    "Animals",
+    "Brothers and sisters",
+    "Fantasy",
+    "Insects",
+    "Quests (Expeditions)",
+    "Juvenile fiction",
+    "Quests",
+    "Boy heroes",
+    "Rats",
+    "Fiction",
+    "Prophecies",
+    "Voyages and travels",
+    "Missing persons",
+    "Imaginary wars and battles",
+    "Two-year-old girls",
+    "Eleven-year-old boys",
+    "Underground areas",
+    "Siblings",
+    "Fantasy fiction",
+    "Large type books",
+    "Brothers and sisters, fiction",
+    "Missing persons, fiction",
+    "Animals, fiction",
+    "Siblings, fiction",
+    "New york (n.y.), fiction",
+    "Serie:Underland_Chronicles"
+   ]
+  },
+  "OL16796166W": {
+   "author_name": [
+    "J. K. Rowling",
+    "Tom Hollander"
+   ],
+   "edition_count": 35,
+   "first_publish_year": 2012,
+   "key": "/works/OL16796166W",
+   "title": "The Casual Vacancy",
+   "subject": [
+    "fiction",
+    "Elecciones locales",
+    "City council members",
+    "Spanish language materials",
+    "Death",
+    "Novela",
+    "Local elections",
+    "City and town life",
+    "Ciudades y pueblos",
+    "Fiction, humorous",
+    "Fiction, psychological",
+    "England, fiction",
+    "Elections",
+    "Black humor (Literature)",
+    "Englisch",
+    "Roman",
+    "Country life",
+    "nyt:combined-print-and-e-book-fiction=2012-10-14",
+    "New York Times bestseller",
+    "New York Times reviewed",
+    "English literature",
+    "Fiction, humorous, general",
+    "Vida urbana",
+    "Občinski svetniki",
+    "Smrt",
+    "V leposlovju",
+    "Lokalne volitve",
+    "Življenje na podeželju",
+    "Polish language materials"
+   ]
+  }
+ },
+ "editions": {
+  "OL5735363W": {
+   "size": 143,
+   "entries": [
+    {
+     "key": "/books/OL62454015M"
+    },
+    {
+     "key": "/books/OL57727932M"
+    },
+    {
+     "key": "/books/OL57588895M"
+    },
+    {
+     "key": "/books/OL57568965M",
+     "series": [
+      "Los juegos del hambre, 1"
+     ]
+    },
+    {
+     "key": "/books/OL57558534M"
+    },
+    {
+     "key": "/books/OL52188867M"
+    },
+    {
+     "key": "/books/OL52195331M"
+    },
+    {
+     "key": "/books/OL49265200M"
+    },
+    {
+     "key": "/books/OL49269153M"
+    },
+    {
+     "key": "/books/OL54091326M"
+    },
+    {
+     "key": "/books/OL53337919M"
+    },
+    {
+     "key": "/books/OL54574205M"
+    },
+    {
+     "key": "/books/OL56764339M"
+    },
+    {
+     "key": "/books/OL55622654M"
+    },
+    {
+     "key": "/books/OL51058687M"
+    },
+    {
+     "key": "/books/OL57901563M"
+    },
+    {
+     "key": "/books/OL61277346M"
+    },
+    {
+     "key": "/books/OL61276815M",
+     "series": [
+      "Hunger Games Series"
+     ]
+    },
+    {
+     "key": "/books/OL60398890M"
+    },
+    {
+     "key": "/books/OL48579350M"
+    },
+    {
+     "key": "/books/OL50516304M"
+    },
+    {
+     "key": "/books/OL49225525M"
+    },
+    {
+     "key": "/books/OL61260120M"
+    },
+    {
+     "key": "/books/OL61253640M"
+    },
+    {
+     "key": "/books/OL42909353M"
+    },
+    {
+     "key": "/books/OL61249009M"
+    },
+    {
+     "key": "/books/OL60492730M"
+    },
+    {
+     "key": "/books/OL60075974M",
+     "series": [
+      "The Hunger Games"
+     ]
+    },
+    {
+     "key": "/books/OL47350734M"
+    },
+    {
+     "key": "/books/OL47301842M"
+    },
+    {
+     "key": "/books/OL47350660M",
+     "series": [
+      "Los Juegos del Hambre 1"
+     ]
+    },
+    {
+     "key": "/books/OL47132492M"
+    },
+    {
+     "key": "/books/OL46874697M"
+    },
+    {
+     "key": "/books/OL46531110M"
+    },
+    {
+     "key": "/books/OL45279990M"
+    },
+    {
+     "key": "/books/OL43211732M",
+     "series": [
+      "De Hongerspelen, #1"
+     ]
+    },
+    {
+     "key": "/books/OL41432901M"
+    },
+    {
+     "key": "/books/OL39811649M",
+     "series": [
+      "The Hunger Games #1"
+     ]
+    },
+    {
+     "key": "/books/OL51747483M",
+     "series": [
+      "Hunger Games"
+     ]
+    },
+    {
+     "key": "/books/OL47353556M"
+    },
+    {
+     "key": "/books/OL47516306M"
+    },
+    {
+     "key": "/books/OL47516305M"
+    },
+    {
+     "key": "/books/OL47161362M"
+    },
+    {
+     "key": "/books/OL40225664M"
+    },
+    {
+     "key": "/books/OL40222897M"
+    },
+    {
+     "key": "/books/OL39650457M"
+    },
+    {
+     "key": "/books/OL44243092M"
+    },
+    {
+     "key": "/books/OL40478860M"
+    },
+    {
+     "key": "/books/OL44130122M"
+    },
+    {
+     "key": "/books/OL44146236M"
+    }
+   ]
+  },
+  "OL5735360W": {
+   "size": 118,
+   "entries": [
+    {
+     "key": "/books/OL57744823M",
+     "series": [
+      "The Hunger Games, 2"
+     ]
+    },
+    {
+     "key": "/books/OL57728036M",
+     "series": [
+      "O Jogos Da Fome. Livro II"
+     ]
+    },
+    {
+     "key": "/books/OL57573211M"
+    },
+    {
+     "key": "/books/OL57526290M",
+     "series": [
+      "The Hunger Games, 2"
+     ]
+    },
+    {
+     "key": "/books/OL53212694M",
+     "series": [
+      "Miśḥaḳe ha-raʻav -- 2"
+     ]
+    },
+    {
+     "key": "/books/OL52188876M"
+    },
+    {
+     "key": "/books/OL52193911M"
+    },
+    {
+     "key": "/books/OL49278580M"
+    },
+    {
+     "key": "/books/OL54739714M"
+    },
+    {
+     "key": "/books/OL53332093M"
+    },
+    {
+     "key": "/books/OL47581043M"
+    },
+    {
+     "key": "/books/OL61860962M"
+    },
+    {
+     "key": "/books/OL47473712M"
+    },
+    {
+     "key": "/books/OL51284973M",
+     "series": [
+      "Igrzyska smierci. Tom 2"
+     ]
+    },
+    {
+     "key": "/books/OL61304114M"
+    },
+    {
+     "key": "/books/OL61304086M"
+    },
+    {
+     "key": "/books/OL61278449M"
+    },
+    {
+     "key": "/books/OL48111712M"
+    },
+    {
+     "key": "/books/OL47189362M"
+    },
+    {
+     "key": "/books/OL43669900M"
+    },
+    {
+     "key": "/books/OL42985636M"
+    },
+    {
+     "key": "/books/OL61278412M"
+    },
+    {
+     "key": "/books/OL61278375M"
+    },
+    {
+     "key": "/books/OL61277962M",
+     "series": [
+      "Hunger Games Series"
+     ]
+    },
+    {
+     "key": "/books/OL61269461M"
+    },
+    {
+     "key": "/books/OL60398896M"
+    },
+    {
+     "key": "/books/OL60473788M",
+     "series": [
+      "The Hunger Games"
+     ]
+    },
+    {
+     "key": "/books/OL60309006M",
+     "series": [
+      "The Hunger Games"
+     ]
+    },
+    {
+     "key": "/books/OL50976223M"
+    },
+    {
+     "key": "/books/OL47473713M",
+     "series": [
+      "Els jocs de la fam II"
+     ]
+    },
+    {
+     "key": "/books/OL47350653M"
+    },
+    {
+     "key": "/books/OL47132178M"
+    },
+    {
+     "key": "/books/OL44185121M"
+    },
+    {
+     "key": "/books/OL49197499M",
+     "series": [
+      "Hungerspelen"
+     ]
+    },
+    {
+     "key": "/books/OL27568610M"
+    },
+    {
+     "key": "/books/OL47296840M"
+    },
+    {
+     "key": "/books/OL47296835M",
+     "series": [
+      "Los Juegos del Hambre"
+     ]
+    },
+    {
+     "key": "/books/OL47296838M"
+    },
+    {
+     "key": "/books/OL39640346M"
+    },
+    {
+     "key": "/books/OL47516629M"
+    },
+    {
+     "key": "/books/OL47516630M"
+    },
+    {
+     "key": "/books/OL44146862M"
+    },
+    {
+     "key": "/books/OL44149546M"
+    },
+    {
+     "key": "/books/OL44170429M"
+    },
+    {
+     "key": "/books/OL44262264M"
+    },
+    {
+     "key": "/books/OL40281282M"
+    },
+    {
+     "key": "/books/OL27064170M"
+    },
+    {
+     "key": "/books/OL35741029M"
+    },
+    {
+     "key": "/books/OL34117104M",
+     "series": [
+      "Hunger Games"
+     ]
+    },
+    {
+     "key": "/books/OL26411752M"
+    }
+   ]
+  },
+  "OL14908941W": {
+   "size": 98,
+   "entries": [
+    {
+     "key": "/books/OL57728017M",
+     "series": [
+      "O Jogos Da Fome. Livro III"
+     ]
+    },
+    {
+     "key": "/books/OL57585887M"
+    },
+    {
+     "key": "/books/OL57545115M"
+    },
+    {
+     "key": "/books/OL52197176M"
+    },
+    {
+     "key": "/books/OL52187401M"
+    },
+    {
+     "key": "/books/OL49276655M"
+    },
+    {
+     "key": "/books/OL57563321M"
+    },
+    {
+     "key": "/books/OL53332405M"
+    },
+    {
+     "key": "/books/OL45119235M"
+    },
+    {
+     "key": "/books/OL44182107M"
+    },
+    {
+     "key": "/books/OL61431841M"
+    },
+    {
+     "key": "/books/OL61304887M"
+    },
+    {
+     "key": "/books/OL27130780M",
+     "series": [
+      "Ji e you xi = -- Hunger games -- 3",
+      "R -- 27",
+      "R -- 27."
+     ]
+    },
+    {
+     "key": "/books/OL61304813M"
+    },
+    {
+     "key": "/books/OL48579358M"
+    },
+    {
+     "key": "/books/OL61277304M"
+    },
+    {
+     "key": "/books/OL49197519M"
+    },
+    {
+     "key": "/books/OL46982756M"
+    },
+    {
+     "key": "/books/OL61269986M",
+     "series": [
+      "The Hunger Games, Vol. 3"
+     ]
+    },
+    {
+     "key": "/books/OL58889204M"
+    },
+    {
+     "key": "/books/OL24383587M"
+    },
+    {
+     "key": "/books/OL25441043M",
+     "series": [
+      "The Hunger Games ; #3"
+     ]
+    },
+    {
+     "key": "/books/OL24422337M"
+    },
+    {
+     "key": "/books/OL24538293M"
+    },
+    {
+     "key": "/books/OL27914583M",
+     "series": [
+      "Die Tribute von Panem, Band 3"
+     ]
+    },
+    {
+     "key": "/books/OL25624187M"
+    },
+    {
+     "key": "/books/OL25418095M",
+     "series": [
+      "Hunger Games ; bk. 3"
+     ]
+    },
+    {
+     "key": "/books/OL25644079M"
+    },
+    {
+     "key": "/books/OL26376216M",
+     "series": [
+      "The Hunger Games #3"
+     ]
+    },
+    {
+     "key": "/books/OL25958012M"
+    },
+    {
+     "key": "/books/OL25996765M"
+    },
+    {
+     "key": "/books/OL26157694M",
+     "series": [
+      "The Hunger Games, Book 3"
+     ]
+    },
+    {
+     "key": "/books/OL26332553M",
+     "series": [
+      "Hunger Games Series"
+     ]
+    },
+    {
+     "key": "/books/OL26811303M"
+    },
+    {
+     "key": "/books/OL26884664M"
+    },
+    {
+     "key": "/books/OL27014702M",
+     "series": [
+      "Hunger Games Series"
+     ]
+    },
+    {
+     "key": "/books/OL27098675M"
+    },
+    {
+     "key": "/books/OL27969694M"
+    },
+    {
+     "key": "/books/OL29551345M"
+    },
+    {
+     "key": "/books/OL29070086M"
+    },
+    {
+     "key": "/books/OL28793189M"
+    },
+    {
+     "key": "/books/OL28553299M"
+    },
+    {
+     "key": "/books/OL28549308M"
+    },
+    {
+     "key": "/books/OL28497294M"
+    },
+    {
+     "key": "/books/OL28235726M",
+     "series": [
+      "The Hunger Games"
+     ]
+    },
+    {
+     "key": "/books/OL31827659M"
+    },
+    {
+     "key": "/books/OL31827658M"
+    },
+    {
+     "key": "/books/OL32267683M"
+    },
+    {
+     "key": "/books/OL26135563M"
+    },
+    {
+     "key": "/books/OL27138268M",
+     "series": [
+      "The Hunger Games -- bk. 3"
+     ]
+    }
+   ]
+  },
+  "OL893414W": {
+   "size": 155,
+   "entries": [
+    {
+     "key": "/books/OL62445412M"
+    },
+    {
+     "key": "/books/OL58201616M"
+    },
+    {
+     "key": "/books/OL48154015M"
+    },
+    {
+     "key": "/books/OL58816437M"
+    },
+    {
+     "key": "/books/OL43283259M",
+     "series": [
+      "The Dune Chronicles, Book 1;"
+     ]
+    },
+    {
+     "key": "/books/OL38247617M"
+    },
+    {
+     "key": "/books/OL39220318M",
+     "series": [
+      "Dune, Book 1;"
+     ]
+    },
+    {
+     "key": "/books/OL39551956M"
+    },
+    {
+     "key": "/books/OL10630547M"
+    },
+    {
+     "key": "/books/OL57671241M"
+    },
+    {
+     "key": "/books/OL62085090M",
+     "series": [
+      "Duna #1"
+     ]
+    },
+    {
+     "key": "/books/OL62085058M",
+     "series": [
+      "Duna #1"
+     ]
+    },
+    {
+     "key": "/books/OL50732450M"
+    },
+    {
+     "key": "/books/OL48138703M"
+    },
+    {
+     "key": "/books/OL7893461M"
+    },
+    {
+     "key": "/books/OL47483482M"
+    },
+    {
+     "key": "/books/OL47483483M"
+    },
+    {
+     "key": "/books/OL47693473M"
+    },
+    {
+     "key": "/books/OL47345006M"
+    },
+    {
+     "key": "/books/OL47330344M",
+     "series": [
+      "Kroniki Diuny"
+     ]
+    },
+    {
+     "key": "/books/OL47317022M"
+    },
+    {
+     "key": "/books/OL46913349M"
+    },
+    {
+     "key": "/books/OL47152294M"
+    },
+    {
+     "key": "/books/OL42921531M"
+    },
+    {
+     "key": "/books/OL40225407M"
+    },
+    {
+     "key": "/books/OL8373842M"
+    },
+    {
+     "key": "/books/OL43012960M"
+    },
+    {
+     "key": "/books/OL43013026M"
+    },
+    {
+     "key": "/books/OL40212545M"
+    },
+    {
+     "key": "/books/OL38237349M"
+    },
+    {
+     "key": "/books/OL38566665M"
+    },
+    {
+     "key": "/books/OL39811097M"
+    },
+    {
+     "key": "/books/OL9039841M"
+    },
+    {
+     "key": "/books/OL35704536M"
+    },
+    {
+     "key": "/books/OL31884887M"
+    },
+    {
+     "key": "/books/OL27281911M",
+     "series": [
+      "Meulenhoff SF"
+     ]
+    },
+    {
+     "key": "/books/OL27104381M"
+    },
+    {
+     "key": "/books/OL7524304M",
+     "series": [
+      "Dune (1); Dune Chronicles, Book 1"
+     ]
+    },
+    {
+     "key": "/books/OL11636763M"
+    },
+    {
+     "key": "/books/OL10676668M"
+    },
+    {
+     "key": "/books/OL7878673M",
+     "series": [
+      "Dune (1); Sf Masterworks"
+     ]
+    },
+    {
+     "key": "/books/OL10256517M",
+     "series": [
+      "Ace Science Fiction, 17620"
+     ]
+    },
+    {
+     "key": "/books/OL7470646M",
+     "series": [
+      "Dune (1)"
+     ]
+    },
+    {
+     "key": "/books/OL8136410M",
+     "series": [
+      "Dune (1)"
+     ]
+    },
+    {
+     "key": "/books/OL7500941M"
+    },
+    {
+     "key": "/books/OL9309587M"
+    },
+    {
+     "key": "/books/OL7502823M",
+     "series": [
+      "Dune (1)"
+     ]
+    },
+    {
+     "key": "/books/OL7525228M",
+     "series": [
+      "Dune (1)"
+     ]
+    },
+    {
+     "key": "/books/OL7501953M",
+     "series": [
+      "Dune (1)"
+     ]
+    },
+    {
+     "key": "/books/OL28415017M"
+    }
+   ]
+  },
+  "OL893461W": {
+   "size": 101,
+   "entries": [
+    {
+     "key": "/books/OL53238344M"
+    },
+    {
+     "key": "/books/OL61860842M"
+    },
+    {
+     "key": "/books/OL50718767M"
+    },
+    {
+     "key": "/books/OL50425219M"
+    },
+    {
+     "key": "/books/OL48129865M"
+    },
+    {
+     "key": "/books/OL48138716M"
+    },
+    {
+     "key": "/books/OL49703351M"
+    },
+    {
+     "key": "/books/OL47790270M"
+    },
+    {
+     "key": "/books/OL47738451M"
+    },
+    {
+     "key": "/books/OL47353014M"
+    },
+    {
+     "key": "/books/OL47353010M"
+    },
+    {
+     "key": "/books/OL50530386M",
+     "series": [
+      "Kroniki Diuny"
+     ]
+    },
+    {
+     "key": "/books/OL47344989M"
+    },
+    {
+     "key": "/books/OL47304814M"
+    },
+    {
+     "key": "/books/OL47142104M"
+    },
+    {
+     "key": "/books/OL47456632M"
+    },
+    {
+     "key": "/books/OL47456633M"
+    },
+    {
+     "key": "/books/OL45929991M"
+    },
+    {
+     "key": "/books/OL45367534M"
+    },
+    {
+     "key": "/books/OL44917450M"
+    },
+    {
+     "key": "/books/OL43350359M"
+    },
+    {
+     "key": "/books/OL38090990M"
+    },
+    {
+     "key": "/books/OL39432757M"
+    },
+    {
+     "key": "/books/OL35733966M"
+    },
+    {
+     "key": "/books/OL35666321M"
+    },
+    {
+     "key": "/books/OL35648532M"
+    },
+    {
+     "key": "/books/OL34947634M"
+    },
+    {
+     "key": "/books/OL27106558M"
+    },
+    {
+     "key": "/books/OL26706261M"
+    },
+    {
+     "key": "/books/OL25432140M"
+    },
+    {
+     "key": "/books/OL19610838M"
+    },
+    {
+     "key": "/books/OL18263798M",
+     "series": [
+      "Los Jet de Plaza & Janés -- 261/2"
+     ]
+    },
+    {
+     "key": "/books/OL23044495M",
+     "series": [
+      "Zolotai︠a︡ biblioteka fantastiki"
+     ]
+    },
+    {
+     "key": "/books/OL24669863M",
+     "series": [
+      "Dune, Book 2;"
+     ]
+    },
+    {
+     "key": "/books/OL24764208M"
+    },
+    {
+     "key": "/books/OL7500647M",
+     "series": [
+      "Dune (2)"
+     ]
+    },
+    {
+     "key": "/books/OL7501659M",
+     "series": [
+      "Dune (2)"
+     ]
+    },
+    {
+     "key": "/books/OL7501093M",
+     "series": [
+      "Dune (2)"
+     ]
+    },
+    {
+     "key": "/books/OL21657939M"
+    },
+    {
+     "key": "/books/OL18715561M"
+    },
+    {
+     "key": "/books/OL7501473M",
+     "series": [
+      "Dune (2)"
+     ]
+    },
+    {
+     "key": "/books/OL24248845M"
+    },
+    {
+     "key": "/books/OL24226501M"
+    },
+    {
+     "key": "/books/OL15068254M",
+     "series": [
+      "Gollancz S F"
+     ]
+    },
+    {
+     "key": "/books/OL15048199M"
+    },
+    {
+     "key": "/books/OL23744116M"
+    },
+    {
+     "key": "/books/OL7569172M"
+    },
+    {
+     "key": "/books/OL15048523M"
+    },
+    {
+     "key": "/books/OL15048950M",
+     "series": [
+      "Dune #2"
+     ]
+    },
+    {
+     "key": "/books/OL24205739M"
+    }
+   ]
+  },
+  "OL893516W": {
+   "size": 77,
+   "entries": [
+    {
+     "key": "/books/OL47362500M"
+    },
+    {
+     "key": "/books/OL43022658M"
+    },
+    {
+     "key": "/books/OL25563083M",
+     "series": [
+      "Heyne-Bu cher -- 06, Heyne-Science-fiction & fantasy -- 3615"
+     ]
+    },
+    {
+     "key": "/books/OL9207540M"
+    },
+    {
+     "key": "/books/OL50718776M"
+    },
+    {
+     "key": "/books/OL49631114M"
+    },
+    {
+     "key": "/books/OL44658386M"
+    },
+    {
+     "key": "/books/OL44735541M"
+    },
+    {
+     "key": "/books/OL43027879M"
+    },
+    {
+     "key": "/books/OL42858833M"
+    },
+    {
+     "key": "/books/OL40357608M"
+    },
+    {
+     "key": "/books/OL40380867M"
+    },
+    {
+     "key": "/books/OL40484766M"
+    },
+    {
+     "key": "/books/OL40491926M"
+    },
+    {
+     "key": "/books/OL40493403M"
+    },
+    {
+     "key": "/books/OL40498733M"
+    },
+    {
+     "key": "/books/OL40173239M"
+    },
+    {
+     "key": "/books/OL39795325M",
+     "series": [
+      "Le cycle de Dune / Frank Herbert -- 4",
+      "Pocket -- 5167. SF",
+      "Presses pocket -- 5167."
+     ]
+    },
+    {
+     "key": "/books/OL39443998M"
+    },
+    {
+     "key": "/books/OL37806992M",
+     "series": [
+      "De boeken van Duin -- Dl. 3",
+      "Meulenhoff SF, fantasy & avontuur",
+      "Meulenhoff science fiction"
+     ]
+    },
+    {
+     "key": "/books/OL37806976M",
+     "series": [
+      "De boeken van Duin -- Dl. 5",
+      "Meulenhoff SF, fantasy & avontuur",
+      "Meulenhoff science fiction"
+     ]
+    },
+    {
+     "key": "/books/OL37115179M",
+     "series": [
+      "Dune"
+     ]
+    },
+    {
+     "key": "/books/OL34155935M"
+    },
+    {
+     "key": "/books/OL46525542M"
+    },
+    {
+     "key": "/books/OL32829957M"
+    },
+    {
+     "key": "/books/OL33784791M"
+    },
+    {
+     "key": "/books/OL58638429M"
+    },
+    {
+     "key": "/books/OL45070299M",
+     "series": [
+      "Ailleurs & Demain"
+     ]
+    },
+    {
+     "key": "/books/OL51257349M",
+     "series": [
+      "Kroniki Diuny"
+     ]
+    },
+    {
+     "key": "/books/OL39473670M",
+     "series": [
+      "Dune - Tome 3"
+     ]
+    },
+    {
+     "key": "/books/OL27285041M"
+    },
+    {
+     "key": "/books/OL8889703M"
+    },
+    {
+     "key": "/books/OL8865837M"
+    },
+    {
+     "key": "/books/OL28242956M"
+    },
+    {
+     "key": "/books/OL27314510M",
+     "series": [
+      "Duna #3"
+     ]
+    },
+    {
+     "key": "/books/OL32201326M"
+    },
+    {
+     "key": "/books/OL26854849M"
+    },
+    {
+     "key": "/books/OL32179978M"
+    },
+    {
+     "key": "/books/OL28287949M"
+    },
+    {
+     "key": "/books/OL27324381M"
+    },
+    {
+     "key": "/books/OL28300552M"
+    },
+    {
+     "key": "/books/OL27284693M",
+     "series": [
+      "Dune"
+     ]
+    },
+    {
+     "key": "/books/OL26968814M"
+    },
+    {
+     "key": "/books/OL26917266M"
+    },
+    {
+     "key": "/books/OL26782050M"
+    },
+    {
+     "key": "/books/OL7501961M",
+     "series": [
+      "Dune (3)"
+     ]
+    },
+    {
+     "key": "/books/OL7893252M",
+     "series": [
+      "Dune (3)"
+     ]
+    },
+    {
+     "key": "/books/OL7502060M",
+     "series": [
+      "Dune (3)"
+     ]
+    },
+    {
+     "key": "/books/OL7524870M",
+     "series": [
+      "Dune (3)"
+     ]
+    },
+    {
+     "key": "/books/OL7501410M",
+     "series": [
+      "Dune (3)"
+     ]
+    }
+   ]
+  },
+  "OL16114008W": {
+   "size": 29,
+   "entries": [
+    {
+     "key": "/books/OL62490317M",
+     "series": [
+      "The Expanse, Book 1"
+     ]
+    },
+    {
+     "key": "/books/OL57480293M"
+    },
+    {
+     "key": "/books/OL43503274M"
+    },
+    {
+     "key": "/books/OL56648560M"
+    },
+    {
+     "key": "/books/OL50983972M"
+    },
+    {
+     "key": "/books/OL50530389M"
+    },
+    {
+     "key": "/books/OL44938703M"
+    },
+    {
+     "key": "/books/OL47326700M"
+    },
+    {
+     "key": "/books/OL27012896M"
+    },
+    {
+     "key": "/books/OL30561099M",
+     "series": [
+      "The Expanse Bd.1"
+     ]
+    },
+    {
+     "key": "/books/OL37813074M",
+     "series": [
+      "The Expanse Bd.1"
+     ]
+    },
+    {
+     "key": "/books/OL34172445M"
+    },
+    {
+     "key": "/books/OL32816440M"
+    },
+    {
+     "key": "/books/OL33388800M"
+    },
+    {
+     "key": "/books/OL33914675M"
+    },
+    {
+     "key": "/books/OL34617862M"
+    },
+    {
+     "key": "/books/OL32816437M"
+    },
+    {
+     "key": "/books/OL27666126M"
+    },
+    {
+     "key": "/books/OL27104249M"
+    },
+    {
+     "key": "/books/OL31971786M"
+    },
+    {
+     "key": "/books/OL31987843M"
+    },
+    {
+     "key": "/books/OL32515148M"
+    },
+    {
+     "key": "/books/OL32667325M",
+     "series": [
+      "The Expanse 1"
+     ]
+    },
+    {
+     "key": "/books/OL27104115M"
+    },
+    {
+     "key": "/books/OL26843807M",
+     "series": [
+      "The Expanse"
+     ]
+    },
+    {
+     "key": "/books/OL26753689M"
+    },
+    {
+     "key": "/books/OL26318310M"
+    },
+    {
+     "key": "/books/OL25910299M"
+    },
+    {
+     "key": "/books/OL25001749M",
+     "series": [
+      "The expanse -- bk. 1"
+     ]
+    }
+   ]
+  },
+  "OL16117275W": {
+   "size": 17,
+   "entries": [
+    {
+     "key": "/books/OL51600125M"
+    },
+    {
+     "key": "/books/OL51575365M"
+    },
+    {
+     "key": "/books/OL51051392M"
+    },
+    {
+     "key": "/books/OL50530395M"
+    },
+    {
+     "key": "/books/OL44938699M"
+    },
+    {
+     "key": "/books/OL39810117M"
+    },
+    {
+     "key": "/books/OL26206366M",
+     "series": [
+      "The Expanse"
+     ]
+    },
+    {
+     "key": "/books/OL37813088M",
+     "series": [
+      "The Expanse Bd.2"
+     ]
+    },
+    {
+     "key": "/books/OL34597300M"
+    },
+    {
+     "key": "/books/OL35899235M"
+    },
+    {
+     "key": "/books/OL32051967M"
+    },
+    {
+     "key": "/books/OL32816438M"
+    },
+    {
+     "key": "/books/OL26915284M"
+    },
+    {
+     "key": "/books/OL26148839M",
+     "series": [
+      "The Expanse, Book 2"
+     ]
+    },
+    {
+     "key": "/books/OL26318318M",
+     "series": [
+      "The Expanse, Book 2"
+     ]
+    },
+    {
+     "key": "/books/OL26206367M"
+    },
+    {
+     "key": "/books/OL25004982M"
+    }
+   ]
+  },
+  "OL17074648W": {
+   "size": 13,
+   "entries": [
+    {
+     "key": "/books/OL62488676M",
+     "series": [
+      "The Expanse, Book 3"
+     ]
+    },
+    {
+     "key": "/books/OL50536162M"
+    },
+    {
+     "key": "/books/OL48414981M"
+    },
+    {
+     "key": "/books/OL44938697M"
+    },
+    {
+     "key": "/books/OL34602186M"
+    },
+    {
+     "key": "/books/OL32456228M"
+    },
+    {
+     "key": "/books/OL32816485M"
+    },
+    {
+     "key": "/books/OL27266702M"
+    },
+    {
+     "key": "/books/OL26318317M"
+    },
+    {
+     "key": "/books/OL26101918M"
+    },
+    {
+     "key": "/books/OL32667355M",
+     "series": [
+      "The Expanse 3"
+     ]
+    },
+    {
+     "key": "/books/OL26206368M",
+     "series": [
+      "The Expanse"
+     ]
+    },
+    {
+     "key": "/books/OL25644253M",
+     "series": [
+      "The Expanse, Book 3"
+     ]
+    }
+   ]
+  },
+  "OL17076473W": {
+   "size": 26,
+   "entries": [
+    {
+     "key": "/books/OL61591648M"
+    },
+    {
+     "key": "/books/OL48119137M"
+    },
+    {
+     "key": "/books/OL61021786M",
+     "series": [
+      "Red Rising Saga"
+     ]
+    },
+    {
+     "key": "/books/OL60499748M",
+     "series": [
+      "Red Rising Saga"
+     ]
+    },
+    {
+     "key": "/books/OL26456624M"
+    },
+    {
+     "key": "/books/OL26758016M",
+     "series": [
+      "Red Rising Saga"
+     ]
+    },
+    {
+     "key": "/books/OL34608614M"
+    },
+    {
+     "key": "/books/OL33727906M"
+    },
+    {
+     "key": "/books/OL31949258M"
+    },
+    {
+     "key": "/books/OL30533460M"
+    },
+    {
+     "key": "/books/OL28821469M"
+    },
+    {
+     "key": "/books/OL28226956M"
+    },
+    {
+     "key": "/books/OL27564687M"
+    },
+    {
+     "key": "/books/OL27299280M"
+    },
+    {
+     "key": "/books/OL28907371M"
+    },
+    {
+     "key": "/books/OL28903467M"
+    },
+    {
+     "key": "/books/OL39480276M"
+    },
+    {
+     "key": "/books/OL47319256M"
+    },
+    {
+     "key": "/books/OL35381201M"
+    },
+    {
+     "key": "/books/OL35381222M"
+    },
+    {
+     "key": "/books/OL47231754M"
+    },
+    {
+     "key": "/books/OL47589298M"
+    },
+    {
+     "key": "/books/OL47589297M"
+    },
+    {
+     "key": "/books/OL47589296M"
+    },
+    {
+     "key": "/books/OL47589299M"
+    },
+    {
+     "key": "/books/OL25646224M"
+    }
+   ]
+  },
+  "OL19340986W": {
+   "size": 21,
+   "entries": [
+    {
+     "key": "/books/OL61040101M",
+     "series": [
+      "Red Rising Trilogy"
+     ]
+    },
+    {
+     "key": "/books/OL47368854M",
+     "series": [
+      "Red Rising, 2"
+     ]
+    },
+    {
+     "key": "/books/OL28312285M"
+    },
+    {
+     "key": "/books/OL28312287M"
+    },
+    {
+     "key": "/books/OL32746889M"
+    },
+    {
+     "key": "/books/OL28361570M",
+     "series": [
+      "Amanecer rojo 2"
+     ]
+    },
+    {
+     "key": "/books/OL47589259M"
+    },
+    {
+     "key": "/books/OL35381330M",
+     "series": [
+      "Kizil Isyan 2"
+     ]
+    },
+    {
+     "key": "/books/OL43165581M",
+     "series": [
+      "Red Rising Trilogy, 2"
+     ]
+    },
+    {
+     "key": "/books/OL40225382M"
+    },
+    {
+     "key": "/books/OL38364835M"
+    },
+    {
+     "key": "/books/OL29206998M"
+    },
+    {
+     "key": "/books/OL34720805M"
+    },
+    {
+     "key": "/books/OL34720841M",
+     "series": [
+      "Red Rising Trilogy, 2"
+     ]
+    },
+    {
+     "key": "/books/OL34720845M"
+    },
+    {
+     "key": "/books/OL34720860M"
+    },
+    {
+     "key": "/books/OL34720864M"
+    },
+    {
+     "key": "/books/OL27278964M",
+     "series": [
+      "Red Rising Trilogy, 2"
+     ]
+    },
+    {
+     "key": "/books/OL27178585M",
+     "series": [
+      "The red rising trilogy -- #2",
+      "Thorndike Press large print core",
+      "Thorndike Press large print core series"
+     ]
+    },
+    {
+     "key": "/books/OL27171457M",
+     "series": [
+      "Red Rising Trilogy, 2"
+     ]
+    },
+    {
+     "key": "/books/OL26798371M",
+     "series": [
+      "Red Rising Trilogy, 2"
+     ]
+    }
+   ]
+  },
+  "OL19650409W": {
+   "size": 20,
+   "entries": [
+    {
+     "key": "/books/OL61041719M",
+     "series": [
+      "Red Rising Trilogy"
+     ]
+    },
+    {
+     "key": "/books/OL28361571M"
+    },
+    {
+     "key": "/books/OL47589258M"
+    },
+    {
+     "key": "/books/OL47589255M"
+    },
+    {
+     "key": "/books/OL47589256M"
+    },
+    {
+     "key": "/books/OL47589257M",
+     "series": [
+      "Amanecer rojo 3"
+     ]
+    },
+    {
+     "key": "/books/OL33864384M",
+     "series": [
+      "Red Rising, 3"
+     ]
+    },
+    {
+     "key": "/books/OL33864301M",
+     "series": [
+      "Red Rising, 3"
+     ]
+    },
+    {
+     "key": "/books/OL32202004M",
+     "series": [
+      "Kizil Isyan 3"
+     ]
+    },
+    {
+     "key": "/books/OL35313056M",
+     "series": [
+      "Kizil Isyan 3"
+     ]
+    },
+    {
+     "key": "/books/OL32807219M",
+     "series": [
+      "Red Rising, 3"
+     ]
+    },
+    {
+     "key": "/books/OL43444666M"
+    },
+    {
+     "key": "/books/OL38370283M"
+    },
+    {
+     "key": "/books/OL29316221M",
+     "series": [
+      "Red Rising, 3"
+     ]
+    },
+    {
+     "key": "/books/OL31936374M"
+    },
+    {
+     "key": "/books/OL34720996M"
+    },
+    {
+     "key": "/books/OL27198800M",
+     "series": [
+      "The Red Rising trilogy -- book III"
+     ]
+    },
+    {
+     "key": "/books/OL30402714M",
+     "series": [
+      "Red Rising, 3"
+     ]
+    },
+    {
+     "key": "/books/OL29453581M",
+     "series": [
+      "Red Rising, 3"
+     ]
+    },
+    {
+     "key": "/books/OL26870179M",
+     "series": [
+      "Red Rising, 3"
+     ]
+    }
+   ]
+  },
+  "OL5738148W": {
+   "size": 45,
+   "entries": [
+    {
+     "key": "/books/OL62594701M",
+     "series": [
+      "Mistborn"
+     ]
+    },
+    {
+     "key": "/books/OL61173763M",
+     "series": [
+      "Mistborn"
+     ]
+    },
+    {
+     "key": "/books/OL60671300M",
+     "series": [
+      "Fills de la boira"
+     ]
+    },
+    {
+     "key": "/books/OL60101225M",
+     "series": [
+      "The Mistborn Saga"
+     ]
+    },
+    {
+     "key": "/books/OL59199388M",
+     "series": [
+      "Mistborn Primeira Era"
+     ]
+    },
+    {
+     "key": "/books/OL57502463M",
+     "series": [
+      "Die Nebelgeborenen"
+     ]
+    },
+    {
+     "key": "/books/OL57498437M",
+     "series": [
+      "The Mistborn Saga"
+     ]
+    },
+    {
+     "key": "/books/OL27959083M"
+    },
+    {
+     "key": "/books/OL24945060M",
+     "series": [
+      "Mistborn -- [bk. 1]"
+     ]
+    },
+    {
+     "key": "/books/OL51627540M"
+    },
+    {
+     "key": "/books/OL48138652M"
+    },
+    {
+     "key": "/books/OL47142113M"
+    },
+    {
+     "key": "/books/OL47318250M",
+     "series": [
+      "Nacidos de la bruma"
+     ]
+    },
+    {
+     "key": "/books/OL53422614M"
+    },
+    {
+     "key": "/books/OL39620261M"
+    },
+    {
+     "key": "/books/OL38632348M"
+    },
+    {
+     "key": "/books/OL37859800M"
+    },
+    {
+     "key": "/books/OL26880818M"
+    },
+    {
+     "key": "/books/OL32575441M"
+    },
+    {
+     "key": "/books/OL32203270M"
+    },
+    {
+     "key": "/books/OL26852778M"
+    },
+    {
+     "key": "/books/OL28345173M"
+    },
+    {
+     "key": "/books/OL38122529M"
+    },
+    {
+     "key": "/books/OL27066685M"
+    },
+    {
+     "key": "/books/OL36655516M"
+    },
+    {
+     "key": "/books/OL28155920M"
+    },
+    {
+     "key": "/books/OL34155923M"
+    },
+    {
+     "key": "/books/OL33980107M"
+    },
+    {
+     "key": "/books/OL27279908M"
+    },
+    {
+     "key": "/books/OL35625507M"
+    },
+    {
+     "key": "/books/OL32600208M"
+    },
+    {
+     "key": "/books/OL28761377M",
+     "series": [
+      "Nacidos de la bruma (MISTBORN) 1"
+     ]
+    },
+    {
+     "key": "/books/OL28866183M"
+    },
+    {
+     "key": "/books/OL27117591M",
+     "series": [
+      "Best yan xuan -- 019",
+      "Bulandeng Shandesen zuo pin ji -- 2",
+      "Best yan xuan -- 019."
+     ]
+    },
+    {
+     "key": "/books/OL26156063M"
+    },
+    {
+     "key": "/books/OL30922876M"
+    },
+    {
+     "key": "/books/OL27513437M"
+    },
+    {
+     "key": "/books/OL32047482M"
+    },
+    {
+     "key": "/books/OL29791801M"
+    },
+    {
+     "key": "/books/OL27098447M"
+    },
+    {
+     "key": "/books/OL8053528M"
+    },
+    {
+     "key": "/books/OL8054112M"
+    },
+    {
+     "key": "/books/OL27314368M",
+     "series": [
+      "Mistborn"
+     ]
+    },
+    {
+     "key": "/books/OL28684446M",
+     "series": [
+      "Mistborn #1"
+     ]
+    },
+    {
+     "key": "/books/OL3418158M",
+     "series": [
+      "The Mistborn Saga #1"
+     ]
+    }
+   ]
+  },
+  "OL5738150W": {
+   "size": 36,
+   "entries": [
+    {
+     "key": "/books/OL60442512M"
+    },
+    {
+     "key": "/books/OL57502491M",
+     "series": [
+      "Die Nebelgeborenen"
+     ]
+    },
+    {
+     "key": "/books/OL57501387M"
+    },
+    {
+     "key": "/books/OL47358902M"
+    },
+    {
+     "key": "/books/OL49196176M"
+    },
+    {
+     "key": "/books/OL39477238M"
+    },
+    {
+     "key": "/books/OL36655689M"
+    },
+    {
+     "key": "/books/OL47319633M",
+     "series": [
+      "Nacidos de la bruma"
+     ]
+    },
+    {
+     "key": "/books/OL48143389M"
+    },
+    {
+     "key": "/books/OL39633179M"
+    },
+    {
+     "key": "/books/OL25972014M"
+    },
+    {
+     "key": "/books/OL35308271M"
+    },
+    {
+     "key": "/books/OL32575446M"
+    },
+    {
+     "key": "/books/OL26986425M"
+    },
+    {
+     "key": "/books/OL28260596M"
+    },
+    {
+     "key": "/books/OL35621260M"
+    },
+    {
+     "key": "/books/OL35624329M"
+    },
+    {
+     "key": "/books/OL38122248M"
+    },
+    {
+     "key": "/books/OL34824531M"
+    },
+    {
+     "key": "/books/OL35273678M"
+    },
+    {
+     "key": "/books/OL34136029M"
+    },
+    {
+     "key": "/books/OL27283355M"
+    },
+    {
+     "key": "/books/OL30373491M"
+    },
+    {
+     "key": "/books/OL31941101M"
+    },
+    {
+     "key": "/books/OL31941103M"
+    },
+    {
+     "key": "/books/OL31941100M"
+    },
+    {
+     "key": "/books/OL31941102M"
+    },
+    {
+     "key": "/books/OL29291786M"
+    },
+    {
+     "key": "/books/OL27098429M"
+    },
+    {
+     "key": "/books/OL28184758M"
+    },
+    {
+     "key": "/books/OL28265735M",
+     "series": [
+      "Mistborn, Book Two"
+     ]
+    },
+    {
+     "key": "/books/OL26804536M"
+    },
+    {
+     "key": "/books/OL26797326M"
+    },
+    {
+     "key": "/books/OL24608673M"
+    },
+    {
+     "key": "/books/OL8053698M",
+     "series": [
+      "The Mistborn Saga #2"
+     ]
+    },
+    {
+     "key": "/books/OL10936477M",
+     "series": [
+      "Mistborn"
+     ]
+    }
+   ]
+  },
+  "OL5738154W": {
+   "size": 27,
+   "entries": [
+    {
+     "key": "/books/OL57501397M"
+    },
+    {
+     "key": "/books/OL47142108M"
+    },
+    {
+     "key": "/books/OL51597217M"
+    },
+    {
+     "key": "/books/OL49529796M"
+    },
+    {
+     "key": "/books/OL39620272M"
+    },
+    {
+     "key": "/books/OL48142495M"
+    },
+    {
+     "key": "/books/OL25417812M"
+    },
+    {
+     "key": "/books/OL35609552M"
+    },
+    {
+     "key": "/books/OL30772277M"
+    },
+    {
+     "key": "/books/OL32575443M"
+    },
+    {
+     "key": "/books/OL26855166M"
+    },
+    {
+     "key": "/books/OL38122454M"
+    },
+    {
+     "key": "/books/OL34597651M"
+    },
+    {
+     "key": "/books/OL34153590M"
+    },
+    {
+     "key": "/books/OL29292017M"
+    },
+    {
+     "key": "/books/OL28225434M"
+    },
+    {
+     "key": "/books/OL24088527M",
+     "series": [
+      "Mistborn"
+     ]
+    },
+    {
+     "key": "/books/OL28932916M"
+    },
+    {
+     "key": "/books/OL28150836M"
+    },
+    {
+     "key": "/books/OL28273701M"
+    },
+    {
+     "key": "/books/OL28343716M"
+    },
+    {
+     "key": "/books/OL31964526M"
+    },
+    {
+     "key": "/books/OL24878609M",
+     "series": [
+      "The Mistborn trilogy -- bk. 3"
+     ]
+    },
+    {
+     "key": "/books/OL26855204M"
+    },
+    {
+     "key": "/books/OL27090913M"
+    },
+    {
+     "key": "/books/OL21836626M",
+     "series": [
+      "The Mistborn Saga #3"
+     ]
+    },
+    {
+     "key": "/books/OL18687838M",
+     "series": [
+      "Mistborn -- bk. 3"
+     ]
+    }
+   ]
+  },
+  "OL82563W": {
+   "size": 400,
+   "entries": [
+    {
+     "key": "/books/OL62514708M",
+     "series": [
+      "Harry Potter"
+     ]
+    },
+    {
+     "key": "/books/OL62439119M"
+    },
+    {
+     "key": "/books/OL61716306M"
+    },
+    {
+     "key": "/books/OL61362155M"
+    },
+    {
+     "key": "/books/OL61281195M",
+     "series": [
+      "Harry Potter"
+     ]
+    },
+    {
+     "key": "/books/OL61274876M"
+    },
+    {
+     "key": "/books/OL61274798M",
+     "series": [
+      "Harry Potter"
+     ]
+    },
+    {
+     "key": "/books/OL61162613M"
+    },
+    {
+     "key": "/books/OL60413146M"
+    },
+    {
+     "key": "/books/OL60375367M"
+    },
+    {
+     "key": "/books/OL60346015M"
+    },
+    {
+     "key": "/books/OL60331364M"
+    },
+    {
+     "key": "/books/OL59391421M"
+    },
+    {
+     "key": "/books/OL59004869M",
+     "series": [
+      "Harry Potter, 1"
+     ]
+    },
+    {
+     "key": "/books/OL58730299M",
+     "series": [
+      "Harry Potter: Book One"
+     ]
+    },
+    {
+     "key": "/books/OL53497028M"
+    },
+    {
+     "key": "/books/OL53345945M"
+    },
+    {
+     "key": "/books/OL53326469M"
+    },
+    {
+     "key": "/books/OL47682314M"
+    },
+    {
+     "key": "/books/OL47682303M"
+    },
+    {
+     "key": "/books/OL47682279M"
+    },
+    {
+     "key": "/books/OL39471692M"
+    },
+    {
+     "key": "/books/OL26818282M",
+     "series": [
+      "Harry Potter, Part I"
+     ]
+    },
+    {
+     "key": "/books/OL47359726M"
+    },
+    {
+     "key": "/books/OL49371344M"
+    },
+    {
+     "key": "/books/OL61068165M"
+    },
+    {
+     "key": "/books/OL61090737M"
+    },
+    {
+     "key": "/books/OL61088926M"
+    },
+    {
+     "key": "/books/OL61088892M"
+    },
+    {
+     "key": "/books/OL61057835M"
+    },
+    {
+     "key": "/books/OL9064566M",
+     "series": [
+      "Buch 1 aus \"Harryz Zauberbox\""
+     ]
+    },
+    {
+     "key": "/books/OL61041706M"
+    },
+    {
+     "key": "/books/OL61041705M"
+    },
+    {
+     "key": "/books/OL61041678M"
+    },
+    {
+     "key": "/books/OL61041672M"
+    },
+    {
+     "key": "/books/OL61041671M"
+    },
+    {
+     "key": "/books/OL61041669M"
+    },
+    {
+     "key": "/books/OL61038029M"
+    },
+    {
+     "key": "/books/OL61027605M"
+    },
+    {
+     "key": "/books/OL61027604M"
+    },
+    {
+     "key": "/books/OL61027603M"
+    },
+    {
+     "key": "/books/OL61027602M"
+    },
+    {
+     "key": "/books/OL61027601M"
+    },
+    {
+     "key": "/books/OL59922337M"
+    },
+    {
+     "key": "/books/OL56375531M"
+    },
+    {
+     "key": "/books/OL53332934M"
+    },
+    {
+     "key": "/books/OL52369838M"
+    },
+    {
+     "key": "/books/OL52227733M"
+    },
+    {
+     "key": "/books/OL53327594M"
+    },
+    {
+     "key": "/books/OL50528577M"
+    }
+   ]
+  },
+  "OL82537W": {
+   "size": 306,
+   "entries": [
+    {
+     "key": "/books/OL62447619M"
+    },
+    {
+     "key": "/books/OL61362442M"
+    },
+    {
+     "key": "/books/OL61201794M",
+     "series": [
+      "Buch 2 aus \"Harryz Zauberbox\""
+     ]
+    },
+    {
+     "key": "/books/OL59041259M"
+    },
+    {
+     "key": "/books/OL56934655M"
+    },
+    {
+     "key": "/books/OL54860712M"
+    },
+    {
+     "key": "/books/OL53339152M"
+    },
+    {
+     "key": "/books/OL52212077M"
+    },
+    {
+     "key": "/books/OL53329460M"
+    },
+    {
+     "key": "/books/OL47682305M"
+    },
+    {
+     "key": "/books/OL47682278M"
+    },
+    {
+     "key": "/books/OL47682248M"
+    },
+    {
+     "key": "/books/OL47324321M"
+    },
+    {
+     "key": "/books/OL23292648M"
+    },
+    {
+     "key": "/books/OL46544917M"
+    },
+    {
+     "key": "/books/OL59004872M"
+    },
+    {
+     "key": "/books/OL61090755M"
+    },
+    {
+     "key": "/books/OL61090642M"
+    },
+    {
+     "key": "/books/OL61067975M"
+    },
+    {
+     "key": "/books/OL61067860M"
+    },
+    {
+     "key": "/books/OL61067727M"
+    },
+    {
+     "key": "/books/OL61057398M"
+    },
+    {
+     "key": "/books/OL61057120M"
+    },
+    {
+     "key": "/books/OL61041808M"
+    },
+    {
+     "key": "/books/OL61041692M"
+    },
+    {
+     "key": "/books/OL61041691M"
+    },
+    {
+     "key": "/books/OL61041677M"
+    },
+    {
+     "key": "/books/OL61041662M"
+    },
+    {
+     "key": "/books/OL61039655M"
+    },
+    {
+     "key": "/books/OL61038033M"
+    },
+    {
+     "key": "/books/OL61032243M"
+    },
+    {
+     "key": "/books/OL59922397M"
+    },
+    {
+     "key": "/books/OL59511775M",
+     "series": [
+      "Harry Potter #2"
+     ]
+    },
+    {
+     "key": "/books/OL54860780M"
+    },
+    {
+     "key": "/books/OL37053826M"
+    },
+    {
+     "key": "/books/OL51162283M"
+    },
+    {
+     "key": "/books/OL53336125M"
+    },
+    {
+     "key": "/books/OL50523330M"
+    },
+    {
+     "key": "/books/OL50533834M"
+    },
+    {
+     "key": "/books/OL48613641M"
+    },
+    {
+     "key": "/books/OL48652658M"
+    },
+    {
+     "key": "/books/OL48124905M"
+    },
+    {
+     "key": "/books/OL47682322M"
+    },
+    {
+     "key": "/books/OL47682294M"
+    },
+    {
+     "key": "/books/OL46899607M"
+    },
+    {
+     "key": "/books/OL45265193M"
+    },
+    {
+     "key": "/books/OL37025521M"
+    },
+    {
+     "key": "/books/OL35697191M"
+    },
+    {
+     "key": "/books/OL35664746M"
+    },
+    {
+     "key": "/books/OL35638042M"
+    }
+   ]
+  },
+  "OL82536W": {
+   "size": 279,
+   "entries": [
+    {
+     "key": "/books/OL61362446M"
+    },
+    {
+     "key": "/books/OL61202159M",
+     "series": [
+      "Buch 3 aus \"Harryz Zauberbox\":"
+     ]
+    },
+    {
+     "key": "/books/OL60578792M"
+    },
+    {
+     "key": "/books/OL59004673M"
+    },
+    {
+     "key": "/books/OL58691653M"
+    },
+    {
+     "key": "/books/OL54861395M"
+    },
+    {
+     "key": "/books/OL53352042M"
+    },
+    {
+     "key": "/books/OL47682319M"
+    },
+    {
+     "key": "/books/OL47682140M"
+    },
+    {
+     "key": "/books/OL61162539M"
+    },
+    {
+     "key": "/books/OL61090478M"
+    },
+    {
+     "key": "/books/OL61089481M"
+    },
+    {
+     "key": "/books/OL61068558M"
+    },
+    {
+     "key": "/books/OL61068036M"
+    },
+    {
+     "key": "/books/OL61067524M"
+    },
+    {
+     "key": "/books/OL61057806M"
+    },
+    {
+     "key": "/books/OL61041690M"
+    },
+    {
+     "key": "/books/OL61041676M"
+    },
+    {
+     "key": "/books/OL60429068M"
+    },
+    {
+     "key": "/books/OL59922412M"
+    },
+    {
+     "key": "/books/OL54861525M"
+    },
+    {
+     "key": "/books/OL58250968M"
+    },
+    {
+     "key": "/books/OL53348847M"
+    },
+    {
+     "key": "/books/OL52583615M"
+    },
+    {
+     "key": "/books/OL47358379M"
+    },
+    {
+     "key": "/books/OL47358381M"
+    },
+    {
+     "key": "/books/OL47358375M"
+    },
+    {
+     "key": "/books/OL47358373M"
+    },
+    {
+     "key": "/books/OL43339667M"
+    },
+    {
+     "key": "/books/OL50533862M"
+    },
+    {
+     "key": "/books/OL47552678M"
+    },
+    {
+     "key": "/books/OL47552679M"
+    },
+    {
+     "key": "/books/OL47552680M"
+    },
+    {
+     "key": "/books/OL47552695M"
+    },
+    {
+     "key": "/books/OL47552696M"
+    },
+    {
+     "key": "/books/OL47552697M"
+    },
+    {
+     "key": "/books/OL47552698M"
+    },
+    {
+     "key": "/books/OL47553023M"
+    },
+    {
+     "key": "/books/OL47553024M"
+    },
+    {
+     "key": "/books/OL47553025M"
+    },
+    {
+     "key": "/books/OL47130827M"
+    },
+    {
+     "key": "/books/OL47132753M"
+    },
+    {
+     "key": "/books/OL47337460M"
+    },
+    {
+     "key": "/books/OL47337462M"
+    },
+    {
+     "key": "/books/OL47337464M"
+    },
+    {
+     "key": "/books/OL47337466M"
+    },
+    {
+     "key": "/books/OL47337492M"
+    },
+    {
+     "key": "/books/OL47337630M"
+    },
+    {
+     "key": "/books/OL47337780M"
+    },
+    {
+     "key": "/books/OL41240839M"
+    }
+   ]
+  },
+  "OL15358691W": {
+   "size": 30,
+   "entries": [
+    {
+     "key": "/books/OL61245450M"
+    },
+    {
+     "key": "/books/OL59155618M",
+     "series": [
+      "O Arquivo das Tempestades, I"
+     ]
+    },
+    {
+     "key": "/books/OL58811275M",
+     "series": [
+      "Os Relatos da Guerra das Tempestades"
+     ]
+    },
+    {
+     "key": "/books/OL57480678M"
+    },
+    {
+     "key": "/books/OL51053532M"
+    },
+    {
+     "key": "/books/OL48141553M"
+    },
+    {
+     "key": "/books/OL26451891M"
+    },
+    {
+     "key": "/books/OL27345414M"
+    },
+    {
+     "key": "/books/OL25769520M"
+    },
+    {
+     "key": "/books/OL32771812M"
+    },
+    {
+     "key": "/books/OL35609593M"
+    },
+    {
+     "key": "/books/OL35609139M"
+    },
+    {
+     "key": "/books/OL28651649M"
+    },
+    {
+     "key": "/books/OL29659236M"
+    },
+    {
+     "key": "/books/OL37470599M"
+    },
+    {
+     "key": "/books/OL32000213M"
+    },
+    {
+     "key": "/books/OL32239877M"
+    },
+    {
+     "key": "/books/OL31855134M"
+    },
+    {
+     "key": "/books/OL31934149M"
+    },
+    {
+     "key": "/books/OL24395209M"
+    },
+    {
+     "key": "/books/OL24383834M",
+     "series": [
+      "The Stormlight Archive #1"
+     ]
+    },
+    {
+     "key": "/books/OL25883754M"
+    },
+    {
+     "key": "/books/OL27652465M"
+    },
+    {
+     "key": "/books/OL27282407M"
+    },
+    {
+     "key": "/books/OL27098431M"
+    },
+    {
+     "key": "/books/OL25438340M",
+     "series": [
+      "The Stormlight Archive, 1"
+     ]
+    },
+    {
+     "key": "/books/OL25438341M"
+    },
+    {
+     "key": "/books/OL25438342M",
+     "series": [
+      "The Stormlight Archive"
+     ]
+    },
+    {
+     "key": "/books/OL24395211M"
+    },
+    {
+     "key": "/books/OL24345134M",
+     "series": [
+      "The Stormlight Archive #1"
+     ]
+    }
+   ]
+  },
+  "OL16813053W": {
+   "size": 23,
+   "entries": [
+    {
+     "key": "/books/OL62354766M"
+    },
+    {
+     "key": "/books/OL58829388M",
+     "series": [
+      "Os Relatos da Guerra das Tempestades"
+     ]
+    },
+    {
+     "key": "/books/OL57480778M"
+    },
+    {
+     "key": "/books/OL51044472M"
+    },
+    {
+     "key": "/books/OL48136675M"
+    },
+    {
+     "key": "/books/OL48138578M"
+    },
+    {
+     "key": "/books/OL48140585M"
+    },
+    {
+     "key": "/books/OL35609553M"
+    },
+    {
+     "key": "/books/OL35609135M"
+    },
+    {
+     "key": "/books/OL25767557M"
+    },
+    {
+     "key": "/books/OL26451894M"
+    },
+    {
+     "key": "/books/OL34793864M"
+    },
+    {
+     "key": "/books/OL31999715M"
+    },
+    {
+     "key": "/books/OL27098438M"
+    },
+    {
+     "key": "/books/OL27652491M"
+    },
+    {
+     "key": "/books/OL27948034M"
+    },
+    {
+     "key": "/books/OL27948999M"
+    },
+    {
+     "key": "/books/OL32229560M",
+     "series": [
+      "The Stormlight Archive"
+     ]
+    },
+    {
+     "key": "/books/OL27264311M"
+    },
+    {
+     "key": "/books/OL27011547M"
+    },
+    {
+     "key": "/books/OL25438720M",
+     "series": [
+      "The Stormlight Archive, 2"
+     ]
+    },
+    {
+     "key": "/books/OL25438721M"
+    },
+    {
+     "key": "/books/OL25439242M"
+    }
+   ]
+  },
+  "OL17091839W": {
+   "size": 74,
+   "entries": [
+    {
+     "key": "/books/OL60319902M"
+    },
+    {
+     "key": "/books/OL53066809M",
+     "series": [
+      "Prozah"
+     ]
+    },
+    {
+     "key": "/books/OL58661519M"
+    },
+    {
+     "key": "/books/OL47698466M"
+    },
+    {
+     "key": "/books/OL47533478M"
+    },
+    {
+     "key": "/books/OL48151354M"
+    },
+    {
+     "key": "/books/OL47533477M"
+    },
+    {
+     "key": "/books/OL46835429M"
+    },
+    {
+     "key": "/books/OL37224404M"
+    },
+    {
+     "key": "/books/OL43124796M"
+    },
+    {
+     "key": "/books/OL40431553M"
+    },
+    {
+     "key": "/books/OL42946573M"
+    },
+    {
+     "key": "/books/OL34765621M"
+    },
+    {
+     "key": "/books/OL34778131M"
+    },
+    {
+     "key": "/books/OL36305215M"
+    },
+    {
+     "key": "/books/OL33313289M"
+    },
+    {
+     "key": "/books/OL28670107M"
+    },
+    {
+     "key": "/books/OL35794494M"
+    },
+    {
+     "key": "/books/OL28942541M"
+    },
+    {
+     "key": "/books/OL27543853M"
+    },
+    {
+     "key": "/books/OL27167307M",
+     "series": [
+      "iRead -- 84",
+      "iRead -- 84."
+     ]
+    },
+    {
+     "key": "/books/OL32199766M"
+    },
+    {
+     "key": "/books/OL32815550M"
+    },
+    {
+     "key": "/books/OL32140902M"
+    },
+    {
+     "key": "/books/OL32061760M"
+    },
+    {
+     "key": "/books/OL32061761M"
+    },
+    {
+     "key": "/books/OL32746887M"
+    },
+    {
+     "key": "/books/OL27194922M",
+     "series": [
+      "Nova",
+      "Nova ciencia ficción"
+     ]
+    },
+    {
+     "key": "/books/OL27193574M"
+    },
+    {
+     "key": "/books/OL26941969M"
+    },
+    {
+     "key": "/books/OL28892679M"
+    },
+    {
+     "key": "/books/OL28263484M"
+    },
+    {
+     "key": "/books/OL26897680M"
+    },
+    {
+     "key": "/books/OL27339721M"
+    },
+    {
+     "key": "/books/OL26420821M"
+    },
+    {
+     "key": "/books/OL28257515M"
+    },
+    {
+     "key": "/books/OL28367303M"
+    },
+    {
+     "key": "/books/OL28783895M"
+    },
+    {
+     "key": "/books/OL26970157M"
+    },
+    {
+     "key": "/books/OL26824710M"
+    },
+    {
+     "key": "/books/OL26465807M"
+    },
+    {
+     "key": "/books/OL25866270M"
+    },
+    {
+     "key": "/books/OL25652450M"
+    },
+    {
+     "key": "/books/OL25652552M"
+    },
+    {
+     "key": "/books/OL25652257M"
+    },
+    {
+     "key": "/books/OL26427871M"
+    },
+    {
+     "key": "/books/OL26427868M"
+    },
+    {
+     "key": "/books/OL26427867M"
+    },
+    {
+     "key": "/books/OL26427865M"
+    },
+    {
+     "key": "/books/OL26427863M"
+    }
+   ]
+  },
+  "OL21745884W": {
+   "size": 32,
+   "entries": [
+    {
+     "key": "/books/OL62426553M"
+    },
+    {
+     "key": "/books/OL62218708M"
+    },
+    {
+     "key": "/books/OL62032361M"
+    },
+    {
+     "key": "/books/OL47110121M"
+    },
+    {
+     "key": "/books/OL61717680M"
+    },
+    {
+     "key": "/books/OL61717677M"
+    },
+    {
+     "key": "/books/OL39218015M"
+    },
+    {
+     "key": "/books/OL60855498M"
+    },
+    {
+     "key": "/books/OL38225779M"
+    },
+    {
+     "key": "/books/OL61253282M"
+    },
+    {
+     "key": "/books/OL57487091M"
+    },
+    {
+     "key": "/books/OL57487090M"
+    },
+    {
+     "key": "/books/OL42892716M"
+    },
+    {
+     "key": "/books/OL51671889M"
+    },
+    {
+     "key": "/books/OL51695566M"
+    },
+    {
+     "key": "/books/OL51645790M"
+    },
+    {
+     "key": "/books/OL50528652M"
+    },
+    {
+     "key": "/books/OL39473609M"
+    },
+    {
+     "key": "/books/OL37753153M"
+    },
+    {
+     "key": "/books/OL38627505M"
+    },
+    {
+     "key": "/books/OL37809108M"
+    },
+    {
+     "key": "/books/OL35415112M"
+    },
+    {
+     "key": "/books/OL32849663M"
+    },
+    {
+     "key": "/books/OL32569151M"
+    },
+    {
+     "key": "/books/OL32553390M"
+    },
+    {
+     "key": "/books/OL33833935M"
+    },
+    {
+     "key": "/books/OL33924201M"
+    },
+    {
+     "key": "/books/OL34156823M"
+    },
+    {
+     "key": "/books/OL35577396M"
+    },
+    {
+     "key": "/books/OL32436340M"
+    },
+    {
+     "key": "/books/OL30036715M"
+    },
+    {
+     "key": "/books/OL29597011M"
+    }
+   ]
+  },
+  "OL17837968W": {
+   "size": 34,
+   "entries": [
+    {
+     "key": "/books/OL62084703M"
+    },
+    {
+     "key": "/books/OL61848752M"
+    },
+    {
+     "key": "/books/OL61591614M"
+    },
+    {
+     "key": "/books/OL43908288M"
+    },
+    {
+     "key": "/books/OL43327332M"
+    },
+    {
+     "key": "/books/OL45127930M"
+    },
+    {
+     "key": "/books/OL47318530M"
+    },
+    {
+     "key": "/books/OL51694033M"
+    },
+    {
+     "key": "/books/OL47318526M"
+    },
+    {
+     "key": "/books/OL47318524M"
+    },
+    {
+     "key": "/books/OL47318517M"
+    },
+    {
+     "key": "/books/OL47318516M"
+    },
+    {
+     "key": "/books/OL47317551M"
+    },
+    {
+     "key": "/books/OL47317547M"
+    },
+    {
+     "key": "/books/OL35621736M"
+    },
+    {
+     "key": "/books/OL32901008M"
+    },
+    {
+     "key": "/books/OL32199774M"
+    },
+    {
+     "key": "/books/OL32300987M"
+    },
+    {
+     "key": "/books/OL32521318M"
+    },
+    {
+     "key": "/books/OL29535739M"
+    },
+    {
+     "key": "/books/OL27312435M"
+    },
+    {
+     "key": "/books/OL27311541M"
+    },
+    {
+     "key": "/books/OL26955199M"
+    },
+    {
+     "key": "/books/OL26940537M"
+    },
+    {
+     "key": "/books/OL28218453M"
+    },
+    {
+     "key": "/books/OL28232881M"
+    },
+    {
+     "key": "/books/OL28597037M"
+    },
+    {
+     "key": "/books/OL29352232M"
+    },
+    {
+     "key": "/books/OL26939522M"
+    },
+    {
+     "key": "/books/OL26465806M"
+    },
+    {
+     "key": "/books/OL26489446M"
+    },
+    {
+     "key": "/books/OL26490317M"
+    },
+    {
+     "key": "/books/OL26880910M"
+    },
+    {
+     "key": "/books/OL26424863M"
+    }
+   ]
+  },
+  "OL59038W": {
+   "size": 61,
+   "entries": [
+    {
+     "key": "/books/OL62330757M",
+     "series": [
+      "Compactos Anagrama No. 420"
+     ]
+    },
+    {
+     "key": "/books/OL62330712M"
+    },
+    {
+     "key": "/books/OL57516781M"
+    },
+    {
+     "key": "/books/OL57542075M"
+    },
+    {
+     "key": "/books/OL50215842M"
+    },
+    {
+     "key": "/books/OL47132593M"
+    },
+    {
+     "key": "/books/OL47573422M",
+     "series": [
+      "Llibres anagrama No. 44"
+     ]
+    },
+    {
+     "key": "/books/OL47573423M",
+     "series": [
+      "Llibres anagrama No. 44"
+     ]
+    },
+    {
+     "key": "/books/OL47573424M",
+     "series": [
+      "Llibres anagrama No. 44"
+     ]
+    },
+    {
+     "key": "/books/OL47097728M",
+     "series": [
+      "Literaria - Biblioteca Compostela de narrativa europea No. 4"
+     ]
+    },
+    {
+     "key": "/books/OL44522894M",
+     "series": [
+      "Hayakawa epi bunko -- 51",
+      "Hayakawa epi bunko -- epi 51."
+     ]
+    },
+    {
+     "key": "/books/OL39220397M"
+    },
+    {
+     "key": "/books/OL26785944M"
+    },
+    {
+     "key": "/books/OL26105876M"
+    },
+    {
+     "key": "/books/OL50608404M"
+    },
+    {
+     "key": "/books/OL46062298M"
+    },
+    {
+     "key": "/books/OL38809315M"
+    },
+    {
+     "key": "/books/OL37845738M"
+    },
+    {
+     "key": "/books/OL35580346M"
+    },
+    {
+     "key": "/books/OL35323361M",
+     "series": [
+      "Super ET"
+     ]
+    },
+    {
+     "key": "/books/OL32706539M"
+    },
+    {
+     "key": "/books/OL29348952M"
+    },
+    {
+     "key": "/books/OL33631073M"
+    },
+    {
+     "key": "/books/OL28966383M"
+    },
+    {
+     "key": "/books/OL27934796M"
+    },
+    {
+     "key": "/books/OL7858213M"
+    },
+    {
+     "key": "/books/OL32506555M"
+    },
+    {
+     "key": "/books/OL24288466M"
+    },
+    {
+     "key": "/books/OL23096132M"
+    },
+    {
+     "key": "/books/OL16198255M"
+    },
+    {
+     "key": "/books/OL24365107M"
+    },
+    {
+     "key": "/books/OL3305465M"
+    },
+    {
+     "key": "/books/OL16257515M"
+    },
+    {
+     "key": "/books/OL23273222M"
+    },
+    {
+     "key": "/books/OL3397914M"
+    },
+    {
+     "key": "/books/OL21266468M"
+    },
+    {
+     "key": "/books/OL24260257M"
+    },
+    {
+     "key": "/books/OL19548746M"
+    },
+    {
+     "key": "/books/OL26278384M"
+    },
+    {
+     "key": "/books/OL26772247M"
+    },
+    {
+     "key": "/books/OL26801292M"
+    },
+    {
+     "key": "/books/OL26806946M"
+    },
+    {
+     "key": "/books/OL27102480M"
+    },
+    {
+     "key": "/books/OL27685440M"
+    },
+    {
+     "key": "/books/OL28203290M"
+    },
+    {
+     "key": "/books/OL32164036M"
+    },
+    {
+     "key": "/books/OL32164038M"
+    },
+    {
+     "key": "/books/OL32164035M"
+    },
+    {
+     "key": "/books/OL32164037M"
+    },
+    {
+     "key": "/books/OL32196496M"
+    }
+   ]
+  },
+  "OL59048W": {
+   "size": 87,
+   "entries": [
+    {
+     "key": "/books/OL62379734M"
+    },
+    {
+     "key": "/books/OL62379580M"
+    },
+    {
+     "key": "/books/OL62379553M"
+    },
+    {
+     "key": "/books/OL62379541M"
+    },
+    {
+     "key": "/books/OL62334041M",
+     "series": [
+      "Biblioteca Anagrama No. 27"
+     ]
+    },
+    {
+     "key": "/books/OL62334019M",
+     "series": [
+      "Narrativa actual No. 28"
+     ]
+    },
+    {
+     "key": "/books/OL62333977M",
+     "series": [
+      "Panorama de narrativas No. 200"
+     ]
+    },
+    {
+     "key": "/books/OL62333890M",
+     "series": [
+      "Panorama de narrativas No. 200"
+     ]
+    },
+    {
+     "key": "/books/OL62333857M"
+    },
+    {
+     "key": "/books/OL61604785M"
+    },
+    {
+     "key": "/books/OL59015083M"
+    },
+    {
+     "key": "/books/OL51155273M"
+    },
+    {
+     "key": "/books/OL42971763M"
+    },
+    {
+     "key": "/books/OL40478942M"
+    },
+    {
+     "key": "/books/OL44278799M",
+     "series": [
+      "SparkNotes Literature Guide"
+     ]
+    },
+    {
+     "key": "/books/OL40444836M"
+    },
+    {
+     "key": "/books/OL40212736M",
+     "series": [
+      "El balancí No. 781"
+     ]
+    },
+    {
+     "key": "/books/OL40212739M",
+     "series": [
+      "Butxaca 62 No. 24/1"
+     ]
+    },
+    {
+     "key": "/books/OL39220356M"
+    },
+    {
+     "key": "/books/OL39207855M",
+     "series": [
+      "Modŏn k'ŭllaesik -- 034",
+      "Modŏn k'ŭllaesik -- 034."
+     ]
+    },
+    {
+     "key": "/books/OL37861195M"
+    },
+    {
+     "key": "/books/OL37982431M"
+    },
+    {
+     "key": "/books/OL38221750M"
+    },
+    {
+     "key": "/books/OL37061812M",
+     "series": [
+      "XX vek"
+     ]
+    },
+    {
+     "key": "/books/OL38210178M"
+    },
+    {
+     "key": "/books/OL37907625M"
+    },
+    {
+     "key": "/books/OL35624297M",
+     "series": [
+      "Compactos 50 No. 44"
+     ]
+    },
+    {
+     "key": "/books/OL35628650M",
+     "series": [
+      "Edición limitada No. 14"
+     ]
+    },
+    {
+     "key": "/books/OL35432822M"
+    },
+    {
+     "key": "/books/OL34412114M"
+    },
+    {
+     "key": "/books/OL34413063M"
+    },
+    {
+     "key": "/books/OL34455666M"
+    },
+    {
+     "key": "/books/OL34497309M"
+    },
+    {
+     "key": "/books/OL34502406M"
+    },
+    {
+     "key": "/books/OL34808764M"
+    },
+    {
+     "key": "/books/OL34827322M"
+    },
+    {
+     "key": "/books/OL33021941M",
+     "series": [
+      "Intellektualʹnyĭ bestseller",
+      "Intellektualʹnyĭ bestseller"
+     ]
+    },
+    {
+     "key": "/books/OL35323338M",
+     "series": [
+      "Pocket Books"
+     ]
+    },
+    {
+     "key": "/books/OL10641716M"
+    },
+    {
+     "key": "/books/OL9048793M"
+    },
+    {
+     "key": "/books/OL9048055M"
+    },
+    {
+     "key": "/books/OL26528989M"
+    },
+    {
+     "key": "/books/OL26458873M",
+     "series": [
+      "Panorama de narrativas No. 200"
+     ]
+    },
+    {
+     "key": "/books/OL8912536M"
+    },
+    {
+     "key": "/books/OL32458168M"
+    },
+    {
+     "key": "/books/OL32132635M"
+    },
+    {
+     "key": "/books/OL32132636M"
+    },
+    {
+     "key": "/books/OL28042164M"
+    },
+    {
+     "key": "/books/OL8889555M"
+    },
+    {
+     "key": "/books/OL9176440M"
+    }
+   ]
+  },
+  "OL20883297W": {
+   "size": 31,
+   "entries": [
+    {
+     "key": "/books/OL32165942M",
+     "series": [
+      "Llibres Anagrama No. 82"
+     ]
+    },
+    {
+     "key": "/books/OL62336246M",
+     "series": [
+      "Colección Compactos"
+     ]
+    },
+    {
+     "key": "/books/OL62107484M"
+    },
+    {
+     "key": "/books/OL42506660M"
+    },
+    {
+     "key": "/books/OL47719523M"
+    },
+    {
+     "key": "/books/OL46867553M"
+    },
+    {
+     "key": "/books/OL42067859M"
+    },
+    {
+     "key": "/books/OL38585729M"
+    },
+    {
+     "key": "/books/OL51720206M"
+    },
+    {
+     "key": "/books/OL51013966M"
+    },
+    {
+     "key": "/books/OL37868116M"
+    },
+    {
+     "key": "/books/OL39471046M"
+    },
+    {
+     "key": "/books/OL37011358M"
+    },
+    {
+     "key": "/books/OL34795672M"
+    },
+    {
+     "key": "/books/OL32174833M"
+    },
+    {
+     "key": "/books/OL35669035M"
+    },
+    {
+     "key": "/books/OL35654107M"
+    },
+    {
+     "key": "/books/OL35654106M"
+    },
+    {
+     "key": "/books/OL35654105M"
+    },
+    {
+     "key": "/books/OL35653154M"
+    },
+    {
+     "key": "/books/OL33855703M"
+    },
+    {
+     "key": "/books/OL33802423M"
+    },
+    {
+     "key": "/books/OL33907697M"
+    },
+    {
+     "key": "/books/OL33938436M"
+    },
+    {
+     "key": "/books/OL34156493M"
+    },
+    {
+     "key": "/books/OL35701555M"
+    },
+    {
+     "key": "/books/OL32007543M",
+     "series": [
+      "Panorama de narrativas No. 1046"
+     ]
+    },
+    {
+     "key": "/books/OL31971025M"
+    },
+    {
+     "key": "/books/OL31860818M"
+    },
+    {
+     "key": "/books/OL29539396M"
+    },
+    {
+     "key": "/books/OL28283668M"
+    }
+   ]
+  },
+  "OL1168083W": {
+   "size": 727,
+   "entries": [
+    {
+     "key": "/books/OL62597712M"
+    },
+    {
+     "key": "/books/OL62572892M"
+    },
+    {
+     "key": "/books/OL62433363M"
+    },
+    {
+     "key": "/books/OL61722366M"
+    },
+    {
+     "key": "/books/OL61439304M"
+    },
+    {
+     "key": "/books/OL61427489M"
+    },
+    {
+     "key": "/books/OL60856721M"
+    },
+    {
+     "key": "/books/OL60853298M"
+    },
+    {
+     "key": "/books/OL60406447M"
+    },
+    {
+     "key": "/books/OL60284982M"
+    },
+    {
+     "key": "/books/OL59518467M"
+    },
+    {
+     "key": "/books/OL59156105M"
+    },
+    {
+     "key": "/books/OL58962733M"
+    },
+    {
+     "key": "/books/OL58694663M"
+    },
+    {
+     "key": "/books/OL58637382M"
+    },
+    {
+     "key": "/books/OL58703977M"
+    },
+    {
+     "key": "/books/OL62592152M"
+    },
+    {
+     "key": "/books/OL58626452M"
+    },
+    {
+     "key": "/books/OL62592138M"
+    },
+    {
+     "key": "/books/OL58527242M"
+    },
+    {
+     "key": "/books/OL58527191M"
+    },
+    {
+     "key": "/books/OL58527122M"
+    },
+    {
+     "key": "/books/OL57360519M"
+    },
+    {
+     "key": "/books/OL57259784M",
+     "series": [
+      "漢譯今世名著菁 -- 第52种"
+     ]
+    },
+    {
+     "key": "/books/OL56933520M"
+    },
+    {
+     "key": "/books/OL56904183M"
+    },
+    {
+     "key": "/books/OL56240236M"
+    },
+    {
+     "key": "/books/OL56298555M"
+    },
+    {
+     "key": "/books/OL56350194M"
+    },
+    {
+     "key": "/books/OL56400581M"
+    },
+    {
+     "key": "/books/OL56223038M"
+    },
+    {
+     "key": "/books/OL55972580M"
+    },
+    {
+     "key": "/books/OL56103219M"
+    },
+    {
+     "key": "/books/OL55803000M"
+    },
+    {
+     "key": "/books/OL55631583M"
+    },
+    {
+     "key": "/books/OL55440462M"
+    },
+    {
+     "key": "/books/OL55279774M"
+    },
+    {
+     "key": "/books/OL55375847M"
+    },
+    {
+     "key": "/books/OL55690876M"
+    },
+    {
+     "key": "/books/OL55909427M"
+    },
+    {
+     "key": "/books/OL55190154M"
+    },
+    {
+     "key": "/books/OL54782241M"
+    },
+    {
+     "key": "/books/OL55323293M"
+    },
+    {
+     "key": "/books/OL55335602M"
+    },
+    {
+     "key": "/books/OL53452623M"
+    },
+    {
+     "key": "/books/OL53266438M"
+    },
+    {
+     "key": "/books/OL52562109M"
+    },
+    {
+     "key": "/books/OL52981797M"
+    },
+    {
+     "key": "/books/OL53237395M"
+    },
+    {
+     "key": "/books/OL54650723M"
+    }
+   ]
+  },
+  "OL1168007W": {
+   "size": 653,
+   "entries": [
+    {
+     "key": "/books/OL62597685M"
+    },
+    {
+     "key": "/books/OL62253548M"
+    },
+    {
+     "key": "/books/OL62207750M"
+    },
+    {
+     "key": "/books/OL62083001M"
+    },
+    {
+     "key": "/books/OL61651047M"
+    },
+    {
+     "key": "/books/OL61605091M"
+    },
+    {
+     "key": "/books/OL57547604M"
+    },
+    {
+     "key": "/books/OL57609892M"
+    },
+    {
+     "key": "/books/OL57745344M"
+    },
+    {
+     "key": "/books/OL57747952M"
+    },
+    {
+     "key": "/books/OL58622222M"
+    },
+    {
+     "key": "/books/OL58644300M"
+    },
+    {
+     "key": "/books/OL60964883M"
+    },
+    {
+     "key": "/books/OL56400545M"
+    },
+    {
+     "key": "/books/OL56435442M"
+    },
+    {
+     "key": "/books/OL56509579M"
+    },
+    {
+     "key": "/books/OL56554893M"
+    },
+    {
+     "key": "/books/OL56605834M"
+    },
+    {
+     "key": "/books/OL56616347M"
+    },
+    {
+     "key": "/books/OL56673158M"
+    },
+    {
+     "key": "/books/OL55332524M"
+    },
+    {
+     "key": "/books/OL55424361M"
+    },
+    {
+     "key": "/books/OL55462953M"
+    },
+    {
+     "key": "/books/OL55467006M"
+    },
+    {
+     "key": "/books/OL55478495M"
+    },
+    {
+     "key": "/books/OL55497126M"
+    },
+    {
+     "key": "/books/OL55505022M"
+    },
+    {
+     "key": "/books/OL55582805M"
+    },
+    {
+     "key": "/books/OL55610234M"
+    },
+    {
+     "key": "/books/OL54066642M"
+    },
+    {
+     "key": "/books/OL54624808M"
+    },
+    {
+     "key": "/books/OL54728534M"
+    },
+    {
+     "key": "/books/OL54751047M"
+    },
+    {
+     "key": "/books/OL54852396M"
+    },
+    {
+     "key": "/books/OL54945203M"
+    },
+    {
+     "key": "/books/OL55029804M"
+    },
+    {
+     "key": "/books/OL55090614M"
+    },
+    {
+     "key": "/books/OL55162701M"
+    },
+    {
+     "key": "/books/OL49652588M"
+    },
+    {
+     "key": "/books/OL51008083M"
+    },
+    {
+     "key": "/books/OL51110550M"
+    },
+    {
+     "key": "/books/OL52111739M"
+    },
+    {
+     "key": "/books/OL48795431M"
+    },
+    {
+     "key": "/books/OL48848643M"
+    },
+    {
+     "key": "/books/OL48849476M"
+    },
+    {
+     "key": "/books/OL48921750M"
+    },
+    {
+     "key": "/books/OL48926068M"
+    },
+    {
+     "key": "/books/OL48935064M"
+    },
+    {
+     "key": "/books/OL48948703M"
+    },
+    {
+     "key": "/books/OL48950137M"
+    }
+   ]
+  },
+  "OL5738147W": {
+   "size": 33,
+   "entries": [
+    {
+     "key": "/books/OL57477383M"
+    },
+    {
+     "key": "/books/OL53744265M"
+    },
+    {
+     "key": "/books/OL47350356M"
+    },
+    {
+     "key": "/books/OL26797348M"
+    },
+    {
+     "key": "/books/OL24389008M"
+    },
+    {
+     "key": "/books/OL27942801M"
+    },
+    {
+     "key": "/books/OL25943558M"
+    },
+    {
+     "key": "/books/OL25943559M"
+    },
+    {
+     "key": "/books/OL26880820M"
+    },
+    {
+     "key": "/books/OL27643090M"
+    },
+    {
+     "key": "/books/OL28035379M"
+    },
+    {
+     "key": "/books/OL28345260M"
+    },
+    {
+     "key": "/books/OL28345195M"
+    },
+    {
+     "key": "/books/OL28345188M"
+    },
+    {
+     "key": "/books/OL31922164M"
+    },
+    {
+     "key": "/books/OL33973885M"
+    },
+    {
+     "key": "/books/OL34601641M"
+    },
+    {
+     "key": "/books/OL34601635M"
+    },
+    {
+     "key": "/books/OL35617996M"
+    },
+    {
+     "key": "/books/OL35609554M"
+    },
+    {
+     "key": "/books/OL35609137M"
+    },
+    {
+     "key": "/books/OL37383271M"
+    },
+    {
+     "key": "/books/OL36642196M"
+    },
+    {
+     "key": "/books/OL38467155M"
+    },
+    {
+     "key": "/books/OL28342926M"
+    },
+    {
+     "key": "/books/OL28345077M"
+    },
+    {
+     "key": "/books/OL28345079M"
+    },
+    {
+     "key": "/books/OL26769692M"
+    },
+    {
+     "key": "/books/OL39214327M"
+    },
+    {
+     "key": "/books/OL48138570M"
+    },
+    {
+     "key": "/books/OL49544622M"
+    },
+    {
+     "key": "/books/OL25898422M"
+    },
+    {
+     "key": "/books/OL3311824M",
+     "series": [
+      "Elantris (1)"
+     ]
+    }
+   ]
+  },
+  "OL5738149W": {
+   "size": 18,
+   "entries": [
+    {
+     "key": "/books/OL62354722M"
+    },
+    {
+     "key": "/books/OL57511490M"
+    },
+    {
+     "key": "/books/OL39217142M"
+    },
+    {
+     "key": "/books/OL48140486M"
+    },
+    {
+     "key": "/books/OL25943295M"
+    },
+    {
+     "key": "/books/OL29598314M"
+    },
+    {
+     "key": "/books/OL35609128M"
+    },
+    {
+     "key": "/books/OL35609136M"
+    },
+    {
+     "key": "/books/OL36292739M"
+    },
+    {
+     "key": "/books/OL33022838M"
+    },
+    {
+     "key": "/books/OL31957563M"
+    },
+    {
+     "key": "/books/OL28344898M"
+    },
+    {
+     "key": "/books/OL28345084M"
+    },
+    {
+     "key": "/books/OL28438725M"
+    },
+    {
+     "key": "/books/OL32229556M"
+    },
+    {
+     "key": "/books/OL24088391M"
+    },
+    {
+     "key": "/books/OL23147839M"
+    },
+    {
+     "key": "/books/OL24329372M"
+    }
+   ]
+  },
+  "OL5735348W": {
+   "size": 41,
+   "entries": [
+    {
+     "key": "/books/OL54070947M",
+     "series": [
+      "ʻOlamaṭah -- 1"
+     ]
+    },
+    {
+     "key": "/books/OL26417260M"
+    },
+    {
+     "key": "/books/OL26140240M",
+     "series": [
+      "Underland Chronicles"
+     ]
+    },
+    {
+     "key": "/books/OL27303631M"
+    },
+    {
+     "key": "/books/OL57564157M"
+    },
+    {
+     "key": "/books/OL48214169M"
+    },
+    {
+     "key": "/books/OL48210975M"
+    },
+    {
+     "key": "/books/OL48210519M"
+    },
+    {
+     "key": "/books/OL57472203M"
+    },
+    {
+     "key": "/books/OL44003225M"
+    },
+    {
+     "key": "/books/OL43653551M"
+    },
+    {
+     "key": "/books/OL44147361M"
+    },
+    {
+     "key": "/books/OL44243040M"
+    },
+    {
+     "key": "/books/OL44243308M"
+    },
+    {
+     "key": "/books/OL39650570M"
+    },
+    {
+     "key": "/books/OL35316735M"
+    },
+    {
+     "key": "/books/OL39284199M"
+    },
+    {
+     "key": "/books/OL34394110M"
+    },
+    {
+     "key": "/books/OL25647697M"
+    },
+    {
+     "key": "/books/OL25648706M"
+    },
+    {
+     "key": "/books/OL39474816M"
+    },
+    {
+     "key": "/books/OL39474807M"
+    },
+    {
+     "key": "/books/OL39474806M"
+    },
+    {
+     "key": "/books/OL39474802M"
+    },
+    {
+     "key": "/books/OL39474796M"
+    },
+    {
+     "key": "/books/OL39474788M"
+    },
+    {
+     "key": "/books/OL39473651M"
+    },
+    {
+     "key": "/books/OL27296128M"
+    },
+    {
+     "key": "/books/OL26143358M"
+    },
+    {
+     "key": "/books/OL30206895M"
+    },
+    {
+     "key": "/books/OL29483846M"
+    },
+    {
+     "key": "/books/OL26120654M"
+    },
+    {
+     "key": "/books/OL23271128M"
+    },
+    {
+     "key": "/books/OL3578196M"
+    },
+    {
+     "key": "/books/OL3405432M"
+    },
+    {
+     "key": "/books/OL10352723M"
+    },
+    {
+     "key": "/books/OL7515351M"
+    },
+    {
+     "key": "/books/OL7514676M"
+    },
+    {
+     "key": "/books/OL9499157M"
+    },
+    {
+     "key": "/books/OL9688863M"
+    },
+    {
+     "key": "/books/OL9415267M"
+    }
+   ]
+  },
+  "OL16796166W": {
+   "size": 35,
+   "entries": [
+    {
+     "key": "/books/OL32632273M"
+    },
+    {
+     "key": "/books/OL31892389M"
+    },
+    {
+     "key": "/books/OL36659329M"
+    },
+    {
+     "key": "/books/OL43650912M"
+    },
+    {
+     "key": "/books/OL42871923M"
+    },
+    {
+     "key": "/books/OL47703871M"
+    },
+    {
+     "key": "/books/OL42872660M"
+    },
+    {
+     "key": "/books/OL35714619M"
+    },
+    {
+     "key": "/books/OL34507766M"
+    },
+    {
+     "key": "/books/OL34604819M"
+    },
+    {
+     "key": "/books/OL34845869M"
+    },
+    {
+     "key": "/books/OL32935893M"
+    },
+    {
+     "key": "/books/OL34150543M"
+    },
+    {
+     "key": "/books/OL32512716M"
+    },
+    {
+     "key": "/books/OL32936924M"
+    },
+    {
+     "key": "/books/OL32370975M"
+    },
+    {
+     "key": "/books/OL28373875M"
+    },
+    {
+     "key": "/books/OL29720532M"
+    },
+    {
+     "key": "/books/OL32050506M"
+    },
+    {
+     "key": "/books/OL29716015M"
+    },
+    {
+     "key": "/books/OL29707992M",
+     "series": [
+      "Choice -- 251",
+      "Choice -- 251."
+     ]
+    },
+    {
+     "key": "/books/OL28783445M"
+    },
+    {
+     "key": "/books/OL28507703M"
+    },
+    {
+     "key": "/books/OL32049914M"
+    },
+    {
+     "key": "/books/OL28124646M"
+    },
+    {
+     "key": "/books/OL26830326M"
+    },
+    {
+     "key": "/books/OL25422651M"
+    },
+    {
+     "key": "/books/OL27148911M"
+    },
+    {
+     "key": "/books/OL26261870M"
+    },
+    {
+     "key": "/books/OL27280430M"
+    },
+    {
+     "key": "/books/OL27019965M"
+    },
+    {
+     "key": "/books/OL27540128M"
+    },
+    {
+     "key": "/books/OL26485871M"
+    },
+    {
+     "key": "/books/OL25428984M"
+    },
+    {
+     "key": "/books/OL25417068M"
+    }
+   ]
+  }
+ }
+}
