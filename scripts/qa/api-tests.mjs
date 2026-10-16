@@ -132,6 +132,14 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   eq("Sonnet 5.5 with thinking off gets between_tools, not disabled", body?.thinking?.type, "between_tools");
   await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-sonnet-5" });
   eq("Sonnet 5 keeps thinking disabled", body?.thinking?.type, "disabled");
+  // Oct 16: Opus 5.5 rejects both "disabled" and "between_tools"; it gets no thinking field, low effort
+  // and extra max_tokens room instead.
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-opus-5-5", effort:"medium", thinkingMode:"between_tools", maxTokens: 1000 });
+  check("Opus 5.5 omits the thinking field", body?.thinking === undefined);
+  eq("Opus 5.5 runs at low effort", body?.output_config?.effort, "low");
+  eq("Opus 5.5 gets thinking headroom on max_tokens", body?.max_tokens, 9000);
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-haiku-5-5", maxTokens: 1000 });
+  eq("Haiku 5.5 max_tokens is unchanged", body?.max_tokens, 1000);
   // Oct 10: the live eval skipped this normalization and the validator rejected every pick
   // ("kind undefined"); production and the eval now share normalizeModelPicks.
   const normalized = normalizeModelPicks({ curveballItemId:"b", picks:[{ itemId:"a", why:"x", cites:[] }, { itemId:"b", why:"y", cites:[] }] });

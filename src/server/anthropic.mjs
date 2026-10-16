@@ -107,15 +107,24 @@ export function parseModelJson(text) {
 // instead (platform.claude.com effort docs, checked 2026-10-10).
 // The reverse also holds: Sonnet 5.5 rejects "disabled" (the Oct 10 ai-eval run's taste-profile
 // calls on Sonnet 5.5 all returned 400), so it always gets "between_tools" when thinking is off.
+// Opus 5.5 (Oct 16, eval comparison only) can't turn thinking off at any effort and rejects both
+// values, so it returns null: callAnthropic then omits `thinking`, sets effort "low" and adds
+// OPUS_THINKING_HEADROOM to max_tokens so thinking can't use up the JSON's budget.
 export function thinkingTypeFor(model, requested) {
-  const sonnet55 = /^claude-sonnet-5-5(?:-|$)/.test(String(model || ""));
+  const value = String(model || "");
+  const sonnet55 = /^claude-sonnet-5-5(?:-|$)/.test(value);
+  const opus55 = /^claude-opus-5-5(?:-|$)/.test(value);
   const off = !requested || requested === "disabled" || requested === "between_tools";
-  if (off) return sonnet55 ? "between_tools" : "disabled";
+  if (off) return opus55 ? null : sonnet55 ? "between_tools" : "disabled";
   return requested;
 }
 
+const OPUS_THINKING_HEADROOM = 8000;
+
 export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null, model = null, effort = null, thinkingMode = null }) {
   const resolvedModel = model || env.TASTEMAKE_AI_MODEL;
+  const thinkingType = env.TASTEMAKE_AI_THINKING === "enabled" ? null : thinkingTypeFor(resolvedModel, thinkingMode);
+  const alwaysThinks = env.TASTEMAKE_AI_THINKING !== "enabled" && thinkingType === null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Number(env.TASTEMAKE_AI_TIMEOUT_MS || REQUEST_TIMEOUT_MS));
   try {
@@ -131,9 +140,9 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
         // This is a short, strict JSON job. With thinking on by default, the model spent the whole budget
         // thinking and returned no text at all (stop_reason=max_tokens, blocks=thinking).
         // Set TASTEMAKE_AI_THINKING=enabled to turn it back on, with a much larger cap.
-        ...(env.TASTEMAKE_AI_THINKING === "enabled" ? {} : { thinking: { type: thinkingTypeFor(resolvedModel, thinkingMode) } }),
-        ...(effort ? { output_config: { effort } } : {}),
-        max_tokens: Number(maxTokens ?? env.TASTEMAKE_AI_MAX_TOKENS ?? MAX_OUTPUT_TOKENS),
+        ...(thinkingType ? { thinking: { type: thinkingType } } : {}),
+        ...(alwaysThinks ? { output_config: { effort: "low" } } : effort ? { output_config: { effort } } : {}),
+        max_tokens: Number(maxTokens ?? env.TASTEMAKE_AI_MAX_TOKENS ?? MAX_OUTPUT_TOKENS) + (alwaysThinks ? OPUS_THINKING_HEADROOM : 0),
         // No `temperature`: newer models reject it ("temperature is deprecated for this model"), which
         // failed every live call with 400 invalid_request_error. Runs are therefore not bit-identical;
         // eval comparisons allow for that (docs/ai-evals.md).

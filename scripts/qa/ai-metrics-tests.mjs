@@ -24,6 +24,7 @@ assert.equal(PRICING_AS_OF, "2026-10-10");
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`);
 const M = 1_000_000;
 close(estimateCostUsd({ model: "claude-sonnet-5-5", inputTokens: M, outputTokens: M, cacheReadTokens: M, cacheWriteTokens: M }), 2 + 10 + 0.10 + 2.50);
+close(estimateCostUsd({ model: "claude-opus-5-5", inputTokens: M, outputTokens: M, cacheReadTokens: M, cacheWriteTokens: M }), 4 + 20 + 0.20 + 5);
 close(estimateCostUsd({ model: "claude-sonnet-5", inputTokens: M, outputTokens: M, cacheReadTokens: M, cacheWriteTokens: M }), 2 + 10 + 0.20 + 2.50);
 close(estimateCostUsd({ model: "claude-haiku-5-5", inputTokens: M, outputTokens: M, cacheReadTokens: M, cacheWriteTokens: M }), 0.10 + 0.50 + 0.01 + 0.125);
 close(estimateCostUsd({ model: "claude-haiku-5-5", inputTokens: 50_000, outputTokens: 1000, perCall: true }), (50_000 * 0.10 + 1000 * 0.50) / M);
