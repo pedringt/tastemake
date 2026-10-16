@@ -121,10 +121,14 @@ export function thinkingTypeFor(model, requested) {
 
 const OPUS_THINKING_HEADROOM = 8000;
 
-export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null, model = null, effort = null, thinkingMode = null }) {
+export async function callAnthropic({ prompt, env = process.env, fetchImpl = fetch, maxTokens = null, model = null, effort = null, thinkingMode = null, outputSchema = null }) {
   const resolvedModel = model || env.TASTEMAKE_AI_MODEL;
   const thinkingType = env.TASTEMAKE_AI_THINKING === "enabled" ? null : thinkingTypeFor(resolvedModel, thinkingMode);
   const alwaysThinks = env.TASTEMAKE_AI_THINKING !== "enabled" && thinkingType === null;
+  const resolvedEffort = alwaysThinks ? "low" : effort;
+  const outputConfig = resolvedEffort || outputSchema
+    ? { ...(resolvedEffort ? { effort: resolvedEffort } : {}), ...(outputSchema ? { format: { type: "json_schema", schema: outputSchema } } : {}) }
+    : null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Number(env.TASTEMAKE_AI_TIMEOUT_MS || REQUEST_TIMEOUT_MS));
   try {
@@ -141,7 +145,8 @@ export async function callAnthropic({ prompt, env = process.env, fetchImpl = fet
         // thinking and returned no text at all (stop_reason=max_tokens, blocks=thinking).
         // Set TASTEMAKE_AI_THINKING=enabled to turn it back on, with a much larger cap.
         ...(thinkingType ? { thinking: { type: thinkingType } } : {}),
-        ...(alwaysThinks ? { output_config: { effort: "low" } } : effort ? { output_config: { effort } } : {}),
+        // outputSchema (src/server/output-schemas.mjs) turns on structured outputs, so the reply parses.
+        ...(outputConfig ? { output_config: outputConfig } : {}),
         max_tokens: Number(maxTokens ?? env.TASTEMAKE_AI_MAX_TOKENS ?? MAX_OUTPUT_TOKENS) + (alwaysThinks ? OPUS_THINKING_HEADROOM : 0),
         // No `temperature`: newer models reject it ("temperature is deprecated for this model"), which
         // failed every live call with 400 invalid_request_error. Runs are therefore not bit-identical;

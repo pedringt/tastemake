@@ -6,6 +6,7 @@ import { applyTaglineFallback } from "../src/catalog/providers.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { callAnthropic, liveConfig } from "../src/server/anthropic.mjs";
+import { PICKS_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState } from "../src/server/request-state.mjs";
 import { domainById } from "../src/data/domains.js";
 
@@ -345,7 +346,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       ...promptSizeBreakdown(promptCtx, candidates.length, prompt)
     }));
     started = Date.now();
-    const model = await callAnthropic({ prompt, env, fetchImpl, model: recommendationModel, effort: recommendationEffort, thinkingMode: "between_tools" });
+    const model = await callAnthropic({ prompt, env, fetchImpl, model: recommendationModel, effort: recommendationEffort, thinkingMode: "between_tools", outputSchema: PICKS_OUTPUT_SCHEMA });
     const liveAiMs = Date.now() - started;
     const aiMetric = {
       operation: "recommendations",

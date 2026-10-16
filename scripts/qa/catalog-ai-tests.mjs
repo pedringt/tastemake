@@ -519,12 +519,17 @@ check("Taste Profile prompt allows a deeper profile while keeping thin evidence 
 
 {
   let requestedMaxTokens = null;
+  let requestedFormat = null;
   const budgetFetch = async (_url, init = {}) => {
-    requestedMaxTokens = JSON.parse(init.body || "{}").max_tokens;
+    const sent = JSON.parse(init.body || "{}");
+    requestedMaxTokens = sent.max_tokens;
+    requestedFormat = sent.output_config?.format ?? null;
     return anthroFetch();
   };
   const result = await produceHypotheses({ rawState, env: AI_ENV, fetchImpl: budgetFetch });
   eq("profile generation uses a larger profile-specific output budget", requestedMaxTokens, 3200);
+  eq("profile generation requests structured output", requestedFormat?.type, "json_schema");
+  check("the profile schema requires hypotheses and insufficientEvidence", JSON.stringify(requestedFormat?.schema?.required) === JSON.stringify(["hypotheses", "insufficientEvidence"]));
   eq("larger-budget profile response still validates normally", result.source, "model");
 }
 
