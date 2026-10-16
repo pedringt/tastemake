@@ -284,11 +284,13 @@ export async function warmRecommendationCandidates({ rawState, env = process.env
   return { warmed: true, candidates: retrieved.length, ms, meta: { paidCallMade: false } };
 }
 
-export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch } = {}) {
+// `retrieve` defaults to production's catalog retrieval. Only the #28 stress eval
+// (scripts/evals/stress/) passes its own, to hold the candidate pool fixed while measuring reasoning.
+export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates } = {}) {
   const state = hydrateState(rawState);
 
   let started = Date.now();
-  const retrieved = await retrieveCatalogCandidates(state, { env, fetchImpl });
+  const retrieved = await retrieve(state, { env, fetchImpl });
   logStage("candidateRetrieval", Date.now() - started, { candidates: retrieved.length });
 
   started = Date.now();

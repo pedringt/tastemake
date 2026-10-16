@@ -21,8 +21,8 @@ Authority model, in one line: **AI interprets, ranks and explains; the software 
 | Server helpers | `src/server/`: `anthropic.mjs` (live gate, Messages API call, `thinkingTypeFor`, JSON parsing), `ai-metrics.mjs` (per-model rates, telemetry), `db.mjs` (Neon Postgres via `TASTEMAKE_DATABASE_URL`), `request-state.mjs`, `cache.mjs`, `query.mjs` |
 | User data | The browser's `localStorage` only (`src/persistence.js`). No accounts. The Neon database holds the canonical catalog store and AI-call telemetry, not user profiles |
 | Tests | `scripts/qa/` (unit suites, headless-Chrome suites, `full-sweep.mjs`) |
-| Evals | `scripts/evals/` (`run.mjs`, `fixtures.mjs`, `scorers.mjs`, `compare.mjs`, `reports/`) |
-| CI | `.github/workflows/test.yml` (free gate on every push/PR), `.github/workflows/ai-eval.yml` (paid, manual) |
+| Evals | `scripts/evals/` (`run.mjs`, `fixtures.mjs`, `scorers.mjs`, `compare.mjs`, `reports/`); `scripts/evals/stress/` (#28 reasoning-at-scale harness) |
+| CI | `.github/workflows/test.yml` (free gate on every push/PR), `.github/workflows/ai-eval.yml` and `stress-eval.yml` (paid, manual) |
 | Background | `experiments/` (the original taste-model experiments), `notes/` (case-study notes) |
 
 ## Run, test, eval

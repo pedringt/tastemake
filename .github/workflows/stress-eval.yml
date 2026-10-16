@@ -1,0 +1,159 @@
+name: stress-eval
+
+# PAID, manual only. The #28 stress test: recommendation reasoning (and optionally the taste profile)
+# over synthetic profiles at 10 / 50 / 100+ experienced items, many rounds each, through production's
+# own code (scripts/evals/stress/run-stress.mjs). Writes deterministic metrics (repetition, pattern
+# overuse, traceability, generic phrasing, genre collapse, cross-domain caution, by size) to the run
+# summary and keeps every explanation as an artifact. Measurements only: nothing here passes or fails
+# on quality. Never runs on push or PR, and must be on the default branch to be dispatchable.
+#
+# Needs the repository secret ANTHROPIC_API_KEY. The plan job dry-runs the whole matrix first (free,
+# no model call), prints planned calls and the cost range, and refuses to start above max_calls.
+# Calls per model = profiles x sizes x (repeats + 1 if with_profile).
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Comma-separated model ids (picks and taste profile both use each one)
+        default: claude-haiku-5-5
+      sizes:
+        description: Comma-separated profile sizes (10, 50, 100 = 120 experienced items)
+        default: "10,50,100"
+      profiles:
+        description: Comma-separated taste shapes (narrow, broad, dislikes, split) or all
+        default: all
+      repeats:
+        description: Recommendation rounds per profile (6 unique candidate windows, then they cycle)
+        default: "6"
+      with_profile:
+        description: Also run the taste profile once per profile (enables the pattern-overuse metric)
+        type: boolean
+        default: true
+      max_calls:
+        description: Refuse to start above this many planned model calls (all jobs together)
+        default: "200"
+
+concurrency:
+  group: stress-eval
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Dry run and budget check (no model calls)
+        id: plan
+        env:
+          MODELS: ${{ inputs.models }}
+          SIZES: ${{ inputs.sizes }}
+          PROFILES: ${{ inputs.profiles }}
+          REPEATS: ${{ inputs.repeats }}
+          WITH_PROFILE: ${{ inputs.with_profile }}
+          MAX_CALLS: ${{ inputs.max_calls }}
+        run: |
+          set -euo pipefail
+          flags=(--models "$MODELS" --sizes "$SIZES" --profiles "$PROFILES" --repeats "$REPEATS" --max-calls "$MAX_CALLS" --out "$RUNNER_TEMP/plan")
+          if [ "$WITH_PROFILE" = "true" ]; then flags+=(--with-profile); fi
+          # Refuses (non-zero exit) above max_calls or on a bad model id / size / profile.
+          node scripts/evals/stress/run-stress.mjs --dry-run "${flags[@]}" | tee "$RUNNER_TEMP/plan.txt"
+          { echo "## stress-eval plan (dry run, no model calls)"; echo; cat "$RUNNER_TEMP/plan.txt"; } >> "$GITHUB_STEP_SUMMARY"
+          matrix="$(node -e 'const l=(s)=>s.split(",").map((x)=>x.trim()).filter(Boolean); const include=[]; for (const model of l(process.env.MODELS)) for (const size of l(process.env.SIZES)) include.push({ model, size }); console.log(JSON.stringify({ include }));')"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  run:
+    needs: plan
+    runs-on: ubuntu-latest
+    # One job per model x size keeps each job small; the runner stops starting calls at 100 minutes so
+    # the upload below always gets to run well inside this limit.
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run (PAID)
+        timeout-minutes: 110
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ matrix.model }}
+          SIZE: ${{ matrix.size }}
+          PROFILES: ${{ inputs.profiles }}
+          REPEATS: ${{ inputs.repeats }}
+          WITH_PROFILE: ${{ inputs.with_profile }}
+          MAX_CALLS: ${{ inputs.max_calls }}
+        run: |
+          set -uo pipefail
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then echo "The ANTHROPIC_API_KEY repository secret is not set."; exit 1; fi
+          flags=(--models "$MODEL" --sizes "$SIZE" --profiles "$PROFILES" --repeats "$REPEATS" --max-calls "$MAX_CALLS" --out stress-results --tag "$MODEL-$SIZE" --deadline-minutes 100 --concurrency 2)
+          if [ "$WITH_PROFILE" = "true" ]; then flags+=(--with-profile); fi
+          # Every finished call is appended to the JSONL immediately, so a failure keeps what ran.
+          node scripts/evals/stress/run-stress.mjs "${flags[@]}" --yes
+      - name: Job summary
+        if: always()
+        run: |
+          shopt -s nullglob
+          files=(stress-results/*.jsonl)
+          if [ ${#files[@]} -eq 0 ]; then echo "No results were written." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          node scripts/evals/stress/report.mjs "${files[@]}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-${{ matrix.model }}-${{ matrix.size }}
+          path: stress-results/*.jsonl
+          if-no-files-found: ignore
+
+  report:
+    needs: [plan, run]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stress-*
+          path: stress-results
+          merge-multiple: true
+      - name: Metrics across every job
+        run: |
+          shopt -s nullglob
+          files=(stress-results/*.jsonl)
+          if [ ${#files[@]} -eq 0 ]; then echo "No results to report." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          mkdir -p stress-report
+          node scripts/evals/stress/report.mjs "${files[@]}" --out stress-report/report.md --sample-dir stress-report
+          cat stress-report/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the report and review sample
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-report
+          path: stress-report/
+          if-no-files-found: ignore
