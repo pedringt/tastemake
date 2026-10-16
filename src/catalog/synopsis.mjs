@@ -30,7 +30,7 @@ const BLOCKED_CERTIFICATIONS = new Set(["NC-17", "X", "XXX"]);
 
 // TMDb genre ids that appear on list rows (movie and TV taxonomies together). Names only -- used for
 // the genre-and-year fallback, never for filtering.
-const TMDB_GENRES = {
+export const TMDB_GENRES = {
   28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime", 99: "Documentary",
   18: "Drama", 10751: "Family", 14: "Fantasy", 36: "History", 27: "Horror", 10402: "Music",
   9648: "Mystery", 10749: "Romance", 878: "Sci-fi", 10770: "TV movie", 53: "Thriller", 10752: "War",

@@ -29,7 +29,7 @@ import { buildPickPrompt, normalizeModelPicks } from "../../api/recommendations.
 import { callAnthropic, thinkingTypeFor } from "../../src/server/anthropic.mjs";
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
-import { estimateCostUsd } from "../../src/server/ai-metrics.mjs";
+import { priceFor } from "./pricing.mjs";
 import { buildHypothesisRequest, PROFILE_MAX_OUTPUT_TOKENS } from "../../api/hypotheses.mjs";
 import { expandProfileRefs } from "../../src/ai/profile-context.js";
 import { normalizeHypothesisResponse, preserveExistingHypotheses } from "../../src/ai/validate.js";
@@ -59,14 +59,6 @@ const liveProfileModel = args.includes("--profile-model") ? args[args.indexOf("-
 const liveProfile = !(args.includes("--profile") && args[args.indexOf("--profile") + 1] === "baseline");
 // --tag names the report files (e.g. live-claude-haiku-5-5-run1-latest.json) so runs don't overwrite each other.
 const reportTag = args.includes("--tag") ? args[args.indexOf("--tag") + 1].replace(/[^a-zA-Z0-9._-]/g, "-") : "";
-// Cost uses the same verified per-model rates as production telemetry (src/server/ai-metrics.mjs);
-// TASTEMAKE_AI_PRICE_IN / _OUT ($ per M) override them for a model those rates don't know.
-const priceFor = (model, inputTokens, outputTokens) => {
-  if (process.env.TASTEMAKE_AI_PRICE_IN || process.env.TASTEMAKE_AI_PRICE_OUT) {
-    return (inputTokens / 1e6) * Number(process.env.TASTEMAKE_AI_PRICE_IN || 0) + (outputTokens / 1e6) * Number(process.env.TASTEMAKE_AI_PRICE_OUT || 0);
-  }
-  return estimateCostUsd({ model, inputTokens, outputTokens }) ?? 0;
-};
 const spend = { calls: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
 const dryRunPlan = [];
 const estimateTokens = (text) => Math.ceil(String(text).length / 4);   // ~4 characters per token
