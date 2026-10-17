@@ -11,6 +11,9 @@ const HAIKU_55 = { input: 0.10, output: 0.50, cacheWrite: 0.125, cacheRead: 0.01
 const HAIKU_55_LONG = { input: 0.50, output: 2.50, cacheWrite: 0.625, cacheRead: 0.05 };
 const SONNET_5 = { input: 2, output: 10, cacheWrite: 2.50, cacheRead: 0.20 };
 const SONNET_55 = { input: 2, output: 10, cacheWrite: 2.50, cacheRead: 0.10 };
+// Opus 5.5 (Oct 16, eval comparison only): $4 / $20, cache reads $0.20 (claude-api skill model table,
+// checked 2026-10-16); cache writes at the usual 1.25x input.
+const OPUS_55 = { input: 4, output: 20, cacheWrite: 5, cacheRead: 0.20 };
 const HAIKU_55_LONG_PROMPT_TOKENS = 100_000;
 
 const KNOWN_OPERATIONS = new Set(["recommendations", "taste_profile"]);
@@ -34,6 +37,7 @@ function ratesFor(model, promptTokens = null) {
   // Sonnet 5.5 before Sonnet 5: "claude-sonnet-5-5" also matches the Sonnet 5 pattern.
   if (/^claude-sonnet-5-5(?:-|$)/.test(value)) return SONNET_55;
   if (/^claude-sonnet-5(?:-|$)/.test(value)) return SONNET_5;
+  if (/^claude-opus-5-5(?:-|$)/.test(value)) return OPUS_55;
   return null;
 }
 

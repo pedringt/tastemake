@@ -27,6 +27,7 @@ import { CONTRACT_VERSION } from "../../src/ai/contract.js";
 import * as baseline from "../../src/ai/baseline.js";
 import { buildPickPrompt, normalizeModelPicks } from "../../api/recommendations.mjs";
 import { callAnthropic, thinkingTypeFor } from "../../src/server/anthropic.mjs";
+import { HYPOTHESES_OUTPUT_SCHEMA, PICKS_OUTPUT_SCHEMA } from "../../src/server/output-schemas.mjs";
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { priceFor } from "./pricing.mjs";
@@ -114,7 +115,7 @@ const PRODUCERS = {
       }
       if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run");
       if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
-      const model = await callAnthropic({ prompt, model: liveProfileModel, maxTokens: PROFILE_MAX_OUTPUT_TOKENS });
+      const model = await callAnthropic({ prompt, model: liveProfileModel, maxTokens: PROFILE_MAX_OUTPUT_TOKENS, outputSchema: HYPOTHESES_OUTPUT_SCHEMA });
       spend.calls += 1;
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;
@@ -133,7 +134,7 @@ const PRODUCERS = {
       if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run");
       if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
       // Same call shape as api/recommendations.mjs: model, effort and thinking mode.
-      const model = await callAnthropic({ prompt, model: liveModel, effort: liveEffort, thinkingMode: "between_tools" });
+      const model = await callAnthropic({ prompt, model: liveModel, effort: liveEffort, thinkingMode: "between_tools", outputSchema: PICKS_OUTPUT_SCHEMA });
       spend.calls += 1;
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;

@@ -132,6 +132,19 @@ const goodPicks=()=>relatedRows.slice(0,6).map((row,i)=>({
   eq("Sonnet 5.5 with thinking off gets between_tools, not disabled", body?.thinking?.type, "between_tools");
   await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-sonnet-5" });
   eq("Sonnet 5 keeps thinking disabled", body?.thinking?.type, "disabled");
+  // Oct 16: Opus 5.5 rejects both "disabled" and "between_tools"; it gets no thinking field, low effort
+  // and extra max_tokens room instead.
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-opus-5-5", effort:"medium", thinkingMode:"between_tools", maxTokens: 1000 });
+  check("Opus 5.5 omits the thinking field", body?.thinking === undefined);
+  eq("Opus 5.5 runs at low effort", body?.output_config?.effort, "low");
+  eq("Opus 5.5 gets thinking headroom on max_tokens", body?.max_tokens, 9000);
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-haiku-5-5", maxTokens: 1000 });
+  eq("Haiku 5.5 max_tokens is unchanged", body?.max_tokens, 1000);
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-opus-5-5", outputSchema: { type: "object" } });
+  eq("Opus 5.5 keeps low effort alongside a schema", body?.output_config?.effort, "low");
+  eq("Opus 5.5 sends the schema", body?.output_config?.format?.type, "json_schema");
+  await callAnthropic({ prompt:"test", env:ON, fetchImpl:captureFetch, model:"claude-haiku-5-5", outputSchema: { type: "object" } });
+  check("a schema alone adds no effort", body?.output_config?.effort === undefined && body?.output_config?.format?.type === "json_schema");
   // Oct 10: the live eval skipped this normalization and the validator rejected every pick
   // ("kind undefined"); production and the eval now share normalizeModelPicks.
   const normalized = normalizeModelPicks({ curveballItemId:"b", picks:[{ itemId:"a", why:"x", cites:[] }, { itemId:"b", why:"y", cites:[] }] });
@@ -207,6 +220,10 @@ await produceRecommendations({
 eq("recommendations default to Sonnet 5.5", recommendationRequestBody?.model, "claude-sonnet-5-5");
 eq("recommendations default to low effort", recommendationRequestBody?.output_config?.effort, "low");
 eq("recommendations use Sonnet 5.5-compatible between-tools thinking mode", recommendationRequestBody?.thinking?.type, "between_tools");
+// Oct 16: structured outputs, so a malformed-JSON reply can't push recommendations to the catalog fallback.
+eq("recommendations request structured output", recommendationRequestBody?.output_config?.format?.type, "json_schema");
+eq("recommendations keep low effort beside the schema", recommendationRequestBody?.output_config?.effort, "low");
+check("the picks schema requires picks and curveballItemId", JSON.stringify(recommendationRequestBody?.output_config?.format?.schema?.required) === JSON.stringify(["picks", "curveballItemId"]));
 
 
 // #120: keep full history in product state/validation, but send a bounded, compact, experienced-only

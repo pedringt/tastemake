@@ -3,6 +3,7 @@ import { buildContext } from "../src/ai/context.js";
 import { normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../src/ai/validate.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { callAnthropic, liveConfig } from "../src/server/anthropic.mjs";
+import { HYPOTHESES_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState as hydrateBaseState } from "../src/server/request-state.mjs";
 import { visibleDomains } from "../src/data/domains.js";
 import { compactProfileContext, expandProfileRefs } from "../src/ai/profile-context.js";
@@ -102,7 +103,7 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
   let started = Date.now();
   try {
     const request = buildHypothesisRequest(ctx, state.modelHypotheses);
-    const model = await callAnthropic({ prompt: request.prompt, env, fetchImpl, maxTokens: PROFILE_MAX_OUTPUT_TOKENS });
+    const model = await callAnthropic({ prompt: request.prompt, env, fetchImpl, maxTokens: PROFILE_MAX_OUTPUT_TOKENS, outputSchema: HYPOTHESES_OUTPUT_SCHEMA });
     const durationMs = Math.max(1, Date.now() - started);
     const baseMetric = {
       operation: "taste_profile",
