@@ -323,7 +323,8 @@
 }
 @media (max-width: 760px) {
   .library-heading-row { align-items:stretch; flex-direction:column; }
-  .library-search-open { width:100%; max-width:none; min-width:0; }
+  /* The row stacks into a column here, so the 360px flex-basis above would set the button's height. */
+  .library-search-open { flex:0 0 auto; width:100%; max-width:none; min-width:0; }
   .library-tabs { max-width:none; }
 }
 
