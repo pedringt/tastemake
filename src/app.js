@@ -24,7 +24,7 @@ import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/clie
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
 import { renderMine } from "./screens/mine.js";
-import { setStatement, toggleDomainExclusion } from "./model/statements.js";
+import { setStatement, toggleAlsoApplies, toggleDomainExclusion } from "./model/statements.js";
 import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
@@ -536,6 +536,16 @@ app.addEventListener("click", async (event) => {
     const message = setStatement(state, statementPattern, statementField, statementValue);
     if (!message) return;
     renderPreservingPatternPosition(statementPattern, focusSelector);
+    announce(message);
+    return;
+  }
+
+  const alsoButton = event.target.closest("[data-also-pattern]");
+  if (alsoButton) {
+    const { alsoPattern, alsoDomain } = alsoButton.dataset;
+    const message = toggleAlsoApplies(state, alsoPattern, alsoDomain);
+    if (!message) return;
+    renderPreservingPatternPosition(alsoPattern, focusSelector);
     announce(message);
     return;
   }
