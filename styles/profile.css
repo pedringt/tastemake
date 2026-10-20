@@ -562,3 +562,13 @@
 @media (max-width:640px) {
   .profile-evidence-summary { align-items:flex-start; flex-direction:column; gap:3px; }
 }
+/* #250: the user's own reasons on items a pattern cites. */
+.signal-said-reasons { margin-top:4px; }
+.signal-said-reasons .signal-said-reason {
+  margin-right:0;
+  color:inherit;
+  font-weight:inherit;
+  letter-spacing:normal;
+  text-transform:none;
+}
+.signal-said-reason em { font-style:italic; }

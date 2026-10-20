@@ -52,7 +52,7 @@ Weights are the current values in code. "Taste" is `tasteDelta`; "Steer" is `rec
 | **Didn't like it** | Experienced | **−2** | −1.75 | Offered after "Tried it". One never weakens a pattern; two do |
 | More (untried), legacy | Intent | 0 | +1 | No longer offered (#192); still decoded for old data |
 | Less (untried), legacy | Intent | 0 | −1 | Same. It never meant "I dislike this kind of thing" |
-| Not interested | Intent | 0 | −1.5 | Offered after "Not tried". A negative steer; not taste, and not a dislike |
+| Not interested | Intent | 0 | −1.5 | Offered after "Not tried". Not taste, and not a dislike. Live recommendations receive only the item id, so it is never shown again; the −1.5 feeds only the local, labeled lean (`taste.js`), not live ranking (#250) |
 | Save | Intent | 0 | +0.35 | Offered after "Not tried". Lives in Library → Saved (the old Try Next / Bookmarks pages redirect there) and leaves it once the user tries it |
 | Not tried (not saved) | Neutral | 0 | 0 | |
 | Too predictable | Discovery note | 0 | 0 | Says the pick was low-novelty; must never weaken taste |
@@ -67,10 +67,20 @@ Anything reacted to (even through search) is never recommended again.
 
 ### Decisions this table records
 - **Less** is a steering preference, not a dislike. (#27)
-- **Not interested** only steers ranking; it creates no negative lean in the Taste Profile. (#27)
+- **Not interested** is never taste. Today it removes the item from future sets; it does not yet steer live ranking (#250). (#27)
 - **Saves** are intent only and are never taste. (#12, #24; their page is now Library → Saved, #94)
 - A **repeated intent signal** does not become taste no matter how many there are. Untried reactions are shown on the Taste Profile only as a separate, labeled **lean** ("from N picks you haven't tried"), and only when the net signal is clear.
 - One experienced dislike never weakens a pattern; it takes two. (Sept 20)
+
+## Reasons on a tried reaction (#191, #250)
+
+Optional reasons are stored on the reaction (`feedback.refinements`, `src/model/refinements.js`) and travel on its one evidence record. They never become evidence of their own.
+
+- Only Loved, Liked or Didn't like can carry reasons. Not interested and Save cannot.
+- Up to 5 per reaction, one per dimension. For books a dimension can carry a direction ("Pacing: too slow"); a direction counts with its dimension, never as a second reason. Directions belong to one polarity, so switching between liked and disliked clears all reasons.
+- Content chips ("Romance took over the story") are offered only when one of the item's own provider subjects exactly matches an approved list; anything not on the list (including sensitive, identity and religious subjects) never becomes an option. Which ids are valid comes from the vocabulary, so a chosen reason never disappears because metadata changed.
+- A reason describes that one experience. One reason never becomes a global preference.
+- Reasons reach the model prompts and the Taste Profile ("You said …" next to cited items). They do not affect candidate retrieval or the deterministic fallback.
 
 ## What patterns are, and how sure Tastemake is (#26)
 

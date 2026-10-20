@@ -7,6 +7,7 @@ export function focusSelectorFor(el) {
   if (!d) return null;
   if (d.feedbackItem && d.rating) return `[data-feedback-item="${d.feedbackItem}"][data-rating="${d.rating}"]`;
   if (d.feedbackItem && d.feedbackDetail) return `[data-feedback-item="${d.feedbackItem}"][data-feedback-detail="${d.feedbackDetail}"]`;
+  if (d.feedbackItem && d.feedbackRefinement) return `[data-feedback-item="${d.feedbackItem}"][data-feedback-refinement="${d.feedbackRefinement}"]`;
   if (d.feedbackItem && d.feedbackQuality) return `[data-feedback-item="${d.feedbackItem}"][data-feedback-quality="${d.feedbackQuality}"]`;
   if (d.bookmarkItem && d.bookmarkAction) return `[data-bookmark-item="${d.bookmarkItem}"][data-bookmark-action="${d.bookmarkAction}"]`;
   if (d.libraryItem && d.libraryAction) return `[data-library-item="${d.libraryItem}"][data-library-action="${d.libraryAction}"]`;

@@ -72,3 +72,34 @@
 .experience-refinement.is-compact .experience-refinement-invite { color:var(--note-ink,#5749bf); }
 .experience-refinement.is-compact .experience-refinement-action { display:none; }
 .library-disliked .experience-refinement { margin:10px 0 4px; }
+/* #250: content chips come from the item's own subjects; direction rows open under a chosen dimension. */
+.refinement-chip.refinement-content-chip {
+  background:var(--violet-soft);
+  color:var(--note-ink,#584bb5);
+}
+.refinement-direction-row {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+  margin-top:8px;
+  padding-left:10px;
+  border-left:2px solid #d6d6e7;
+}
+.refinement-direction-label {
+  color:var(--navy);
+  font-size:10px;
+  font-weight:800;
+  margin-right:2px;
+}
+.refinement-direction-optional { color:var(--faint,#747994); font-weight:700; }
+.refinement-chip.refinement-direction-chip {
+  background:transparent;
+  color:var(--navy);
+  border:1px dashed #b9bcd3;
+}
+.refinement-chip.refinement-direction-chip[aria-pressed="true"] {
+  background:var(--tint-lime,#efffc2);
+  color:var(--on-lime,#53640c);
+  border:1px solid var(--navy);
+}
