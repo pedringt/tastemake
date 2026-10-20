@@ -11,6 +11,7 @@ import { SIZES, SHAPES, buildAllProfileSpecs, loadProfileSpecs, loadSnapshot, pr
 import { makeFetch, planTasks, runTask, validateOptions, parseArgs, costTable } from "../evals/stress/run-stress.mjs";
 import { buildReport, reviewSample, reviewMarkdown, pickRecords } from "../evals/stress/report.mjs";
 import { evidenceRecords } from "../../src/model/evidence.js";
+import { percentile, suggestGate, draftReference } from "../evals/stress/calibrate.mjs";
 
 const { check, eq, finish } = createSuite("stress-eval");
 
@@ -229,5 +230,19 @@ check("a summary under the sample minimum says so", summary.enoughSample === fal
 check("trigger kinds are counted", summary.triggerCounts.frame === 1 && summary.triggerCounts["callback verb"] >= 1, JSON.stringify(summary.triggerCounts));
 eq("frame share is per explanation across sets", summary.frameWhyShare, 0.375);
 check("metricsFor includes the per-set summary", metricsFor(frameSet.map((p) => ({ ...p, callKey: "x" }))).perSet.sets === 1);
+
+
+// ---- #28 Stage 0: calibrating SET_GATE from a reference set ----------------------------------------
+eq("nearest-rank 90th percentile", percentile([0, 0, 0, 0, 0, 0, 0, 0, 1, 2], 90), 1);
+eq("95th percentile of one value", percentile([3], 95), 3);
+eq("no values, no percentile", percentile([], 90), null);
+const goodSets = [familySet, set([["Fargo", "Moral messiness and eccentric small-town characters, like the crime drama in The Fall.", "The Fall"], ["Control", "A building full of unexplained phenomena, for the atmosphere Alan Wake 2 built.", "Alan Wake 2"]])].map((picks) => ({ picks }));
+const gate = suggestGate(goodSets);
+check("a suggested gate is one above what good sets do, and never below 2", Object.values(gate).every((g) => g.suggested >= 2 && g.suggested >= g.p95 + 1), JSON.stringify(gate));
+const draftCalls = ["narrow-10", "narrow-10", "narrow-10", "broad-50"].map((profile, n) => ({ type: "call", kind: "picks", source: "model", model: "claude-haiku-5-5", key: `claude-haiku-5-5|${profile}|r${n}`, shape: profile.split("-")[0], size: profile.split("-")[1], run: "run-a", picks: frameSet }));
+const draftA = draftReference(draftCalls, { perCell: 2 });
+eq("a draft takes up to N sets per shape and size", draftA.length, 3);
+check("a draft is reproducible and starts unmarked", JSON.stringify(draftA) === JSON.stringify(draftReference(draftCalls, { perCell: 2 })) && draftA.every((d) => d.keep === null));
+check("draft ids say which run they came from", draftA.every((d) => d.id.startsWith("run-a:")));
 
 finish();
