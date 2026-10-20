@@ -132,9 +132,19 @@ export function notabilityScore(item, query = "") {
   return Math.max(0, base - (isDerivative(item, query) ? DERIVATIVE_PENALTY : 0));
 }
 
+// #243: a title ABOUT another work ("The Making of The Legend of Zelda: Breath of the Wild") can still
+// match the query exactly in its subtitle, which earned it the family score and put it above the work's
+// own DLC. Unless the query asks for that kind of thing, such a title matches no better than "contains".
+function derivativeTitle(title, query) {
+  const hit = normalizeSearch(title).match(DERIVATIVE_WORDS)?.[1];
+  return Boolean(hit) && !normalizeSearch(query).includes(hit);
+}
+
 export function scoreSearchResult(item, query) {
-  const match = matchClass(item?.title, query);
-  if (!match.score) return 0;
+  const found = matchClass(item?.title, query);
+  if (!found.score) return 0;
+  // One point below "contains", so it never ties the work's own entries when popularity is unknown.
+  const match = derivativeTitle(item?.title, query) ? { score: Math.min(found.score, MATCH.contains) - 1, literal: false } : found;
   const wantedWords = normalizeSearch(query).split(" ").length;
   const gotWords = normalizeSearch(item?.title).split(" ").length;
   const extraWords = Math.min(MAX_EXTRA_WORD_PENALTY, Math.max(0, gotWords - wantedWords) * EXTRA_WORD_PENALTY);
