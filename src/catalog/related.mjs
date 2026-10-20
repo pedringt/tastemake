@@ -1,7 +1,8 @@
 import { enrichCanonicalItemWriteBehind, igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { withBookSeriesEvidence } from "./book-series-editions.mjs";
-import { isLaterSeriesEntry } from "./book-series.mjs";
+import { bookSeriesPosition, isBook, isLaterSeriesEntry } from "./book-series.mjs";
+import { wikidataSeriesPositions } from "./wikidata-series.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
@@ -637,6 +638,14 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   const checkedTop = (await withBookSeriesEvidence(top, [], {
     env, fetchImpl, memo: bookSeriesMemo, maxLookups: 0, maxPositionLookups: (bookSeriesMemo.positionLookups ?? 0) + FINAL_SERIES_CHECK
   })).candidates;
+  // Oct 20: Open Library has no position at all for some later entries (King of the Murgos, Malloreon #2).
+  // Wikidata fills in only where Open Library gave nothing; it never overrides an Open Library position.
+  const unknown = checkedTop.filter((item) => isBook(item) && bookSeriesPosition(item) == null);
+  const wikidata = unknown.length ? await wikidataSeriesPositions(unknown, { env, fetchImpl }) : new Map();
+  for (const [index, item] of checkedTop.entries()) {
+    const position = wikidata.get(item.id);
+    if (position) checkedTop[index] = { ...item, providerMeta: { ...(item.providerMeta ?? {}), seriesPosition: position } };
+  }
   const ranked = [...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK)].filter((item) => !isLaterSeriesEntry(item));
   const style = state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced");
   if (style === "adventurous" && state.curveball !== false && ranked.length > 6) {
