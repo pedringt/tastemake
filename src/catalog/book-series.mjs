@@ -59,7 +59,7 @@ const uniqStrings = (values) => [...new Set(values.filter(Boolean).map(String))]
 // series ("2" for The Wise Man's Fear); a title suffix like "(Mistborn, Book 2)" says it too. Edition
 // `series` values ("The Mistborn Saga #3", "Mistborn -- bk. 3") are read by seriesPositionFromEditions.
 // Only a plain positive number counts; "0.5" novellas and ranges are left unknown.
-const POSITION_IN_VALUE = /(?:#|\b(?:book|bk|vol|volume|no|part|pt|day)\.?)\s*(\d{1,2})\b|[,:]\s*(\d{1,2})\s*$/i;
+const POSITION_IN_VALUE = /(?:#|\b(?:book|bk|vol|volume|no|part|pt|day)\.?)\s*(\d{1,2})\b|[,:]\s*(\d{1,2})\s*$|\((\d{1,2})\)\s*$/i;
 const WORD_POSITIONS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
 
 function positionNumber(value) {
@@ -70,13 +70,19 @@ function positionNumber(value) {
 export function seriesPositionFromValue(raw) {
   const text = String(raw ?? "").trim();
   const match = text.match(POSITION_IN_VALUE);
-  if (match) return positionNumber(match[1] ?? match[2]);
+  if (match) return positionNumber(match[1] ?? match[2] ?? match[3]);  // "Wheel of Time (6)" is the third form
   const word = text.match(/\b(?:book|bk|vol|volume|part)\.?\s*(one|two|three|four|five|six|seven|eight|nine|ten)\b/i);
   return word ? WORD_POSITIONS[word[1].toLowerCase()] : null;
 }
 
+// Also "The Twelve Kingdoms, Book Three: Sea of Wind…" (an English edition title, Oct 20): a sequence
+// marker after a comma and before a subtitle. "The Book of Three" has no marker after "book", so it is not
+// read as a position.
+const TITLE_SERIES_MIDDLE = /,\s*((?:book|bk|vol|volume|part)\.?\s*(?:\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten))\s*[:\-–—]/i;
+
 function seriesPositionFromTitle(title) {
-  const match = String(title ?? "").match(TITLE_SERIES_SUFFIX);
+  const text = String(title ?? "");
+  const match = text.match(TITLE_SERIES_SUFFIX) ?? text.match(TITLE_SERIES_MIDDLE);
   return match ? seriesPositionFromValue(match[1]) : null;
 }
 

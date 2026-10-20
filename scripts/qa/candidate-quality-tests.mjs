@@ -439,4 +439,34 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   check("magic and dragons point to fantasy", bookGenreFamilies(["Magic"]).has("fantasy") && bookGenreFamilies(["Dragons"]).has("fantasy"));
 }
 
+
+// ---- #255 follow-up: books near the top of the final list get their own series check -----------------
+// Real case (Oct 20): Lord of Chaos (Wheel of Time #6) was offered because the 10 position lookups were
+// spent further up the pool. Here the first ten candidates are later entries too (all looked up and
+// dropped), which pushes an unchecked Lord of Chaos into the top; the final check must catch it.
+{
+  const doc = (id, title, author) => ({ key: `/works/${id}`, title, author_name: [author], subject: ["Fantasy fiction", "Magic"] });
+  const sequelTitles = ["Ashfall", "Brightwater", "Cinder Road", "Duskmere", "Embertide", "Frostgate", "Gloamhollow", "Hollowmark", "Ironvale", "Jadecrest"];
+  const sequels = sequelTitles.map((title, n) => doc(`OL-SEQ${n}W`, title, `Author ${n}`));
+  const lord = doc("OL-LORDW", "Lord of Chaos", "Robert Jordan");
+  const freshTitles = ["Kestrel", "Lanternfall", "Moonwright", "Nettlebrook", "Owlsong", "Pinecrown"];
+  const fresh = freshTitles.map((title, n) => doc(`OL-NEW${n}W`, title, `Writer ${n}`));
+  const lookedUp = [];
+  const fetchImpl = async (url) => {
+    const u = decodeURIComponent(String(url));
+    const work = /works\/(OL-[A-Z0-9]+W)\/editions/.exec(u)?.[1];
+    if (work) {
+      lookedUp.push(work);
+      const series = work.startsWith("OL-SEQ") ? [`The ${work} Cycle, Book 2`, `The ${work} Cycle, Book 2`] : work === "OL-LORDW" ? ["Wheel of Time (6)", "Wheel of Time (6)"] : [];
+      return { ok: true, json: async () => ({ entries: series.map((name) => ({ series: [name] })) }) };
+    }
+    return { ok: true, json: async () => ({ docs: [...sequels, lord, ...fresh] }) };
+  };
+  const related = await retrieveCatalogCandidates(bookState(["Fantasy fiction", "Magic"]), { env, fetchImpl });
+  const titles = related.map((item) => item.title);
+  check("later entries found by the first lookups are dropped", !titles.some((t) => sequelTitles.includes(t)), titles.join(", "));
+  check("a later entry that reached the top unchecked is caught by the final check", !titles.includes("Lord of Chaos") && lookedUp.includes("OL-LORDW"), `${titles.join(", ")} | looked up: ${lookedUp.length}`);
+  check("fresh books fill the set", titles.filter((t) => freshTitles.includes(t)).length >= 5, titles.join(", "));
+}
+
 finish();

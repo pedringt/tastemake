@@ -1,5 +1,6 @@
 import { setStatement, toggleDomainExclusion } from "../../src/model/statements.js";
 import { createSuite } from "./lib/assert.mjs";
+import { isTastebreakCandidate, startTastebreak, tastebreakPatterns } from "../../src/model/tastebreak.js";
 
 const { check, eq, finish } = createSuite("statements tests");
 
@@ -46,6 +47,24 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   eq("no refuses importance follow-up", setStatement(state, pattern.id, "weight", "little"), null);
   eq("no refuses context follow-up", setStatement(state, pattern.id, "context", "some"), null);
   eq("no refuses domain refinement", toggleDomainExclusion(state, pattern.id, "movies"), null);
+}
+
+
+// ---- #19: Tastebreak is offered for items a Taste Profile pattern cites (Oct 20) -------------------
+{
+  const book = { id: "ol-hero", title: "The Hero of Ages", type: "book", domains: ["read"] };
+  const loved = { item: book, rating: "more", detail: "loved-before" };
+  const citing = { id: "ai-world", title: "Rich world-building", claim: "Richly built worlds carry the enjoyment.", supports: ["ev:ol-hero"], counters: [] };
+  const other = { id: "ai-other", title: "Other", claim: "Something else entirely.", supports: ["ev:ol-other"], counters: [] };
+  const state = { modelHypotheses: [citing, other], patternStatements: [], hypothesisHistory: [], feedbackByRecommendation: { [book.id]: loved }, tastebreaks: {}, tastebreakDrafts: {} };
+
+  eq("a pick with no ai.tests is offered Tastebreak when a pattern cites it", isTastebreakCandidate(loved, state), true);
+  eq("only the citing pattern is asked about", tastebreakPatterns(book, state).map((p) => p.id).join(), "ai-world");
+  check("starting one works", typeof startTastebreak(state, book.id) === "string" && state.tastebreakDrafts[book.id]);
+  eq("a counter-citing pattern counts too (a dislike's 'why it didn't land')", tastebreakPatterns(book, { ...state, modelHypotheses: [{ ...citing, supports: [], counters: ["ev:ol-hero"] }] }).length, 1);
+  eq("a pattern the user said is 'not me' is left out", isTastebreakCandidate(loved, { ...state, patternStatements: [{ hypothesisId: "ai-world", says: "not-me" }] }), false);
+  eq("an untried item is never offered", isTastebreakCandidate({ item: book, rating: "not-tried", detail: "bookmarked" }, state), false);
+  eq("no citing pattern, no Tastebreak", isTastebreakCandidate(loved, { ...state, modelHypotheses: [other] }), false);
 }
 
 finish();
