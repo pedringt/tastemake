@@ -1,105 +1,120 @@
+/* Optional "why" on a tried reaction (#191, #250). Design pass (Oct 20): one quiet summary line, no box
+   inside the popover, neutral chips that only fill (with a check) when chosen, and each dimension's
+   directions directly under its own chip. */
 .experience-refinement {
   margin-top:10px;
-  padding:10px 11px;
-  border:1px dashed #c9c9dd;
-  border-radius:9px;
-  background:rgba(255,255,255,.55);
+  padding-top:8px;
+  border-top:1px solid var(--line,#dcdcf0);
 }
 .experience-refinement > summary {
   cursor:pointer;
   list-style:none;
-  color:var(--navy);
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  min-height:30px;
+  min-height:32px;
+  color:var(--navy);
 }
 .experience-refinement > summary::-webkit-details-marker { display:none; }
 .experience-refinement-invite {
-  font-size:11px;
+  font-size:12px;
   font-weight:800;
 }
-.experience-refinement-action {
-  color:var(--note-ink,#5749bf);
+.experience-refinement-invite::before { content:"+ "; color:var(--note-ink,#5749bf); }
+.experience-refinement[open] .experience-refinement-invite::before { content:"− "; }
+.experience-refinement-meta {
+  color:var(--faint,#747994);
   font-size:11px;
-  font-weight:800;
+  font-weight:700;
   white-space:nowrap;
 }
-.experience-refinement-action::before { content:"+ "; }
-.experience-refinement[open] .experience-refinement-action::before { content:"− "; }
-.experience-refinement-body { margin-top:9px; padding-top:9px; border-top:1px dotted #d6d6e7; }
-.experience-refinement-head {
-  display:flex;
-  align-items:baseline;
-  justify-content:space-between;
-  gap:10px;
+.experience-refinement-body { padding:4px 0 2px; }
+
+/* Neutral until chosen. Overrides the rotating pastel .detail-chip colors from recommendations.css, which
+   made unchosen chips look chosen. */
+.refinement-chip-row { gap:6px; }
+.detail-chip.refinement-chip,
+.detail-chip.refinement-chip:nth-child(n) {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  min-height:30px;
+  border:1px solid var(--line,#dcdcf0);
+  background:#fff;
+  color:var(--ink,#1a2256);
+  box-shadow:none;
 }
-.experience-refinement-head .feedback-detail-prompt { margin-bottom:5px; }
-.experience-refinement-help {
-  margin:0 0 8px;
-  color:var(--faint,#747994);
-  font-size:10px;
-  line-height:1.4;
+.detail-chip.refinement-chip:hover:not([disabled]) { border-color:var(--navy); }
+.detail-chip.refinement-chip[aria-pressed="true"] {
+  border-color:var(--navy);
+  background:var(--navy);
+  color:#fff;
 }
-.experience-refinement-limit {
-  color:var(--faint,#747994);
-  font-size:10px;
-  font-weight:700;
-}
-.refinement-chip {
-  background:var(--tint-lime,#efffc2);
-  color:var(--on-lime,#53640c);
-}
-.refinement-chip:nth-child(2n) {
-  background:var(--cyan-soft);
-  color:#176672;
-}
-.refinement-chip:nth-child(3n) {
-  background:var(--pink-soft);
-  color:#97066c;
-}
-.refinement-chip[disabled] {
+.refinement-check { font-size:10px; }
+.detail-chip.refinement-chip[disabled] {
   opacity:.42;
   cursor:not-allowed;
 }
-.experience-refinement.is-compact {
-  margin-top:12px;
-  padding:8px 9px;
-  background:transparent;
-}
-.experience-refinement.is-compact > summary { justify-content:flex-start; }
-.experience-refinement.is-compact .experience-refinement-invite { color:var(--note-ink,#5749bf); }
-.experience-refinement.is-compact .experience-refinement-action { display:none; }
-.library-disliked .experience-refinement { margin:10px 0 4px; }
-/* #250: content chips come from the item's own subjects; direction rows open under a chosen dimension. */
-.refinement-chip.refinement-content-chip {
-  background:var(--violet-soft);
-  color:var(--note-ink,#584bb5);
-}
-.refinement-direction-row {
+/* Content chips come from the book's own subjects; same behavior, set apart by an outline style. */
+.detail-chip.refinement-content-chip:not([aria-pressed="true"]) { border-style:dashed; border-color:var(--note-ink,#5749bf); color:var(--note-ink,#5749bf); }
+
+/* Directions sit on their own line, directly under the chosen chip. */
+.refinement-directions {
+  flex-basis:100%;
   display:flex;
   flex-wrap:wrap;
   align-items:center;
   gap:6px;
-  margin-top:8px;
+  margin:0 0 2px 10px;
   padding-left:10px;
-  border-left:2px solid #d6d6e7;
+  border-left:2px solid var(--navy);
 }
-.refinement-direction-label {
-  color:var(--navy);
-  font-size:10px;
-  font-weight:800;
-  margin-right:2px;
+.refinement-directions-label {
+  color:var(--faint,#747994);
+  font-size:11px;
+  font-weight:700;
 }
-.refinement-direction-optional { color:var(--faint,#747994); font-weight:700; }
-.refinement-chip.refinement-direction-chip {
-  background:transparent;
-  color:var(--navy);
-  border:1px dashed #b9bcd3;
+.detail-chip.refinement-direction-chip {
+  min-height:28px;
+  padding:4px 9px;
 }
-.refinement-chip.refinement-direction-chip[aria-pressed="true"] {
+.detail-chip.refinement-direction-chip[aria-pressed="true"] {
   background:var(--tint-lime,#efffc2);
   color:var(--on-lime,#53640c);
-  border:1px solid var(--navy);
+  border-color:var(--navy);
+}
+
+.experience-refinement.is-compact { margin-top:12px; }
+.library-disliked .experience-refinement { margin:10px 0 4px; }
+
+/* "This pick was: Too obvious · A great discovery": feedback about the pick, not about the user's taste,
+   so it is one small line rather than a second expandable section. */
+.quality-line {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+  margin-top:10px;
+  padding-top:8px;
+  border-top:1px solid var(--line,#dcdcf0);
+}
+.quality-line-label {
+  color:var(--faint,#747994);
+  font-size:11px;
+  font-weight:700;
+  margin-right:2px;
+}
+.detail-chip.quality-line-chip,
+.detail-chip.quality-line-chip:nth-child(n) {
+  min-height:28px;
+  padding:4px 9px;
+  border:1px solid var(--line,#dcdcf0);
+  background:transparent;
+  color:var(--ink,#1a2256);
+}
+.detail-chip.quality-line-chip[aria-pressed="true"] {
+  border-color:var(--navy);
+  background:var(--navy);
+  color:#fff;
 }

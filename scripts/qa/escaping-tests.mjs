@@ -92,7 +92,7 @@ for (const [name, render] of Object.entries(screens)) {
   check(`${name}: ordinary copy still renders`, html.length > 200);
   if (name === "recommendations") {
     check("recommendations: internal evidence refs never render", !html.includes("ev:tmdb-movie-999"), html);
-    check("recommendations: detailed feedback lives in an anchored popover", html.includes("rec-feedback-popover") && html.includes("Want to get more specific?") && html.includes("What didn’t work?"), html);
+    check("recommendations: detailed feedback lives in an anchored popover", html.includes("rec-feedback-popover") && html.includes("What didn’t work for you?") && html.includes("experience-refinement-meta"), html);
     check("recommendations: feedback editor has an explicit close control", html.includes("data-feedback-close"), html);
   }
   if (name === "browse") {
