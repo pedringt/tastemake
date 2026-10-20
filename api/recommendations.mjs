@@ -9,6 +9,8 @@ import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } fro
 import { PICKS_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState } from "../src/server/request-state.mjs";
 import { domainById } from "../src/data/domains.js";
+import { isAdultTagged, triedAdultTagged } from "../src/catalog/adult-content.mjs";
+import { evidenceRecords } from "../src/model/evidence.js";
 
 const MAX_BODY_BYTES = 160_000;
 const DEFAULT_VISITOR_LIMIT = 6;
@@ -213,10 +215,19 @@ function catalogFallbackReason(item, index) {
   return reasons[index % reasons.length]();
 }
 
-function catalogPicks(candidates, state) {
+// #257: the fallback's curveball slot follows the same rule as the model's (src/catalog/adult-content.mjs):
+// an explicitly adult-tagged item only when the user has tried that kind of thing. Otherwise the next
+// eligible candidate takes the slot, or the set has no curveball.
+function catalogPicks(candidates, state, evidence = [], pool = candidates) {
   const chosen = candidates.slice(0, 6);
+  let curveballAllowed = state.curveball !== false && chosen.length >= 6;
+  if (curveballAllowed && isAdultTagged(chosen[5]) && !triedAdultTagged(evidence)) {
+    const replacement = pool.find((item) => !isAdultTagged(item) && !chosen.some((picked) => picked.id === item.id));
+    if (replacement) chosen[5] = replacement;
+    else curveballAllowed = false;
+  }
   return chosen.map((item, index) => {
-    const curveball = state.curveball !== false && chosen.length >= 6 && index === chosen.length - 1;
+    const curveball = curveballAllowed && index === chosen.length - 1;
     const basis = catalogFallbackReason(item, index);
     return {
       ...item,
@@ -230,11 +241,11 @@ function catalogPicks(candidates, state) {
   });
 }
 
-function fallbackPayload(candidates, state, reason, meta = {}) {
+function fallbackPayload(candidates, state, reason, meta = {}, pool = candidates) {
   return {
     source: "catalog",
     reason,
-    picks: catalogPicks(candidates, state),
+    picks: catalogPicks(candidates, state, evidenceRecords(state), pool),
     meta: { ...meta, paidCallMade: meta.paidCallMade ?? false }
   };
 }
@@ -336,7 +347,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   logStage("candidateDomains", 0, { domains: offeredDomains });
 
   const config = liveConfig(env);
-  if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length });
+  if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length }, ctx.candidates);
   const recommendationModel = env.TASTEMAKE_RECOMMENDATIONS_MODEL || "claude-sonnet-5-5";
   const recommendationEffort = env.TASTEMAKE_RECOMMENDATIONS_EFFORT || "low";
 
@@ -400,7 +411,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
         usage: model.usage,
         paidCallMade: true,
         catalogCandidates: retrieved.length
-      });
+      }, ctx.candidates);
     }
     recordAiCallInBackground({ ...aiMetric, outcome: "success" }, { env });
     const picks = clientPicks(result.items);
@@ -438,7 +449,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       errorStatus: error?.status ?? null,
       errorType: error?.anthropicType ?? (timedOut ? "timeout" : "transport"),
       catalogCandidates: retrieved.length
-    });
+    }, ctx.candidates);
   }
 }
 

@@ -97,4 +97,85 @@ function proposal(refs) {
   eq("a dislike may appear as explicit contrast when positive evidence supports the pick", explicitContrast.accepted.length, 1);
 }
 
+
+// ---- #256: patterns must keep the user's reasons as given, on the items they cite ---------------------
+// Rebuilt from a real books-only production profile (Oct 20): Katabasis was disliked for Story +
+// Characters, The Darkest Minds for Story + Writing / prose: flat, and the model wrote "a flat or thin cast
+// of characters". The Hero of Ages and Locke Lamora were tagged World / setting: rich detail.
+{
+  const book = (id, title) => ({ id, title, type: "book", domains: ["read"], provider: "openlibrary", providerId: id.toUpperCase() });
+  const items = {
+    circe: book("ol-circe", "Circe"), locke: book("ol-locke", "The Lies of Locke Lamora"), hero: book("ol-hero", "The Hero of Ages"),
+    katabasis: book("ol-katabasis", "Katabasis"), minds: book("ol-minds", "The Darkest Minds")
+  };
+  const s = emptyState();
+  react(s, items.circe, "loved");
+  react(s, items.locke, "loved"); s.feedbackByRecommendation[items.locke.id].refinements = ["characters", "story", "world-setting:rich-detail", "pacing:kept-me-reading"];
+  react(s, items.hero, "liked"); s.feedbackByRecommendation[items.hero.id].refinements = ["story", "writing-prose:clean", "world-setting:rich-detail"];
+  react(s, items.katabasis, "disliked"); s.feedbackByRecommendation[items.katabasis.id].refinements = ["story", "characters"];
+  react(s, items.minds, "disliked"); s.feedbackByRecommendation[items.minds.id].refinements = ["story", "writing-prose:flat"];
+  const ctx = buildContext(s);
+  const ref = (key) => `ev:${items[key].id}`;
+  const hyp = (label, claim, evidence, counter = []) => ({ label, claim, evidence, counter, domains: ["read"], crossDomain: "untested", level: "emerging", conditional: false, context: null });
+
+  const merged = validateHypotheses({ hypotheses: [hyp("Character investment over plot mechanics",
+    "Engagement seems tied to strong characters; a flat or thin cast of characters has been a reason for disliking a book even when the premise is strong.",
+    [ref("locke")])] }, ctx);
+  eq("the real merged-reasons pattern is rejected", merged.accepted.length, 0);
+  check("it is rejected because no cited item carries 'flat'", merged.rejected[0]?.reasons.some((r) => /no cited item carries/.test(r)), merged.rejected[0]?.reasons);
+
+  const citedButMoved = validateHypotheses({ hypotheses: [hyp("Character investment",
+    "Engagement seems tied to strong characters; a flat cast of characters has been part of a miss.",
+    [ref("locke")], [ref("minds"), ref("katabasis")])] }, ctx);
+  eq("citing the 'flat' book does not make 'flat characters' right", citedButMoved.accepted.length, 0);
+  check("it names the dimension the user actually meant", citedButMoved.rejected[0]?.reasons.some((r) => /pairs "flat" with characters, but the user said it about writing-prose/.test(r)), citedButMoved.rejected[0]?.reasons);
+
+  const faithful = validateHypotheses({ hypotheses: [hyp("Prose matters in a miss",
+    "When the writing reads as flat prose, a promising premise has not been enough to carry the book.",
+    [ref("hero"), ref("locke")], [ref("minds")])] }, ctx);
+  check("a pattern that keeps 'flat' with the prose and cites that book is accepted", faithful.accepted.length === 1, JSON.stringify(faithful.rejected[0]?.reasons));
+
+  const overreach = validateHypotheses({ hypotheses: [hyp("Rich world-building and immersive settings",
+    "Strongly values richly built worlds and immersive settings, which carry the enjoyment even when other elements vary.",
+    [ref("locke"), ref("hero")], [ref("katabasis")])] }, ctx);
+  eq("a general rule from two items is kept (it may be right, and may be confirmed)", overreach.accepted.length, 1);
+  check("but it is marked conditional, with a note", overreach.accepted[0]?.conditional === true && overreach.notes.some((n) => /marked conditional/.test(n)), overreach.notes);
+
+  const plain = validateHypotheses({ hypotheses: [hyp("Lyrical, character-driven fantasy",
+    "Enjoys fantasy that is literary and character-driven, with rich mythic or historical grounding such as reimagined myth.",
+    [ref("circe"), ref("locke"), ref("hero")], [ref("minds"), ref("katabasis")])] }, ctx);
+  check("a pattern that uses no reason words is unaffected", plain.accepted.length === 1 && plain.accepted[0].conditional === false);
+}
+
+
+// ---- #257: a curveball lands on explicitly adult-tagged content only if the user has tried that kind ----
+{
+  const { produceRecommendations } = await import("../../api/recommendations.mjs");
+  const book = (id, title, genres) => ({ id, title, type: "book", domains: ["read"], provider: "openlibrary", providerId: id.toUpperCase(), genres });
+  const loved = book("ol-circe", "Circe", ["Mythology", "Retellings"]);
+  const adult = book("ol-neon", "Neon Gods", ["Romance", "Mythology", "Smut", "Retellings"]);
+  const plainPick = book("ol-mythos", "Mythos", ["Mythology"]);
+  const s = emptyState();
+  react(s, loved, "loved");
+  const ctx = { ...buildContext(s, [adult, plainPick]), curveball: true };
+  const pick = (item, kind) => ({ itemId: item.id, why: "A retelling that stretches toward darker territory.", cites: [`ev:${loved.id}`], tests: null, kind });
+
+  const curve = validatePicks({ picks: [pick(adult, "curveball")] }, ctx);
+  eq("an adult-tagged curveball is rejected when nothing like it was tried", curve.accepted.length, 0);
+  check("with a reason that says so", curve.rejected[0]?.reasons.some((r) => /adult-tagged/.test(r)), curve.rejected[0]?.reasons);
+  eq("the same book as a regular pick is unchanged", validatePicks({ picks: [pick(adult, "pick")] }, ctx).accepted.length, 1);
+  eq("broad words (romance) alone are not adult tags", validatePicks({ picks: [pick(book("ol-romance", "A Romance", ["Romance", "Dark Romance"]), "curveball")] }, { ...buildContext(s, [book("ol-romance", "A Romance", ["Romance", "Dark Romance"])]), curveball: true }).accepted.length, 1);
+
+  const tried = emptyState();
+  react(tried, loved, "loved");
+  react(tried, book("ol-tried-adult", "Tried Adult", ["Erotica", "Romance"]), "liked");
+  eq("once the user has tried that kind of book, the curveball is allowed", validatePicks({ picks: [pick(adult, "curveball")] }, { ...buildContext(tried, [adult]), curveball: true }).accepted.length, 1);
+
+  // The no-AI fallback: the 6th candidate is the curveball slot.
+  const pool = [1, 2, 3, 4, 5].map((n) => book(`ol-c${n}`, `Candidate ${n}`, ["Mythology"]));
+  const out = await produceRecommendations({ rawState: { selectedFavorites: [], feedbackByRecommendation: { [loved.id]: s.feedbackByRecommendation[loved.id] }, curveball: true }, env: {}, retrieve: async () => [...pool, adult, plainPick] });
+  const curveballPick = out.picks.find((p) => p.surprise);
+  check("the fallback skips an adult-tagged curveball for the next eligible candidate", curveballPick?.id === plainPick.id && !out.picks.some((p) => p.id === adult.id), out.picks.map((p) => `${p.id}${p.surprise ? "*" : ""}`).join());
+}
+
 finish();

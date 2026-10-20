@@ -240,7 +240,11 @@ for (const r of results) {
   }
   if (r.run.hyp.rejected.length) {
     lines.push("", "Rejected:", "");
-    r.run.hyp.rejected.forEach((x) => lines.push(`- ${x.proposal?.label ?? "(malformed)"}: ${x.reasons.join("; ")}`));
+    // Oct 20: the claim text is kept so a rejection can be judged (made-up reason, or an over-strict check?).
+    r.run.hyp.rejected.forEach((x) => {
+      lines.push(`- ${x.proposal?.label ?? "(malformed)"}: ${x.reasons.join("; ")}`);
+      if (x.proposal?.claim) lines.push(`  - Claim: "${x.proposal.claim}" (cites ${(x.proposal.evidence ?? []).join(", ") || "nothing"}; counter ${(x.proposal.counter ?? []).join(", ") || "none"})`);
+    });
   }
   if (r.run.picks.accepted.length) {
     lines.push("", "Picks and why:", "");
@@ -261,7 +265,7 @@ writeFileSync(join(outDir, `${reportName}.json`), JSON.stringify({
   spend,
   fixtures: results.map((r) => ({ id: r.fixture.id, error: r.error ?? null, scores: r.scores,
     hypotheses: r.run?.hyp.accepted.map(({ label, level, crossDomain, evidence, counter, summary, statement }) => ({ label, level, crossDomain, evidence, counter, summary: summary ?? statement ?? null })) ?? [],
-    rejected: r.run?.hyp.rejected.map((x) => ({ label: x.proposal?.label, reasons: x.reasons })) ?? [],
+    rejected: r.run?.hyp.rejected.map((x) => ({ label: x.proposal?.label, claim: x.proposal?.claim ?? null, evidence: x.proposal?.evidence ?? [], counter: x.proposal?.counter ?? [], reasons: x.reasons })) ?? [],
     picks: r.run?.picks.accepted.map((p) => ({ itemId: p.itemId, title: p.item?.title ?? null, kind: p.kind, why: p.why ?? null, cites: p.cites })) ?? [] })),
   selfTest
 }, null, 2) + "\n");

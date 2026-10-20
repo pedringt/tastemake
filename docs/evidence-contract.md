@@ -63,7 +63,7 @@ Weights are the current values in code. "Taste" is `tasteDelta`; "Steer" is `rec
 | Look (design) | Setting | 0 | 0 | Never evidence |
 | Blind Spot | Correction | see below | see below | The user names which patterns *did* hold up; a miss is not counted against those |
 
-Anything reacted to (even through search) is never recommended again.
+Anything reacted to (even through search) is never recommended again. A later book in a series (Open Library says its position is above 1) is not offered as a fresh recommendation either, whether or not the user has started the series; unknown positions are left alone (#255).
 
 ### Decisions this table records
 - **Less** is a steering preference, not a dislike. (#27)
@@ -81,6 +81,7 @@ Optional reasons are stored on the reaction (`feedback.refinements`, `src/model/
 - Content chips ("Romance took over the story") are offered only when one of the item's own provider subjects exactly matches an approved list; anything not on the list (including sensitive, identity and religious subjects) never becomes an option. Which ids are valid comes from the vocabulary, so a chosen reason never disappears because metadata changed.
 - A reason describes that one experience. One reason never becomes a global preference.
 - Reasons reach the model prompts and the Taste Profile ("You said …" next to cited items). They do not affect candidate retrieval or the deterministic fallback.
+- A Taste Profile pattern must keep each reason with its own item and dimension (#256): "Characters" on one book plus "Writing / prose: flat" on another is not "flat characters". The validator rejects that.
 
 ## What patterns are, and how sure Tastemake is (#26)
 

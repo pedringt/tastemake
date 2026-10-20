@@ -65,7 +65,10 @@ const bookState = (genres) => ({
   const before = 5; // total distinct rows returned across the three queries (STRONG-1/2, WEAK-1, HABIT, DAISY)
   const related = await retrieveCatalogCandidates(bookState(sourceGenres), { env, fetchImpl });
   const byTitle = Object.fromEntries(related.map((item) => [item.title, item]));
-  check("queries the top 3 meaningful subjects, not just the first", requestedUrls.length === 3, requestedUrls.join(" | "));
+  // #255: book candidates may also get a bounded editions lookup for their series position; this check
+  // is about the subject searches only.
+  const subjectUrls = requestedUrls.filter((url) => url.includes("/search.json"));
+  check("queries the top 3 meaningful subjects, not just the first", subjectUrls.length === 3, subjectUrls.join(" | "));
   check("strong overlap (2+) candidates are retained and ranked strong", byTitle["Strong Neighbor One"]?.relationStrength === "strong" && byTitle["Strong Neighbor Two"]?.relationStrength === "strong");
   check("weak (1 meaningful overlap) candidate stays eligible at lower confidence", byTitle["Weak Neighbor One"]?.relationStrength === "weak");
   check("bestseller-tag-only false positive remains excluded (#131 regression)", !byTitle["Habit Book"]);

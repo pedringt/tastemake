@@ -119,6 +119,8 @@ assert.equal(normalizedRefinements(disliked).length, 5);
 assert.deepEqual(contentOptionsFor(book, "negative").map((o) => o.id), ["romance:took-over"], "exact 'Romance' subject offers the chip");
 assert.deepEqual(contentOptionsFor(book, "positive").map((o) => o.id), ["romance:highlight"]);
 assert.deepEqual(contentOptionsFor({ ...book, genres: ["Fiction, romance, fantasy"] }, "negative"), [], "a combined subject is not a clear match");
+assert.deepEqual(contentOptionsFor({ ...book, genres: ["genre:romance", "body swap"] }, "negative").map((o) => o.id), ["romance:took-over"], "Open Library's genre:romance form counts (#257)");
+assert.deepEqual(contentOptionsFor({ ...book, genres: ["genre:fantasy romance"] }, "negative"), [], "the prefix is dropped, but the match stays exact");
 assert.deepEqual(contentOptionsFor({ ...book, genres: ["sexual abuse", "LGBTQ novels", "Christian fiction", "Child abuse"] }, "negative"), [], "sensitive, identity and religious subjects never become chips");
 assert.deepEqual(contentOptionsFor({ ...book, genres: ["Romance", "Mystery", "Horror"] }, "negative").length, 2, "at most two content chips");
 assert.deepEqual(contentOptionsFor({ ...book, genres: undefined }, "negative"), [], "no subjects, no content chips");

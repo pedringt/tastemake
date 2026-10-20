@@ -240,7 +240,10 @@ export const GENERIC_TEMPLATES = [
   { id: "if you liked/loved", re: /\bif you (?:liked|loved|enjoyed)\b/i },
   { id: "fans of", re: /\bfans? of\b/i },
   { id: "similar to what you", re: /\bsimilar to (?:what|things|stuff) you\b/i },
-  { id: "based on your (anything)", re: /\bbased on your\b/i }
+  { id: "based on your (anything)", re: /\bbased on your\b/i },
+  // Oct 20 (#28 comment): seen on a real books profile.
+  { id: "third person (a ... reader)", re: /\b(?:a|the) (?:[\w'’-]+ ){0,4}reader(?: who)?\b/i },
+  { id: "echoes / scope / sweeping", re: /\becho(?:es|ing)?\b|\bscope\b|\bsweeping\b/i }
 ];
 
 export function genericPhrasing(picks) {

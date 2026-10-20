@@ -72,16 +72,40 @@ async function searchTmdb(query, env, fetchImpl, domain = "all") {
   return rankSearchResults(rows.map(({ row, type }) => tmdbItem(row, type)), query).slice(0, 12);
 }
 
+// #257: an Open Library *work* title is often the original-language title ("Mémoires d'Hadrien",
+// "Krew elfów"). Searches ask for lang=en, which returns the best English edition when there is one; its
+// title is used when it is genuinely different (not just capitalization or an added subtitle), and the
+// work title is kept as originalTitle. No English edition -> the work title, as before.
+const comparableTitle = (value) => String(value ?? "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+function englishEditionTitle(row) {
+  const edition = row?.editions?.docs?.[0];
+  if (!edition?.title || !(edition.language ?? []).includes("eng")) return null;
+  const work = comparableTitle(row.title);
+  const english = comparableTitle(edition.title);
+  if (!english || english === work || english.startsWith(`${work} `)) return null;
+  return clean(edition.title, 120);
+}
+
+// #257: search rows list narrators and translators as authors ("Alexandra Bracken, Amy McFadden,
+// Montserrat Triviño Gonzalez"). Two names are usually real co-authors; three or more usually are not,
+// so only the first is kept then.
+function openLibraryAuthors(names = []) {
+  return clean((names.length > 2 ? names.slice(0, 1) : names).join(", "), 120);
+}
+
 function openLibraryItem(row) {
   const key = String(row.key ?? "").replace("/works/", "");
+  const englishTitle = englishEditionTitle(row);
   const item = {
     id: buildItemId("openlibrary", "book", key),
     provider: "openlibrary",
     providerId: key,
-    title: clean(row.title, 120),
+    title: englishTitle ?? clean(row.title, 120),
+    ...(englishTitle ? { originalTitle: clean(row.title, 120) } : {}),
     type: "book",
     domains: ["read"],
-    by: clean((row.author_name ?? []).slice(0, 3).join(", "), 120),
+    by: openLibraryAuthors(row.author_name ?? []),
     about: row.first_publish_year ? `First published ${row.first_publish_year}.` : "Book from Open Library.",
     year: row.first_publish_year ? String(row.first_publish_year) : null,
     artwork: row.cover_i ? `https://covers.openlibrary.org/b/id/${row.cover_i}-L.jpg?default=false` : null,
@@ -103,8 +127,8 @@ function openLibraryItem(row) {
 }
 
 async function searchOpenLibrary(query, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,isbn,edition_count";
-  const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&fields=${fields}`, {
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,series_position,isbn,edition_count,editions,editions.title,editions.language";
+  const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&lang=en&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
