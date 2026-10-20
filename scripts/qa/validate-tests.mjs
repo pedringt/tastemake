@@ -97,4 +97,39 @@ function proposal(refs) {
   eq("a dislike may appear as explicit contrast when positive evidence supports the pick", explicitContrast.accepted.length, 1);
 }
 
+
+// ---- #28 Stage 1: a distinct anchor per pick ----------------------------------------------------------
+{
+  const { ANCHORS, MAX_PICKS_PER_ANCHOR } = await import("../../src/ai/contract.js");
+  const { PICKS_OUTPUT_SCHEMA } = await import("../../src/server/output-schemas.mjs");
+  const { buildPickPrompt } = await import("../../api/recommendations.mjs");
+  const book = (id, title) => ({ id, title, type: "book", domains: ["read"], provider: "openlibrary", providerId: id.toUpperCase(), genres: ["Fantasy"] });
+  const loved = book("ol-anchor-loved", "Piranesi");
+  const pool = [1, 2, 3, 4, 5].map((n) => book(`ol-anchor-${n}`, `Candidate ${n}`));
+  const s = emptyState();
+  react(s, loved, "loved");
+  const ctx = { ...buildContext(s, pool), curveball: true };
+  const pick = (item, anchor) => ({ itemId: item.id, anchor, why: "A drowned house of statues, as patient as Piranesi's halls.", cites: [`ev:${loved.id}`], tests: null, kind: "pick" });
+
+  eq("anchors are the seven agreed elements", ANCHORS.join(), "setting,character,structure,tone,theme,pacing,voice");
+  const three = validatePicks({ picks: [pick(pool[0], "setting"), pick(pool[1], "setting"), pick(pool[2], "setting"), pick(pool[3], "tone")] }, ctx);
+  eq(`no more than ${MAX_PICKS_PER_ANCHOR} picks in a set may share an anchor`, three.accepted.length, 3);
+  check("the third same-anchor pick is rejected with a reason that says so", three.rejected[0]?.reasons.some((r) => /already used by 2 picks/.test(r)), three.rejected[0]?.reasons);
+  check("other anchors are unaffected", three.accepted.some((p) => p.anchor === "tone"));
+  const unknown = validatePicks({ picks: [pick(pool[0], "vibes")] }, ctx);
+  check("an unknown anchor is rejected", unknown.accepted.length === 0 && unknown.rejected[0].reasons.some((r) => /anchor "vibes" not one of/.test(r)), unknown.rejected[0]?.reasons);
+  eq("a pick without an anchor (non-model producers) is still accepted", validatePicks({ picks: [pick(pool[0], undefined)] }, ctx).accepted.length, 1);
+  check("a rejected anchor does not use up the count", validatePicks({ picks: [pick(pool[0], "setting"), { ...pick(pool[1], "setting"), cites: ["ev:nope"] }, pick(pool[2], "setting")] }, ctx).accepted.length === 2);
+
+  const item = PICKS_OUTPUT_SCHEMA.properties.picks.items;
+  check("the output schema requires an anchor from the list", item.required.includes("anchor") && JSON.stringify(item.properties.anchor.enum) === JSON.stringify(ANCHORS));
+  check("anchor comes before why in the schema, so it is chosen first", Object.keys(item.properties).indexOf("anchor") < Object.keys(item.properties).indexOf("why"));
+
+  const prompt = buildPickPrompt({ ...ctx, recommendationFilter: "all" }, 5);
+  check("the prompt asks for an anchor per pick", prompt.includes('"anchor":"setting"') && prompt.includes("first choose its anchor"));
+  check("the prompt shows varied examples", (prompt.match(/<example>/g) ?? []).length >= 3);
+  check("#247's banned-phrase list is gone", !/Avoid stock phrases|in the vein of|fans of/.test(prompt));
+  check("every example fits the 14-word limit", [...prompt.matchAll(/<example>(.*?)<\/example>/g)].every((m) => m[1].split(/\s+/).length <= 14));
+}
+
 finish();
