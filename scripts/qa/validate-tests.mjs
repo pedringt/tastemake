@@ -178,4 +178,34 @@ function proposal(refs) {
   check("the fallback skips an adult-tagged curveball for the next eligible candidate", curveballPick?.id === plainPick.id && !out.picks.some((p) => p.id === adult.id), out.picks.map((p) => `${p.id}${p.surprise ? "*" : ""}`).join());
 }
 
+
+// ---- Oct 20: fallback picks (AI paused) say what they share with the item they came from -----------
+{
+  const { readableTag, sharedTags, fallbackReason } = await import("../../src/catalog/fallback-reasons.mjs");
+  const { HEDGE, STOCK_FAMILIES } = await import("../evals/stress/metrics.mjs");
+  eq("BISAC-style subjects read as plain words", readableTag("Fiction, fantasy, epic", "openlibrary"), "epic fantasy");
+  eq("TMDb genre ids read as names", readableTag("878", "tmdb"), "sci-fi");
+  eq("audience labels are never shown", readableTag("Juvenile fiction", "openlibrary"), null);
+  eq("nationality and 'fiction' are trimmed", readableTag("American fantasy fiction", "openlibrary"), "fantasy");
+  // Smoke test, Oct 20: production read "a american science fiction-leaning pick"; this module first cut it to "science".
+  eq("'science fiction' keeps its second word", readableTag("American science fiction", "openlibrary"), "science fiction");
+  eq("...also in BISAC order", readableTag("Science fiction, American", "openlibrary"), "science fiction");
+  eq("children's fiction is an audience label, not a reason", readableTag("Children's fiction", "openlibrary"), null);
+  const anchor = { title: "Mistborn", provider: "openlibrary", genres: ["Fantasy fiction", "Magic", "Courts and courtiers", "Fiction, fantasy, epic"] };
+  const book = { title: "A Darker Shade of Magic", provider: "openlibrary", type: "book", relatedTo: "Mistborn", genres: ["Magic", "Fantasy fiction", "quantum theory", "Fiction, fantasy, epic"] };
+  eq("shared tags: the specific genre first, redundant ones dropped, unshared ones ignored", sharedTags(book, anchor).join(), "epic fantasy,magic");
+  const reasons = [0, 1, 2, 3, 4].map((index) => fallbackReason(book, anchor, { index }));
+  check("each reason names the anchor and a shared tag", reasons.every((r) => r.includes("Mistborn") && r.includes("epic fantasy")), reasons.join(" | "));
+  check("no hedges or stock verbs (what the #28 measures flag)", reasons.every((r) => !HEDGE.test(r) && !STOCK_FAMILIES.some((f) => f.re.test(r))), reasons.join(" | "));
+  check("'an' before a vowel", fallbackReason(book, anchor, { index: 3 }).startsWith("An epic fantasy book"));
+  check("no shared tags: an honest line, no invented link", /no tags in common/.test(fallbackReason({ ...book, genres: ["Space opera"] }, anchor)));
+  check("the curveball says it is a wider step", /wider step/.test(fallbackReason(book, anchor, { curveball: true })));
+
+  const { produceRecommendations } = await import("../../api/recommendations.mjs");
+  const anchorItem = { id: "ol-mistborn", ...anchor, type: "book", domains: ["read"], providerId: "OL1W" };
+  const pool = [1, 2, 3, 4, 5, 6].map((n) => ({ ...book, id: `ol-c${n}`, providerId: `C${n}W`, title: `Candidate ${n}`, relatedToId: anchorItem.id, domains: ["read"] }));
+  const out = await produceRecommendations({ rawState: { selectedFavorites: [anchorItem.id], customItems: { [anchorItem.id]: anchorItem }, feedbackByRecommendation: {}, curveball: true }, env: {}, retrieve: async () => pool });
+  check("production's fallback uses the shared-tag reasons", out.source === "catalog" && out.picks.every((p) => p.reason.includes("Mistborn") && /epic fantasy/.test(p.reason)), out.picks.map((p) => p.reason).join(" | "));
+}
+
 finish();

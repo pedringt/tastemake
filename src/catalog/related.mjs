@@ -236,7 +236,7 @@ export function bookGenreFamilies(subjects = []) {
   return families;
 }
 
-function meaningfulBookSubjects(values = []) {
+export function meaningfulBookSubjects(values = []) {
   return values
     .map((value) => String(value ?? "").trim())
     .filter((value) => value && value.length >= 3 && !GENERIC_BOOK_SUBJECT.test(value) && !AUDIENCE_OR_FORMAT_SUBJECT.test(value))

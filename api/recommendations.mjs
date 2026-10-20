@@ -11,6 +11,7 @@ import { hydrateState } from "../src/server/request-state.mjs";
 import { domainById } from "../src/data/domains.js";
 import { isAdultTagged, triedAdultTagged } from "../src/catalog/adult-content.mjs";
 import { evidenceRecords } from "../src/model/evidence.js";
+import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
 
 const MAX_BODY_BYTES = 160_000;
 const DEFAULT_VISITOR_LIMIT = 6;
@@ -200,19 +201,10 @@ function clientPicks(validated) {
 
 // When live AI is unavailable or its output fails validation, fall back to the same real catalog
 // candidates. There is no hand-written recommendation inventory in the product.
-function catalogFallbackReason(item, index) {
-  const source = item.relatedTo || null;
-  const genre = (item.genres ?? []).find((value) => typeof value === "string" && value.trim() && !/^\d+$/.test(value));
-  const sourceCopy = source ? ` because you liked ${source}` : "";
-  const reasons = [
-    () => genre ? `${item.title} may be worth trying${sourceCopy}; it also shares some ${genre.toLowerCase()} territory.` : `${item.title} may be worth trying${sourceCopy}.`,
-    () => source ? `Because ${source} worked for you, Tastemake is testing ${item.title} as another possible fit.` : `${item.title} is a related pick Tastemake thinks is worth testing.`,
-    () => genre ? `This is a ${genre.toLowerCase()}-leaning pick that may connect with things you've liked.` : `This is a related pick based on things you've liked before.`,
-    () => `${item.title} is a slightly more exploratory pick, but it still connects back to things you've liked.`,
-    () => source ? `If some of what you liked about ${source} carries over, ${item.title} could be a good next try.` : `${item.title} is a cautious test outside your strongest patterns.`,
-    () => source ? `Tastemake is trying ${item.title} as another possibility because you liked ${source}.` : `Tastemake is trying ${item.title} as another plausible fit.`
-  ];
-  return reasons[index % reasons.length]();
+// Oct 20: reasons name what the pick shares with the item it was found through (src/catalog/fallback-reasons.mjs).
+function anchorFor(item, state) {
+  const id = item.relatedToId;
+  return id ? (state.customItems?.[id] ?? state.feedbackByRecommendation?.[id]?.item ?? null) : null;
 }
 
 // #257: the fallback's curveball slot follows the same rule as the model's (src/catalog/adult-content.mjs):
@@ -228,7 +220,7 @@ function catalogPicks(candidates, state, evidence = [], pool = candidates) {
   }
   return chosen.map((item, index) => {
     const curveball = curveballAllowed && index === chosen.length - 1;
-    const basis = catalogFallbackReason(item, index);
+    const basis = fallbackReason(item, anchorFor(item, state), { index, curveball });
     return {
       ...item,
       rank: curveball ? null : index + 1,
