@@ -187,6 +187,10 @@ function proposal(refs) {
   eq("TMDb genre ids read as names", readableTag("878", "tmdb"), "sci-fi");
   eq("audience labels are never shown", readableTag("Juvenile fiction", "openlibrary"), null);
   eq("nationality and 'fiction' are trimmed", readableTag("American fantasy fiction", "openlibrary"), "fantasy");
+  // Smoke test, Oct 20: production read "a american science fiction-leaning pick"; this module first cut it to "science".
+  eq("'science fiction' keeps its second word", readableTag("American science fiction", "openlibrary"), "science fiction");
+  eq("...also in BISAC order", readableTag("Science fiction, American", "openlibrary"), "science fiction");
+  eq("children's fiction is an audience label, not a reason", readableTag("Children's fiction", "openlibrary"), null);
   const anchor = { title: "Mistborn", provider: "openlibrary", genres: ["Fantasy fiction", "Magic", "Courts and courtiers", "Fiction, fantasy, epic"] };
   const book = { title: "A Darker Shade of Magic", provider: "openlibrary", type: "book", relatedTo: "Mistborn", genres: ["Magic", "Fantasy fiction", "quantum theory", "Fiction, fantasy, epic"] };
   eq("shared tags: the specific genre first, redundant ones dropped, unshared ones ignored", sharedTags(book, anchor).join(), "epic fantasy,magic");

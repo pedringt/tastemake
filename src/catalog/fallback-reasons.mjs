@@ -25,7 +25,8 @@ export function readableTag(value, provider) {
     if (!rest.length || rest.length > 2) return null;
     text = rest.reverse().join(" ");
   }
-  text = text.toLowerCase().replace(/\s+fiction$/, "").replace(NATIONALITY, "").replace(/\s+/g, " ").trim();
+  // "fantasy fiction" -> "fantasy", but "science fiction" keeps its second word.
+  text = text.toLowerCase().replace(/(?<!science)\s+fiction$/, "").replace(NATIONALITY, "").replace(/\s+/g, " ").trim();
   if (!text || text === "fiction" || text.length > 28 || /\d/.test(text) || text.split(" ").length > 3) return null;
   return text;
 }
