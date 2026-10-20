@@ -1,12 +1,17 @@
 import { state } from "../state.js";
-import { MEDIA, applyResolvedCatalogItem, lookAlikeHints, applySearchAction, findExisting, itemStatus, makeCustomItem, markCustomResolution, searchableItems } from "../model/search.js";
+import { MEDIA, applyResolvedCatalogItem, lookAlikeHints, applySearchAction, findExisting, itemStatus, makeCustomItem, markCustomResolution, searchableItems, toggleStarterFavorite } from "../model/search.js";
 import { displayLabel, domainFilterOptions, itemMeta } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { resolveCustomCatalogItem, searchExternalCatalog } from "../catalog/client.js";
 import { renderArtwork } from "./artwork.js";
 
 // Search dialog (#13). It lives outside #app, so re-rendering a screen never closes it.
-// Nothing here changes state except applySearchAction, called from an explicit button.
+// Nothing here changes state except an explicit button: applySearchAction, or toggleStarterFavorite.
+//
+// One-click Favorites: while the user is still picking Favorites (before setup is done), search has one
+// job, so clicking a result adds it (and clicking again removes it). After setup, clicking a result stays
+// a lookup that opens the reaction sheet -- looking something up never changes taste on its own -- and
+// each row gets its own Favorite star instead.
 
 
 export function initSearch({ onChange, announce, goTo }) {
@@ -72,7 +77,8 @@ export function initSearch({ onChange, announce, goTo }) {
     return ui.external
       .map(existingEvidenceItem)
       .filter((item) => {
-        if (state.selectedFavorites.has(item.id)) return false;
+        // While picking, an added Favorite stays in the list (marked Added) so the same click can undo it.
+        if (state.onboarded && state.selectedFavorites.has(item.id)) return false;
         if (seen.has(item.id)) return false;
         seen.add(item.id);
         return true;
@@ -107,14 +113,13 @@ export function initSearch({ onChange, announce, goTo }) {
       list = '<p class="search-hint search-hint-error" role="status">The catalog is unavailable right now. You can still add this title yourself below.</p>';
     } else if (hits.length) {
       const hints = lookAlikeHints(hits);
-      list = `<ul class="search-results" aria-label="Results">
-          ${hits.map((item) => `
-            <li>
-              <button type="button" class="search-result" data-search-pick="${item.id}">
-                ${renderArtwork(item, "search-artwork")}<span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(itemMeta(item))}</span>${hints.has(item.id) ? `<small class="search-result-hint">${esc(hints.get(item.id))}</small>` : ""}</span>
-                ${statusChip(item)}
-              </button>
-            </li>`).join("")}
+      const picking = !state.onboarded;
+      const resultMain = (item) => `${renderArtwork(item, "search-artwork")}<span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(itemMeta(item))}</span>${hints.has(item.id) ? `<small class="search-result-hint">${esc(hints.get(item.id))}</small>` : ""}</span>`;
+      list = `<p class="search-hint search-results-hint">${picking
+          ? (state.starterReplaceId ? "Click a result to swap it into your Favorites." : "Click a result to add it to your Favorites. Click again to remove it.")
+          : "☆ adds something to Favorites (marked Tried · Loved). Open a result to react any other way."}</p>
+        <ul class="search-results" aria-label="Results">
+          ${hits.map((item) => picking ? favoriteResult(item, resultMain(item)) : lookupResult(item, resultMain(item))).join("")}
         </ul>`;
     } else {
       list = `<p class="search-hint" role="status">Nothing matches “${esc(query)}”. Try a different spelling, or add it yourself below.</p>`;
@@ -126,6 +131,38 @@ export function initSearch({ onChange, announce, goTo }) {
         ? "Not it? Add something Tastemake doesn't know"
         : "Add something Tastemake doesn't know";
     return `${list}<p class="search-add-row"><button type="button" class="button button-quiet" data-search-add>${addLabel}</button></p>`;
+  }
+
+  function favoriteResult(item, main) {
+    const added = state.selectedFavorites.has(item.id);
+    const cta = added ? "✓ Added" : state.starterReplaceId ? "Swap in" : "+ Add";
+    return `
+            <li>
+              <button type="button" class="search-result search-result-favorite ${added ? "is-added" : ""}" data-search-favorite="${item.id}" aria-pressed="${added}">
+                ${main}
+                <span class="search-favorite-cta">${cta}</span>
+              </button>
+            </li>`;
+  }
+
+  function lookupResult(item, main) {
+    const favorite = state.libraryFavorites.has(item.id);
+    const star = state.selectedFavorites.has(item.id) ? "" : `
+              <button
+                type="button"
+                class="rec-favorite-star search-row-star ${favorite ? "is-favorite" : ""}"
+                data-search-row-favorite="${item.id}"
+                aria-pressed="${favorite}"
+                aria-label="${favorite ? `Remove ${esc(item.title)} from Favorites` : `Add ${esc(item.title)} to Favorites`}"
+                title="${favorite ? "Remove from Favorites" : "Add to Favorites"}"
+              ><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>`;
+    return `
+            <li class="search-result-row">
+              <button type="button" class="search-result" data-search-pick="${item.id}">
+                ${main}
+                ${statusChip(item)}
+              </button>${star}
+            </li>`;
   }
 
   function outcomeButton(action, label, pressed) {
@@ -245,7 +282,7 @@ export function initSearch({ onChange, announce, goTo }) {
         </fieldset>
         <p class="search-error" role="alert" ${ui.addError ? "" : "hidden"}>${esc(ui.addError)}</p>
         <p class="search-note">After you act on it, Tastemake will try to identify an exact catalog match in the background. If it finds one confidently, it attaches real metadata without changing what you told it. If it cannot, your evidence stays and Tastemake will not guess.</p>
-        <p><button type="submit" class="button button-primary">Continue</button></p>
+        <p><button type="submit" class="button button-primary">${state.onboarded ? "Continue" : "Add to Favorites"}</button></p>
       </form>`;
   }
 
@@ -354,8 +391,10 @@ export function initSearch({ onChange, announce, goTo }) {
   input.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
-    const first = view.querySelector("[data-search-pick]");
-    if (first) first.click();
+    // While picking Favorites a click adds, so Enter only moves to the first result instead of adding it.
+    const first = view.querySelector("[data-search-pick], [data-search-favorite]");
+    if (first?.dataset.searchFavorite) first.focus();
+    else if (first) first.click();
   });
 
   dialog.addEventListener("click", (event) => {
@@ -369,6 +408,31 @@ export function initSearch({ onChange, announce, goTo }) {
     }
 
     if (event.target.closest("[data-search-close]")) { dialog.close(); return; }
+
+    const favoritePick = event.target.closest("[data-search-favorite]");
+    if (favoritePick) {
+      const item = itemById(favoritePick.dataset.searchFavorite);
+      if (!item) return;
+      const { added, message } = toggleStarterFavorite(state, item);
+      onChange(message);
+      render();
+      if (added && item.custom && !item.provider) void resolveAddedItem(state.customItems[item.id] ?? item);
+      focus(`[data-search-favorite="${item.id}"]`);
+      return;
+    }
+
+    const rowStar = event.target.closest("[data-search-row-favorite]");
+    if (rowStar) {
+      const item = itemById(rowStar.dataset.searchRowFavorite);
+      if (!item) return;
+      const action = state.libraryFavorites.has(item.id) ? "unfavorite" : "favorite";
+      const message = applySearchAction(state, item, action);
+      if (message) onChange(message);
+      render();
+      if (message && action === "favorite" && item.custom && !item.provider) void resolveAddedItem(state.customItems[item.id] ?? item);
+      focus(`[data-search-row-favorite="${item.id}"]`);
+      return;
+    }
 
     const pick = event.target.closest("[data-search-pick]");
     if (pick) {
@@ -414,26 +478,19 @@ export function initSearch({ onChange, announce, goTo }) {
       const item = itemById(ui.itemId);
       if (!item) return;
       const action = starterButton.dataset.searchStarter;
-      if (action === "remove") {
-        state.selectedFavorites.delete(item.id);
-        if (state.starterReplaceId === item.id) state.starterReplaceId = null;
-        onChange(`${item.title} removed from your Favorites.`);
+      if ((action === "remove") !== state.selectedFavorites.has(item.id)) return;
+      const { added, message } = toggleStarterFavorite(state, item);
+      onChange(message);
+      if (!added) {
         render();
         focus("#search-sheet-title");
         return;
       }
-
-      if (item.custom || item.provider) state.customItems[item.id] = item;
-      const replacing = state.starterReplaceId;
-      if (replacing && replacing !== item.id) state.selectedFavorites.delete(replacing);
-      state.selectedFavorites.add(item.id);
-      state.starterReplaceId = null;
       ui.pending = null;
       ui.mode = "results";
       ui.itemId = null;
       ui.query = "";
       input.value = "";
-      onChange(`${item.title} added to your Favorites. ${state.selectedFavorites.size} of 4 selected.`);
       render();
       if (item.custom && !item.provider) void resolveAddedItem(state.customItems[item.id] ?? item);
       input.focus();
@@ -526,7 +583,19 @@ export function initSearch({ onChange, announce, goTo }) {
       announce(`${existing.title} is already in Tastemake. Showing it instead of adding a copy.`);
       return;
     }
-    ui.pending = makeCustomItem(title, medium, creator);
+    const custom = makeCustomItem(title, medium, creator);
+    if (!state.onboarded) {
+      // Picking Favorites: Continue is the one click that adds it, like a search result.
+      const { message } = toggleStarterFavorite(state, custom);
+      onChange(message);
+      Object.assign(ui, { pending: null, itemId: null, mode: "results", query: "", addTitle: "", addCreator: "", addError: "" });
+      input.value = "";
+      queueExternal();
+      void resolveAddedItem(state.customItems[custom.id] ?? custom);
+      input.focus();
+      return;
+    }
+    ui.pending = custom;
     ui.itemId = ui.pending.id;
     ui.mode = "sheet";
     render();
