@@ -9,7 +9,7 @@
 //   node scripts/qa/candidate-quality-tests.mjs
 //   TASTEMAKE_LIVE_OPEN_LIBRARY=1 node scripts/qa/candidate-quality-tests.mjs
 
-import { igdbGenreOverlap, igdbGenreWhereClause, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
+import { bookGenreFamilies, igdbGenreOverlap, igdbGenreWhereClause, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { createSuite } from "./lib/assert.mjs";
 
 const { check, eq, finish } = createSuite("candidate quality tests");
@@ -399,6 +399,44 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   check("live Open Library retrieval keeps false positives out (no bestseller-only match)", !liveRelated.some((i) => (i.genres ?? []).length === 1 && /bestseller/i.test(i.genres[0] ?? "")));
 } else {
   console.log("  skipped live Open Library network case (set TASTEMAKE_LIVE_OPEN_LIBRARY=1 to run it)");
+}
+
+
+// ---- Oct 20 (production, AI paused): retrieval followed "orphans", not genre ------------------------
+// Real Open Library subjects. The Name of the Wind's first three subjects were "orphans", "American
+// fantasy fiction" and "Adult books for young adults"; the orphan query returned Emily of New Moon and
+// Dear Enemy, which share only "Orphans" plus children's-audience labels.
+{
+  const nameOfTheWind = ["orphans", "American fantasy fiction", "Adult books for young adults", "epic fiction", "series", "Juvenile audience", "demons", "quests", "loss (psychology)", "fate and fatalism", "voyages and travels", "heroes and heroines"];
+  const docs = {
+    emily: { key: "/works/OL-EMILY", title: "Emily of New Moon", author_name: ["Lucy Maud Montgomery"], subject: ["Juvenile fiction", "Child authors", "Orphans", "Fiction", "Children's fiction", "Canada, fiction", "Orphans, fiction"] },
+    dear: { key: "/works/OL-DEAR", title: "Dear Enemy", author_name: ["Jean Webster"], subject: ["Orphans", "Fiction", "Juvenile fiction", "Child and youth fiction", "Orphans, fiction", "Children's fiction"] },
+    keeper: { key: "/works/OL-KEEPER", title: "Keeper of the Lost Cities", author_name: ["Shannon Messenger"], subject: ["Ability", "Fiction", "Fantasy", "Orphans", "Elves", "Children's fiction", "Fantasy fiction"] },
+    lies: { key: "/works/OL-LIES", title: "The Lies of Locke Lamora", author_name: ["Scott Lynch"], subject: ["American fantasy fiction", "Orphans", "Swindlers and swindling", "Fiction, fantasy, general"] },
+    quest: { key: "/works/OL-QUEST", title: "The Hobbit", author_name: ["J. R. R. Tolkien"], subject: ["Fantasy", "quests", "Dragons", "voyages and travels"] }
+  };
+  const asked = [];
+  const fetchImpl = async (url) => {
+    const subject = /subject:"([^"]+)"/.exec(decodeURIComponent(String(url)))?.[1] ?? "";
+    asked.push(subject);
+    const rows = subject === "orphans" ? [docs.emily, docs.dear, docs.keeper, docs.lies]
+      : subject === "American fantasy fiction" ? [docs.lies, docs.keeper]
+      : subject === "epic fiction" || subject === "demons" || subject === "quests" ? [docs.quest]
+      : [];
+    if (!subject) throw new Error(`unexpected URL ${url}`);
+    return { ok: true, json: async () => ({ docs: rows }) };
+  };
+  const related = await retrieveCatalogCandidates(bookState(nameOfTheWind), { env, fetchImpl });
+  const titles = related.map((item) => item.title);
+  eq("a genre subject is queried first", asked[0], "American fantasy fiction");
+  check("audience labels are never queried", !asked.some((subject) => /juvenile|adult books|series/i.test(subject)), asked.join(" | "));
+  check("books sharing only 'orphans' and audience labels are rejected", !titles.includes("Emily of New Moon") && !titles.includes("Dear Enemy"), titles.join(", "));
+  check("fantasy books that also share a subject are kept", titles.includes("The Lies of Locke Lamora") && titles.includes("Keeper of the Lost Cities"), titles.join(", "));
+
+  check("genre families read real subjects", [...bookGenreFamilies(["American fantasy fiction", "orphans"])].join() === "fantasy");
+  check("genre: prefixed subjects count", bookGenreFamilies(["genre:high fantasy"]).has("fantasy"));
+  check("orphan and audience subjects carry no genre", bookGenreFamilies(["Orphans", "Juvenile fiction", "Children's fiction"]).size === 0);
+  check("magic and dragons point to fantasy", bookGenreFamilies(["Magic"]).has("fantasy") && bookGenreFamilies(["Dragons"]).has("fantasy"));
 }
 
 finish();
