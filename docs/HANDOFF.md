@@ -1,6 +1,6 @@
 # Tastemake handoff: start here
 
-Last refreshed **Oct 12, 2026**, against `main` at `631d257` (#242). If `main` has moved on, run `git log --oneline 631d257..origin/main` and read those PRs before trusting the "Current state" section. Where this file and the code disagree, the code wins; fix this file.
+Last refreshed **Oct 20, 2026**, against `main` at `304d4d0` (#254). If `main` has moved on, run `git log --oneline 304d4d0..origin/main` and read those PRs before trusting the "Current state" section. Where this file and the code disagree, the code wins; fix this file.
 
 ## What Tastemake is
 
@@ -74,25 +74,31 @@ Full rulebook: [evidence-contract.md](evidence-contract.md). Validator rules: [a
 - User corrections ("Not really me", etc.) outrank model inference. Novelty, sequel and franchise suppression is deterministic and the model can't override it.
 - No seeded or demo data.
 
-## Current state and open work (Oct 12)
+## Current state and open work (Oct 20)
 
 **Recently shipped (all on production):**
-- #229: portfolio link, related-games genre overlap, Taste Profile rules (cross-domain and carry-forward).
-- #230: search meta and same-title hints; display name optional.
-- #231: starter favorites cap the confidence level.
-- #232: phone nav (five onboarding tabs fit at 390px).
-- #233: tech debt (`.env` ignored, lockfile + `npm ci`, shared `src/server/anthropic.mjs`, unit runner `scripts/qa/run-unit.mjs`).
-- #234: Web Analytics and Speed Insights.
-- #235: warm candidates early, show the basis while loading, time click-to-first-pick.
-- #236: compact Taste Profile prompt (about 44% smaller).
-- #241: Library details; returning users who open `/favorites` go to Library → Tried → Favorites.
-- #242: search ranking (#115) and book sequels (#142).
+- #245: #28 stress-test harness (`scripts/evals/stress/`).
+- #246: structured outputs (JSON schemas) for picks and the Taste Profile.
+- #247: picks prompt bans five stock phrases. **This made stock wording worse** (see #261 below).
+- #251 (#250 PR 1): reasons on tried reactions get directions for books ("Pacing: too slow"), content chips from a book's own subjects ("Romance took over the story"), a limit of 5, the Taste Profile's "You said" line, and anonymous usage counts.
+- #253: one-click Favorites while picking (click a result to add or remove it); a ☆ on each search row after setup.
+- #254: Library search button no longer 360px tall on phones; `stretchedControls` layout check.
 
-**Open:**
-- **#243:** "The Making of …" documentaries still rank high in search (the derivative-word rule in `src/catalog/search-ranking.mjs` misses that case). Next small fix.
-- **#191:** simplify reactions. The two-step "Tried it / Not tried" flow shipped in #192 (Sept 30). The full plan for the rest is in the issue description itself: an optional, structured "why" layer (e.g. atmosphere, pacing, humour) only on experienced reactions. It's a product change to the core interaction, so wait for Paige's go-ahead.
-- **Backlog:** #28 (reasoning at scale), #29 (Library information architecture), #37 (hypothesis history).
-- **Parked by Paige; leave them parked:** #6, #7, #9, #10, #11, #14, #15, #17, #19, #48, #69.
+**Open PRs (each waits for Paige's OK to merge):**
+- **#258 book-review fixes** (closes #255, #256, #257): series position from Open Library (later books in a series are held back), the Taste Profile validator keeps a user's reasons with their own item and dimension, English edition titles, narrators dropped from authors, `genre:` tags for content chips, adult-tagged curveballs only if tried. Paid before/after on Haiku done (Oct 20, about $0.0125): rule checks pass; prompt wording change reverted.
+- **#259 popover design pass:** one summary line, neutral chips that fill with ✓ when chosen, directions under their chip, and "This pick was: Too obvious · A great discovery" replacing "More feedback". Markup and CSS only.
+- **#260 #28 Stage 0:** per-set repetition checks in the stress report (stock-word families, the "you … in <title>" frame, shared openings and phrases, would-trigger rate, 200-explanation minimum). Re-scoring the Oct 20 stress runs found #247 raised sets that would trigger from 23% to 35% (Haiku) and 16% to 54% (Sonnet).
+- **#261 #28 Stage 1:** a required per-pick `anchor` (setting/character/structure/tone/theme/pacing/voice) before `why`, a positive rule, four varied examples, no banned list; the validator rejects a third same-anchor pick. **Needs a paid stress run before merging** (120 calls, about $0.03–0.09; or 372 to match Oct 20). Blocked on API credits as of Oct 20.
+- **This PR's free fixes:** #243 ("The Making of …" no longer outranks a game's DLC) and swipe tests for #248.
+
+**Open issues worth knowing:**
+- **#250** (book reasons): PR 1 shipped; PR 2 (prompt labels with direction, candidate themes, tie-break for items with reasons) not started.
+- **#249** (Hardcover): research done. Report: `reports/Hardcover as book metadata source.md` (local, git-excluded). Verdict: legitimate and useful for romance-central vs minor via tag counts, but beta and sparse; six questions for Hardcover listed there. `scripts/dev/hardcover-probe.mjs` checks the real schema once a free read-only token exists.
+- **#252** cross-media "bridge picks" and "applies to … too": designed, not started.
+- **#28** repetition: research report `reports/Reducing repetitive AI explanations.md`. Stage 0 (#260), Stage 1 (#261); Stage 2 is a runtime check that regenerates only flagged picks.
+- **#248:** swipe already shipped (0077572); its wording half is superseded by #259. Close after #259 merges.
+- **#19 Tastebreak:** v1 is offered only when a pick's `ai.tests` matches a pattern, and the picks prompt never sets `tests`, so it is unreachable for live picks. See the comment on #19.
+- **Backlog:** #29, #37. **Parked by Paige:** #6, #7, #9, #10, #11, #14, #15, #17, #48, #69.
 
 ## Gotchas
 
@@ -105,3 +111,7 @@ Full rulebook: [evidence-contract.md](evidence-contract.md). Validator rules: [a
 - **Payload size:** `/api/recommendations` caps the request body. If a 413 comes back, look for new fields added to pick or feedback objects. Don't just trim another field (#163, #165).
 - **Slow requests:** a recommendation request can take 10–20s. Before blaming the logic for an "X doesn't work" report, check the real latency in the Vercel logs or `/api/ai-metrics` (the #172 filter-click bug).
 - **Unverified:** the canonical-store batching (#159) has not been spot-checked against a real Neon database since it landed.
+- **Vercel previews lack catalog and AI keys** (checked Oct 20): `TASTEMAKE_TMDB_TOKEN`, `IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET` and the live-AI variables are set for Production only, so on a PR preview only books (Open Library) work and picks are the plain catalog fallback. Test movies/TV/games and live AI on production, or ask Paige to enable those variables for Preview.
+- **Merging from an agent session:** Claude Code's auto-mode check blocks `gh pr merge` even with Paige's OK in chat. Paige merges on GitHub (Squash and merge, then Confirm), or allows `Bash(gh pr merge:*)` in her own settings.
+- **Eval sample size:** wording metrics need about 200 explanations per variant to tell a 20% -> 10% change from noise; the 21-call `ai-eval` gives about 49. Use the stress eval for wording decisions.
+- **Research notes and reports** live in `research_notes/` and `reports/` at the repo root, excluded locally via `.git/info/exclude` (not committed).

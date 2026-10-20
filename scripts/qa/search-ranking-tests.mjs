@@ -179,4 +179,17 @@ check("asking for a documentary does not penalise documentaries",
 check("searchRelevance keeps working for bare titles",
   searchRelevance("The Lord of the Rings", "lord of the rings") > searchRelevance("Lord of the Rings Fan Documentary", "lord of the rings"));
 
+
+// #243: "The Making of …" matched the query in its subtitle and ranked above the game's own DLC.
+{
+  const q = "Breath of the Wild";
+  const makingOf = searchRelevance("The Making of The Legend of Zelda: Breath of the Wild", q);
+  const dlc = searchRelevance("The Legend of Zelda: Breath of the Wild - The Champions' Ballad", q);
+  const game = searchRelevance("The Legend of Zelda: Breath of the Wild", q);
+  check("a making-of documentary ranks below the game's DLC", makingOf < dlc, `${makingOf} vs ${dlc}`);
+  check("and below the game itself", makingOf < game);
+  check("asking for it still finds it first", searchRelevance("The Making of The Legend of Zelda: Breath of the Wild", "making of breath of the wild") > searchRelevance("The Legend of Zelda: Breath of the Wild - The Champions' Ballad", "making of breath of the wild"));
+  check("other derivative words are capped too", searchRelevance("Breath of the Wild: Behind the Scenes", q) < searchRelevance("Breath of the Wild Expansion Pass", q));
+}
+
 finish();
