@@ -10,7 +10,7 @@
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { DEFINITIONS, NEEDS_HUMAN_REVIEW, metricsFor, reliability } from "./metrics.mjs";
+import { DEFINITIONS, MIN_EXPLANATIONS_PER_VARIANT, NEEDS_HUMAN_REVIEW, metricsFor, perSetSummary, reliability } from "./metrics.mjs";
 import { SIZES, SHAPES } from "./profiles.mjs";
 
 export function readRecords(paths) {
@@ -32,7 +32,7 @@ export function readRecords(paths) {
 
 export function pickRecords(calls) {
   return calls.filter((c) => c.kind === "picks" && c.source === "model").flatMap((c) => c.picks.map((p) => ({
-    ...p, model: c.model, profile: c.profile, profileKey: `${c.model}|${c.profile}`, shape: c.shape, size: c.size, round: c.round, profileFacts: c.profileFacts
+    ...p, callKey: c.key, model: c.model, profile: c.profile, profileKey: `${c.model}|${c.profile}`, shape: c.shape, size: c.size, round: c.round, profileFacts: c.profileFacts
   })));
 }
 
@@ -121,6 +121,21 @@ export function buildReport({ calls, headers }) {
       lines.push(`**${model}, size ${size}:** most-repeated phrases: ${m.wording.topPhrases.slice(0, 8).map((p) => `"${p.phrase}" (${p.count})`).join(", ") || "none"}. Top theme terms: ${m.themes.top.map((t) => `${t.term} (${t.count})`).join(", ") || "none"}.${Object.keys(m.generic.byTemplate).length ? ` Generic templates: ${Object.entries(m.generic.byTemplate).map(([k, v]) => `${k} (${v})`).join(", ")}.` : ""}`, "");
     }
   }
+
+  // #28 Stage 0: the unit a visitor sees is one set, so repetition is also reported per set.
+  lines.push("## Per-set repetition (one call's picks = what one visitor sees)", "", `Thresholds are starting values (SET_GATE in metrics.mjs), not yet calibrated against a reference set. A change in an explanation-level rate needs about ${MIN_EXPLANATIONS_PER_VARIANT} explanations per variant before it can be told from noise.`, "",
+    "| Model | Size | Sets | Explanations | Would trigger | Stock family in 2+ | Stock hits / set | Frame share | Same opening 3+ | Shared phrase 3+ |", "|---|---|---|---|---|---|---|---|---|---|");
+  for (const model of models) for (const size of sizes) {
+    const ps = perSetSummary(picks.filter((p) => p.model === model && p.size === size));
+    if (!ps.sets) continue;
+    lines.push(`| ${model} | ${size} | ${ps.sets} | ${ps.explanations}${ps.enoughSample ? "" : " (indicative)"} | ${fmt(ps.wouldTriggerRate)} | ${fmt(ps.stockFamilySetShare)} | ${fmt(ps.meanStockWhysPerSet)} | ${fmt(ps.frameWhyShare)} | ${fmt(ps.openingSetShare)} | ${fmt(ps.sharedPhraseSetShare)} |`);
+  }
+  for (const model of models) {
+    const all = perSetSummary(picks.filter((p) => p.model === model));
+    if (!all.sets) continue;
+    lines.push("", `**${model}, all sizes:** ${all.sets} sets, ${all.explanations} explanations${all.enoughSample ? "" : ` (under ${MIN_EXPLANATIONS_PER_VARIANT}: indicative only)`}; would trigger ${fmt(all.wouldTriggerRate)}. Triggers: ${Object.entries(all.triggerCounts).map(([k, v]) => `${k} (${v})`).join(", ") || "none"}.`);
+  }
+  lines.push("");
 
   lines.push("## Needs human review (not scored here)", "", ...NEEDS_HUMAN_REVIEW.map((q) => `- ${q}`), "", "The review sample (`review-sample.md`, `review-sample.json`) lists picks per model and profile with the cited evidence and its reaction, so these can be judged by reading.", "");
   lines.push("## Metric definitions", "", "| Metric | Definition |", "|---|---|", ...DEFINITIONS.map(([k, v]) => `| ${k} | ${cell(v)} |`), "");
