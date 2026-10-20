@@ -1,6 +1,7 @@
 import { enrichCanonicalItemWriteBehind, igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { withBookSeriesEvidence } from "./book-series-editions.mjs";
+import { isLaterSeriesEntry } from "./book-series.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
@@ -483,6 +484,8 @@ async function hydrateSelectedAnchorMetadata(items, { env, query }) {
   });
 }
 
+const FINAL_SERIES_CHECK = 8;
+
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
   const mode = state.recommendationFilter ?? "all";
   const allEvidence = preferRicherAnchors(externalEvidenceItems(state));
@@ -625,7 +628,16 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   // candidates to either the deterministic baseline (src/ai/baseline.js) or the live-AI ranking
   // path (api/recommendations.mjs), both of which call retrieveCatalogCandidates. Suppressed
   // sequels/remakes are dropped from the primary pool; whatever else was retrieved fills their slot.
-  const ranked = balanceDomains(guarded.primary, state.recommendationFilter ?? "all");
+  // #255 follow-up: the series-position lookups above run in pool order and stop at their budget, so a
+  // later book in a series near the top of the FINAL order could go unchecked (Lord of Chaos, Wheel of Time
+  // #6, Oct 20). The books most likely to be offered get their own small budget here, and any that turn out
+  // to be later entries are dropped; the next eligible candidate takes the slot.
+  const balanced = balanceDomains(guarded.primary, state.recommendationFilter ?? "all");
+  const top = balanced.slice(0, FINAL_SERIES_CHECK);
+  const checkedTop = (await withBookSeriesEvidence(top, [], {
+    env, fetchImpl, memo: bookSeriesMemo, maxLookups: 0, maxPositionLookups: (bookSeriesMemo.positionLookups ?? 0) + FINAL_SERIES_CHECK
+  })).candidates;
+  const ranked = [...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK)].filter((item) => !isLaterSeriesEntry(item));
   const style = state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced");
   if (style === "adventurous" && state.curveball !== false && ranked.length > 6) {
     // Balanced keeps the normal top-ranked set. Adventurous preserves the five strongest fits

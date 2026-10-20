@@ -1,6 +1,5 @@
 import { state } from "../state.js";
-import { patternsFor } from "../model/blindspots.js";
-import { isTastebreakCandidate, tastebreakFor } from "../model/tastebreak.js";
+import { isTastebreakCandidate, tastebreakFor, tastebreakPatterns } from "../model/tastebreak.js";
 import { isExperiencedPositive } from "../model/evidence.js";
 import { esc } from "../lib/html.js";
 
@@ -23,7 +22,7 @@ export function renderTastebreakPanel(itemId) {
   const { item } = feedback;
   const positive = isExperiencedPositive(feedback);
   const verb = positive ? "landed" : "didn't land";
-  const patterns = patternsFor(item, state);
+  const patterns = tastebreakPatterns(item, state);
   const draft = state.tastebreakDrafts[itemId];
   const saved = tastebreakFor(state, itemId);
 
