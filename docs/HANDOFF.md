@@ -79,7 +79,7 @@ Full rulebook: [evidence-contract.md](evidence-contract.md). Validator rules: [a
 **Recently shipped (all on production):**
 - #245: #28 stress-test harness (`scripts/evals/stress/`).
 - #246: structured outputs (JSON schemas) for picks and the Taste Profile.
-- #247: picks prompt bans five stock phrases. **This made stock wording worse** (see #261 below).
+- #247: picks prompt asks for the specific link to the cited item and bans five stock phrases. Net gain on Haiku: vague hedges 31% -> 8% of explanations; "echo"-family words rose, but conspicuous repetition only went 4% -> 7% of sets (#260, calibrated against Paige's marks).
 - #251 (#250 PR 1): reasons on tried reactions get directions for books ("Pacing: too slow"), content chips from a book's own subjects ("Romance took over the story"), a limit of 5, the Taste Profile's "You said" line, and anonymous usage counts.
 - #253: one-click Favorites while picking (click a result to add or remove it); a ☆ on each search row after setup.
 - #254: Library search button no longer 360px tall on phones; `stretchedControls` layout check.
@@ -87,8 +87,8 @@ Full rulebook: [evidence-contract.md](evidence-contract.md). Validator rules: [a
 **Open PRs (each waits for Paige's OK to merge):**
 - **#258 book-review fixes** (closes #255, #256, #257): series position from Open Library (later books in a series are held back), the Taste Profile validator keeps a user's reasons with their own item and dimension, English edition titles, narrators dropped from authors, `genre:` tags for content chips, adult-tagged curveballs only if tried. Paid before/after on Haiku done (Oct 20, about $0.0125): rule checks pass; prompt wording change reverted.
 - **#259 popover design pass:** one summary line, neutral chips that fill with ✓ when chosen, directions under their chip, and "This pick was: Too obvious · A great discovery" replacing "More feedback". Markup and CSS only.
-- **#260 #28 Stage 0:** per-set repetition checks in the stress report (stock-word families, the "you … in <title>" frame, shared openings and phrases, would-trigger rate, 200-explanation minimum). Re-scoring the Oct 20 stress runs found #247 raised sets that would trigger from 23% to 35% (Haiku) and 16% to 54% (Sonnet).
-- **#261 #28 Stage 1:** a required per-pick `anchor` (setting/character/structure/tone/theme/pacing/voice) before `why`, a positive rule, four varied examples, no banned list; the validator rejects a third same-anchor pick. **Needs a paid stress run before merging** (120 calls, about $0.03–0.09; or 372 to match Oct 20). Blocked on API credits as of Oct 20.
+- **#260 #28 Stage 0:** per-set repetition checks in the stress report (stock-word families, the "you … in <title>" frame, shared openings and phrases, would-trigger rate, 200-explanation minimum). Thresholds calibrated Oct 20 from 24 reference sets Paige marked (`scripts/evals/stress/reference-sets.json`); she kept 10/10 post-#247 sets and 1/14 pre-#247 ones. Vagueness, not stock words, is what she dropped sets for, so the report also measures a vague-hedge share.
+- **#261 #28 Stage 1** (judge its paid run on hedge share and named titles, not only stock words; see the comment on #261): a required per-pick `anchor` (setting/character/structure/tone/theme/pacing/voice) before `why`, a positive rule, four varied examples, no banned list; the validator rejects a third same-anchor pick. **Needs a paid stress run before merging** (120 calls, about $0.03–0.09; or 372 to match Oct 20). Blocked on API credits as of Oct 20.
 - **This PR's free fixes:** #243 ("The Making of …" no longer outranks a game's DLC) and swipe tests for #248.
 
 **Open issues worth knowing:**
