@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { applyNoveltyGuard, isFranchiseContinuation, seriesKey } from "../../src/catalog/novelty.mjs";
 import { retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { openLibraryItem } from "../../src/catalog/providers.mjs";
-import { normalizeSeriesName, seriesNamesFromEditions } from "../../src/catalog/book-series.mjs";
+import { bookSeriesFromRow, normalizeSeriesName, seriesNamesFromEditions, seriesPositionFromEditions, seriesPositionFromValue } from "../../src/catalog/book-series.mjs";
 import { withBookSeriesEvidence } from "../../src/catalog/book-series-editions.mjs";
 import { createSuite } from "./lib/assert.mjs";
 
@@ -259,7 +259,7 @@ check("a legacy nameless anchor (The Hunger Games) is resolved from its editions
 
 // Lookups are bounded, skipped when nothing needs them, memoized, and fail open.
 fixtureEditionCalls.length = 0;
-await withBookSeriesEvidence([olBook("OL17091839W"), olBook("OL82537W")], [olBook("OL5738148W")], { env: {}, fetchImpl: fixtureEditionsFetch });
+await withBookSeriesEvidence([olBook("OL17091839W"), olBook("OL82537W")], [olBook("OL5738148W")], { env: {}, fetchImpl: fixtureEditionsFetch, maxPositionLookups: 0 });
 check("no edition lookup when no candidate shares an author with a loved book", fixtureEditionCalls.length === 0);
 fixtureEditionCalls.length = 0;
 await withBookSeriesEvidence([olBook("OL82537W")], [olBook("OL82563W")], { env: {}, fetchImpl: fixtureEditionsFetch });
@@ -268,16 +268,41 @@ const manySanderson = Array.from({ length: 10 }, (_, index) => ({ ...olBook("OL5
 const countingFetch = async (url) => { fixtureEditionCalls.push(String(url)); return { ok: true, json: async () => ({ entries: [] }) }; };
 fixtureEditionCalls.length = 0;
 const lookupMemo = new Map();
-await withBookSeriesEvidence(manySanderson, [olBook("OL5738147W")], { env: {}, fetchImpl: countingFetch, memo: lookupMemo });
+await withBookSeriesEvidence(manySanderson, [olBook("OL5738147W")], { env: {}, fetchImpl: countingFetch, memo: lookupMemo, maxPositionLookups: 0 });
 check("edition lookups are capped at 6 per request", fixtureEditionCalls.length === 6);
-await withBookSeriesEvidence(manySanderson, [olBook("OL5738147W")], { env: {}, fetchImpl: countingFetch, memo: lookupMemo });
+await withBookSeriesEvidence(manySanderson, [olBook("OL5738147W")], { env: {}, fetchImpl: countingFetch, memo: lookupMemo, maxPositionLookups: 0 });
 check("a second guard pass in the same request does not refetch", fixtureEditionCalls.length === 6);
 const failing = await guardBooks([olBook("OL16813053W")], [olBook("OL15358691W")], async () => { throw new Error("network down"); });
 check("a failed edition lookup fails open (the guard behaves as without it)", failing.primary.length === 1);
 
 // Batch diversity and declared series experience use the same book rule.
-const batch = await guardBooks([olBook("OL5735360W"), olBook("OL14908941W"), olBook("OL17091839W")], []);
-check("two Hunger Games sequels do not share one recommendation batch", batch.primary.filter((x) => x.by === "Suzanne Collins").length === 1);
+const batch = await guardBooks([olBook("OL5735363W"), olBook("OL5735360W"), olBook("OL14908941W"), olBook("OL17091839W")], []);
+check("only one Hunger Games book makes a batch, and it is book 1", batch.primary.filter((x) => x.by === "Suzanne Collins").map((x) => x.title).join() === "The Hunger Games");
+
+// #255: a later entry in a series is not a fresh recommendation, even with no evidence in that series.
+check("series_position from search is kept", olBook("OL893461W").providerMeta.seriesPosition === 2);
+check("a title suffix gives a position", bookSeriesFromRow({ title: "The Well of Ascension (Mistborn, Book 2)" }).seriesPosition === 2);
+check("only whole positive positions count", bookSeriesFromRow({ series_position: ["0.5"] }).seriesPosition === null);
+for (const [value, want] of [["The Mistborn Saga #3", 3], ["Mistborn -- bk. 3", 3], ["The Kingkiller Chronicle, Day 2", 2], ["The Stormlight Archive, 2", 2], ["Book Two", 2], ["Penguin Classics", null], ["Choice -- 251", null]]) {
+  check(`position from "${value}"`, seriesPositionFromValue(value) === want, seriesPositionFromValue(value));
+}
+check("editions that agree give a position (The Hero of Ages -> 3)", seriesPositionFromEditions(olFixture.editions.OL5738154W.entries) === 3);
+check("conflicting editions give no position", seriesPositionFromEditions([{ series: ["The Witcher, part 3"] }, { series: ["The Witcher 1"] }, { series: ["The Witcher"] }]) === null);
+check("numbered publisher lines never give a position", ["OL17091839W", "OL59038W", "OL59048W", "OL20883297W", "OL16796166W"].every((id) => seriesPositionFromEditions(olFixture.editions[id].entries) === null));
+const noEvidence = await guardBooks([olBook("OL893414W"), olBook("OL893461W"), olBook("OL16117275W"), olBook("OL17091839W")], []);
+check("with no evidence in the series, book 2s are held back", noEvidence.suppressed.map((x) => x.title).sort().join() === "Caliban's war,Dune Messiah", noEvidence.suppressed.map((x) => x.title).join());
+check("book 1 and standalone books stay", noEvidence.primary.map((x) => x.title).sort().join() === "Dune,The Martian", noEvidence.primary.map((x) => x.title).join());
+const heroOfAges = await guardBooks([olBook("OL5738154W")], []);
+check("a later entry with no search series data is found from its editions (The Hero of Ages)", heroOfAges.suppressed.length === 1 && heroOfAges.suppressed[0].providerMeta.seriesPosition === 3);
+const unknown = await guardBooks([olBook("OL16813053W")], [], async () => { throw new Error("network down"); });
+check("an unknown position fails open", unknown.primary.length === 1);
+fixtureEditionCalls.length = 0;
+const positionMemo = new Map();
+const manyBooks = Array.from({ length: 14 }, (_, index) => ({ ...olBook("OL17091839W"), id: `openlibrary-book-p${index}`, providerId: `OL${800 + index}W` }));
+await withBookSeriesEvidence(manyBooks, [], { env: {}, fetchImpl: countingFetch, memo: positionMemo });
+check("position lookups are capped at 10 per request", fixtureEditionCalls.length === 10, fixtureEditionCalls.length);
+await withBookSeriesEvidence(manyBooks, [], { env: {}, fetchImpl: countingFetch, memo: positionMemo });
+check("position lookups are memoized within a request", fixtureEditionCalls.length === 10, fixtureEditionCalls.length);
 check("a named book series gives the series-experience prompt a key", seriesKey(olBook("OL5738148W")) === "series:mistborn");
 
 // End to end through retrieveCatalogCandidates: a subject search for a loved "The Way of Kings" returns

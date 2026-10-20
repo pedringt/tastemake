@@ -1,5 +1,6 @@
 import { CIRCULAR_PATTERNS, CONTRACT_VERSION, CROSS_DOMAIN, GENRE_ONLY, IDENTITY_PATTERNS, LEVELS } from "./contract.js";
 import { domainScope } from "../model/interpretations.js";
+import { isAdultTagged, triedAdultTagged } from "../catalog/adult-content.mjs";
 
 // The product's gate on model output (#31). Pure functions: (response, context) -> accepted / rejected.
 //
@@ -167,6 +168,61 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
   return { ...response, hypotheses: hypotheses.slice(0, MAX_PROFILE_HYPOTHESES) };
 }
 
+// #256: a pattern that talks about *why* something worked or failed must use the reasons the user actually
+// gave, on the items it cites, and keep each reason with its own dimension. Real case: "Characters" on one
+// dislike and "Writing / prose: flat" on another became "a flat cast of characters". Terms map to the
+// reason ids (src/model/refinements.js) they would have to come from.
+const REASON_TERMS = [
+  { re: /\bflat\b/i, ids: ["writing-prose:flat"] },
+  { re: /\boverwritten\b|\bpurple prose\b/i, ids: ["writing-prose:overwritten"] },
+  { re: /\btoo slow\b|\bslow[- ]paced\b|\bplodding\b/i, ids: ["pacing:too-slow"] },
+  { re: /\brushed\b/i, ids: ["pacing:too-rushed"] },
+  { re: /\buneven\b/i, ids: ["pacing:uneven"] },
+  { re: /\bthin\b/i, ids: ["world-setting:too-thin"] },
+  { re: /\bexposition\b|\binfo[- ]?dump/i, ids: ["world-setting:too-much-exposition"] },
+  { re: /\bhard to follow\b|\bconfusing structure\b/i, ids: ["structure:hard-to-follow"] }
+];
+const DIMENSION_TERMS = [
+  { dimension: "characters", re: /^(?:characters?|cast|protagonists?)$/i },
+  { dimension: "writing-prose", re: /^(?:prose|writing|sentences?)$/i },
+  { dimension: "pacing", re: /^pac(?:e|ing)$/i },
+  { dimension: "structure", re: /^structure$/i },
+  { dimension: "world-setting", re: /^(?:world|world-?building|setting|settings)$/i },
+  { dimension: "story", re: /^(?:story|plot)$/i },
+  { dimension: "humor", re: /^humou?r$/i }
+];
+// "even when other elements vary", "regardless of", "no matter": a general rule, which a couple of items
+// cannot show. Not a rejection (the pattern may still be right, and the user may have confirmed it); the
+// pattern is kept but marked conditional, with a note.
+const OVERREACH = /\beven when\b|\bregardless of\b|\bno matter\b|\balways\b/i;
+
+function reasonProblems(h, cited) {
+  const problems = [];
+  const given = new Set(cited.flatMap((row) => (row.refinements ?? []).map((r) => (typeof r === "string" ? r : r?.id))));
+  const tokens = h.claim.split(/\s+/).map((token) => token.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, ""));
+  for (const term of REASON_TERMS) {
+    const match = h.claim.match(term.re);
+    if (!match) continue;
+    if (!term.ids.some((id) => given.has(id))) {
+      problems.push(`describes a reason ("${match[0]}") that no cited item carries`);
+      continue;
+    }
+    // The dimension word nearest the reason word (within five words) must be that reason's own dimension.
+    const at = h.claim.slice(0, match.index).split(/\s+/).length - 1;
+    let nearest = null;
+    tokens.forEach((token, index) => {
+      const hit = DIMENSION_TERMS.find((d) => d.re.test(token));
+      const distance = Math.abs(index - at);
+      if (hit && distance <= 5 && (!nearest || distance < nearest.distance)) nearest = { dimension: hit.dimension, distance };
+    });
+    const own = term.ids.map((id) => id.split(":")[0]);
+    if (nearest && !own.includes(nearest.dimension)) problems.push(`pairs "${match[0]}" with ${nearest.dimension}, but the user said it about ${own.join(" / ")}`);
+  }
+  return problems;
+}
+
+const overreaches = (h) => OVERREACH.test(h.claim) && (h.evidence?.length ?? 0) < 3;
+
 export function validateHypotheses(response, ctx) {
   const evidence = new Map((ctx.evidence ?? []).map((r) => [r.ref, r]));
   const accepted = [];
@@ -193,6 +249,7 @@ export function validateHypotheses(response, ctx) {
       if (supports.some((r) => r.class !== "experienced")) reasons.push("uses intent (bookmark / untried reaction / not interested) as taste evidence");
       if (supports.some((r) => r.polarity < 0)) reasons.push("cites something the user disliked as support (contradicts explicit evidence)");
       if (counters.some((r) => r.class !== "experienced" || r.polarity >= 0)) reasons.push("counter-evidence must be things the user tried and disliked");
+      reasons.push(...reasonProblems(h, [...supports, ...counters]));
     }
     if (IDENTITY_PATTERNS.some((re) => re.test(`${h.label} ${h.claim}`))) reasons.push("states a single identity or aesthetic about the user");
     if (GENRE_ONLY.test(h.claim.trim()) || h.claim.trim().split(/\s+/).length < 6) reasons.push("genre-only or too generic to test");
@@ -226,8 +283,10 @@ export function validateHypotheses(response, ctx) {
           const why = contextQualified && allowed !== evidenceAllows ? "the user said this only applies in some contexts" : `evidence allows ${allowed}`;
           notes.push(`"${h.label}": level lowered from ${h.level} to ${level} (${why})`);
         }
+        const conditional = h.conditional || overreaches(h);
+        if (conditional && !h.conditional) notes.push(`"${h.label}": marked conditional (states a general rule, "${h.claim.match(OVERREACH)[0]}", from fewer than three items)`);
         seenLabels.add(key);
-        accepted.push({ ...h, level, scope, crossDomain: h.crossDomain, authority: "inferred", source: "model", contract: CONTRACT_VERSION });
+        accepted.push({ ...h, level, conditional, scope, crossDomain: h.crossDomain, authority: "inferred", source: "model", contract: CONTRACT_VERSION });
         continue;
       }
     }
@@ -284,6 +343,7 @@ export function validatePicks(response, ctx) {
       if (p.kind === "curveball") {
         if (ctx.curveball === false) reasons.push("curveball is turned off");
         else if (curveballs >= 1) reasons.push("more than one curveball");
+        else if (isAdultTagged(candidate) && !triedAdultTagged(ctx.evidence)) reasons.push("curveball into explicitly adult-tagged content the user has not tried (#257)");
       }
     }
     if (reasons.length) { rejected.push({ proposal: p, reasons }); continue; }

@@ -232,16 +232,16 @@ function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
 }
 
 async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name";
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,series_position,editions,editions.title,editions.language";
   const load = async () => {
-    const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
+    const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&lang=en&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
     }, timeoutMs);
     if (!response.ok) return [];
     return (await response.json()).docs ?? [];
   };
   if (fetchImpl !== fetch) return load();
-  return cachedValue(`related:v2:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });
+  return cachedValue(`related:v4:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });
 }
 
 // #131/#135: query more than one meaningful subject when the source book has them (the top 2-3,

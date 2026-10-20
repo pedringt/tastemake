@@ -14,28 +14,37 @@
 //   - Results are cached for a week per work (series membership does not change) and memoized per
 //     request, so later guard passes in the same request and later rounds do not refetch.
 //   - Any failure or timeout means "no extra names", i.e. the guard behaves exactly as without this.
+//
+// #255: the same edition list also says where a book sits in its series ("The Mistborn Saga #3"), which
+// is the only place some later entries say so (The Hero of Ages has no series data in search). Book
+// candidates whose position is still unknown get a lookup from a separate, small budget, so a later
+// entry of a series the user has not started can be dropped. Same cache, same fail-open behavior.
 
 import { cachedValue } from "../server/cache.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
-import { bookSeriesNames, isBook, sameBookAuthor, seriesNamesFromEditions } from "./book-series.mjs";
+import { bookSeriesNames, bookSeriesPosition, isBook, sameBookAuthor, seriesNamesFromEditions, seriesPositionFromEditions } from "./book-series.mjs";
 import { isFranchiseContinuation } from "./novelty.mjs";
 
 const MAX_LOOKUPS = 6;
+const MAX_POSITION_LOOKUPS = 10;
 const LOOKUP_TIMEOUT_MS = 1500;
 const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 const isOpenLibraryBook = (item) => isBook(item) && item?.provider === "openlibrary" && item?.providerId;
 
-async function editionSeriesNames(providerId, { env, fetchImpl, timeoutMs }) {
+const NO_FACTS = Object.freeze({ names: [], position: null });
+
+async function editionSeriesFacts(providerId, { env, fetchImpl, timeoutMs }) {
   const load = async () => {
     const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/works/${encodeURIComponent(providerId)}/editions.json?limit=50`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
     }, timeoutMs);
-    if (!response.ok) return [];
-    return seriesNamesFromEditions((await response.json()).entries ?? []);
+    if (!response.ok) return NO_FACTS;
+    const entries = (await response.json()).entries ?? [];
+    return { names: seriesNamesFromEditions(entries), position: seriesPositionFromEditions(entries) };
   };
   if (fetchImpl !== fetch) return load();
-  return cachedValue(`book-series:v1:editions:${providerId}`, load, { ttl: CACHE_TTL_SECONDS, tags: ["related-catalog"] });
+  return cachedValue(`book-series:v2:editions:${providerId}`, load, { ttl: CACHE_TTL_SECONDS, tags: ["related-catalog"] });
 }
 
 // Returns { candidates, evidenceItems } with edition-derived series names merged into
@@ -46,16 +55,23 @@ export async function withBookSeriesEvidence(candidates, evidenceItems, {
   fetchImpl = fetch,
   memo = new Map(),
   maxLookups = MAX_LOOKUPS,
+  maxPositionLookups = MAX_POSITION_LOOKUPS,
   timeoutMs = LOOKUP_TIMEOUT_MS
 } = {}) {
   const bookEvidence = evidenceItems.filter(isOpenLibraryBook);
-  if (!bookEvidence.length) return { candidates, evidenceItems, lookups: 0 };
+  const bookCandidates = candidates.filter(isOpenLibraryBook);
+  if (!bookEvidence.length && !bookCandidates.length) return { candidates, evidenceItems, lookups: 0 };
 
+  // Both budgets are per request: the counts live on the shared memo, so later guard passes in the
+  // same request spend from what is left.
   const wanted = [];
+  memo.nameLookups ??= 0;
+  memo.positionLookups ??= 0;
   const want = (item) => {
     if (memo.has(item.providerId) || wanted.includes(item.providerId)) return;
     if (bookSeriesNames(item).length) return;
-    if (memo.size + wanted.length >= maxLookups) return;
+    if (memo.nameLookups >= maxLookups) return;
+    memo.nameLookups += 1;
     wanted.push(item.providerId);
   };
   for (const candidate of candidates) {
@@ -68,18 +84,28 @@ export async function withBookSeriesEvidence(candidates, evidenceItems, {
       want(candidate);
     }
   }
+  // #255: candidates whose series position is still unknown, in pool order, from their own budget.
+  for (const candidate of bookCandidates) {
+    if (memo.positionLookups >= maxPositionLookups) break;
+    if (bookSeriesPosition(candidate) || memo.has(candidate.providerId) || wanted.includes(candidate.providerId)) continue;
+    memo.positionLookups += 1;
+    wanted.push(candidate.providerId);
+  }
   if (!wanted.length && !memo.size) return { candidates, evidenceItems, lookups: 0 };
 
   await Promise.all(wanted.map(async (providerId) => {
-    let names = [];
-    try { names = await editionSeriesNames(providerId, { env, fetchImpl, timeoutMs }); } catch { names = []; }
-    memo.set(providerId, names);
+    let facts = NO_FACTS;
+    try { facts = await editionSeriesFacts(providerId, { env, fetchImpl, timeoutMs }); } catch { facts = NO_FACTS; }
+    memo.set(providerId, facts);
   }));
 
   const enrich = (item) => {
-    if (!isOpenLibraryBook(item) || !memo.get(item.providerId)?.length) return item;
-    const seriesNames = [...new Set([...(item.providerMeta?.seriesNames ?? []), ...memo.get(item.providerId)])];
-    return { ...item, providerMeta: { ...(item.providerMeta ?? {}), seriesNames } };
+    const facts = isOpenLibraryBook(item) ? memo.get(item.providerId) : null;
+    if (!facts || (!facts.names?.length && !facts.position)) return item;
+    const providerMeta = { ...(item.providerMeta ?? {}) };
+    if (facts.names?.length) providerMeta.seriesNames = [...new Set([...(providerMeta.seriesNames ?? []), ...facts.names])];
+    if (facts.position && !bookSeriesPosition(item)) providerMeta.seriesPosition = facts.position;
+    return { ...item, providerMeta };
   };
   return { candidates: candidates.map(enrich), evidenceItems: evidenceItems.map(enrich), lookups: wanted.length };
 }

@@ -9,6 +9,8 @@ import { callAnthropic, liveConfig } from "../src/server/anthropic.mjs";
 import { PICKS_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState } from "../src/server/request-state.mjs";
 import { domainById } from "../src/data/domains.js";
+import { isAdultTagged, triedAdultTagged } from "../src/catalog/adult-content.mjs";
+import { evidenceRecords } from "../src/model/evidence.js";
 
 const MAX_BODY_BYTES = 160_000;
 const DEFAULT_VISITOR_LIMIT = 6;
@@ -151,7 +153,9 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     "Across the final set, vary the concrete reason for each pick and avoid repeating the same opening phrase or sentence template. Treat dislikes as useful counterexamples, not the user's defining taste: prefer positive evidence as the main anchor, use a negative only when it adds specific contrast, and never center more than one pick on the same disliked item.",
     // Oct 19 (stress eval #28): explanations reused the same openings and stock phrases across picks
     // ("in the vein of", "your love of", "you enjoyed in"); about 75% shared a 4-word phrase with another.
-    "Make each why distinct from the others in this response: start each one differently, and name the specific thing that connects the pick to the cited item (for example its tone, setting, structure, theme or craft). Avoid stock phrases such as 'in the vein of', 'your love of', 'you enjoyed in', 'similar to' and 'fans of'.",
+    // Oct 20 (a real books profile, #28 comment): "echo" was in 5 of 23 explanations, "scope" in 5 and
+    // "sweeping" in 4, and two spoke about the user in the third person ("could suit a Circe reader").
+    "Make each why distinct from the others in this response: start each one differently, and name the specific thing that connects the pick to the cited item (for example its tone, setting, structure, theme or craft). Avoid stock phrases such as 'in the vein of', 'your love of', 'you enjoyed in', 'similar to', 'fans of', 'echoes', 'scope' and 'sweeping'. Speak to the user as you, never as 'a reader' or 'the reader who'.",
     "User-facing explanations must say why the pick may fit the person, not how retrieval found it. Never mention providers, catalog branches/paths/neighbors/signals, metadata, similarity scores, embeddings, retrieval provenance, or raw overlap counts. A disliked item may only appear as explicit contrast, never as the positive reason a pick fits.",
     "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. Use them as item-local context, not as standalone evidence or a global preference unless multiple independent experienced items support that broader pattern.",
     "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; never cite intent-only evidence as support; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; explain why the pick may fit in specific plain English, in one sentence of 14 words or fewer; internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; if curveball is true you may choose at most one exploratory pick by putting only its itemId in curveballItemId, otherwise use null; if curveball is false curveballItemId must be null; do not write the word curveball in why.",
@@ -213,10 +217,19 @@ function catalogFallbackReason(item, index) {
   return reasons[index % reasons.length]();
 }
 
-function catalogPicks(candidates, state) {
+// #257: the fallback's curveball slot follows the same rule as the model's (src/catalog/adult-content.mjs):
+// an explicitly adult-tagged item only when the user has tried that kind of thing. Otherwise the next
+// eligible candidate takes the slot, or the set has no curveball.
+function catalogPicks(candidates, state, evidence = [], pool = candidates) {
   const chosen = candidates.slice(0, 6);
+  let curveballAllowed = state.curveball !== false && chosen.length >= 6;
+  if (curveballAllowed && isAdultTagged(chosen[5]) && !triedAdultTagged(evidence)) {
+    const replacement = pool.find((item) => !isAdultTagged(item) && !chosen.some((picked) => picked.id === item.id));
+    if (replacement) chosen[5] = replacement;
+    else curveballAllowed = false;
+  }
   return chosen.map((item, index) => {
-    const curveball = state.curveball !== false && chosen.length >= 6 && index === chosen.length - 1;
+    const curveball = curveballAllowed && index === chosen.length - 1;
     const basis = catalogFallbackReason(item, index);
     return {
       ...item,
@@ -230,11 +243,11 @@ function catalogPicks(candidates, state) {
   });
 }
 
-function fallbackPayload(candidates, state, reason, meta = {}) {
+function fallbackPayload(candidates, state, reason, meta = {}, pool = candidates) {
   return {
     source: "catalog",
     reason,
-    picks: catalogPicks(candidates, state),
+    picks: catalogPicks(candidates, state, evidenceRecords(state), pool),
     meta: { ...meta, paidCallMade: meta.paidCallMade ?? false }
   };
 }
@@ -336,7 +349,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   logStage("candidateDomains", 0, { domains: offeredDomains });
 
   const config = liveConfig(env);
-  if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length });
+  if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length }, ctx.candidates);
   const recommendationModel = env.TASTEMAKE_RECOMMENDATIONS_MODEL || "claude-sonnet-5-5";
   const recommendationEffort = env.TASTEMAKE_RECOMMENDATIONS_EFFORT || "low";
 
@@ -400,7 +413,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
         usage: model.usage,
         paidCallMade: true,
         catalogCandidates: retrieved.length
-      });
+      }, ctx.candidates);
     }
     recordAiCallInBackground({ ...aiMetric, outcome: "success" }, { env });
     const picks = clientPicks(result.items);
@@ -436,7 +449,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       errorStatus: error?.status ?? null,
       errorType: error?.anthropicType ?? (timedOut ? "timeout" : "transport"),
       catalogCandidates: retrieved.length
-    });
+    }, ctx.candidates);
   }
 }
 
