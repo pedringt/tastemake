@@ -30,6 +30,8 @@ export async function run() {
     surprise:i===4,reason:"Related to a favorite from the real catalog. Live AI did not rank this fallback set.",ai:null
   }));
   let recCalls=0;
+  // "off": catalog fallback (the default); "paused": the AI budget is used up (#263); "model": live AI answered.
+  let aiMode="off";
   // #120: candidate warm-ups (src/ai/prefetch.js) are counted apart from real recommendation requests.
   let warmCalls=0, warmBodies=[];
   // The first real request is held open until the test releases it, so the loading state can be checked.
@@ -54,9 +56,12 @@ export async function run() {
       const call=recCalls++;
       if(call===0) await firstGate;
       const picks=recSet(call ? 710 : 700);
+      if(aiMode==="paused") return {ok:true,status:200,json:async()=>({source:"catalog",reason:"AI features are paused for now.",picks,meta:{paidCallMade:false,budgetPaused:true,catalogCandidates:picks.length}})};
+      if(aiMode==="model") return {ok:true,status:200,json:async()=>({source:"model",reason:null,picks,meta:{paidCallMade:false,catalogCandidates:picks.length}})};
       return {ok:true,status:200,json:async()=>({source:"catalog",reason:"live AI off in browser QA",picks,meta:{paidCallMade:false,catalogCandidates:picks.length}})};
     }
     if(url.pathname==="/api/hypotheses"){
+      if(aiMode==="paused") return {ok:true,status:200,json:async()=>({source:"unavailable",reason:"AI features are paused for now.",hypotheses:[],meta:{budgetPaused:true,paidCallMade:false}})};
       const firstFav=[...state.selectedFavorites][0];
       const experienced=Object.values(state.feedbackByRecommendation).find(f=>f.detail==="loved-before"||f.detail==="liked-before");
       const evidence=[`ev:${firstFav}`,...(experienced?[`ev:${experienced.item.id}`]:[])];
@@ -232,6 +237,28 @@ export async function run() {
   check("look picker keeps Bold Graphic",/Bold graphic/i.test(lookText));
   check("Studio Cutouts was replaced",/Soft circuit/i.test(lookText)&&!/Studio cutouts/i.test(lookText));
   check("Night Ledger was replaced",/Electric night/i.test(lookText)&&!/Night ledger/i.test(lookText));
+
+  // No-AI mode (Oct 20 smoke test): when the AI budget is used up, every surface says so calmly.
+  const badge=()=>$(".prototype-label");
+  check("header says Live AI before any pause",badge()?.textContent.trim()==="Live AI"&&!badge()?.classList.contains("is-paused"),badge()?.textContent);
+  aiMode="paused";
+  await act('[data-step-jump="recommendations"]',200);
+  await act('[data-action="keep-discovering"]',700);
+  check("paused: Recommendations explains the pause",/AI picks are paused/.test($(".ai-paused-notice")?.textContent||"")&&/personal AI budget/.test($(".ai-paused-notice")?.textContent||""),$(".ai-paused-notice")?.textContent);
+  check("paused: the notice says the picks are still real catalog matches",/straight from the catalog/.test($(".ai-paused-notice")?.textContent||""));
+  check("paused: the generic catalog line is replaced, not repeated",!$(".ai-inline-status"));
+  check("paused: header badge reads AI paused",badge()?.textContent.trim()==="AI paused"&&badge()?.classList.contains("is-paused")&&/personal AI budget/.test(badge()?.title||""),badge()?.textContent);
+  check("paused: the pause is never saved with the user's data",!/aiPaused/.test(localStorage.getItem("tastemake:test-state:v1")||""));
+  state.modelHypotheses=[];
+  await act('[data-step-jump="model"]',300);
+  if($('[data-action="retry-profile"]')) await act('[data-action="retry-profile"]',400);
+  const empty=$(".profile-empty")?.textContent||"";
+  check("paused: empty Profile blames the pause, not missing ratings",/waiting on AI/.test(empty)&&!/needs more ratings/.test(empty),empty.trim().slice(0,160));
+  check("paused: Profile status line stays short",/AI is paused/.test($(".profile-ai-status")?.textContent||"")&&!/portfolio project/.test($(".profile-ai-status")?.textContent||""),$(".profile-ai-status")?.textContent);
+  aiMode="model";
+  await act('[data-step-jump="recommendations"]',200);
+  await act('[data-action="keep-discovering"]',700);
+  check("a live-AI answer clears the pause",badge()?.textContent.trim()==="Live AI"&&!$(".ai-paused-notice"),badge()?.textContent);
 
   const failed=results.filter(r=>!r.ok);
   return {passed:results.length-failed.length,failed:failed.length,total:results.length,results:failed.length?failed:undefined};

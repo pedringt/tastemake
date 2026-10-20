@@ -7,6 +7,7 @@ import { pathForFeedback, storedReactionForOutcome } from "../model/reaction-flo
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
 import { cancelRequest, finishRequest, isCurrent, staleReason, startRequest } from "../ai/requests.js";
+import { noteAiAnswer } from "../ai/ai-status.js";
 import { cancelRecommendationTiming, markRecommendationStart, measureRecommendationShown } from "../lib/timing.js";
 import { plural } from "../lib/format.js";
 
@@ -251,6 +252,7 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
     const picks = result.picks ?? [];
     const source = result.source ?? "catalog";
     const exhausted = Boolean(result.meta?.exhausted) || picks.length === 0;
+    noteAiAnswer(state, { budgetPaused: Boolean(result.meta?.budgetPaused), usedModel: source === "model" });
     // Real bug (2026-09-29): the exhausted case always showed this one generic sentence, ignoring
     // result.reason entirely -- so a domain-filter dead end (e.g. filtering to TV with zero TV
     // evidence, api/recommendations.mjs) looked identical to genuine exhaustion, with no path forward

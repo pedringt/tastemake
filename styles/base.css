@@ -160,6 +160,7 @@ button { color: inherit; }
   letter-spacing:.06em;
   text-transform:uppercase;
 }
+.prototype-label.is-paused { border-style:dashed; }
 .topbar-note { color:var(--note-ink,#3950b7); font-size:18px; line-height:.95; max-width:95px; transform:rotate(calc(2deg * var(--tilt))); }
 
 .kicker {

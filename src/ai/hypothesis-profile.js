@@ -1,6 +1,7 @@
 import { serializeAiState } from "./live-client.js";
 import { evidenceRecords } from "../model/evidence.js";
 import { recordRevisionIfChanged } from "../model/history.js";
+import { noteAiAnswer } from "./ai-status.js";
 
 const slug = (text) => String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
@@ -76,6 +77,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload) throw new Error(payload?.error || "profile request failed");
 
+    noteAiAnswer(state, { budgetPaused: Boolean(payload.meta?.budgetPaused), usedModel: payload.source === "model" });
     if (payload.source === "model" && Array.isArray(payload.hypotheses) && payload.hypotheses.length) {
       const next = payload.hypotheses.map((h, index) => normalizeHypothesis(h, index, state));
       for (const h of next) {
@@ -101,8 +103,9 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
       announce("Taste Profile refreshed from your current evidence.");
     } else {
       state.hypothesisAiKey = null;
-      state.hypothesisAiMessage = payload.meta?.budgetPaused && payload.reason
-        ? payload.reason
+      // The full explanation sits in the empty state (or the header badge) when AI is paused; this line stays short.
+      state.hypothesisAiMessage = payload.meta?.budgetPaused
+        ? ((state.modelHypotheses ?? []).length ? "AI is paused, so your patterns can’t update right now. They’re still here." : "AI is paused, so patterns can’t be built right now.")
         : (state.modelHypotheses ?? []).length
         ? "Tastemake couldn’t update your profile this time. Your existing patterns are still here."
         : "Tastemake couldn’t build a trustworthy profile this time. You can try again.";

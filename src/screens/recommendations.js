@@ -12,6 +12,7 @@ import { readableRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { basisSentence, recommendationBasis } from "../model/loading-basis.js";
+import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE } from "../ai/ai-status.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -416,6 +417,11 @@ function renderAiStatus() {
   }
   if (!state.aiMessage) return "";
   if (state.aiSource === "model") return "";
+  if (state.aiSource === "catalog" && state.aiPaused) return `
+    <aside class="ai-paused-notice" role="status">
+      <strong>${AI_PAUSED_HEADLINE}</strong>
+      <p>${AI_PAUSED_EXPLAINER} These picks come straight from the catalog, matched to your favorites. Your ratings still count, and they’ll shape AI picks when it’s back.</p>
+    </aside>`;
   if (state.aiSource === "catalog") return `<p class="ai-inline-status">Using catalog matches for this set.</p>`;
   return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> Tastemake could not build a trustworthy set.</p>`;
 }

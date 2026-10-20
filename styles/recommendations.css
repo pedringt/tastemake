@@ -436,6 +436,20 @@
   line-height:1.35;
 }
 .ai-inline-status strong { color:var(--navy); }
+/* Calm, not an error: AI is paused on purpose (budget), and the catalog picks below are real. */
+.ai-paused-notice {
+  margin:0 0 16px;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-left:3px solid var(--accent-text,var(--pink));
+  border-radius:10px;
+  background:var(--paper,rgba(255,255,255,.7));
+  color:var(--ink,var(--navy));
+  font-size:13px;
+  line-height:1.45;
+}
+.ai-paused-notice strong { display:block; margin-bottom:2px; color:var(--navy); }
+.ai-paused-notice p { margin:0; max-width:72ch; }
 
 /* #93: the ongoing-loop action and the optional taste-input nudge. Both sit above the per-item
    grid so they read as "keep going" rather than an end-of-list footer action. */
