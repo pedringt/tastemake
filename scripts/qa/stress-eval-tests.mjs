@@ -4,12 +4,14 @@
 import { createSuite } from "./lib/assert.mjs";
 import {
   maskTitles, maskedTokens, distinctN, longNgramShare, topPhrases, repeatedOpeningShare, themeConcentration,
-  patternConcentration, traceability, genreKeys, genericPhrasing, genreCollapse, crossDomain, recencyAndDislikes, metricsFor
+  patternConcentration, traceability, genreKeys, genericPhrasing, genreCollapse, crossDomain, recencyAndDislikes, metricsFor,
+  setRepetition, perSetSummary, SET_GATE, MIN_EXPLANATIONS_PER_VARIANT
 } from "../evals/stress/metrics.mjs";
 import { SIZES, SHAPES, buildAllProfileSpecs, loadProfileSpecs, loadSnapshot, profileState, itemsIndex } from "../evals/stress/profiles.mjs";
 import { makeFetch, planTasks, runTask, validateOptions, parseArgs, costTable } from "../evals/stress/run-stress.mjs";
 import { buildReport, reviewSample, reviewMarkdown, pickRecords } from "../evals/stress/report.mjs";
 import { evidenceRecords } from "../../src/model/evidence.js";
+import { percentile, suggestGate, draftReference } from "../evals/stress/calibrate.mjs";
 
 const { check, eq, finish } = createSuite("stress-eval");
 
@@ -164,5 +166,86 @@ eq("pick records flatten every kept pick", pickRecords(liveRecords).length, live
 const sample = reviewSample(liveRecords, { perProfile: 2 });
 check("review sample has picks per profile", sample.length === 3 && sample.every((g) => g.picks.length <= 2), JSON.stringify(sample.map((g) => g.profile)));
 check("review markdown renders", reviewMarkdown(sample).includes("cites:"));
+check("report has the per-set repetition table", markdown.includes("## Per-set repetition") && markdown.includes("| Model | Size | Sets |"));
+check("pick records carry their call, so picks group into sets", pickRecords(liveRecords).every((p) => p.callKey));
+check("a small run is marked indicative", markdown.includes("(indicative)"));
+
+// ---- #28 Stage 0: per-set repetition, on explanations seen in the Oct 20 paid eval ----------------
+const set = (whys) => whys.map(([title, why, cited]) => pick(title, why, { citedEvidence: [ev(cited)] }));
+const frameSet = set([
+  ["Piranesi", "Its hushed, dreamlike wandering through an enormous house suits the immersive worldbuilding you loved in Circe.", "Circe"],
+  ["The Lighthouse", "Its isolated, surreal descent into madness echoes the slow unraveling you responded to in The Fall.", "The Fall"],
+  ["Control", "A bureaucratic building full of unexplained phenomena offers the eerie weirdness you enjoyed in Alan Wake 2.", "Alan Wake 2"],
+  ["Golden Idol", "Reconstructing frozen crime scenes rewards the same puzzle-solving curiosity Portal 2 fed.", "Portal 2"]
+]);
+const framed = setRepetition(frameSet);
+eq("the 'you … in <title>' frame is counted per explanation, titles masked", framed.frame, 3);
+check("three framed explanations in one set would trigger", framed.wouldTrigger && framed.triggers.some((t) => t.includes("frame")), JSON.stringify(framed.triggers));
+
+const familySet = set([
+  ["The Menu", "Its sharp satirical bite and escalating dread echo the unsettling tension of The Fall.", "The Fall"],
+  ["Piranesi", "A hushed, labyrinthine dreamscape that mirrors the quiet wonder of Middle-earth.", "LOTR"],
+  ["Outer Wilds", "Curiosity-driven discovery with no guiding hand, built like Portal 2's puzzle logic.", "Portal 2"]
+]);
+const family = setRepetition(familySet);
+eq("a swapped synonym still counts as the same stock family (echo, mirrors)", family.stock["callback verb"], 2);
+check("one family in two explanations is not enough (calibrated: Paige's kept sets had up to 2)", !family.wouldTrigger, JSON.stringify(family.triggers));
+const family3 = setRepetition([...familySet, ...set([["Control", "Its corridors recall the dread of Alan Wake 2.", "Alan Wake 2"]])]);
+check("one family in three explanations would trigger", family3.wouldTrigger && family3.triggers.some((t) => t.startsWith("callback verb")), JSON.stringify(family3.triggers));
+
+const clean = setRepetition(set([
+  ["Fargo", "Moral messiness and eccentric small-town characters, like the crime drama in The Fall.", "The Fall"],
+  ["Control", "A building full of unexplained phenomena, for the atmosphere Alan Wake 2 built.", "Alan Wake 2"],
+  ["The Spear Cuts Through Water", "A layered, mythic quest across a violent land, at Lord of the Rings scale.", "LOTR"]
+]));
+check("a varied set does not trigger", !clean.wouldTrigger && clean.frame === 0 && clean.opening < SET_GATE.openingWhys, JSON.stringify(clean));
+
+const openings = setRepetition(set([
+  ["A", "Its layered deceptions reward close attention like The Fall.", "The Fall"],
+  ["B", "Its layered magic system builds on what Mistborn set up.", "Mistborn"],
+  ["C", "Its layered city politics recall Locke Lamora's schemes.", "Locke Lamora"]
+]));
+eq("the same two-word opening is counted per set", openings.opening, 3);
+check("three shared openings would trigger", openings.triggers.some((t) => t.startsWith("same opening")), JSON.stringify(openings.triggers));
+const phraseSet = setRepetition(set([
+  ["A", "A hushed story with the quiet wonder of Piranesi.", "Piranesi"],
+  ["B", "Slow, strange and full of the quiet wonder Circe had.", "Circe"],
+  ["C", "Its coastal town holds the quiet wonder of Middle-earth.", "LOTR"]
+]));
+check("a 3-word phrase in three explanations would trigger, and is named", phraseSet.sharedPhrase === 3 && phraseSet.triggers.some((t) => t.includes("the quiet wonder")), JSON.stringify(phraseSet.triggers));
+
+const twoOpenings = setRepetition(set([
+  ["A", "Its layered deceptions reward close attention like The Fall.", "The Fall"],
+  ["B", "Its layered magic system builds on what Mistborn set up.", "Mistborn"],
+  ["C", "A quiet coastal mystery with the patience of Piranesi.", "Piranesi"]
+]));
+check("two shared openings trigger (calibrated: Paige's kept sets never repeated an opening)", twoOpenings.triggers.some((t) => t.startsWith("same opening")), JSON.stringify(twoOpenings.triggers));
+
+const summary = perSetSummary([
+  ...frameSet.map((p) => ({ ...p, callKey: "call-1" })),
+  ...familySet.map((p) => ({ ...p, callKey: "call-2" })),
+  ...set([["Fargo", "Moral messiness and eccentric small-town characters, like the crime drama in The Fall.", "The Fall"]]).map((p) => ({ ...p, callKey: "call-3" }))
+]);
+eq("picks group into one set per call", summary.sets, 3);
+eq("would-trigger rate is per set", summary.wouldTriggerRate, 0.333);
+check("a summary under the sample minimum says so", summary.enoughSample === false && MIN_EXPLANATIONS_PER_VARIANT === 200);
+check("trigger kinds are counted", summary.triggerCounts.frame === 1, JSON.stringify(summary.triggerCounts));
+check("vague hedges are measured per explanation", perSetSummary(set([["A", "Could appeal if you like eerie stories.", "X"], ["B", "A drowned house of statues, as patient as Piranesi.", "Piranesi"]]).map((p) => ({ ...p, callKey: "h" }))).hedgeWhyShare === 0.5);
+eq("frame share is per explanation across sets", summary.frameWhyShare, 0.375);
+check("metricsFor includes the per-set summary", metricsFor(frameSet.map((p) => ({ ...p, callKey: "x" }))).perSet.sets === 1);
+
+
+// ---- #28 Stage 0: calibrating SET_GATE from a reference set ----------------------------------------
+eq("nearest-rank 90th percentile", percentile([0, 0, 0, 0, 0, 0, 0, 0, 1, 2], 90), 1);
+eq("95th percentile of one value", percentile([3], 95), 3);
+eq("no values, no percentile", percentile([], 90), null);
+const goodSets = [familySet, set([["Fargo", "Moral messiness and eccentric small-town characters, like the crime drama in The Fall.", "The Fall"], ["Control", "A building full of unexplained phenomena, for the atmosphere Alan Wake 2 built.", "Alan Wake 2"]])].map((picks) => ({ picks }));
+const gate = suggestGate(goodSets);
+check("a suggested gate is one above what good sets do, and never below 2", Object.values(gate).every((g) => g.suggested >= 2 && g.suggested >= g.p95 + 1), JSON.stringify(gate));
+const draftCalls = ["narrow-10", "narrow-10", "narrow-10", "broad-50"].map((profile, n) => ({ type: "call", kind: "picks", source: "model", model: "claude-haiku-5-5", key: `claude-haiku-5-5|${profile}|r${n}`, shape: profile.split("-")[0], size: profile.split("-")[1], run: "run-a", picks: frameSet }));
+const draftA = draftReference(draftCalls, { perCell: 2 });
+eq("a draft takes up to N sets per shape and size", draftA.length, 3);
+check("a draft is reproducible and starts unmarked", JSON.stringify(draftA) === JSON.stringify(draftReference(draftCalls, { perCell: 2 })) && draftA.every((d) => d.keep === null));
+check("draft ids say which run they came from", draftA.every((d) => d.id.startsWith("run-a:")));
 
 finish();
