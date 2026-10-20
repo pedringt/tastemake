@@ -123,12 +123,12 @@ export function buildReport({ calls, headers }) {
   }
 
   // #28 Stage 0: the unit a visitor sees is one set, so repetition is also reported per set.
-  lines.push("## Per-set repetition (one call's picks = what one visitor sees)", "", `Thresholds are starting values (SET_GATE in metrics.mjs), not yet calibrated against a reference set. A change in an explanation-level rate needs about ${MIN_EXPLANATIONS_PER_VARIANT} explanations per variant before it can be told from noise.`, "",
-    "| Model | Size | Sets | Explanations | Would trigger | Stock family in 2+ | Stock hits / set | Frame share | Same opening 3+ | Shared phrase 3+ |", "|---|---|---|---|---|---|---|---|---|---|");
+  lines.push("## Per-set repetition (one call's picks = what one visitor sees)", "", `Thresholds (SET_GATE in metrics.mjs) are calibrated against reference-sets.json, sets Paige marked as fine to show. A change in an explanation-level rate needs about ${MIN_EXPLANATIONS_PER_VARIANT} explanations per variant before it can be told from noise.`, "",
+    "| Model | Size | Sets | Explanations | Would trigger | Stock family at gate | Stock hits / set | Frame share | Same opening at gate | Shared phrase at gate | Vague hedge share |", "|---|---|---|---|---|---|---|---|---|---|---|");
   for (const model of models) for (const size of sizes) {
     const ps = perSetSummary(picks.filter((p) => p.model === model && p.size === size));
     if (!ps.sets) continue;
-    lines.push(`| ${model} | ${size} | ${ps.sets} | ${ps.explanations}${ps.enoughSample ? "" : " (indicative)"} | ${fmt(ps.wouldTriggerRate)} | ${fmt(ps.stockFamilySetShare)} | ${fmt(ps.meanStockWhysPerSet)} | ${fmt(ps.frameWhyShare)} | ${fmt(ps.openingSetShare)} | ${fmt(ps.sharedPhraseSetShare)} |`);
+    lines.push(`| ${model} | ${size} | ${ps.sets} | ${ps.explanations}${ps.enoughSample ? "" : " (indicative)"} | ${fmt(ps.wouldTriggerRate)} | ${fmt(ps.stockFamilySetShare)} | ${fmt(ps.meanStockWhysPerSet)} | ${fmt(ps.frameWhyShare)} | ${fmt(ps.openingSetShare)} | ${fmt(ps.sharedPhraseSetShare)} | ${fmt(ps.hedgeWhyShare)} |`);
   }
   for (const model of models) {
     const all = perSetSummary(picks.filter((p) => p.model === model));

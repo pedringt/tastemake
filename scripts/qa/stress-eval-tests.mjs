@@ -189,7 +189,9 @@ const familySet = set([
 ]);
 const family = setRepetition(familySet);
 eq("a swapped synonym still counts as the same stock family (echo, mirrors)", family.stock["callback verb"], 2);
-check("one family in two explanations would trigger", family.wouldTrigger && family.triggers.some((t) => t.startsWith("callback verb")), JSON.stringify(family.triggers));
+check("one family in two explanations is not enough (calibrated: Paige's kept sets had up to 2)", !family.wouldTrigger, JSON.stringify(family.triggers));
+const family3 = setRepetition([...familySet, ...set([["Control", "Its corridors recall the dread of Alan Wake 2.", "Alan Wake 2"]])]);
+check("one family in three explanations would trigger", family3.wouldTrigger && family3.triggers.some((t) => t.startsWith("callback verb")), JSON.stringify(family3.triggers));
 
 const clean = setRepetition(set([
   ["Fargo", "Moral messiness and eccentric small-town characters, like the crime drama in The Fall.", "The Fall"],
@@ -217,7 +219,7 @@ const twoOpenings = setRepetition(set([
   ["B", "Its layered magic system builds on what Mistborn set up.", "Mistborn"],
   ["C", "A quiet coastal mystery with the patience of Piranesi.", "Piranesi"]
 ]));
-check("two shared openings alone do not trigger", !twoOpenings.wouldTrigger, JSON.stringify(twoOpenings.triggers));
+check("two shared openings trigger (calibrated: Paige's kept sets never repeated an opening)", twoOpenings.triggers.some((t) => t.startsWith("same opening")), JSON.stringify(twoOpenings.triggers));
 
 const summary = perSetSummary([
   ...frameSet.map((p) => ({ ...p, callKey: "call-1" })),
@@ -225,9 +227,10 @@ const summary = perSetSummary([
   ...set([["Fargo", "Moral messiness and eccentric small-town characters, like the crime drama in The Fall.", "The Fall"]]).map((p) => ({ ...p, callKey: "call-3" }))
 ]);
 eq("picks group into one set per call", summary.sets, 3);
-eq("would-trigger rate is per set", summary.wouldTriggerRate, 0.667);
+eq("would-trigger rate is per set", summary.wouldTriggerRate, 0.333);
 check("a summary under the sample minimum says so", summary.enoughSample === false && MIN_EXPLANATIONS_PER_VARIANT === 200);
-check("trigger kinds are counted", summary.triggerCounts.frame === 1 && summary.triggerCounts["callback verb"] >= 1, JSON.stringify(summary.triggerCounts));
+check("trigger kinds are counted", summary.triggerCounts.frame === 1, JSON.stringify(summary.triggerCounts));
+check("vague hedges are measured per explanation", perSetSummary(set([["A", "Could appeal if you like eerie stories.", "X"], ["B", "A drowned house of statues, as patient as Piranesi.", "Piranesi"]]).map((p) => ({ ...p, callKey: "h" }))).hedgeWhyShare === 0.5);
 eq("frame share is per explanation across sets", summary.frameWhyShare, 0.375);
 check("metricsFor includes the per-set summary", metricsFor(frameSet.map((p) => ({ ...p, callKey: "x" }))).perSet.sets === 1);
 

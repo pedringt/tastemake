@@ -333,15 +333,21 @@ export const STOCK_FAMILIES = [
 // "...you loved in <title>": the frame that replaced "you enjoyed in" once that was banned (1 -> 7 of 49).
 export const FRAME = /\byou(?:'ve)? (?:loved|enjoyed|liked|praised|responded to|connected with|rewarded|appreciated|admired) in <title>/i;
 
-// Starting thresholds for "a visitor would notice this set". NOT calibrated: the report says to set them
-// from the 90th-95th percentile of a hand-checked reference set of good explanations. A set "would
-// trigger" when any one is reached.
+// Thresholds for "a visitor would notice this set". Calibrated Oct 20 from reference-sets.json: 11 sets
+// Paige would show as-is, one above their 95th percentile (scripts/evals/stress/calibrate.mjs). Her kept
+// sets used a stock family in up to 2 explanations, so 2 alone is not a problem; they never repeated an
+// opening. A set "would trigger" when any one is reached.
 export const SET_GATE = {
-  stockFamilyWhys: 2,   // the same stock family in 2+ explanations of one set
+  stockFamilyWhys: 3,   // the same stock family in 3+ explanations of one set
   frameWhys: 3,         // the "you loved in <title>" frame in 3+ explanations
-  openingWhys: 3,       // 3+ explanations starting with the same two words
+  openingWhys: 2,       // 2+ explanations starting with the same two words
   sharedPhraseWhys: 3   // 3+ explanations sharing one 3-word phrase (with a content word)
 };
+
+// Vague hedges: what most separated the sets Paige dropped from the ones she kept (Oct 20: 38% of dropped
+// explanations vs 20% of kept). Reported, not part of the gate: a hedge is a specificity problem, and the
+// fix is in what the prompt asks for, not a runtime repair.
+export const HEDGE = /\b(?:could appeal|may appeal|might appeal|could suit|may suit|might suit|could fit|may fit|if you (?:like|enjoy)|your favou?rites?|your love of|you may enjoy|may click)\b/i;
 
 // The smallest sample at which a 20% -> 10% change in an explanation-level rate is detectable (two-sided
 // alpha 0.05, power 0.8: about 190 per variant, rounded up). Below it, report numbers as indicative only.
@@ -403,6 +409,7 @@ export function perSetSummary(picks) {
     meanStockWhysPerSet: round3(sets.length ? sets.reduce((a, s) => a + Object.values(s.stock).reduce((x, y) => x + y, 0), 0) / sets.length : null),
     frameSetShare: shareOf((s) => s.frame >= SET_GATE.frameWhys),
     frameWhyShare: round3(share(sets.reduce((a, s) => a + s.frame, 0), picks.length)),
+    hedgeWhyShare: round3(share(picks.filter((p) => HEDGE.test(p.why ?? "")).length, picks.length)),
     openingSetShare: shareOf((s) => s.opening >= SET_GATE.openingWhys),
     sharedPhraseSetShare: shareOf((s) => s.sharedPhrase >= SET_GATE.sharedPhraseWhys),
     triggerCounts
@@ -465,9 +472,10 @@ export const DEFINITIONS = [
   ["cross-domain", "A pick citing evidence from a domain the pick is not in. Unsupported = the profile lacks TRIED evidence (Loved/Liked/disliked, not starter favorites) in the pick's domain or the cited domain."],
   ["recent share", "Of cited reaction refs, the share among the most recent 20% of the profile's tried reactions (about 0.2 if recency plays no part)."],
   ["cites a dislike", "Share of picks citing any disliked item (allowed only as contrast)."],
-  ["per-set: would trigger", "Share of SETS (one call's kept picks, what one visitor sees) that reach any SET_GATE threshold: a stock-word family in 2+ explanations, the 'you … in <title>' frame in 3+, the same two-word opening in 3+, or one 3-word phrase (with a content word) in 3+. Starting thresholds, not yet calibrated."],
+  ["per-set: would trigger", "Share of SETS (one call's kept picks, what one visitor sees) that reach any SET_GATE threshold: a stock-word family in 3+ explanations, the 'you … in <title>' frame in 3+, the same two-word opening in 2+, or one 3-word phrase (with a content word) in 3+. Calibrated Oct 20 against reference-sets.json."],
   ["per-set: stock family", "Share of sets where one STOCK_FAMILIES family (callback verbs: echo/mirror/recall/resonate/evoke/reminiscent; scale words: sweeping/scope/sprawling) appears in 2+ explanations. Families, so a swapped synonym still counts. Mean = family hits per set."],
   ["per-set: frame", "'you loved / enjoyed / responded to … in <title>' (title-masked): share of explanations using it, and share of sets where 3+ do."],
+  ["vague hedge", "Share of explanations with a hedge such as 'could appeal', 'may suit', 'if you like' or 'your favorites'. Reported, not gated: it separated the reference sets Paige dropped (38%) from those she kept (20%)."],
   ["sample size", `Explanation-level rates need about ${MIN_EXPLANATIONS_PER_VARIANT} explanations per variant to detect a 20% -> 10% change; below that the report marks numbers as indicative.`]
 ];
 

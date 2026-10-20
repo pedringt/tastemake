@@ -1,10 +1,10 @@
 {
-  "note": "Draft reference sets for #28 calibration. Mark each set keep: true (happy to show as-is) or false. Sampled at random, stratified by shape and size.",
+  "note": "Reference sets for #28 calibration. keep: true = Paige would show the set as-is (marked Oct 20). Sampled at random, stratified by shape and size.",
   "sets": [
     {
       "id": "oct20-after-247:claude-haiku-5-5|broad-10|r15",
       "cell": "broad-10",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "Tales of Tomorrow",
@@ -65,7 +65,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|broad-10|r19",
       "cell": "broad-10",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "The Last Sunrise",
@@ -129,7 +129,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|broad-100|r29",
       "cell": "broad-100",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "Kamen Rider",
@@ -193,7 +193,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|broad-100|r11",
       "cell": "broad-100",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "The Devil Wears Prada",
@@ -263,7 +263,7 @@
     {
       "id": "oct20-after-247:claude-haiku-5-5|broad-50|r2",
       "cell": "broad-50",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "The Princess Bride",
@@ -336,7 +336,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|broad-50|r4",
       "cell": "broad-50",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "Americanah",
@@ -406,7 +406,7 @@
     {
       "id": "oct20-after-247:claude-haiku-5-5|dislikes-10|r24",
       "cell": "dislikes-10",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "Insidious: Chapter 2",
@@ -467,7 +467,7 @@
     {
       "id": "oct20-after-247:claude-haiku-5-5|dislikes-10|r19",
       "cell": "dislikes-10",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "Little Nightmares",
@@ -519,7 +519,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|dislikes-100|r16",
       "cell": "dislikes-100",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "Something Very Bad Is Going to Happen",
@@ -592,7 +592,7 @@
     {
       "id": "oct20-after-247:claude-haiku-5-5|dislikes-100|r11",
       "cell": "dislikes-100",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "Insidious: Out of the Further",
@@ -671,7 +671,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|dislikes-50|r0",
       "cell": "dislikes-50",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "The Dark Pictures Anthology: Man of Medan",
@@ -738,7 +738,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|dislikes-50|r24",
       "cell": "dislikes-50",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "The Dark Pictures Anthology: Man of Medan",
@@ -802,7 +802,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|narrow-10|r28",
       "cell": "narrow-10",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "The Hunger Games",
@@ -863,7 +863,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|narrow-10|r1",
       "cell": "narrow-10",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "Iron Man 3",
@@ -930,7 +930,7 @@
     {
       "id": "oct20-after-247:claude-haiku-5-5|narrow-100|r23",
       "cell": "narrow-100",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "Cloud Atlas",
@@ -1003,7 +1003,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|narrow-100|r4",
       "cell": "narrow-100",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "Her",
@@ -1064,7 +1064,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|narrow-50|r29",
       "cell": "narrow-50",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "Despicable Me",
@@ -1125,7 +1125,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|narrow-50|r13",
       "cell": "narrow-50",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "The Empire Strikes Back",
@@ -1195,7 +1195,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|split-10|r15",
       "cell": "split-10",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "Final Fantasy X",
@@ -1262,7 +1262,7 @@
     {
       "id": "oct20-after-247:claude-haiku-5-5|split-10|r27",
       "cell": "split-10",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "Final Fantasy X",
@@ -1329,7 +1329,7 @@
     {
       "id": "oct20-before-247:claude-haiku-5-5|split-100|r22",
       "cell": "split-100",
-      "keep": null,
+      "keep": false,
       "picks": [
         {
           "title": "Godzilla Minus One",
@@ -1399,7 +1399,7 @@
     {
       "id": "oct20-after-247:claude-haiku-5-5|split-100|r17",
       "cell": "split-100",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "Persona 5",
@@ -1460,7 +1460,7 @@
     {
       "id": "oct20-after-247:claude-haiku-5-5|split-50|r10",
       "cell": "split-50",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "The Way of Kings",
@@ -1530,7 +1530,7 @@
     {
       "id": "oct20-after-247:claude-haiku-5-5|split-50|r16",
       "cell": "split-50",
-      "keep": null,
+      "keep": true,
       "picks": [
         {
           "title": "The Way of Kings",
