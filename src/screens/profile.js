@@ -9,6 +9,7 @@ import { esc } from "../lib/html.js";
 import { libraryItems } from "../model/library.js";
 import { evidenceRecords } from "../model/evidence.js";
 import { renderTasteMap } from "./tastemap.js";
+import { AI_PAUSED_EXPLAINER } from "../ai/ai-status.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -374,7 +375,12 @@ export function renderProfile() {
               </div>
             </div>` : ""}
           `
-      ) : `
+      ) : state.aiPaused ? `
+        <div class="profile-empty" role="status">
+          <strong>Patterns are waiting on AI.</strong>
+          <p>Patterns are built by AI. ${AI_PAUSED_EXPLAINER} Your favorites and ratings are saved, and your patterns will appear when it’s back.</p>
+          <button class="button button-primary" type="button" data-action="browse">Keep rating</button>
+        </div>` : `
         <div class="profile-empty" role="status">
           <strong>No generated patterns yet.</strong>
           <p>Tastemake needs more ratings from things you have actually tried before it can infer patterns responsibly. Favorites seed the profile; your reactions keep teaching it.</p>

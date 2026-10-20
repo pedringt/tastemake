@@ -44,6 +44,7 @@ import { announceReaction, chooseExperiencePath, runInitialRecommendations, runK
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
+import { syncAiBadge } from "./ai/ai-status.js";
 
 // app.js is orchestration only: routing between screens, rendering, focus/announce plumbing, and
 // dispatching DOM events to the action modules in ./actions/ and ./model/ (#39). Product rules and
@@ -83,6 +84,7 @@ const candidatePrefetcher = createCandidatePrefetcher({ getState: () => state })
 
 function render() {
   persistState(state);
+  syncAiBadge(state);
   app.innerHTML = views[state.screen]();
   candidatePrefetcher.schedule(state);
 }

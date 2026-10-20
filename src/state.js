@@ -43,6 +43,7 @@ function fresh() {
     aiStatus: "idle",
     aiSource: null,
     aiMessage: null,
+    aiPaused: false,
     // Taste Profile view (#21): the list, or the map with an optional selected pattern / evidence pick.
     profileView: "list",
     mapPattern: null,
@@ -131,6 +132,7 @@ export const state = {
   aiStatus: "idle",
   aiSource: null,
   aiMessage: null,
+    aiPaused: false,
   hypothesisAiStatus: "idle",
   hypothesisAiMessage: null,
   recommendationMediumFilter: "all",
@@ -167,6 +169,7 @@ export function restoreStateFromBackupText(text) {
     aiStatus: "idle",
     aiSource: null,
     aiMessage: null,
+    aiPaused: false,
     hypothesisAiStatus: "idle",
     hypothesisAiMessage: null,
     recommendationMediumFilter: "all",
