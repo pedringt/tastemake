@@ -101,7 +101,9 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
       announce("Taste Profile refreshed from your current evidence.");
     } else {
       state.hypothesisAiKey = null;
-      state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
+      state.hypothesisAiMessage = payload.meta?.budgetPaused && payload.reason
+        ? payload.reason
+        : (state.modelHypotheses ?? []).length
         ? "Tastemake couldn’t update your profile this time. Your existing patterns are still here."
         : "Tastemake couldn’t build a trustworthy profile this time. You can try again.";
     }

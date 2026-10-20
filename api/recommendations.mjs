@@ -5,7 +5,7 @@ import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 import { applyTaglineFallback } from "../src/catalog/providers.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
-import { callAnthropic, liveConfig } from "../src/server/anthropic.mjs";
+import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
 import { PICKS_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState } from "../src/server/request-state.mjs";
 import { domainById } from "../src/data/domains.js";
@@ -418,7 +418,8 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     };
   } catch (error) {
     const timedOut = error?.name === "AbortError";
-    const reason = timedOut ? "model request timed out" : "model unavailable";
+    const budgetPaused = isAiBudgetExhausted(error);
+    const reason = budgetPaused ? AI_BUDGET_MESSAGE : timedOut ? "model request timed out" : "model unavailable";
     const durationMs = Math.max(1, Date.now() - started);
     recordAiCallInBackground({
       operation: "recommendations",
@@ -432,6 +433,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     }, { env });
     console.error("[tastemake-ai]", reason, error?.status ?? "", error?.anthropicType ?? "", error?.anthropicDetail ?? error?.message ?? "");
     return fallbackPayload(candidates, state, reason, {
+      ...(budgetPaused ? { budgetPaused: true } : {}),
       paidCallMade: Boolean(error?.paidCallMade),
       errorStatus: error?.status ?? null,
       errorType: error?.anthropicType ?? (timedOut ? "timeout" : "transport"),
