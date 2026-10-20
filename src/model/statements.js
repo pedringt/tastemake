@@ -57,6 +57,8 @@ export function setStatement(state, hypothesisId, field, value) {
   entry[field] = next;
 
   if (field === "says") {
+    // "Also true for" is a follow-up to "accurate" only, so any other answer clears it.
+    if (next !== "accurate") entry.alsoAppliesTo = [];
     if (next === "not-me" || next === "unsure" || next == null) {
       entry.weight = null;
       entry.context = null;
@@ -108,6 +110,28 @@ export function toggleDomainExclusion(state, hypothesisId, domainId) {
   return message;
 }
 
+// #252: the opposite of excludedDomains. After saying a pattern is accurate, the user can say it also holds
+// in another area ("this is true of my books too"). User-confirmed, so a model may use it to connect a pick
+// in that area to the pattern's cited evidence; it is NOT experience, never counts as evidence there, and
+// never raises a pattern's confidence or cross-domain status.
+export function alsoAppliesToFor(state, hypothesisId) {
+  return statementFor(state, hypothesisId)?.alsoAppliesTo ?? [];
+}
+
+export function toggleAlsoApplies(state, hypothesisId, domainId) {
+  const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
+  const entry = statementFor(state, hypothesisId);
+  if (!pattern || entry?.says !== "accurate" || (pattern.domains ?? []).includes(domainId)) return null;
+  entry.alsoAppliesTo ??= [];
+  const adding = !entry.alsoAppliesTo.includes(domainId);
+  entry.alsoAppliesTo = adding ? [...entry.alsoAppliesTo, domainId] : entry.alsoAppliesTo.filter((d) => d !== domainId);
+  const message = adding
+    ? `${pattern.title}: you said this is also true for ${domainId}.`
+    : `${pattern.title}: no longer marked as true for ${domainId}.`;
+  recordRevision(state, { hypothesisId: pattern.id, claim: pattern.claim, origin: "user-confirmed", reason: message });
+  return message;
+}
+
 export function clearStatement(state, hypothesisId) {
   const entry = statementFor(state, hypothesisId);
   if (!entry) return null;
@@ -119,5 +143,5 @@ export function clearStatement(state, hypothesisId) {
 }
 
 export function activeStatements(state) {
-  return (state.patternStatements ?? []).filter((s) => s.says || s.weight || s.context || s.excludedDomains?.length);
+  return (state.patternStatements ?? []).filter((s) => s.says || s.weight || s.context || s.excludedDomains?.length || s.alsoAppliesTo?.length);
 }

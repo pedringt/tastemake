@@ -16,6 +16,7 @@ Every action falls into exactly one class:
 | **Lookup** | Searching, browsing, opening something | No | No |
 | **Correction** | The user says which pattern failed for a pick (Blind Spot) | Re-assigns *which patterns* a miss counts against | Yes |
 | **User statement about a pattern** | "Accurate", "Not really me", "Matters a lot / a little" (user-confirmed) | No (not an experience) | Yes: weights or excludes the pattern in ranking |
+| **"Also true for" another area** (#252) | After "Accurate", the user says the pattern also holds in another area | No: never evidence in that area, never raises confidence or cross-domain status | Yes: a model may use the pattern to explain picks there, citing its own evidence |
 
 ## Where this lives in code (#35)
 
