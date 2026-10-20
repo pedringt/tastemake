@@ -212,6 +212,31 @@ export function itemStatus(state, item) {
   return { key: "other", label: "Reacted to" };
 }
 
+// While picking Favorites (before setup is done), one click on a search result adds it, or swaps it in
+// for the Favorite being replaced; a second click takes it back out. Returns a sentence for the live
+// region. Picking a Favorite is an explicit "I tried this and loved it" by definition (evidence.js).
+export function toggleStarterFavorite(state, item) {
+  if (state.selectedFavorites.has(item.id)) {
+    state.selectedFavorites.delete(item.id);
+    if (state.starterReplaceId === item.id) state.starterReplaceId = null;
+    return { added: false, message: `${item.title} removed from your Favorites. ${state.selectedFavorites.size} of 4 selected.` };
+  }
+  if (item.custom || item.provider) state.customItems[item.id] = item;
+  const replacing = state.starterReplaceId;
+  const replaced = replacing && replacing !== item.id && state.selectedFavorites.has(replacing)
+    ? (state.customItems[replacing]?.title ?? null)
+    : null;
+  if (replacing && replacing !== item.id) state.selectedFavorites.delete(replacing);
+  state.selectedFavorites.add(item.id);
+  state.starterReplaceId = null;
+  return {
+    added: true,
+    message: replaced
+      ? `${item.title} replaced ${replaced} in your Favorites.`
+      : `${item.title} added to your Favorites. ${state.selectedFavorites.size} of 4 selected.`
+  };
+}
+
 const OUTCOMES = {
   loved: { rating: "more", detail: "loved-before", said: "marked Loved it before" },
   liked: { rating: "more", detail: "liked-before", said: "marked Liked it before" },

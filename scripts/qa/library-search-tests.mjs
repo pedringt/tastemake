@@ -10,7 +10,7 @@ import { createSuite } from "./lib/assert.mjs";
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { resetState, state: sharedState } = await import("../../src/state.js");
-const { itemStatus, applySearchAction, findExisting } = await import("../../src/model/search.js");
+const { itemStatus, applySearchAction, findExisting, toggleStarterFavorite } = await import("../../src/model/search.js");
 const { isStrongPositive } = await import("../../src/model/evidence.js");
 
 const fresh = () => { resetState(); return sharedState; };
@@ -113,6 +113,46 @@ const game = { id: "igdb-game-7", title: "Signal Loss", type: "game", provider: 
   const removeMessage = applySearchAction(state, movie, "remove");
   check("remove clears the record entirely (not a soft/parallel state)", typeof removeMessage === "string");
   eq("status is back to none after remove", itemStatus(state, movie).key, "none");
+}
+
+
+// ---- One-click Favorites while picking (before setup is done).
+{
+  const state = fresh();
+  const first = toggleStarterFavorite(state, movie);
+  check("one click adds a starter Favorite", first.added && state.selectedFavorites.has(movie.id));
+  check("the catalog item is kept so the Favorite survives a reload", state.customItems[movie.id] === movie);
+  check("adding says how many are chosen", /1 of 4 selected/.test(first.message));
+  eq("a picked Favorite is shown as Favorite", itemStatus(state, movie).key, "starter");
+  check("picking a Favorite writes no reaction record (starters are their own evidence)", !state.feedbackByRecommendation[movie.id]);
+
+  const second = toggleStarterFavorite(state, movie);
+  check("a second click removes it", !second.added && !state.selectedFavorites.has(movie.id));
+  check("removing says so", /removed from your Favorites/.test(second.message));
+
+  toggleStarterFavorite(state, movie);
+  state.starterReplaceId = movie.id;
+  const swap = toggleStarterFavorite(state, book);
+  check("in replace mode one click swaps the new item in", state.selectedFavorites.has(book.id) && !state.selectedFavorites.has(movie.id));
+  check("replace mode ends after the swap", state.starterReplaceId === null);
+  check("the swap message names what was replaced", /replaced Arrival Point/.test(swap.message));
+  toggleStarterFavorite(state, game);
+  eq("after the swap, clicks add again", state.selectedFavorites.size, 2);
+
+  state.starterReplaceId = game.id;
+  toggleStarterFavorite(state, game);
+  check("removing the item being replaced also ends replace mode", state.starterReplaceId === null && !state.selectedFavorites.has(game.id));
+}
+
+// ---- After setup, the row star is the same explicit Favorite action as the sheet's star.
+{
+  const state = fresh();
+  state.onboarded = true;
+  const message = applySearchAction(state, book, "favorite");
+  check("row star adds a Favorite", typeof message === "string" && state.libraryFavorites.has(book.id));
+  check("a Favorite is marked Tried · Loved", isStrongPositive(state.feedbackByRecommendation[book.id]));
+  applySearchAction(state, book, "unfavorite");
+  check("unstarring removes the Favorite but keeps Loved", !state.libraryFavorites.has(book.id) && isStrongPositive(state.feedbackByRecommendation[book.id]));
 }
 
 finish();

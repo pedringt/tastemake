@@ -85,25 +85,31 @@ export async function run() {
   // Search All must include Play before the Play filter is selected.
   await act("#open-search");
   await type("#search-input","test");
-  check("All search includes a video game",$$("[data-search-pick]").some(el=>el.dataset.searchPick==="igdb-game-603"),$("#search-view")?.textContent.slice(0,160));
+  check("All search includes a video game",$$("[data-search-favorite]").some(el=>el.dataset.searchFavorite==="igdb-game-603"),$("#search-view")?.textContent.slice(0,160));
   await act('[data-search-filter="play"]',420);
-  check("Play narrows to game results",$$("[data-search-pick]").length===1&&$("[data-search-pick]")?.dataset.searchPick==="igdb-game-603",$$("[data-search-pick]").map(x=>x.dataset.searchPick).join(","));
+  check("Play narrows to game results",$$("[data-search-favorite]").length===1&&$("[data-search-favorite]")?.dataset.searchFavorite==="igdb-game-603",$$("[data-search-favorite]").map(x=>x.dataset.searchFavorite).join(","));
   await act('[data-search-filter="all"]',420);
 
-  // Build real favorites through the external search path.
+  // Build real favorites through the external search path: one click per result while picking.
   for(const item of favs){
     await type("#search-input",item.title);
-    check(`search finds ${item.title}`,Boolean(`[data-search-pick="${item.id}"]`)&&Boolean($(`[data-search-pick="${item.id}"]`)));
-    check(`search result for ${item.title} includes artwork slot`,Boolean($(`[data-search-pick="${item.id}"] .search-artwork`)));
-    await act(`[data-search-pick="${item.id}"]`);
-    await act('[data-search-starter="add"]');
+    check(`search finds ${item.title}`,Boolean($(`[data-search-favorite="${item.id}"]`)));
+    check(`search result for ${item.title} includes artwork slot`,Boolean($(`[data-search-favorite="${item.id}"] .search-artwork`)));
+    await act(`[data-search-favorite="${item.id}"]`);
+    check(`one click adds ${item.title}`,state.selectedFavorites.has(item.id));
+    check(`${item.title} row shows Added and keeps focus`,$(`[data-search-favorite="${item.id}"]`)?.getAttribute("aria-pressed")==="true"&&document.activeElement===$(`[data-search-favorite="${item.id}"]`));
   }
+  // A second click on the same row takes it back out; a third puts it back.
+  await act(`[data-search-favorite="${favs[3].id}"]`);
+  check("second click removes a picked Favorite",!state.selectedFavorites.has(favs[3].id));
+  await act(`[data-search-favorite="${favs[3].id}"]`);
+  check("third click adds it again",state.selectedFavorites.has(favs[3].id));
   check("four real favorites selected",state.selectedFavorites.size===4,[...state.selectedFavorites].join(","));
   check("selected favorites are persisted provider items",[...state.selectedFavorites].every(id=>state.customItems[id]?.provider));
 
-  // Already-selected favorite should not repopulate the result list.
+  // An already-selected favorite stays in the results, marked Added, so the same click can undo it.
   await type("#search-input",favs[0].title);
-  check("search omits an already-selected favorite",!$('[data-search-pick="tmdb-movie-501"]'),$("#search-view")?.textContent.slice(0,100));
+  check("an already-selected favorite shows as Added",$('[data-search-favorite="tmdb-movie-501"]')?.getAttribute("aria-pressed")==="true",$("#search-view")?.textContent.slice(0,100));
   $("#search-dialog")?.close();
   await sleep(120);
 
@@ -186,6 +192,21 @@ export async function run() {
   check("on Tried, filtered to Favorites",state.libraryView==="tried"&&state.libraryReactionFilter==="favorites",`${state.libraryView}/${state.libraryReactionFilter}`);
   check("the address no longer reads /favorites",location.pathname.replace(/\/$/,"")!=="/favorites",location.pathname);
   check("no first-run '0 of 4' screen",!/0 of 4/.test(document.body.textContent));
+
+  // After setup, clicking a search result is a lookup; the row's own star adds a Favorite in one click.
+  await act("#open-search");
+  await type("#search-input","test");
+  check("after setup, results open the reaction sheet instead of adding",Boolean($('[data-search-pick="igdb-game-603"]'))&&!$("[data-search-favorite]"));
+  check("after setup, each result has a Favorite star",Boolean($('[data-search-row-favorite="igdb-game-603"]')));
+  check("the star starts unpressed and nothing was recorded by searching",$('[data-search-row-favorite="igdb-game-603"]')?.getAttribute("aria-pressed")==="false"&&!state.feedbackByRecommendation["igdb-game-603"]);
+  await act('[data-search-row-favorite="igdb-game-603"]');
+  check("row star adds a Favorite in one click",state.libraryFavorites.has("igdb-game-603"));
+  check("row star marks it Tried · Loved",state.feedbackByRecommendation["igdb-game-603"]?.detail==="loved-before");
+  check("row star shows pressed and keeps focus",$('[data-search-row-favorite="igdb-game-603"]')?.getAttribute("aria-pressed")==="true"&&document.activeElement===$('[data-search-row-favorite="igdb-game-603"]'));
+  await act('[data-search-pick="tmdb-movie-601"]');
+  check("clicking a result row opens its sheet without recording anything",Boolean($("#search-sheet-title"))&&!state.feedbackByRecommendation["tmdb-movie-601"]);
+  $("#search-dialog")?.close();
+  await sleep(120);
 
   // Look picker reflects the two replacement concepts and retained skins.
   document.querySelector("[data-open-look]")?.click();
