@@ -10,6 +10,7 @@
 //   TASTEMAKE_LIVE_OPEN_LIBRARY=1 node scripts/qa/candidate-quality-tests.mjs
 
 import { bookGenreFamilies, igdbGenreOverlap, igdbGenreWhereClause, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
+import { plainTitle, wikidataSeriesPositions } from "../../src/catalog/wikidata-series.mjs";
 import { createSuite } from "./lib/assert.mjs";
 
 const { check, eq, finish } = createSuite("candidate quality tests");
@@ -467,6 +468,63 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   check("later entries found by the first lookups are dropped", !titles.some((t) => sequelTitles.includes(t)), titles.join(", "));
   check("a later entry that reached the top unchecked is caught by the final check", !titles.includes("Lord of Chaos") && lookedUp.includes("OL-LORDW"), `${titles.join(", ")} | looked up: ${lookedUp.length}`);
   check("fresh books fill the set", titles.filter((t) => freshTitles.includes(t)).length >= 5, titles.join(", "));
+}
+
+// ---- Wikidata series order, for books Open Library has no position for ------------------------------
+// Real case (Oct 20): King of the Murgos (The Malloreon #2) was offered; Open Library has no position for it
+// in any edition, and Wikidata has it only by title (no Open Library id link). Krew elfów is the opposite:
+// Open Library says #1, Wikidata says 3 (it counts the story collections), and Open Library must win.
+{
+  const doc = (id, title, author) => ({ key: `/works/${id}`, title, author_name: [author], subject: ["Fantasy fiction", "Magic"] });
+  const murgos = doc("OL-MURGOSW", "King of the Murgos (Malloreon)", "David Eddings");
+  const impostor = doc("OL-OTHERW", "The Hero of Ages", "Someone Else");
+  const krew = doc("OL-KREWW", "Krew elfów", "Andrzej Sapkowski");
+  const byId = doc("OL-IDW", "Shadow Linked", "Linked Author");
+  const freshTitles = ["Kestrel", "Lanternfall", "Moonwright", "Nettlebrook", "Owlsong", "Pinecrown"];
+  const fresh = freshTitles.map((title, n) => doc(`OL-NEW${n}W`, title, `Writer ${n}`));
+  const binding = (fields) => Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, { value: String(v) }]));
+  const run = async ({ wikidataDown = false } = {}) => {
+    const wikidataQueries = [];
+    const fetchImpl = async (url) => {
+      const u = decodeURIComponent(String(url));
+      if (u.startsWith("https://query.wikidata.org/")) {
+        wikidataQueries.push(u);
+        if (wikidataDown) throw new Error("timeout");
+        const rows = u.includes("P648")
+          ? (u.includes('"OL-IDW"') ? [binding({ olid: "OL-IDW", ordinal: 4 })] : []).concat(u.includes('"OL-KREWW"') ? [binding({ olid: "OL-KREWW", ordinal: 3 })] : [])
+          : [binding({ title: "King of the Murgos", authorLabel: "David Eddings", ordinal: 2 }), binding({ title: "The Hero of Ages", authorLabel: "Brandon Sanderson", ordinal: 3 })];
+        return { ok: true, json: async () => ({ results: { bindings: rows } }) };
+      }
+      const work = /works\/(OL-[A-Z0-9]+W)\/editions/.exec(u)?.[1];
+      if (work) {
+        const series = work === "OL-KREWW" ? ["Wiedźmin, 1", "Wiedźmin, 1"] : [];
+        return { ok: true, json: async () => ({ entries: series.map((name) => ({ series: [name] })) }) };
+      }
+      return { ok: true, json: async () => ({ docs: [murgos, impostor, krew, byId, ...fresh] }) };
+    };
+    const related = await retrieveCatalogCandidates(bookState(["Fantasy fiction", "Magic"]), { env, fetchImpl });
+    return { titles: related.map((item) => item.title), wikidataQueries };
+  };
+
+  const { titles, wikidataQueries } = await run();
+  check("a later entry found only by title + author on Wikidata is dropped", !titles.includes("King of the Murgos (Malloreon)"), titles.join(", "));
+  check("a later entry found by Open Library id on Wikidata is dropped", !titles.includes("Shadow Linked"), titles.join(", "));
+  check("a title match with a different author is ignored", titles.includes("The Hero of Ages"), titles.join(", "));
+  check("Open Library's position wins: Krew elfów (#1 there) is kept", titles.includes("Krew elfów"), titles.join(", "));
+  check("Wikidata is never asked about a book Open Library already placed", !wikidataQueries.some((q) => q.includes('"OL-KREWW"')), wikidataQueries.length);
+  check("at most two Wikidata requests per round", wikidataQueries.length > 0 && wikidataQueries.length <= 2, wikidataQueries.length);
+
+  const down = await run({ wikidataDown: true });
+  check("Wikidata down: nothing extra is dropped (fail open)", down.titles.includes("King of the Murgos (Malloreon)") && down.titles.includes("Shadow Linked"), down.titles.join(", "));
+
+  let called = false;
+  const none = await wikidataSeriesPositions([{ id: "tmdb-movie-1", provider: "tmdb", providerId: "1", title: "Dune: Part Two" }], { fetchImpl: async () => { called = true; } });
+  check("non-books never reach Wikidata", !called && none.size === 0);
+  const bad = await wikidataSeriesPositions([{ id: "b", provider: "openlibrary", providerId: "OL-BW", title: "Novella", by: "A B" }], {
+    fetchImpl: async () => ({ ok: true, json: async () => ({ results: { bindings: [binding({ olid: "OL-BW", ordinal: "0.5" })] } }) })
+  });
+  eq("a non-integer ordinal (a 0.5 novella) is not a position", bad.get("b"), null);
+  eq("titles are matched without the series suffix or subtitle", plainTitle("King of the Murgos (Malloreon): Book Two of the Malloreon"), "King of the Murgos");
 }
 
 finish();
