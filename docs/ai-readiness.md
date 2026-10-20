@@ -106,6 +106,8 @@ Taste data would go to a third party. Before any live call, write down: exactly 
 
 **Site analytics (#100).** Production loads Vercel Web Analytics and Speed Insights with Vercel's plain-HTML script tags (`src/lib/vercel-insights.js`; no npm package, and nothing loads on localhost). Web Analytics is cookieless and aggregated: page views, referrer, country, browser/OS and device type, with no cookies and no visitor identifier kept across days. Speed Insights reports page-performance metrics (Core Web Vitals) per route. Neither receives favorites, reactions, taste evidence, search text or anything else the user typed, and neither data set leaves Vercel. Both have to be switched on per project in the Vercel dashboard; while they're off, the two script URLs return 404 and nothing is collected. On production both URLs returned 200 on Oct 12, 2026, so both are on.
 
+**Reason counts (#250).** Two more custom events, sent by `src/lib/reason-events.js`, measure whether people use the optional reasons on a tried reaction. "Reasons opened" carries only the screen (recommendations / library). "Reason changed" carries the screen, whether a reason was added, removed or changed, how many reasons the reaction now has, how many are specific (a direction or a content chip), and how many chosen dimensions offer directions where none was picked. Never titles, ids, the reaction itself, or which reasons were chosen.
+
 ## Suggested order
 
 1. Decide pattern corrections (section 3) and record it in `evidence-contract.md`.

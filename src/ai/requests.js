@@ -20,8 +20,10 @@ export function evidenceFingerprint(state) {
     .map(([id, feedback]) => `${id}:${feedback.rating}:${feedback.detail ?? ""}:${[...(feedback.refinements ?? [])].sort().join(",")}`)
     .sort()
     .join("|");
+  // #250: context and excludedDomains reach the prompt too (buildContext sends whole statements), so
+  // narrowing a pattern while a request is in flight must make its answer stale.
   const statements = (state.patternStatements ?? [])
-    .map((s) => `${s.hypothesisId}:${s.says ?? ""}:${s.weight ?? ""}`)
+    .map((s) => `${s.hypothesisId}:${s.says ?? ""}:${s.weight ?? ""}:${s.context ?? ""}:${[...(s.excludedDomains ?? [])].sort().join(",")}`)
     .sort()
     .join("|");
   const areas = Object.entries(state.areas ?? {}).sort().map(([id, on]) => `${id}:${on}`).join("|");

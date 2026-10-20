@@ -116,7 +116,21 @@ function statementConsequence(item, said) {
   return `<div class="signal-consequence"><strong>What this changes</strong><span>${esc(text)}</span></div>`;
 }
 
-function hypothesisCard(item, index) {
+// #250: the reasons the user gave on items this pattern cites, in their own words and per item. These
+// describe one experience each; the line never restates them as a conclusion about the user.
+const lowerFirst = (text) => String(text ?? "").charAt(0).toLowerCase() + String(text ?? "").slice(1);
+
+function saidReasonsLine(item, records) {
+  const refs = [...new Set([...(item.supports ?? []), ...(item.counters ?? [])])];
+  const rows = refs
+    .map((ref) => records.get(ref))
+    .filter((record) => record?.refinements?.length)
+    .map((record) => `<span class="signal-said-reason"><em>${esc(record.title)}</em>: ${esc(record.refinements.map((r) => lowerFirst(r.label)).join(", "))}</span>`);
+  if (!rows.length) return "";
+  return `<div class="signal-evidence signal-said-reasons"><span>You said</span> ${rows.join(" · ")}</div>`;
+}
+
+function hypothesisCard(item, index, records = new Map()) {
   const update = { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." };
   const said = statementFor(state, item.id);
   const record = { scope: { supported: item.domains ?? [], excluded: said?.excludedDomains ?? [] } };
@@ -140,6 +154,7 @@ function hypothesisCard(item, index) {
         </div>
         <p class="signal-claim">${esc(item.claim)}</p>
         <div class="signal-evidence"><span>What this comes from</span> ${esc(item.evidence)}</div>
+        ${saidReasonsLine(item, records)}
         <div class="signal-provenance">${esc(update.provenance)}</div>
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.says === "partial" ? `<div class="signal-said"><strong>${FIT.partial}.</strong> Tastemake treats it as a narrower pattern and uses the details you add below.</div>` : ""}
@@ -279,6 +294,7 @@ export function renderProfile() {
   const visibleFavoriteTitles = favoriteTitles.slice(0, 12);
   const hiddenFavoriteTitles = favoriteTitles.slice(12);
   const triedEvidence = evidenceRecords(state).filter((record) => record.class === "experienced");
+  const evidenceByRef = new Map(triedEvidence.map((record) => [record.ref, record]));
   const evidenceMix = {
     favorites: triedEvidence.filter((record) => ["starter-favorite", "experienced-favorite"].includes(record.kind)).length,
     loved: triedEvidence.filter((record) => record.kind === "experienced-strong-positive").length,
@@ -338,7 +354,7 @@ export function renderProfile() {
                 <p>${profileView === "full" ? "active patterns in your full profile" : "patterns currently shaping the overview"}</p>
                 <div class="profile-aside-note">working patterns, not one aesthetic &nearr;</div>
               </aside>
-              <div class="signal-stack">${shownHypotheses.length ? shownHypotheses.map(hypothesisCard).join("") : `<div class="profile-no-active-patterns">No active patterns right now. Tastemake will keep learning from what you try.</div>`}</div>
+              <div class="signal-stack">${shownHypotheses.length ? shownHypotheses.map((item, index) => hypothesisCard(item, index, evidenceByRef)).join("") : `<div class="profile-no-active-patterns">No active patterns right now. Tastemake will keep learning from what you try.</div>`}</div>
             </div>
             <details class="profile-legend profile-legend-inline">
               <summary>What do the confidence labels mean?</summary>

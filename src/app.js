@@ -9,6 +9,8 @@
 // which needs no module resolution. #100 does exactly that, in src/lib/vercel-insights.js (its own
 // module in index.html, so it can never stop this one from running).
 import { state } from "./state.js";
+import { normalizedRefinements } from "./model/refinements.js";
+import { trackReasonChanged, trackReasonsOpened } from "./lib/reason-events.js";
 import { screenFromPath, writeRoute } from "./router.js";
 import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
 import { libraryItemById, migrateStarterFavorites } from "./model/library.js";
@@ -747,7 +749,9 @@ app.addEventListener("click", async (event) => {
   const refinement = event.target.closest("[data-feedback-refinement][data-feedback-item]");
   if (refinement) {
     const itemId = refinement.dataset.feedbackItem;
+    const before = normalizedRefinements(state.feedbackByRecommendation[itemId]);
     if (saveFeedbackRefinement(itemId, refinement.dataset.feedbackRefinement)) {
+      trackReasonChanged(reasonSurface(refinement), before, state.feedbackByRecommendation[itemId]);
       renderPreservingCardPosition(itemId, focusSelector);
       announce("Taste detail updated.");
     }
@@ -1001,6 +1005,17 @@ window.addEventListener("popstate", () => {
 // placeholder slot so a slow/failed fetch cannot blank out the rest of an already-open card.
 // fetchCatalogItemDetail caches per item, so re-opening a card after a re-render refills it without
 // another request. libraryItemById finds reacted-to items too, not only added/search ones.
+// #250: anonymous count of people opening the optional reasons section (never what they pick).
+const reasonSurface = (el) => (el.closest("[data-rec-id]") ? "recommendations" : state.screen === "library" ? "library" : "other");
+app.addEventListener("toggle", (event) => {
+  const details = event.target;
+  if (!details?.matches?.(".experience-refinement[open]")) return;
+  // Re-renders recreate an already-open section with `open` set; only count a fresh, user-initiated open.
+  if (details.dataset.refinementCounted) return;
+  details.dataset.refinementCounted = "1";
+  if (!normalizedRefinements(state.feedbackByRecommendation[details.dataset.refinementItem]).length) trackReasonsOpened(reasonSurface(details));
+}, true);
+
 app.addEventListener("toggle", async (event) => {
   const card = event.target.closest?.(".library-card-compact[open]");
   if (!card || event.target !== card) return;
