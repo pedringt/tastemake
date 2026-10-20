@@ -26,7 +26,7 @@
 //   - one title extending the other ("Dune" -> "Dune Messiah", "Children of Dune").
 // Both require a shared author, so two standalone novels by one author stay eligible.
 
-import { bookSeriesIds, bookSeriesNames, booksShareSeriesName, isBook, sameBookAuthor } from "./book-series.mjs";
+import { bookSeriesIds, bookSeriesNames, booksShareSeriesName, isBook, isLaterSeriesEntry, sameBookAuthor } from "./book-series.mjs";
 
 const STOPWORDS = new Set(["the", "a", "an", "of", "in", "and", "at", "to", "part", "book", "vol", "volume", "chapter", "season", "episode"]);
 const SEQUEL_MARKER = /(^|\s)(part|chapter|book|volume|vol|season|episode)\s*\d+(\s|$)|\b(ii|iii|iv|v|vi|vii|viii|ix|x)\b|\b\d+\b/i;
@@ -197,9 +197,13 @@ export function applyNoveltyGuard(candidates, evidenceItems = []) {
     // consume another slot in the same set. This is separate from evidence-based suppression.
     const duplicatesPrimary = primary.some((picked) => isBatchContinuation(candidate, picked));
 
+    // #255: a later book in a series (position known and above 1) is not a fresh recommendation: if the
+    // user has started the series the sibling rules above already apply, and if they have not, the
+    // first book is the better pick. Unknown positions are left alone.
     const continuation = coveredSeries
       || against.some((item) => isFranchiseContinuation(candidate, item))
-      || duplicatesPrimary;
+      || duplicatesPrimary
+      || isLaterSeriesEntry(candidate);
     (continuation ? suppressed : primary).push(candidate);
   }
   return { primary, suppressed };

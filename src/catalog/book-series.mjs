@@ -55,6 +55,31 @@ export function seriesNameFromTitle(title) {
 
 const uniqStrings = (values) => [...new Set(values.filter(Boolean).map(String))];
 
+// #255: where a book sits in its series. Open Library's search returns `series_position` for curated
+// series ("2" for The Wise Man's Fear); a title suffix like "(Mistborn, Book 2)" says it too. Edition
+// `series` values ("The Mistborn Saga #3", "Mistborn -- bk. 3") are read by seriesPositionFromEditions.
+// Only a plain positive number counts; "0.5" novellas and ranges are left unknown.
+const POSITION_IN_VALUE = /(?:#|\b(?:book|bk|vol|volume|no|part|pt|day)\.?)\s*(\d{1,2})\b|[,:]\s*(\d{1,2})\s*$/i;
+const WORD_POSITIONS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+
+function positionNumber(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 1 && n <= 50 ? n : null;
+}
+
+export function seriesPositionFromValue(raw) {
+  const text = String(raw ?? "").trim();
+  const match = text.match(POSITION_IN_VALUE);
+  if (match) return positionNumber(match[1] ?? match[2]);
+  const word = text.match(/\b(?:book|bk|vol|volume|part)\.?\s*(one|two|three|four|five|six|seven|eight|nine|ten)\b/i);
+  return word ? WORD_POSITIONS[word[1].toLowerCase()] : null;
+}
+
+function seriesPositionFromTitle(title) {
+  const match = String(title ?? "").match(TITLE_SERIES_SUFFIX);
+  return match ? seriesPositionFromValue(match[1]) : null;
+}
+
 // Series facts from one Open Library search row (search.json with series_key/series_name/subject).
 export function bookSeriesFromRow(row = {}) {
   const ids = uniqStrings([].concat(row.series_key ?? [])).slice(0, 4);
@@ -66,7 +91,29 @@ export function bookSeriesFromRow(row = {}) {
     }),
     seriesNameFromTitle(row.title)
   ]).slice(0, 6);
-  return { seriesKey: ids[0] ?? null, seriesKeys: ids, seriesNames: names };
+  const seriesPosition = positionNumber([].concat(row.series_position ?? [])[0]) ?? seriesPositionFromTitle(row.title);
+  return { seriesKey: ids[0] ?? null, seriesKeys: ids, seriesNames: names, seriesPosition };
+}
+
+// A position from a work's edition list: at least two editions must agree on the same number, and it
+// must be the only number with that much support. "The Mistborn Saga #3" + "Mistborn -- bk. 3" -> 3;
+// "The Witcher, part 3" + "The Witcher 1" (one vote each) -> unknown.
+// A number only counts next to a series name the editions themselves agree on, so a numbered
+// publisher line ("Nova ciencia ficción 12") can never make a book look like a sequel.
+export function seriesPositionFromEditions(entries = []) {
+  const names = new Set(seriesNamesFromEditions(entries));
+  if (!names.size) return null;
+  const votes = new Map();
+  for (const entry of entries) {
+    const positions = new Set((entry?.series ?? [])
+      .filter((value) => names.has(normalizeSeriesName(value)))
+      .map(seriesPositionFromValue)
+      .filter(Boolean));
+    for (const position of positions) votes.set(position, (votes.get(position) ?? 0) + 1);
+  }
+  const ranked = [...votes.entries()].sort((a, b) => b[1] - a[1]);
+  if (!ranked.length || ranked[0][1] < 2 || ranked[1]?.[1] === ranked[0][1]) return null;
+  return ranked[0][0];
 }
 
 // Names from a work's edition list. A name must appear on at least two editions and must not look
@@ -92,6 +139,17 @@ export const isBook = (item) => item?.type === "book" || item?.provider === "ope
 export function bookSeriesIds(item) {
   const meta = item?.providerMeta ?? {};
   return uniqStrings([...[].concat(meta.seriesKey ?? []), ...[].concat(meta.seriesKeys ?? [])]);
+}
+
+export function bookSeriesPosition(item) {
+  return positionNumber(item?.providerMeta?.seriesPosition) ?? seriesPositionFromTitle(item?.title);
+}
+
+// #255: a book that is not the first in its series. For a series the user has not started, the first
+// book is the better recommendation; for one they have started, the novelty guard already suppresses
+// sibling installments. Unknown position means "not a later entry" (fail open).
+export function isLaterSeriesEntry(item) {
+  return isBook(item) && (bookSeriesPosition(item) ?? 1) > 1;
 }
 
 export function bookSeriesNames(item) {

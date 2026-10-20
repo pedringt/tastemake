@@ -144,6 +144,22 @@ export async function run() {
   check("completed Favorite card shows Change instead of Tried/Not tried buttons",Boolean(`[data-feedback-edit="${favoriteShortcutId}"]`)&&Boolean($(`[data-feedback-edit="${favoriteShortcutId}"]`))&&!$(`[data-feedback-item="${favoriteShortcutId}"][data-experience-path]`));
   await sleep(180);
   check("first experienced reaction primes a Taste Profile in the background",state.modelHypotheses.length>0,state.modelHypotheses.length);
+
+  // #248: touch swipe is a shortcut for the two untried outcomes only; the buttons stay the main path.
+  const swipe=async(id,dx)=>{
+    const card=$(`[data-rec-id="${id}"] h3`)||$(`[data-rec-id="${id}"]`);
+    const r=card.getBoundingClientRect(); const x=r.left+r.width/2, y=r.top+r.height/2;
+    card.dispatchEvent(new PointerEvent("pointerdown",{bubbles:true,pointerId:7,pointerType:"touch",clientX:x,clientY:y}));
+    card.dispatchEvent(new PointerEvent("pointerup",{bubbles:true,pointerId:7,pointerType:"touch",clientX:x+dx,clientY:y+4}));
+    await sleep(150);
+  };
+  const [swipeRight,swipeLeft]=state.recommendationSets[0].map(x=>x.id).filter(id=>!state.feedbackByRecommendation[id]).slice(-2);
+  await swipe(swipeRight,120);
+  check("swipe right saves an untried pick (intent only)",state.feedbackByRecommendation[swipeRight]?.rating==="not-tried"&&state.feedbackByRecommendation[swipeRight]?.detail==="bookmarked",JSON.stringify(state.feedbackByRecommendation[swipeRight]));
+  await swipe(swipeLeft,-120);
+  check("swipe left marks an untried pick Not interested (intent only)",state.feedbackByRecommendation[swipeLeft]?.detail==="not-interested",JSON.stringify(state.feedbackByRecommendation[swipeLeft]));
+  await swipe(favoriteShortcutId,-120);
+  check("a swipe never overwrites a tried reaction",state.feedbackByRecommendation[favoriteShortcutId]?.detail==="loved-before",state.feedbackByRecommendation[favoriteShortcutId]?.detail);
   check("Recommendations surfaces the first insight",Boolean($(".first-insight-nudge")));
 
   // React to one as experienced so profile has more than starter-favorite evidence.

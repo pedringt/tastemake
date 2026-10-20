@@ -180,7 +180,7 @@ function routedFetch(aiPayload=modelSays(goodPicks()),opts={}){
       opts.onAnthropic?.(JSON.parse(init.body || "{}"));
       if(opts.abort){const e=new Error("aborted");e.name="AbortError";throw e;}
       if(opts.fail) throw new Error(opts.fail);
-      if(opts.status && opts.status!==200) return {ok:false,status:opts.status,json:async()=>({error:{type:"test_error",message:"test"}})};
+      if(opts.status && opts.status!==200) return {ok:false,status:opts.status,json:async()=>(opts.errorBody || {error:{type:"test_error",message:"test"}})};
       return {ok:true,status:200,json:async()=>aiPayload};
     }
     throw new Error(`unexpected URL ${u}`);
@@ -204,6 +204,13 @@ eq("catalog fallback has six real provider picks",out.picks.length,6);
 check("catalog fallback contains no legacy seed ids",out.picks.every(p=>p.id.startsWith("tmdb-movie-")),out.picks.map(p=>p.id).join(","));
 eq("catalog fallback makes no paid call",out.meta.paidCallMade,false);
 check("catalog fallback keeps implementation diagnostics out of card reasons",out.picks.every(p=>!/Live AI did not rank/.test(p.reason)));
+
+// Oct 20: the Anthropic account's spend limit gives the calm budget message, still with catalog picks.
+out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(undefined,{status:429,errorBody:{type:"error",error:{type:"rate_limit_error",message:"You have reached your API usage limits: your organization has crossed its monthly API usage threshold",details:{error_code:"enforced_spend_limit_reached"}}}})});
+eq("a spent AI budget still falls back to catalog picks",out.source,"catalog");
+check("a spent AI budget is explained calmly",out.meta.budgetPaused===true&&/^AI features are paused/.test(out.reason),out.reason);
+out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch(undefined,{status:429})});
+check("an ordinary rate limit is not reported as a spent budget",!out.meta.budgetPaused&&out.reason==="model unavailable",out.reason);
 
 // Valid live output.
 out=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:routedFetch()});

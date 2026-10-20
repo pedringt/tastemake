@@ -240,7 +240,10 @@ export const GENERIC_TEMPLATES = [
   { id: "if you liked/loved", re: /\bif you (?:liked|loved|enjoyed)\b/i },
   { id: "fans of", re: /\bfans? of\b/i },
   { id: "similar to what you", re: /\bsimilar to (?:what|things|stuff) you\b/i },
-  { id: "based on your (anything)", re: /\bbased on your\b/i }
+  { id: "based on your (anything)", re: /\bbased on your\b/i },
+  // Oct 20 (#28 comment): seen on a real books profile.
+  { id: "third person (a ... reader)", re: /\b(?:a|the) (?:[\w'’-]+ ){0,4}reader(?: who)?\b/i },
+  { id: "echoes / scope / sweeping", re: /\becho(?:es|ing)?\b|\bscope\b|\bsweeping\b/i }
 ];
 
 export function genericPhrasing(picks) {
@@ -317,6 +320,105 @@ export function recencyAndDislikes(picks) {
   };
 }
 
+// ---- 8. per-set repetition (Stage 0 of the #28 research report, Oct 20) ---------------------------
+// Everything above pools explanations across many calls. A visitor sees one SET (one call's 5-6 picks),
+// and a future runtime gate would act on one set, so these checks run per set and are then summarised.
+// Prompt bans did not move these (Oct 20 paid eval: "echo" 10 of 49 before and after), so the point here
+// is to measure them per set, with enough explanations to tell a real change from noise.
+
+// Stock-word FAMILIES, so a swapped synonym still counts ("echo" -> "mirror" is the same habit). Matched
+// on title-masked text. Kept small on purpose (#28 report: large ban/flag lists stop meaning anything).
+export const STOCK_FAMILIES = [
+  { id: "callback verb", re: /\b(?:echo(?:es|ed|ing)?|mirror(?:s|ed|ing)?|recall(?:s|ed|ing)?|resonat(?:e|es|ed|ing)|evok(?:e|es|ed|ing)|evocative|reminiscent)\b/i },
+  { id: "scale word", re: /\b(?:sweeping|scope|sprawling)\b/i }
+];
+
+// "...you loved in <title>": the frame that replaced "you enjoyed in" once that was banned (1 -> 7 of 49).
+export const FRAME = /\byou(?:'ve)? (?:loved|enjoyed|liked|praised|responded to|connected with|rewarded|appreciated|admired) in <title>/i;
+
+// Thresholds for "a visitor would notice this set". Calibrated Oct 20 from reference-sets.json: 11 sets
+// Paige would show as-is, one above their 95th percentile (scripts/evals/stress/calibrate.mjs). Her kept
+// sets used a stock family in up to 2 explanations, so 2 alone is not a problem; they never repeated an
+// opening. A set "would trigger" when any one is reached.
+export const SET_GATE = {
+  stockFamilyWhys: 3,   // the same stock family in 3+ explanations of one set
+  frameWhys: 3,         // the "you loved in <title>" frame in 3+ explanations
+  openingWhys: 2,       // 2+ explanations starting with the same two words
+  sharedPhraseWhys: 3   // 3+ explanations sharing one 3-word phrase (with a content word)
+};
+
+// Vague hedges: what most separated the sets Paige dropped from the ones she kept (Oct 20: 38% of dropped
+// explanations vs 20% of kept). Reported, not part of the gate: a hedge is a specificity problem, and the
+// fix is in what the prompt asks for, not a runtime repair.
+export const HEDGE = /\b(?:could appeal|may appeal|might appeal|could suit|may suit|might suit|could fit|may fit|if you (?:like|enjoy)|your favou?rites?|your love of|you may enjoy|may click)\b/i;
+
+// The smallest sample at which a 20% -> 10% change in an explanation-level rate is detectable (two-sided
+// alpha 0.05, power 0.8: about 190 per variant, rounded up). Below it, report numbers as indicative only.
+export const MIN_EXPLANATIONS_PER_VARIANT = 200;
+
+const maskedText = (p) => maskedTokens(p).join(" ");
+
+// One set's checks. `picks` are the kept picks of a single call.
+export function setRepetition(picks) {
+  const texts = picks.map(maskedText);
+  const stock = Object.fromEntries(STOCK_FAMILIES.map((f) => [f.id, texts.filter((t) => f.re.test(t)).length]));
+  const frame = texts.filter((t) => FRAME.test(t)).length;
+
+  const openings = picks.map((p) => maskedTokens(p).slice(0, 2).join(" ")).filter((o) => o.split(" ").length === 2);
+  const openingCounts = openings.reduce((m, o) => m.set(o, (m.get(o) ?? 0) + 1), new Map());
+  const opening = Math.max(0, ...openingCounts.values());
+
+  const phraseOwners = new Map();
+  picks.forEach((p, index) => {
+    for (const g of new Set(ngrams(maskedTokens(p), 3).filter((g) => g.split(" ").some(isContent)))) {
+      if (!phraseOwners.has(g)) phraseOwners.set(g, new Set());
+      phraseOwners.get(g).add(index);
+    }
+  });
+  let sharedPhrase = 0;
+  let sharedPhraseText = null;
+  for (const [g, owners] of phraseOwners) if (owners.size > sharedPhrase) { sharedPhrase = owners.size; sharedPhraseText = g; }
+  if (sharedPhrase < 2) { sharedPhrase = 0; sharedPhraseText = null; }
+
+  const triggers = [];
+  for (const [family, count] of Object.entries(stock)) if (count >= SET_GATE.stockFamilyWhys) triggers.push(`${family} x${count}`);
+  if (frame >= SET_GATE.frameWhys) triggers.push(`"you ... in <title>" frame x${frame}`);
+  if (opening >= SET_GATE.openingWhys) triggers.push(`same opening x${opening}`);
+  if (sharedPhrase >= SET_GATE.sharedPhraseWhys) triggers.push(`"${sharedPhraseText}" x${sharedPhrase}`);
+  return { size: picks.length, stock, frame, opening, sharedPhrase, sharedPhraseText, triggers, wouldTrigger: triggers.length > 0 };
+}
+
+// Summary over sets. `picks` carry `callKey` (pickRecords adds it); one call = one set.
+export function perSetSummary(picks) {
+  const byCall = new Map();
+  for (const p of picks) {
+    const key = p.callKey ?? `${p.model}|${p.profile}|r${p.round}`;
+    if (!byCall.has(key)) byCall.set(key, []);
+    byCall.get(key).push(p);
+  }
+  const sets = [...byCall.values()].map(setRepetition);
+  const shareOf = (test) => round3(share(sets.filter(test).length, sets.length));
+  const triggerCounts = {};
+  for (const set of sets) for (const t of set.triggers) {
+    const kind = t.startsWith('"you') ? "frame" : t.startsWith("same opening") ? "opening" : t.startsWith('"') ? "shared phrase" : t.replace(/ x\d+$/, "");
+    triggerCounts[kind] = (triggerCounts[kind] ?? 0) + 1;
+  }
+  return {
+    sets: sets.length,
+    explanations: picks.length,
+    enoughSample: picks.length >= MIN_EXPLANATIONS_PER_VARIANT,
+    wouldTriggerRate: shareOf((s) => s.wouldTrigger),
+    stockFamilySetShare: shareOf((s) => Object.values(s.stock).some((c) => c >= SET_GATE.stockFamilyWhys)),
+    meanStockWhysPerSet: round3(sets.length ? sets.reduce((a, s) => a + Object.values(s.stock).reduce((x, y) => x + y, 0), 0) / sets.length : null),
+    frameSetShare: shareOf((s) => s.frame >= SET_GATE.frameWhys),
+    frameWhyShare: round3(share(sets.reduce((a, s) => a + s.frame, 0), picks.length)),
+    hedgeWhyShare: round3(share(picks.filter((p) => HEDGE.test(p.why ?? "")).length, picks.length)),
+    openingSetShare: shareOf((s) => s.opening >= SET_GATE.openingWhys),
+    sharedPhraseSetShare: shareOf((s) => s.sharedPhrase >= SET_GATE.sharedPhraseWhys),
+    triggerCounts
+  };
+}
+
 // ---- grouping -------------------------------------------------------------------------------------
 
 export function metricsFor(picks, { patternsByProfile = {} } = {}) {
@@ -333,7 +435,8 @@ export function metricsFor(picks, { patternsByProfile = {} } = {}) {
     generic: genericPhrasing(picks),
     genre: genreCollapse(picks),
     crossDomain: crossDomain(picks),
-    other: recencyAndDislikes(picks)
+    other: recencyAndDislikes(picks),
+    perSet: perSetSummary(picks)
   };
 }
 
@@ -371,7 +474,12 @@ export const DEFINITIONS = [
   ["genre collapse", "An explanation collapses when at least half its content words (titles excluded) are genre or medium words (GENRE_WORDS). Share collapsed, plus the mean genre-word ratio."],
   ["cross-domain", "A pick citing evidence from a domain the pick is not in. Unsupported = the profile lacks TRIED evidence (Loved/Liked/disliked, not starter favorites) in the pick's domain or the cited domain."],
   ["recent share", "Of cited reaction refs, the share among the most recent 20% of the profile's tried reactions (about 0.2 if recency plays no part)."],
-  ["cites a dislike", "Share of picks citing any disliked item (allowed only as contrast)."]
+  ["cites a dislike", "Share of picks citing any disliked item (allowed only as contrast)."],
+  ["per-set: would trigger", "Share of SETS (one call's kept picks, what one visitor sees) that reach any SET_GATE threshold: a stock-word family in 3+ explanations, the 'you … in <title>' frame in 3+, the same two-word opening in 2+, or one 3-word phrase (with a content word) in 3+. Calibrated Oct 20 against reference-sets.json."],
+  ["per-set: stock family", "Share of sets where one STOCK_FAMILIES family (callback verbs: echo/mirror/recall/resonate/evoke/reminiscent; scale words: sweeping/scope/sprawling) appears in 2+ explanations. Families, so a swapped synonym still counts. Mean = family hits per set."],
+  ["per-set: frame", "'you loved / enjoyed / responded to … in <title>' (title-masked): share of explanations using it, and share of sets where 3+ do."],
+  ["vague hedge", "Share of explanations with a hedge such as 'could appeal', 'may suit', 'if you like' or 'your favorites'. Reported, not gated: it separated the reference sets Paige dropped (38%) from those she kept (20%)."],
+  ["sample size", `Explanation-level rates need about ${MIN_EXPLANATIONS_PER_VARIANT} explanations per variant to detect a 20% -> 10% change; below that the report marks numbers as indicative.`]
 ];
 
 export const NEEDS_HUMAN_REVIEW = [

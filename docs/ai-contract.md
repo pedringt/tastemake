@@ -47,6 +47,9 @@ A model's answer is only ever a **proposal**. It is validated, stamped and then 
 | Circular reasoning ("matches your taste") | Rejected |
 | An unknown anchor, or a third pick in one set with the same anchor (#28 Stage 1) | Rejected; the rest of the set is kept |
 | More than one curveball, or a curveball when they are off | Rejected |
+| A curveball on explicitly adult-tagged content ("Smut", "Erotica") when nothing the user tried carries such a tag (#257) | Rejected; the no-AI fallback skips to the next candidate for that slot. Regular picks are unaffected |
+| A pattern uses a reason word ("flat", "too slow", "exposition") that no cited item carries, or pairs it with a different dimension than the user did (#256) | Rejected: user reasons belong to their own item and dimension |
+| A pattern states a general rule ("always", "even when", "regardless of") from fewer than three items (#256) | **Kept, but marked conditional**, and noted |
 | Model error, timeout, or too little survives | **Fall back** to the deterministic result and say so |
 
 Everything accepted is stamped `authority: "inferred"`, `source: "model"` and the contract version.

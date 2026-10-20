@@ -110,7 +110,9 @@ export function directionOptionsFor(item, dimension, polarity) {
   return DIRECTIONS[item?.type]?.[dimension]?.[polarity] ?? [];
 }
 
-const normalizeSubject = (value) => String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+// "genre:romance" is Open Library's own prefixed form of the same subject (#257); the prefix is dropped, and
+// the match is otherwise still exact.
+const normalizeSubject = (value) => String(value ?? "").trim().replace(/^genre\s*:\s*/i, "").replace(/\s+/g, " ").toLowerCase();
 
 // Content chips this item's own subjects clearly support, at most MAX_CONTENT_OPTIONS.
 export function contentOptionsFor(item, polarity) {

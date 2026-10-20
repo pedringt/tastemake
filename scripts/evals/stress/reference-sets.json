@@ -1,0 +1,1604 @@
+{
+  "note": "Reference sets for #28 calibration. keep: true = Paige would show the set as-is (marked Oct 20). Sampled at random, stratified by shape and size.",
+  "sets": [
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|broad-10|r15",
+      "cell": "broad-10",
+      "keep": true,
+      "picks": [
+        {
+          "title": "Tales of Tomorrow",
+          "why": "Its live anthology sci-fi format echoes the speculative, puzzle-box storytelling of Three-Body.",
+          "citedEvidence": [
+            {
+              "title": "Three-Body"
+            }
+          ]
+        },
+        {
+          "title": "The Invisible Life of Addie LaRue",
+          "why": "A long-lived protagonist and memory-driven plot connect to the time-spanning mystery of Doctor Who.",
+          "citedEvidence": [
+            {
+              "title": "Doctor Who"
+            }
+          ]
+        },
+        {
+          "title": "Duke Nukem 3D",
+          "why": "Its densely interactive, destructible environments pair with the sense of discovery you valued in The Witcher 3.",
+          "citedEvidence": [
+            {
+              "title": "The Witcher 3: Wild Hunt"
+            }
+          ]
+        },
+        {
+          "title": "Birdman or (The Unexpected Virtue of Ignorance)",
+          "why": "A character study about ambition and self-image shares the sharp, backstage tone of The Devil Wears Prada.",
+          "citedEvidence": [
+            {
+              "title": "The Devil Wears Prada"
+            }
+          ]
+        },
+        {
+          "title": "Haunting Adeline",
+          "why": "Its dark, unsettling psychological edge carries the menace found in Orphan: First Kill.",
+          "citedEvidence": [
+            {
+              "title": "Orphan: First Kill"
+            }
+          ]
+        },
+        {
+          "title": "Hawaii Five-0",
+          "why": "A procedural crime story with a team-driven investigation matches the case-by-case appeal of Case Closed.",
+          "citedEvidence": [
+            {
+              "title": "Case Closed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|broad-10|r19",
+      "cell": "broad-10",
+      "keep": true,
+      "picks": [
+        {
+          "title": "The Last Sunrise",
+          "why": "Its warm, romantic summer setting echoes the lighter emotional pull of Moana and Prada.",
+          "citedEvidence": [
+            {
+              "title": "The Devil Wears Prada"
+            },
+            {
+              "title": "Moana"
+            }
+          ]
+        },
+        {
+          "title": "Vampire Survivors",
+          "why": "A roguelite survival loop with snowballing power would suit your love of Hearthstone's strategic pacing.",
+          "citedEvidence": [
+            {
+              "title": "Hearthstone"
+            }
+          ]
+        },
+        {
+          "title": "Dogs in Space",
+          "why": "Its inventive sci-fi premise with a playful tone matches the imaginative energy of Doctor Who.",
+          "citedEvidence": [
+            {
+              "title": "Doctor Who"
+            }
+          ]
+        },
+        {
+          "title": "Nemesis",
+          "why": "A classic mystery with a sharp, puzzle-driven plot could appeal alongside Case Closed.",
+          "citedEvidence": [
+            {
+              "title": "Case Closed"
+            }
+          ]
+        },
+        {
+          "title": "We Were Never Meant To Be",
+          "why": "Contemporary literary fiction with emotional depth may resonate with The Last Sunrise's mood.",
+          "citedEvidence": [
+            {
+              "title": "The Devil Wears Prada"
+            }
+          ]
+        },
+        {
+          "title": "Real Time with Bill Maher",
+          "why": "A sharp, opinionated panel format could fit if you enjoy witty, talky conversation.",
+          "citedEvidence": [
+            {
+              "title": "Three-Body"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|broad-100|r29",
+      "cell": "broad-100",
+      "keep": false,
+      "picks": [
+        {
+          "title": "Kamen Rider",
+          "why": "Its heroic, ensemble-driven tokusatsu action echoes the energy of Chicago Fire's team dynamics.",
+          "citedEvidence": [
+            {
+              "title": "Chicago Fire"
+            }
+          ]
+        },
+        {
+          "title": "Tales from the Borderlands",
+          "why": "Borderlands-style humor and a branching story suit someone who loved Clair Obscur's narrative pull.",
+          "citedEvidence": [
+            {
+              "title": "Clair Obscur: Expedition 33"
+            }
+          ]
+        },
+        {
+          "title": "Deus Ex: Mankind Divided",
+          "why": "Its dense, morally tangled world building could appeal to a fan of Evelyn Hardcastle's setting.",
+          "citedEvidence": [
+            {
+              "title": "The Seven Deaths of Evelyn Hardcastle"
+            }
+          ]
+        },
+        {
+          "title": "The Devil Wears Prada",
+          "why": "Sharp workplace characters and biting humor could resonate with House of the Dragon's character focus.",
+          "citedEvidence": [
+            {
+              "title": "House of the Dragon"
+            }
+          ]
+        },
+        {
+          "title": "The Prom Queen",
+          "why": "A light, twisty mystery with a teen-horror edge may suit a Being John Malkovich style of oddness.",
+          "citedEvidence": [
+            {
+              "title": "A Gentleman in Moscow"
+            },
+            {
+              "title": "Being John Malkovich"
+            }
+          ]
+        },
+        {
+          "title": "Don't Leave the Kids Alone",
+          "why": "A slow-building domestic horror could offer a tense change of pace from cozy favorites.",
+          "citedEvidence": [
+            {
+              "title": "Being John Malkovich"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|broad-100|r11",
+      "cell": "broad-100",
+      "keep": false,
+      "picks": [
+        {
+          "title": "The Devil Wears Prada",
+          "why": "Sharp, witty office drama with a memorable larger-than-life antagonist, like your favorites.",
+          "citedEvidence": [
+            {
+              "title": "House of the Dragon"
+            },
+            {
+              "title": "Being John Malkovich"
+            }
+          ]
+        },
+        {
+          "title": "Tales from the Borderlands",
+          "why": "Story-driven adventure with Borderlands humor, suited to your love of characters and narrative.",
+          "citedEvidence": [
+            {
+              "title": "Clair Obscur: Expedition 33"
+            },
+            {
+              "title": "House of the Dragon"
+            }
+          ]
+        },
+        {
+          "title": "The Prom Queen",
+          "why": "Mystery with a cozy, twisty whodunit feel similar to your favorite mystery reads.",
+          "citedEvidence": [
+            {
+              "title": "The Seven Deaths of Evelyn Hardcastle"
+            }
+          ]
+        },
+        {
+          "title": "Deus Ex: Mankind Divided",
+          "why": "Immersive cyberpunk world with strong story and exploration, echoing Clair Obscur.",
+          "citedEvidence": [
+            {
+              "title": "Clair Obscur: Expedition 33"
+            }
+          ]
+        },
+        {
+          "title": "Kamen Rider",
+          "why": "Classic heroic adventure series with a playful, episodic tone you may enjoy.",
+          "citedEvidence": [
+            {
+              "title": "Chibi Maruko-chan"
+            },
+            {
+              "title": "Chicago Fire"
+            }
+          ]
+        },
+        {
+          "title": "Don't Leave the Kids Alone",
+          "why": "Tense, atmospheric horror that could appeal if you like eerie, suspenseful stories.",
+          "citedEvidence": [
+            {
+              "title": "Being John Malkovich"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|broad-50|r2",
+      "cell": "broad-50",
+      "keep": true,
+      "picks": [
+        {
+          "title": "The Princess Bride",
+          "why": "Its playful, cracked-fairy-tale humor suits someone who loves whimsical animated worlds.",
+          "citedEvidence": [
+            {
+              "title": "The Nightmare Before Christmas"
+            },
+            {
+              "title": "How to Train Your Dragon 2"
+            }
+          ]
+        },
+        {
+          "title": "Toy Story 5",
+          "why": "Its toy-centered, family-friendly adventure continues the warmth of Rugrats and PJ Masks.",
+          "citedEvidence": [
+            {
+              "title": "Rugrats"
+            },
+            {
+              "title": "PJ Masks"
+            }
+          ]
+        },
+        {
+          "title": "Persona 5 Royal",
+          "why": "Its sprawling turn-based role-playing and secret-society stories echo Beyond Good & Evil's roving investigation.",
+          "citedEvidence": [
+            {
+              "title": "Beyond Good & Evil"
+            },
+            {
+              "title": "Diablo"
+            }
+          ]
+        },
+        {
+          "title": "Grey's Anatomy",
+          "why": "Its ensemble of intertwined personal lives mirrors the character-driven drama of Desperate Housewives.",
+          "citedEvidence": [
+            {
+              "title": "Desperate Housewives"
+            }
+          ]
+        },
+        {
+          "title": "Joker: Folie à Deux",
+          "why": "Its dark, musical character study follows the emotional intensity of Insidious and Onslaught.",
+          "citedEvidence": [
+            {
+              "title": "Insidious: Chapter 2"
+            },
+            {
+              "title": "Onslaught"
+            }
+          ]
+        },
+        {
+          "title": "Sesame Street",
+          "why": "Its gentle mix of songs, games and cartoons fits the childhood-friendly charm of Argevollen.",
+          "citedEvidence": [
+            {
+              "title": "Argevollen"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|broad-50|r4",
+      "cell": "broad-50",
+      "keep": false,
+      "picks": [
+        {
+          "title": "Americanah",
+          "why": "Rich world-building and lyrical prose may suit your love of immersive, well-written settings.",
+          "citedEvidence": [
+            {
+              "title": "The City of Ember (The First Book of Ember)"
+            },
+            {
+              "title": "Lilith"
+            }
+          ]
+        },
+        {
+          "title": "Danganronpa: Trigger Happy Havoc",
+          "why": "Dark, twisty mysteries with a strong narrative hook may appeal given your favorites.",
+          "citedEvidence": [
+            {
+              "title": "Diablo"
+            },
+            {
+              "title": "Beyond Good & Evil"
+            }
+          ]
+        },
+        {
+          "title": "The Social Reckoning",
+          "why": "A gripping real-world story of uncovering hidden truths could hold your attention.",
+          "citedEvidence": [
+            {
+              "title": "Insidious: Chapter 2"
+            },
+            {
+              "title": "The Nightmare Before Christmas"
+            }
+          ]
+        },
+        {
+          "title": "Blue Bloods",
+          "why": "Layered family drama with procedural tension echoes what you enjoyed in Rugrats' character focus.",
+          "citedEvidence": [
+            {
+              "title": "Rugrats"
+            }
+          ]
+        },
+        {
+          "title": "Harry Potter and the Goblet of Fire",
+          "why": "Epic fantasy scale and a rich wizarding world match your Lord of the Rings loyalty.",
+          "citedEvidence": [
+            {
+              "title": "The Lord of the Rings: The Return of the King"
+            }
+          ]
+        },
+        {
+          "title": "The Big Four",
+          "why": "A classic puzzle-driven mystery with clever sleuthing for readers who enjoy intrigue.",
+          "citedEvidence": [
+            {
+              "title": "alias Grace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|dislikes-10|r24",
+      "cell": "dislikes-10",
+      "keep": true,
+      "picks": [
+        {
+          "title": "Insidious: Chapter 2",
+          "why": "Its slow-burning dread over a family's buried past echoes the psychological unease of Before I Go to Sleep.",
+          "citedEvidence": [
+            {
+              "title": "Before I Go to Sleep"
+            }
+          ]
+        },
+        {
+          "title": "The Last of Us Remastered",
+          "why": "Survival tension and emotionally weighted storytelling carry over from the game you already rate highly.",
+          "citedEvidence": [
+            {
+              "title": "The Last of Us Part II"
+            }
+          ]
+        },
+        {
+          "title": "Four Past Midnight",
+          "why": "Short, unsettling Stephen King stories built on nightmares and uncanny objects suit your appetite for eerie fiction.",
+          "citedEvidence": [
+            {
+              "title": "The Adventures of Sherlock Holmes [12 stories]"
+            }
+          ]
+        },
+        {
+          "title": "The Last Voyage of the Demeter",
+          "why": "Confined-ship setting and a relentless unseen predator deliver the claustrophobic horror that Outlast fans tend to value.",
+          "citedEvidence": [
+            {
+              "title": "Outlast"
+            }
+          ]
+        },
+        {
+          "title": "Kindaichi Case Files",
+          "why": "Clever amateur sleuthing with a likable lead recalls the puzzle-solving pleasure of the Holmes stories.",
+          "citedEvidence": [
+            {
+              "title": "The Seven Dials Mystery"
+            }
+          ]
+        },
+        {
+          "title": "Parasyte -the maxim-",
+          "why": "Body-horror invasion and moral unease sit alongside the creeping menace you responded to in Recuerdo de Amor.",
+          "citedEvidence": [
+            {
+              "title": "Recuerdo de Amor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|dislikes-10|r19",
+      "cell": "dislikes-10",
+      "keep": true,
+      "picks": [
+        {
+          "title": "Little Nightmares",
+          "why": "Its eerie, claustrophobic atmosphere echoes the dread of Outlast.",
+          "citedEvidence": [
+            {
+              "title": "Outlast"
+            }
+          ]
+        },
+        {
+          "title": "American Horror Story",
+          "why": "Its anthology structure of shifting horror stories suits your love of Cabinet-style storytelling.",
+          "citedEvidence": [
+            {
+              "title": "Recuerdo de Amor"
+            }
+          ]
+        },
+        {
+          "title": "The New Girl",
+          "why": "Ghost stories with a classic horror mood, which pairs with your Sherlock Holmes favorites.",
+          "citedEvidence": [
+            {
+              "title": "The Adventures of Sherlock Holmes [12 stories]"
+            }
+          ]
+        },
+        {
+          "title": "Parasite",
+          "why": "A tightly plotted thriller about outsiders drawn into a dangerous secret, like Seven Dials.",
+          "citedEvidence": [
+            {
+              "title": "The Seven Dials Mystery"
+            }
+          ]
+        },
+        {
+          "title": "Paradise",
+          "why": "A wealthy-community murder mystery with a slow-burn investigation, matching the Recuerdo tone.",
+          "citedEvidence": [
+            {
+              "title": "Recuerdo de Amor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|dislikes-100|r16",
+      "cell": "dislikes-100",
+      "keep": false,
+      "picks": [
+        {
+          "title": "Something Very Bad Is Going to Happen",
+          "why": "A slow-building dread at a wedding suits your appetite for creeping, unsettling tension.",
+          "citedEvidence": [
+            {
+              "title": "Before I Go to Sleep"
+            },
+            {
+              "title": "Yellowjackets"
+            }
+          ]
+        },
+        {
+          "title": "Infirmary",
+          "why": "Found-footage bodycam scares echo the eerie, uncertain horror of Talk to Me.",
+          "citedEvidence": [
+            {
+              "title": "Talk to Me"
+            },
+            {
+              "title": "Reporting Live"
+            }
+          ]
+        },
+        {
+          "title": "MINDHUNTER",
+          "why": "A chilling crime drama that digs into dark minds, much like Them and Shelter.",
+          "citedEvidence": [
+            {
+              "title": "Them"
+            },
+            {
+              "title": "Harlan Coben's Shelter"
+            }
+          ]
+        },
+        {
+          "title": "Silent Hill 4: The Room",
+          "why": "Fog-shrouded exploration and unseen dangers fit the atmosphere you enjoyed in Until Dawn.",
+          "citedEvidence": [
+            {
+              "title": "Until Dawn"
+            },
+            {
+              "title": "The Binding of Isaac"
+            }
+          ]
+        },
+        {
+          "title": "The talisman",
+          "why": "A classic adventure with a haunting, fantastical edge could appeal to your love of Carrie.",
+          "citedEvidence": [
+            {
+              "title": "Carrie"
+            }
+          ]
+        },
+        {
+          "title": "Air Force One",
+          "why": "A tense hostage thriller with a high-stakes, claustrophobic setting may click with you.",
+          "citedEvidence": [
+            {
+              "title": "Before I Go to Sleep"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|dislikes-100|r11",
+      "cell": "dislikes-100",
+      "keep": true,
+      "picks": [
+        {
+          "title": "Insidious: Out of the Further",
+          "why": "Its haunted-house dread and travel into an unseen realm echo the eerie suspense you responded to.",
+          "citedEvidence": [
+            {
+              "title": "Before I Go to Sleep"
+            },
+            {
+              "title": "Talk to Me"
+            }
+          ]
+        },
+        {
+          "title": "Tales of the Bizarre",
+          "why": "Its anthology format of eerie, supernatural tales suits the spooky storytelling in your favorite shows.",
+          "citedEvidence": [
+            {
+              "title": "Them"
+            },
+            {
+              "title": "Yellowjackets"
+            }
+          ]
+        },
+        {
+          "title": "Metro Exodus",
+          "why": "Survival horror set in a bleak, immersive world offers the tense exploration you enjoyed in Isaac.",
+          "citedEvidence": [
+            {
+              "title": "The Binding of Isaac"
+            },
+            {
+              "title": "Until Dawn"
+            }
+          ]
+        },
+        {
+          "title": "The Vampyre",
+          "why": "A classic gothic vampire tale with the same chilling atmosphere as your favorite horror novels.",
+          "citedEvidence": [
+            {
+              "title": "Carrie"
+            },
+            {
+              "title": "Sleeping Murder"
+            }
+          ]
+        },
+        {
+          "title": "The Conjuring: The Devil Made Me Do It",
+          "why": "Paranormal investigation with a haunting case at its center fits the supernatural mystery you like.",
+          "citedEvidence": [
+            {
+              "title": "Talk to Me"
+            },
+            {
+              "title": "Before I Go to Sleep"
+            }
+          ]
+        },
+        {
+          "title": "House of Cards",
+          "why": "A ruthless, scheming power struggle offers the tense, character-driven intrigue of your mystery favorites.",
+          "citedEvidence": [
+            {
+              "title": "The Man in the Brown Suit"
+            },
+            {
+              "title": "Harlan Coben's Shelter"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|dislikes-50|r0",
+      "cell": "dislikes-50",
+      "keep": false,
+      "picks": [
+        {
+          "title": "The Dark Pictures Anthology: Man of Medan",
+          "why": "Choice-driven horror exploration fits your love of Little Nightmares and Metro Exodus.",
+          "citedEvidence": [
+            {
+              "title": "Little Nightmares"
+            },
+            {
+              "title": "Metro Exodus"
+            }
+          ]
+        },
+        {
+          "title": "Mr. Mercedes",
+          "why": "Gripping serial-killer suspense echoes the tension of Misery and The Long Walk.",
+          "citedEvidence": [
+            {
+              "title": "Misery"
+            },
+            {
+              "title": "The Long Walk"
+            }
+          ]
+        },
+        {
+          "title": "JoJo's Bizarre Adventure",
+          "why": "Sprawling intergenerational drama with dark villainy suits your Supernatural enjoyment.",
+          "citedEvidence": [
+            {
+              "title": "Supernatural"
+            }
+          ]
+        },
+        {
+          "title": "One Last Shot",
+          "why": "A tense military thriller with a turncoat plot may appeal to your fondness for taut stakes.",
+          "citedEvidence": [
+            {
+              "title": "A Quiet Place: Day One"
+            }
+          ]
+        },
+        {
+          "title": "K. Street Pali Hill",
+          "why": "A long-running Indian thriller soap offers a different flavor of suspenseful serialized drama.",
+          "citedEvidence": [
+            {
+              "title": "The Diplomat"
+            }
+          ]
+        },
+        {
+          "title": "Pretty Lethal",
+          "why": "Trapped-in-an-inn survival horror could suit the claustrophobic dread you enjoyed in A Quiet Place: Day One.",
+          "citedEvidence": [
+            {
+              "title": "A Quiet Place: Day One"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|dislikes-50|r24",
+      "cell": "dislikes-50",
+      "keep": false,
+      "picks": [
+        {
+          "title": "The Dark Pictures Anthology: Man of Medan",
+          "why": "Story-driven horror where your choices shape outcomes, echoing your Quake and Little Nightmares picks.",
+          "citedEvidence": [
+            {
+              "title": "Quake"
+            },
+            {
+              "title": "Little Nightmares"
+            }
+          ]
+        },
+        {
+          "title": "Mr. Mercedes",
+          "why": "Tense crime thriller with a serial killer, close to the dread you enjoyed in Misery.",
+          "citedEvidence": [
+            {
+              "title": "Misery"
+            }
+          ]
+        },
+        {
+          "title": "JoJo's Bizarre Adventure",
+          "why": "Sprawling, stylized epic with a long-running feud, similar to the momentum of Supernatural.",
+          "citedEvidence": [
+            {
+              "title": "Supernatural"
+            }
+          ]
+        },
+        {
+          "title": "One Last Shot",
+          "why": "Fast military action with a conspiracy edge, if you like high-stakes tension.",
+          "citedEvidence": [
+            {
+              "title": "Shell"
+            }
+          ]
+        },
+        {
+          "title": "Pretty Lethal",
+          "why": "A trapped-group survival horror premise, akin to the escape tension of A Quiet Place: Day One.",
+          "citedEvidence": [
+            {
+              "title": "A Quiet Place: Day One"
+            }
+          ]
+        },
+        {
+          "title": "K. Street Pali Hill",
+          "why": "A dramatic Indian thriller soap, offering an unfamiliar take on suspense outside your usual picks.",
+          "citedEvidence": [
+            {
+              "title": "13 Reasons Why"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|narrow-10|r28",
+      "cell": "narrow-10",
+      "keep": false,
+      "picks": [
+        {
+          "title": "The Hunger Games",
+          "why": "Its sharp dystopian survival stakes echo the grit you enjoyed in Furiosa.",
+          "citedEvidence": [
+            {
+              "title": "Furiosa: A Mad Max Saga"
+            }
+          ]
+        },
+        {
+          "title": "War of the Worlds",
+          "why": "A grounded sci-fi thriller with a personal human core, like Bugonia's unsettling tone.",
+          "citedEvidence": [
+            {
+              "title": "Bugonia"
+            }
+          ]
+        },
+        {
+          "title": "Deus Ex: Human Revolution",
+          "why": "Its cyberpunk world and high-tech conspiracy suit your love of Avatar's bold worlds.",
+          "citedEvidence": [
+            {
+              "title": "Avatar: Fire and Ash"
+            }
+          ]
+        },
+        {
+          "title": "Alien³",
+          "why": "A bleak, action-heavy sequel with relentless tension, similar to Terminator 2's intensity.",
+          "citedEvidence": [
+            {
+              "title": "Terminator 2: Judgment Day"
+            }
+          ]
+        },
+        {
+          "title": "Castle Crashers",
+          "why": "Playful, high-energy action that could satisfy your Iron Man 2 fun-factor side.",
+          "citedEvidence": [
+            {
+              "title": "Iron Man 2"
+            }
+          ]
+        },
+        {
+          "title": "The Long Walk",
+          "why": "A tense, survival-driven story that may pair well with your Logan favorite.",
+          "citedEvidence": [
+            {
+              "title": "Logan"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|narrow-10|r1",
+      "cell": "narrow-10",
+      "keep": false,
+      "picks": [
+        {
+          "title": "Iron Man 3",
+          "why": "Fits your love of Marvel-style superhero rebuilding stories with big action.",
+          "citedEvidence": [
+            {
+              "title": "Iron Man 2"
+            },
+            {
+              "title": "Godzilla Minus Zero"
+            }
+          ]
+        },
+        {
+          "title": "District 9",
+          "why": "Sci-fi with a gritty, grounded tone similar to what you enjoyed in Bugonia.",
+          "citedEvidence": [
+            {
+              "title": "Bugonia"
+            }
+          ]
+        },
+        {
+          "title": "Overcooked! 2",
+          "why": "A chaotic, cooperative game that offers a fresh break from movies.",
+          "citedEvidence": [
+            {
+              "title": "Furiosa: A Mad Max Saga"
+            }
+          ]
+        },
+        {
+          "title": "Dragon Age: Inquisition",
+          "why": "A sweeping fantasy adventure with epic scale, echoing the grand spectacle of Avatar.",
+          "citedEvidence": [
+            {
+              "title": "Avatar: Fire and Ash"
+            }
+          ]
+        },
+        {
+          "title": "The Hunger Games: The Ballad of Songbirds & Snakes",
+          "why": "Dystopian world-building with a strong character arc, like Furiosa's journey.",
+          "citedEvidence": [
+            {
+              "title": "Furiosa: A Mad Max Saga"
+            }
+          ]
+        },
+        {
+          "title": "Atlas",
+          "why": "A sharp, action-driven sci-fi thriller with a skeptical, AI-wary heroine.",
+          "citedEvidence": [
+            {
+              "title": "Terminator 2: Judgment Day"
+            },
+            {
+              "title": "Logan"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|narrow-100|r23",
+      "cell": "narrow-100",
+      "keep": true,
+      "picks": [
+        {
+          "title": "Cloud Atlas",
+          "why": "Its interlocking stories across centuries echo the sprawling, consequence-driven structure you responded to.",
+          "citedEvidence": [
+            {
+              "title": "Star Trek: The Motion Picture"
+            },
+            {
+              "title": "Dune"
+            }
+          ]
+        },
+        {
+          "title": "Rebel Moon - Part One: A Child of Fire",
+          "why": "A small village pulled into a far-off interstellar conflict offers the sci-fi scale of Dune.",
+          "citedEvidence": [
+            {
+              "title": "Dune"
+            },
+            {
+              "title": "Transformers One"
+            }
+          ]
+        },
+        {
+          "title": "Venom: The Last Dance",
+          "why": "Its wry, action-forward take on a strained hero-and-creature partnership suits the tone of your favorite superhero films.",
+          "citedEvidence": [
+            {
+              "title": "The Amazing Spider-Man"
+            },
+            {
+              "title": "Black Panther: Wakanda Forever"
+            }
+          ]
+        },
+        {
+          "title": "Captain Future",
+          "why": "A lone space-adventure hero with a wry, retro-futurist charm mirrors the playful sci-fi of Galaxy Quest.",
+          "citedEvidence": [
+            {
+              "title": "Galaxy Quest"
+            }
+          ]
+        },
+        {
+          "title": "The Naked Sun",
+          "why": "Its cerebral mystery built around robots and human society shares the thinking-machine questions raised by A.I.",
+          "citedEvidence": [
+            {
+              "title": "A.I. Artificial Intelligence"
+            }
+          ]
+        },
+        {
+          "title": "Atlantis: The Lost Empire",
+          "why": "A lost-civilization quest with a curious linguist lead carries the adventurous spirit of Star Trek's exploration.",
+          "citedEvidence": [
+            {
+              "title": "Star Trek: The Motion Picture"
+            },
+            {
+              "title": "The Hunger Games: The Ballad of Songbirds & Snakes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|narrow-100|r4",
+      "cell": "narrow-100",
+      "keep": false,
+      "picks": [
+        {
+          "title": "Her",
+          "why": "Its quiet, human take on machine intimacy echoes your love of A.I. Artificial Intelligence.",
+          "citedEvidence": [
+            {
+              "title": "A.I. Artificial Intelligence"
+            }
+          ]
+        },
+        {
+          "title": "Men in Black",
+          "why": "Its sci-fi buddy comedy energy lines up with your enjoyment of Galaxy Quest.",
+          "citedEvidence": [
+            {
+              "title": "Galaxy Quest"
+            }
+          ]
+        },
+        {
+          "title": "Superman Returns",
+          "why": "Big-scale superhero spectacle with heavy stakes, like The Amazing Spider-Man.",
+          "citedEvidence": [
+            {
+              "title": "The Amazing Spider-Man"
+            }
+          ]
+        },
+        {
+          "title": "Horizon Forbidden West",
+          "why": "A sweeping, awe-filled far-future world with rugged machines to explore.",
+          "citedEvidence": [
+            {
+              "title": "Dune"
+            }
+          ]
+        },
+        {
+          "title": "Gone Home",
+          "why": "A slow, puzzle-driven mystery that rewards close attention to small details.",
+          "citedEvidence": [
+            {
+              "title": "Star Trek: The Motion Picture"
+            }
+          ]
+        },
+        {
+          "title": "The Day the Earth Blew Up: A Looney Tunes Movie",
+          "why": "A playful alien-invasion story with bold, high-energy action and humor.",
+          "citedEvidence": [
+            {
+              "title": "Independence Day"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|narrow-50|r29",
+      "cell": "narrow-50",
+      "keep": false,
+      "picks": [
+        {
+          "title": "Despicable Me",
+          "why": "Gru's scheming villain arc and found-family warmth echo your love of Lilo & Stitch's characters.",
+          "citedEvidence": [
+            {
+              "title": "Lilo & Stitch"
+            }
+          ]
+        },
+        {
+          "title": "The Maze Runner",
+          "why": "A amnesiac teen in a walled maze fits your appetite for Maze Runner: The Death Cure.",
+          "citedEvidence": [
+            {
+              "title": "Maze Runner: The Death Cure"
+            }
+          ]
+        },
+        {
+          "title": "The Invisible Man",
+          "why": "A classic science fiction novel with a sharp scientific premise, a good book pick outside film.",
+          "citedEvidence": [
+            {
+              "title": "Oblivion"
+            }
+          ]
+        },
+        {
+          "title": "Doctor Who",
+          "why": "Time-and-space adventure with memorable companions, a TV step beyond the film favorites.",
+          "citedEvidence": [
+            {
+              "title": "Dune: Part Two"
+            }
+          ]
+        },
+        {
+          "title": "Wallace & Gromit: Vengeance Most Fowl",
+          "why": "Clever inventions and a mischievous plot could suit your playful side seen in Men in Black II.",
+          "citedEvidence": [
+            {
+              "title": "Men in Black II"
+            }
+          ]
+        },
+        {
+          "title": "Rebel Moon - Part One: A Child of Fire",
+          "why": "A sci-fi rebellion with a reluctant outsider as hope could appeal, though it is a looser fit.",
+          "citedEvidence": [
+            {
+              "title": "Rogue One: A Star Wars Story"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|narrow-50|r13",
+      "cell": "narrow-50",
+      "keep": false,
+      "picks": [
+        {
+          "title": "The Empire Strikes Back",
+          "why": "Its epic space-opera scale and character-driven rebellion echo your Star Wars-adjacent favorites.",
+          "citedEvidence": [
+            {
+              "title": "Rogue One: A Star Wars Story"
+            },
+            {
+              "title": "Guardians of the Galaxy"
+            }
+          ]
+        },
+        {
+          "title": "Aliens",
+          "why": "Relentless sci-fi action with a resilient heroine suits your appetite for tense, character-led thrillers.",
+          "citedEvidence": [
+            {
+              "title": "28 Years Later: The Bone Temple"
+            },
+            {
+              "title": "Dune: Part Two"
+            }
+          ]
+        },
+        {
+          "title": "Pokémon Go",
+          "why": "A playful, exploratory world that rewards curiosity, much like the wonder in Lilo & Stitch.",
+          "citedEvidence": [
+            {
+              "title": "Lilo & Stitch"
+            }
+          ]
+        },
+        {
+          "title": "10 Cloverfield Lane",
+          "why": "A tense, claustrophobic mystery with a strong central character, similar to the dread in Oblivion.",
+          "citedEvidence": [
+            {
+              "title": "Oblivion"
+            }
+          ]
+        },
+        {
+          "title": "World of Goo",
+          "why": "Clever physics puzzles with quirky characters could appeal to your love of inventive, whimsical worlds.",
+          "citedEvidence": [
+            {
+              "title": "It's What's Inside"
+            }
+          ]
+        },
+        {
+          "title": "Star Wars",
+          "why": "The original space adventure with a lovable robot duo fits your favorite Star Wars and Iron Man energy.",
+          "citedEvidence": [
+            {
+              "title": "Rogue One: A Star Wars Story"
+            },
+            {
+              "title": "Iron Man 3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|split-10|r15",
+      "cell": "split-10",
+      "keep": false,
+      "picks": [
+        {
+          "title": "Final Fantasy X",
+          "why": "Its sweeping RPG storytelling may suit your appreciation for richly built worlds.",
+          "citedEvidence": [
+            {
+              "title": "God of War"
+            },
+            {
+              "title": "The Eyes of the Dragon"
+            }
+          ]
+        },
+        {
+          "title": "Iron Flame",
+          "why": "Epic fantasy with dragons could appeal given your love for detailed fantasy settings.",
+          "citedEvidence": [
+            {
+              "title": "The Eyes of the Dragon"
+            },
+            {
+              "title": "The Assassin’s Blade"
+            }
+          ]
+        },
+        {
+          "title": "Atashin'chi",
+          "why": "Its warm, character-driven family comedy echoes what you enjoyed in Psych.",
+          "citedEvidence": [
+            {
+              "title": "Psych"
+            }
+          ]
+        },
+        {
+          "title": "Pokémon Blue Version",
+          "why": "A classic adventure with exploration at its core, like BioShock's open-ended feel.",
+          "citedEvidence": [
+            {
+              "title": "BioShock"
+            }
+          ]
+        },
+        {
+          "title": "Buddy",
+          "why": "Its surreal, offbeat tone could appeal if you enjoy quirky, stylized characters.",
+          "citedEvidence": [
+            {
+              "title": "Resident Evil"
+            }
+          ]
+        },
+        {
+          "title": "Midnight",
+          "why": "A fantasy story with a younger tone, offering a lighter contrast to your epics.",
+          "citedEvidence": [
+            {
+              "title": "The Assassin’s Blade"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|split-10|r27",
+      "cell": "split-10",
+      "keep": true,
+      "picks": [
+        {
+          "title": "Final Fantasy X",
+          "why": "Its sweeping RPG adventure and vivid three-dimensional worlds could appeal to your love of exploring richly built settings.",
+          "citedEvidence": [
+            {
+              "title": "God of War"
+            },
+            {
+              "title": "BioShock"
+            }
+          ]
+        },
+        {
+          "title": "Iron Flame",
+          "why": "Epic dragon-riding fantasy with high stakes may suit the world-building you praised in The Eyes of the Dragon.",
+          "citedEvidence": [
+            {
+              "title": "The Eyes of the Dragon"
+            }
+          ]
+        },
+        {
+          "title": "Atashin'chi",
+          "why": "Its gently absurd family comedy shares the offbeat character humor that made Psych work.",
+          "citedEvidence": [
+            {
+              "title": "Psych"
+            }
+          ]
+        },
+        {
+          "title": "Buddy",
+          "why": "A surreal, demented TV-world premise with a memorable central character echoes Resident Evil's striking visual style.",
+          "citedEvidence": [
+            {
+              "title": "Resident Evil"
+            }
+          ]
+        },
+        {
+          "title": "Pokémon Blue Version",
+          "why": "Its open-ended journey through a region of creatures rewards the same curiosity that drew you to BioShock's exploration.",
+          "citedEvidence": [
+            {
+              "title": "BioShock"
+            },
+            {
+              "title": "God of War"
+            }
+          ]
+        },
+        {
+          "title": "Midnight",
+          "why": "A fantasy story with a young animal protagonist offers a lighter take on the genre you enjoy in The Assassin's Blade.",
+          "citedEvidence": [
+            {
+              "title": "The Assassin’s Blade"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-before-247:claude-haiku-5-5|split-100|r22",
+      "cell": "split-100",
+      "keep": false,
+      "picks": [
+        {
+          "title": "Godzilla Minus One",
+          "why": "Its survival-against-devastation tension may suit your love of gritty, character-driven horror and action.",
+          "citedEvidence": [
+            {
+              "title": "Alien: Romulus"
+            },
+            {
+              "title": "Onslaught"
+            }
+          ]
+        },
+        {
+          "title": "Saturday Night Live",
+          "why": "Sharp character-based comedy sketches could appeal to your enjoyment of The Office and Family Guy.",
+          "citedEvidence": [
+            {
+              "title": "The Office"
+            },
+            {
+              "title": "Family Guy"
+            }
+          ]
+        },
+        {
+          "title": "Horizon Zero Dawn",
+          "why": "A richly built world with a mystery to unravel fits your fondness for story-driven games.",
+          "citedEvidence": [
+            {
+              "title": "BioShock 2"
+            },
+            {
+              "title": "Diablo III: Reaper of Souls"
+            }
+          ]
+        },
+        {
+          "title": "The Cruel Prince",
+          "why": "Court intrigue and morally tangled characters echo the world-building you enjoyed in The Way of Shadows.",
+          "citedEvidence": [
+            {
+              "title": "The Way of Shadows"
+            }
+          ]
+        },
+        {
+          "title": "The Tonight Show Starring Jimmy Fallon",
+          "why": "A lighter talk-show format with humor might suit your comedy tastes, though it is less character-driven.",
+          "citedEvidence": [
+            {
+              "title": "The Middle"
+            }
+          ]
+        },
+        {
+          "title": "HIM",
+          "why": "A character-focused underdog story with a mentor dynamic may appeal if you like strong personalities.",
+          "citedEvidence": [
+            {
+              "title": "Saw III"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|split-100|r17",
+      "cell": "split-100",
+      "keep": true,
+      "picks": [
+        {
+          "title": "Persona 5",
+          "why": "Its layered mystery and cast of wronged allies echo the story-driven pull you found in BioShock 2.",
+          "citedEvidence": [
+            {
+              "title": "BioShock 2"
+            }
+          ]
+        },
+        {
+          "title": "Mass Effect 2",
+          "why": "Sprawling sci-fi scope and deep character bonds could satisfy the story appetite behind Diablo III.",
+          "citedEvidence": [
+            {
+              "title": "Diablo III: Reaper of Souls"
+            }
+          ]
+        },
+        {
+          "title": "Orphan: First Kill",
+          "why": "A tense, mask-slipping thriller with unsettling family dynamics, close to the creepy tone of Saw III.",
+          "citedEvidence": [
+            {
+              "title": "Saw III"
+            }
+          ]
+        },
+        {
+          "title": "House of Earth and Blood",
+          "why": "Lush, romance-tinged fantasy worldbuilding that may appeal to the prose-driven immersion of Best served cold.",
+          "citedEvidence": [
+            {
+              "title": "Best served cold"
+            }
+          ]
+        },
+        {
+          "title": "The Path of Daggers",
+          "why": "Epic quest structure with a sprawling cast, akin to the sweeping world of The Way of Shadows.",
+          "citedEvidence": [
+            {
+              "title": "The Way of Shadows"
+            }
+          ]
+        },
+        {
+          "title": "Take Charge of My Heart",
+          "why": "A light, character-driven romance with sharp banter, matching the warmth of The Middle.",
+          "citedEvidence": [
+            {
+              "title": "The Middle"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|split-50|r10",
+      "cell": "split-50",
+      "keep": true,
+      "picks": [
+        {
+          "title": "The Way of Kings",
+          "why": "Sprawling epic fantasy with richly built worlds, kings, and wars, like your favorite fantasy reads.",
+          "citedEvidence": [
+            {
+              "title": "The Blade Itself"
+            },
+            {
+              "title": "New Spring (The Wheel of Time, Book 0)"
+            }
+          ]
+        },
+        {
+          "title": "Borderlands",
+          "why": "Its gritty sci-fi world and character-driven shooting echo the immersive worlds you loved in BioShock.",
+          "citedEvidence": [
+            {
+              "title": "BioShock"
+            },
+            {
+              "title": "System Shock 2"
+            }
+          ]
+        },
+        {
+          "title": "Evil Dead Rise",
+          "why": "Creepy family horror with a relentless tone, close to the scares of Terrifier 3.",
+          "citedEvidence": [
+            {
+              "title": "Terrifier 3"
+            }
+          ]
+        },
+        {
+          "title": "Fallout: A Post Nuclear Role Playing Game",
+          "why": "A post-apocalyptic wasteland explored through a quest, offering the open-world exploration you enjoyed in Mass Effect 2.",
+          "citedEvidence": [
+            {
+              "title": "Mass Effect 2"
+            }
+          ]
+        },
+        {
+          "title": "Bob's Burgers",
+          "why": "Quirky family characters and dry humor, much like the ensemble comedy of Desperate Housewives.",
+          "citedEvidence": [
+            {
+              "title": "Desperate Housewives"
+            },
+            {
+              "title": "The Love Boat"
+            }
+          ]
+        },
+        {
+          "title": "It",
+          "why": "A group of kids facing a monstrous threat, with the character warmth that made Sinners work for you.",
+          "citedEvidence": [
+            {
+              "title": "Sinners"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oct20-after-247:claude-haiku-5-5|split-50|r16",
+      "cell": "split-50",
+      "keep": true,
+      "picks": [
+        {
+          "title": "The Way of Kings",
+          "why": "Sweeping secondary-world epic with layered politics and magic, echoing the scale of your favorite fantasy.",
+          "citedEvidence": [
+            {
+              "title": "The Blade Itself"
+            },
+            {
+              "title": "New Spring (The Wheel of Time, Book 0)"
+            }
+          ]
+        },
+        {
+          "title": "Borderlands",
+          "why": "Pandora's eccentric worldbuilding and character-driven chaos could appeal to the same sense of place you rate in Neverwhere.",
+          "citedEvidence": [
+            {
+              "title": "Neverwhere"
+            },
+            {
+              "title": "BioShock"
+            }
+          ]
+        },
+        {
+          "title": "Evil Dead Rise",
+          "why": "Gory, tense family-horror with a survival edge that picks up where Terrifier 3 left off.",
+          "citedEvidence": [
+            {
+              "title": "Terrifier 3"
+            }
+          ]
+        },
+        {
+          "title": "It",
+          "why": "Small-town ensemble of kids facing a monster, with the character bonds that drew you to Sinners.",
+          "citedEvidence": [
+            {
+              "title": "Sinners"
+            }
+          ]
+        },
+        {
+          "title": "Bob's Burgers",
+          "why": "Warm, absurd family comedy with quirky characters, much like The Love Boat's ensemble humor.",
+          "citedEvidence": [
+            {
+              "title": "The Love Boat"
+            },
+            {
+              "title": "Desperate Housewives"
+            }
+          ]
+        },
+        {
+          "title": "Fallout: A Post Nuclear Role Playing Game",
+          "why": "Early open-world RPG exploring a ruined landscape, a more old-school take than Fallout: New Vegas.",
+          "citedEvidence": [
+            {
+              "title": "System Shock 2"
+            },
+            {
+              "title": "Red Dead Redemption 2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

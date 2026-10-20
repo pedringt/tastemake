@@ -202,10 +202,42 @@ function normalizeBookSubject(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+// Audience, format and bookkeeping labels say who a book is shelved for, not what it is like. Real case
+// (Oct 20, production with AI paused): The Name of the Wind's first subjects are "orphans", "American fantasy
+// fiction" and "Adult books for young adults"; querying them returned Emily of New Moon and Dear Enemy,
+// which share only "Orphans" plus "Juvenile fiction" / "Children's fiction".
+const AUDIENCE_OR_FORMAT_SUBJECT = /^(?:juvenile(?: audience| fiction| literature)?|children'?s (?:fiction|literature|books|stories)|child and youth fiction|adult books for young adults|young adult (?:fiction|literature)|teen fiction|large (?:type|print) books?|colou?ring books?|activity books?|picture books?|series|form:.*|series:.*|serie:.*|franchise:.*|nyt:.*|fiction,? general|[a-z]+ literature|.*\(fictitious character\).*|.*fictitious character.*)$/i;
+
+// Genre families a subject points to. A book's family set is what "the same kind of book" means for
+// retrieval: a candidate must share one with the book it came from (when that book has any).
+const BOOK_GENRE_FAMILIES = [
+  ["fantasy", /\b(?:fantasy|fantastic|magic|magicians?|wizards?|witch(?:es|craft)?|dragons?|elves|fairies|fairy tales?|mytholog(?:y|ical)|myths?|sword and sorcery|romantasy)\b/i],
+  ["science fiction", /\b(?:science fiction|sci-?fi|space opera|dystopi(?:a|an|as)|cyberpunk|time travel|robots?|extraterrestrial|interplanetary|aliens?)\b/i],
+  ["horror", /\b(?:horror|ghosts?|ghost stories|vampires?|haunted|gothic|supernatural|monsters?|zombies?|demons?|exorcism)\b/i],
+  ["mystery", /\b(?:mystery|mysteries|detective|whodunit|private investigators?)\b/i],
+  ["thriller", /\b(?:thrillers?|suspense|espionage|spy stories)\b/i],
+  ["crime", /\b(?:crime|murder|criminals?|heists?|swindlers?|gangsters?)\b/i],
+  ["romance", /\b(?:romance|romantic|love stories)\b/i],
+  ["historical", /\b(?:historical|history)\b/i],
+  ["literary", /\bliterary\b/i],
+  ["humor", /\b(?:humou?r|humorous|comedy|satire)\b/i],
+  ["adventure", /\b(?:adventure|quests?|voyages)\b/i],
+  ["war", /\b(?:war stories|military|soldiers?)\b/i]
+];
+
+export function bookGenreFamilies(subjects = []) {
+  const families = new Set();
+  for (const subject of subjects) {
+    const value = String(subject ?? "").replace(/^genre\s*:\s*/i, "");
+    for (const [family, re] of BOOK_GENRE_FAMILIES) if (re.test(value)) families.add(family);
+  }
+  return families;
+}
+
 function meaningfulBookSubjects(values = []) {
   return values
     .map((value) => String(value ?? "").trim())
-    .filter((value) => value && value.length >= 3 && !GENERIC_BOOK_SUBJECT.test(value))
+    .filter((value) => value && value.length >= 3 && !GENERIC_BOOK_SUBJECT.test(value) && !AUDIENCE_OR_FORMAT_SUBJECT.test(value))
     .filter((value, index, rows) => rows.findIndex((other) => normalizeBookSubject(other) === normalizeBookSubject(value)) === index);
 }
 
@@ -220,6 +252,9 @@ function meaningfulBookSubjects(values = []) {
 function openLibraryOverlapStrength(sourceSubjects, candidateSubjects) {
   const source = new Set(meaningfulBookSubjects(sourceSubjects).map(normalizeBookSubject));
   if (!source.size) return null;
+  // Same kind of book: when the source has a genre family, the candidate must share one.
+  const sourceFamilies = bookGenreFamilies(sourceSubjects);
+  if (sourceFamilies.size && ![...bookGenreFamilies(candidateSubjects)].some((family) => sourceFamilies.has(family))) return null;
   const candidate = meaningfulBookSubjects(candidateSubjects).map(normalizeBookSubject);
   const overlap = candidate.filter((subject) => source.has(subject)).length;
   if (overlap <= 0) return null;
@@ -232,16 +267,16 @@ function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
 }
 
 async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name";
+  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,series_position,editions,editions.title,editions.language";
   const load = async () => {
-    const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&fields=${fields}`, {
+    const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&lang=en&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
     }, timeoutMs);
     if (!response.ok) return [];
     return (await response.json()).docs ?? [];
   };
   if (fetchImpl !== fetch) return load();
-  return cachedValue(`related:v2:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });
+  return cachedValue(`related:v4:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });
 }
 
 // #131/#135: query more than one meaningful subject when the source book has them (the top 2-3,
@@ -254,7 +289,10 @@ async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
 async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
   if (item.provider !== "openlibrary") return [];
   const sourceSubjects = meaningfulBookSubjects(item.genres ?? []);
-  const querySubjects = sourceSubjects.slice(0, 3);
+  // Query genre subjects first ("American fantasy fiction" before "orphans"), keeping Open Library's order
+  // within each group.
+  const isGenre = (subject) => bookGenreFamilies([subject]).size > 0;
+  const querySubjects = [...sourceSubjects.filter(isGenre), ...sourceSubjects.filter((subject) => !isGenre(subject))].slice(0, 3);
   if (!querySubjects.length) return [];
 
   const storePromise = relatedCanonicalItems(item, querySubjects, { env, query: queryImpl });
