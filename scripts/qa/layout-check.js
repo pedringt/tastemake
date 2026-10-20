@@ -75,6 +75,8 @@ const lum = ({ r, g, b }) => {
 };
 const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
 const BOARD = ".favorites-screen, .browse-screen, .profile-screen, .recommendations-screen, .library-screen";
+// Buttons that should be only as tall as their own text (see stretchedControls in checkCurrentScreen).
+const COMPACT_CONTROLS = ".library-search-open";
 
 // The color behind an element, or null when it sits over an image/gradient (can't be judged from CSS colors).
 function backgroundBehind(el) {
@@ -222,9 +224,28 @@ export function checkCurrentScreen() {
     });
   });
 
+  // Compact controls must hug their content. A flex item whose flex-basis was written for a row keeps that
+  // basis when the row stacks into a column on phones, and it then sizes the control's height instead of its
+  // width (the Library search button grew to 360px tall below 760px).
+  const stretchedControls = [];
+  screen.querySelectorAll(COMPACT_CONTROLS).forEach((el) => {
+    if (!isVisible(el)) return;
+    const box = el.getBoundingClientRect();
+    let top = Infinity, bottom = -Infinity;
+    for (const child of el.querySelectorAll("*")) {
+      if (!isVisible(child)) continue;
+      const r = child.getBoundingClientRect();
+      top = Math.min(top, r.top); bottom = Math.max(bottom, r.bottom);
+    }
+    if (!Number.isFinite(top)) return;
+    const slack = box.height - (bottom - top);
+    if (slack > 40) stretchedControls.push(`${describe(el)} is ${Math.round(box.height)}px tall for ${Math.round(bottom - top)}px of content`);
+  });
+
   return {
     width: innerWidth,
     stickers: stickers.length,
+    stretchedControls,
     stickerTextHits,
     stickerBoxHits,
     stickerOutside,
