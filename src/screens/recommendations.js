@@ -123,39 +123,27 @@ function experienceChoices(itemId, feedback) {
 // Discovery quality is about whether the pick was a good use of a recommendation slot, never about
 // whether it fits the user's taste — kept visually and conceptually apart from More/Less/detail chips so
 // the two don't read as competing negative reactions (#53).
-function qualityNote(itemId, feedback) {
+// "This pick was: Too obvious · A great discovery" -- feedback about the pick, never about taste (#53).
+// Design pass (Oct 20): one small inline line, not a second "More feedback" section that read like more of
+// "What worked for you?".
+function qualityLine(itemId, feedback) {
+  const choice = (value, label) => `<button
+          class="detail-chip quality-chip quality-line-chip"
+          type="button"
+          data-feedback-item="${itemId}"
+          data-feedback-quality="${value}"
+          aria-pressed="${feedback.quality === value}"
+        >${label}</button>`;
   return `
-    <div class="recommendation-quality-note">
-      <span class="feedback-detail-prompt"><strong>Was this a useful discovery?</strong> Optional.</span>
-      <div class="quality-note-row">
-        <button
-          class="detail-chip quality-chip"
-          type="button"
-          data-feedback-item="${itemId}"
-          data-feedback-quality="too-obvious"
-          aria-pressed="${feedback.quality === "too-obvious"}"
-        >Too obvious</button>
-        <button
-          class="detail-chip quality-chip"
-          type="button"
-          data-feedback-item="${itemId}"
-          data-feedback-quality="surprised-me"
-          aria-pressed="${feedback.quality === "surprised-me"}"
-        >Great discovery</button>
-        <span class="quality-note-help">This helps Tastemake balance familiar picks with more unexpected ones.</span>
-      </div>
+    <div class="quality-line" role="group" aria-label="How was this pick? Optional. This is about the pick, not your taste.">
+      <span class="quality-line-label" aria-hidden="true">This pick was</span>
+      ${choice("too-obvious", "Too obvious")}
+      ${choice("surprised-me", "A great discovery")}
     </div>`;
 }
 
 function hasQualityNote(feedback) {
   return isPositiveExperience(feedback);
-}
-
-// Defaults to open once there is an answer in it, closed otherwise; an explicit toggle click always
-// overrides that default (see toggleExpandedFeedback in actions/recommendations.js).
-function qualityExpanded(itemId, feedback) {
-  const override = state.expandedFeedback[itemId];
-  return override !== undefined ? override : Boolean(feedback?.quality);
 }
 
 function seriesExperienceFeedback(item, feedback) {
@@ -197,17 +185,6 @@ function favoriteToggle(itemId) {
       title="${label}"
       aria-pressed="${isFavorite}"
     ><span aria-hidden="true">${isFavorite ? "★" : "☆"}</span></button>`;
-}
-
-function moreFeedbackToggle(itemId, expanded, panelId) {
-  return `
-    <button
-      class="detail-chip more-feedback-toggle"
-      type="button"
-      data-toggle-feedback="${itemId}"
-      aria-expanded="${expanded}"
-      aria-controls="${panelId}"
-    >${expanded ? "Less feedback" : "More feedback"}</button>`;
 }
 
 function mediaArt(item, index) {
@@ -281,8 +258,6 @@ function feedbackPopover(item, saved) {
   if (state.recommendationFeedbackItemId !== item.id || !path) return "";
 
   const showQuality = hasQualityNote(saved);
-  const expanded = showQuality && qualityExpanded(item.id, saved);
-  const qualityId = `quality-${item.id}`;
 
   return `
     <div class="rec-feedback-popover" role="dialog" aria-modal="false" aria-label="Feedback for ${esc(item.title)}">
@@ -296,13 +271,7 @@ function feedbackPopover(item, saved) {
       ${experienceChoices(item.id, saved)}
       ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
       ${saved ? seriesExperienceFeedback(item, saved) : ""}
-      ${showQuality ? `
-        <div class="tertiary-feedback-toggle">
-          ${moreFeedbackToggle(item.id, expanded, qualityId)}
-        </div>
-        <div class="tertiary-feedback" id="${qualityId}" ${expanded ? "" : "hidden"}>
-          ${qualityNote(item.id, saved)}
-        </div>` : ""}
+      ${showQuality ? qualityLine(item.id, saved) : ""}
       ${saved ? renderBlindSpotPanel(item.id) : ""}
     </div>`;
 }
