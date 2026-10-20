@@ -257,6 +257,8 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
     // shown. Prefer the server's specific reason when it gave one.
     const message = source === "model"
       ? "Live AI ranked and explained real catalog candidates. Tastemake checked every pick and citation before showing it."
+      : result.meta?.budgetPaused
+        ? `${result.reason} Here are catalog matches in the meantime.`
       : exhausted
         ? (result.reason || "Tastemake could not find another eligible catalog match from your current evidence.")
         : "These are real catalog matches. Live AI is off or its answer did not pass validation, so Tastemake kept the catalog-ranked set.";

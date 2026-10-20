@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../src/ai/validate.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
-import { callAnthropic, liveConfig } from "../src/server/anthropic.mjs";
+import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
 import { HYPOTHESES_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState as hydrateBaseState } from "../src/server/request-state.mjs";
 import { visibleDomains } from "../src/data/domains.js";
@@ -192,11 +192,13 @@ export default async function handler(req, res) {
     return res.status(200).json(payload);
   } catch (error) {
     console.error("[tastemake-profile-ai]", error?.status ?? "", error?.anthropicType ?? "", error?.message ?? "");
+    const budgetPaused = isAiBudgetExhausted(error);
     return res.status(200).json({
       source: "unavailable",
-      reason: "live profile AI unavailable",
+      reason: budgetPaused ? AI_BUDGET_MESSAGE : "live profile AI unavailable",
       hypotheses: [],
       meta: {
+        ...(budgetPaused ? { budgetPaused: true } : {}),
         paidCallMade: Boolean(error?.paidCallMade),
         model: error?.model ?? null,
         usage: error?.usage ?? null
