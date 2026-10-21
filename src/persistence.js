@@ -31,6 +31,7 @@ export function loadPersistedState() {
 }
 
 export function persistState(state) {
+  if (state?.viewingExample) return;   // Paige's Example Profile lives in memory only
   const store = storage();
   if (!store) return;
   const out = {};

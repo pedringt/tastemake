@@ -58,6 +58,7 @@ export function mergeHypotheses(existing = [], incoming = [], { statements = [],
 }
 
 export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, force = false } = {}) {
+  if (state.viewingExample) return;   // the example's patterns are fixed; no model calls on its behalf
   const key = hypothesisEvidenceKey(state);
   if (state.hypothesisAiStatus === "loading" || (!force && state.hypothesisAiKey === key)) return;
 
