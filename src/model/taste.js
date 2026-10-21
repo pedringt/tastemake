@@ -129,6 +129,13 @@ export function currentRoundRatedCount(state) {
   return activeRecommendations(state).filter((item) => state.feedbackByRecommendation[item.id]).length;
 }
 
+// True when the person reacted to at least one pick in the set before the current one, so a new set
+// really was shaped by their reactions (Oct 20: "Okay, that changed things" showed with none).
+export function previousRoundReacted(state) {
+  const previous = state.recommendationSets[state.recommendationSets.length - 2] ?? [];
+  return previous.some((item) => state.feedbackByRecommendation[item.id]);
+}
+
 export function currentRoundComplete(state) {
   const active = activeRecommendations(state);
   return active.length > 0 && currentRoundRatedCount(state) === active.length;
