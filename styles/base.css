@@ -389,3 +389,8 @@ button:focus-visible,a:focus-visible,.why-trigger:focus-visible { outline:3px so
   border:2px solid #fff;
   box-shadow:0 2px 3px rgb(var(--ink-rgb,17 26 75) / .25);
 }
+
+/* Paige's Example Profile banner (Oct 21): sits above every screen while the example is loaded. */
+.example-banner { display:flex; align-items:center; justify-content:space-between; gap:12px 20px; flex-wrap:wrap; margin:0 0 20px; padding:14px 18px; border:2px solid var(--ink); border-radius:14px; background:var(--paper); color:var(--ink); }
+.example-banner p { margin:0; max-width:70ch; line-height:1.5; }
+.example-banner .button { flex:none; }

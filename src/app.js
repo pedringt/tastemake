@@ -8,6 +8,7 @@
 // non-framework guide uses a plain `<script defer src="/_vercel/insights/script.js">` tag instead,
 // which needs no module resolution. #100 does exactly that, in src/lib/vercel-insights.js (its own
 // module in index.html, so it can never stop this one from running).
+import { exampleBannerHtml, isViewingExample, loadExampleProfile } from "./example-profile.js";
 import { state } from "./state.js";
 import { normalizedRefinements } from "./model/refinements.js";
 import { trackReasonChanged, trackReasonsOpened } from "./lib/reason-events.js";
@@ -82,10 +83,24 @@ function canAccess(screen) {
 // user is still on Favorites/Setup (see src/ai/prefetch.js). Retrieval only, never a model call.
 const candidatePrefetcher = createCandidatePrefetcher({ getState: () => state });
 
+// Paige's Example Profile: loaded on request, or from /?example=paige (linked from the portfolio case study).
+async function openExampleProfile() {
+  try {
+    await loadExampleProfile();
+    writeRoute(state.screen, { replace: false });
+    render();
+    updateStepper();
+    announce("Showing Paige's Example Profile. Nothing you change is saved.");
+    window.scrollTo(0, 0);
+  } catch {
+    announce("The example profile could not load. Please try again.");
+  }
+}
+
 function render() {
   persistState(state);
   syncAiBadge(state);
-  app.innerHTML = views[state.screen]();
+  app.innerHTML = exampleBannerHtml() + views[state.screen]();
   candidatePrefetcher.schedule(state);
 }
 
@@ -895,6 +910,8 @@ app.addEventListener("click", async (event) => {
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
 
+  if (action === "view-example") { void openExampleProfile(); return; }
+  if (action === "exit-example") { window.location.assign("/"); return; }
   if (action === "open-search") document.querySelector("#open-search")?.click();
   if (action === "browse") navigate("browse");
   if (action === "edit-setup") {
@@ -1048,6 +1065,8 @@ initSearch({
 // Look stays available as an optional preference instead of competing with the taste-learning path.
 // Direct links still open their requested screen when accessible. #117: a returning user hitting
 // "/" (or an unrecognized path) lands in the ongoing product, not back through first-run setup.
+// Read before writeRoute below replaces the address (it drops the query string).
+const wantsExampleProfile = new URLSearchParams(window.location.search).get("example") === "paige";
 const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
 state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "setup");
 if (state.screen === "library") state.libraryView = "saved";
@@ -1059,3 +1078,4 @@ updateStepper();
 maybeRefreshProfile();
 maybeLoadBrowse();
 void resolveExistingCustomItems();
+if (wantsExampleProfile) void openExampleProfile();

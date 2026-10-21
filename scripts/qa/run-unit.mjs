@@ -32,6 +32,7 @@ const SUITES = [
   "library-search-tests.mjs",
   "persistence-tests.mjs",
   "export-tests.mjs",
+  "example-profile-tests.mjs",
   "refinement-tests.mjs",
   "statements-tests.mjs",
   "browse-tests.mjs",

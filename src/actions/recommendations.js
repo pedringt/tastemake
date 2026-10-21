@@ -1,3 +1,4 @@
+import { EXAMPLE_LOCKED_MESSAGE, isViewingExample } from "../example-profile.js";
 import { state } from "../state.js";
 import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
@@ -205,6 +206,7 @@ function scheduleLoadingStages(request, { render }) {
 const NO_WARM_UP = Object.freeze({ warmed: false, wait: Promise.resolve() });
 
 async function runRecommendationRequest({ render, updateStepper, announce, navigate, initial = false, prefetch = null }) {
+  if (isViewingExample()) { announce?.(EXAMPLE_LOCKED_MESSAGE); return; }
   // #120: claim a matching candidate warm-up (src/ai/prefetch.js) before navigate(), because reaching
   // Recommendations migrates the starter favorites out of selectedFavorites, which is the warm-up key.
   const warmUp = initial && prefetch ? prefetch.claim(state) : NO_WARM_UP;
