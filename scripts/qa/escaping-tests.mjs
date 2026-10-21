@@ -122,6 +122,17 @@ for (const [name, render] of Object.entries(screens)) {
   state.recommendationSets = saved;
 }
 
+// A second set only says it was shaped by reactions when there were some (Oct 20).
+{
+  const saved = state.recommendationSets, savedFeedback = state.feedbackByRecommendation;
+  state.recommendationSets = [[first], [second, third]];
+  state.feedbackByRecommendation = {};
+  check("second set with no reactions keeps the first-set headline", !screens.recommendations().includes("Okay, that changed things."));
+  state.feedbackByRecommendation = { [first.id]: { item: first, outcome: "liked" } };
+  check("second set after a reaction says it changed", screens.recommendations().includes("Okay, that changed things."));
+  state.recommendationSets = saved; state.feedbackByRecommendation = savedFeedback;
+}
+
 // profile remains safe when its presentation state changes
 state.profileView = "map";
 const profileAgain = screens.profile();

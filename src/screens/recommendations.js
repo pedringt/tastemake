@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { renderDomainFilter } from "../components/domain-filter.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas, previousRoundReacted } from "../model/taste.js";
 import { isDeclined, isExperienced, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
@@ -497,7 +497,7 @@ function renderNextSteps() {
 export function renderRecommendations() {
   const items = activeRecommendations(state);
   const rated = currentRoundRatedCount(state);
-  const roundTwo = state.recommendationSets.length > 1;
+  const roundTwo = state.recommendationSets.length > 1 && previousRoundReacted(state);
   const segments = items.map((_, index) => `<span class="progress-segment ${index < rated ? "is-filled" : ""}"></span>`).join("");
 
   return `
