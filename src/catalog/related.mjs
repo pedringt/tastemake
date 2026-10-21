@@ -3,6 +3,7 @@ import { applyNoveltyGuard } from "./novelty.mjs";
 import { withBookSeriesEvidence } from "./book-series-editions.mjs";
 import { bookSeriesPosition, isBook, isLaterSeriesEntry } from "./book-series.mjs";
 import { wikidataSeriesPositions } from "./wikidata-series.mjs";
+import { isBookCompanion } from "./book-companions.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
@@ -275,7 +276,7 @@ async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
     }, timeoutMs);
     if (!response.ok) return [];
-    return (await response.json()).docs ?? [];
+    return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row));
   };
   if (fetchImpl !== fetch) return load();
   return cachedValue(`related:v4:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });

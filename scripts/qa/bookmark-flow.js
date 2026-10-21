@@ -238,6 +238,18 @@ export async function run() {
   check("Studio Cutouts was replaced",/Soft circuit/i.test(lookText)&&!/Studio cutouts/i.test(lookText));
   check("Night Ledger was replaced",/Electric night/i.test(lookText)&&!/Night ledger/i.test(lookText));
 
+  // Oct 20 smoke test: "More about why" opened upward over the pick's title and reason.
+  await act('[data-step-jump="recommendations"]',200);
+  const whyCard=$(".editorial-rec");
+  if(whyCard){
+    await act('.editorial-rec .why-trigger',200);
+    const pop=whyCard.querySelector(".why-popover").getBoundingClientRect();
+    const covers=[whyCard.querySelector("h3"),whyCard.querySelector(".editorial-rationale")].map(el=>el.getBoundingClientRect()).some(r=>r.bottom>pop.top&&r.top<pop.bottom);
+    check("the why popover opens without covering the pick's title or reason",whyCard.querySelector(".editorial-why").classList.contains("is-pinned")&&!covers,`${Math.round(pop.top)}`);
+    check("its card is lifted above the next row while it is open",getComputedStyle(whyCard).zIndex==="40",getComputedStyle(whyCard).zIndex);
+    await act('.editorial-rec .why-trigger',120);
+  } else check("a recommendation card exists for the why popover check",false);
+
   // No-AI mode (Oct 20 smoke test): when the AI budget is used up, every surface says so calmly.
   const badge=()=>$(".prototype-label");
   check("header says Live AI before any pause",badge()?.textContent.trim()==="Live AI"&&!badge()?.classList.contains("is-paused"),badge()?.textContent);

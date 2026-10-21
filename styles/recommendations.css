@@ -225,10 +225,12 @@
   font-weight:700;
   cursor:pointer;
 }
+/* Opens below the trigger: above it covered the pick's title and reason, the two things the "why"
+   is about (Oct 20 smoke test). Below it only covers the reaction buttons until it closes. */
 .why-popover {
   position:absolute;
   left:0;
-  bottom:calc(100% + 8px);
+  top:calc(100% + 8px);
   width:min(330px,100%,calc(100vw - 48px));
   padding:12px 13px;
   border:2px solid var(--navy);
@@ -238,19 +240,19 @@
   opacity:0;
   visibility:hidden;
   pointer-events:none;
-  transform:translateY(5px) rotate(calc(-.4deg * var(--tilt)));
+  transform:translateY(-5px) rotate(calc(-.4deg * var(--tilt)));
   transition:opacity .12s ease, transform .12s ease, visibility .12s ease;
 }
 .why-popover::after {
   content:"";
   position:absolute;
   left:18px;
-  bottom:-8px;
+  top:-8px;
   width:12px;
   height:12px;
   background:#fff;
-  border-right:2px solid var(--navy);
-  border-bottom:2px solid var(--navy);
+  border-left:2px solid var(--navy);
+  border-top:2px solid var(--navy);
   transform:rotate(calc(45deg * var(--tilt)));
 }
 .why-popover p { color:var(--muted); font-size:12px; line-height:1.45; margin:0; }
@@ -264,6 +266,8 @@
   margin-bottom:6px;
 }
 .why-caveat { margin-top:8px !important; font-style:italic; }
+/* Opening downward, the popover reaches into the next row; lift its own card above the neighbors. */
+.editorial-rec:has(.editorial-why:hover, .editorial-why:focus-within, .editorial-why.is-pinned) { position:relative; z-index:40; }
 .editorial-why:hover .why-popover,
 .editorial-why:focus-within .why-popover,
 .editorial-why.is-pinned .why-popover {

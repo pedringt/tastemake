@@ -1,5 +1,6 @@
 import { browseGenreById } from "./browse-genres.js";
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
+import { isBookCompanion } from "./book-companions.mjs";
 
 export const BROWSE_PAGE_SIZE = 12;
 
@@ -44,7 +45,7 @@ async function browseRead(genre, page, env, fetchImpl) {
   if (!response.ok) throw new Error("openlibrary browse unavailable");
   const docs = (await response.json()).docs ?? [];
   return {
-    items: docs.slice(0, BROWSE_PAGE_SIZE).map(openLibraryItem),
+    items: docs.slice(0, BROWSE_PAGE_SIZE).filter((row) => !isBookCompanion(row)).map(openLibraryItem),
     configured: true,
     hasMore: docs.length >= BROWSE_PAGE_SIZE
   };
