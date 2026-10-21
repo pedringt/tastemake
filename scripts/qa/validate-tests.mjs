@@ -191,6 +191,8 @@ function proposal(refs) {
   eq("'science fiction' keeps its second word", readableTag("American science fiction", "openlibrary"), "science fiction");
   eq("...also in BISAC order", readableTag("Science fiction, American", "openlibrary"), "science fiction");
   eq("children's fiction is an audience label, not a reason", readableTag("Children's fiction", "openlibrary"), null);
+  const arrival = { title: "Arrival", provider: "tmdb", genres: ["18", "878", "9648"] };
+  eq("a broad genre (drama) comes after a specific one (sci-fi)", sharedTags({ title: "Enemy Mine", provider: "tmdb", genres: ["18", "878"] }, arrival).join(), "sci-fi,drama");
   const anchor = { title: "Mistborn", provider: "openlibrary", genres: ["Fantasy fiction", "Magic", "Courts and courtiers", "Fiction, fantasy, epic"] };
   const book = { title: "A Darker Shade of Magic", provider: "openlibrary", type: "book", relatedTo: "Mistborn", genres: ["Magic", "Fantasy fiction", "quantum theory", "Fiction, fantasy, epic"] };
   eq("shared tags: the specific genre first, redundant ones dropped, unshared ones ignored", sharedTags(book, anchor).join(), "epic fantasy,magic");

@@ -3,6 +3,7 @@ import { canonicalizeWriteBehind, mergeCanonicalFacts } from "./canonical-store.
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { buildItemId } from "./item-id.mjs";
 import { bookSeriesFromRow } from "./book-series.mjs";
+import { isBookCompanion } from "./book-companions.mjs";
 import { fallbackSummary, sanitizeAbout } from "./synopsis.mjs";
 import { waitUntil } from "@vercel/functions";
 import { rankSearchResults, searchRelevance } from "./search-ranking.mjs";
@@ -132,7 +133,7 @@ async function searchOpenLibrary(query, env, fetchImpl) {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
-  return ((await response.json()).docs ?? []).slice(0, 8).map(openLibraryItem);
+  return ((await response.json()).docs ?? []).slice(0, 8).filter((row) => !isBookCompanion(row, query)).map(openLibraryItem);
 }
 
 async function igdbToken(env, fetchImpl) {

@@ -9,6 +9,7 @@ import { TMDB_GENRES } from "./synopsis.mjs";
 import { bookGenreFamilies, meaningfulBookSubjects } from "./related.mjs";
 
 const CORE_GENRE = /\b(?:fantasy|science fiction|sci-fi|horror|mystery|thriller|romance|historical|literary|comedy|drama|crime|adventure|action|animation|documentary|role-playing|strategy|puzzle|platform|shooter)\b/i;
+const BROAD_GENRE = /^(?:drama|comedy|action|adventure|action & adventure|family|animation)$/;
 const NATIONALITY = /^(?:american|english|british|canadian|australian|irish|scottish|french|german|polish|japanese|russian|spanish|italian)\s+/;
 
 // One provider genre or subject as a few readable lowercase words, or null when it isn't worth showing.
@@ -39,8 +40,9 @@ export function sharedTags(item, anchor) {
   const shared = [...new Set((item.genres ?? []).map((g) => readableTag(g, item.provider)).filter((t) => t && anchorTags.has(t)))];
   // "fantasy" adds nothing next to "epic fantasy".
   const tags = shared.filter((t) => !shared.some((other) => other !== t && other.includes(t)));
-  // Named genres first ("epic fantasy"), then genre markers ("magic"), then anything else.
-  const rank = (t) => (CORE_GENRE.test(t) ? 0 : bookGenreFamilies([t]).size ? 1 : 2);
+  // Named genres first ("epic fantasy"), broad ones after them ("drama" says less than "sci-fi": Oct 20,
+  // "Another drama pick, linked to Arrival by sci-fi"), then genre markers ("magic"), then anything else.
+  const rank = (t) => (CORE_GENRE.test(t) ? (BROAD_GENRE.test(t) ? 1 : 0) : bookGenreFamilies([t]).size ? 2 : 3);
   const ordered = [...tags].sort((x, y) => rank(x) - rank(y));
   if (!ordered.length && (item.provider === "openlibrary" || anchor.provider === "openlibrary")) {
     const families = bookGenreFamilies(item.genres ?? []);

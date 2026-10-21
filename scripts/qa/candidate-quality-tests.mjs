@@ -11,6 +11,7 @@
 
 import { bookGenreFamilies, igdbGenreOverlap, igdbGenreWhereClause, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { plainTitle, wikidataSeriesPositions } from "../../src/catalog/wikidata-series.mjs";
+import { isBookCompanion } from "../../src/catalog/book-companions.mjs";
 import { createSuite } from "./lib/assert.mjs";
 
 const { check, eq, finish } = createSuite("candidate quality tests");
@@ -525,6 +526,24 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   });
   eq("a non-integer ordinal (a 0.5 novella) is not a position", bad.get("b"), null);
   eq("titles are matched without the series suffix or subtitle", plainTitle("King of the Murgos (Malloreon): Book Two of the Malloreon"), "King of the Murgos");
+}
+
+// ---- Oct 20 smoke test: study guides and government documents are not books to search for or recommend ----
+// Real Open Library rows from a "The Name of the Wind" search; both outranked real books on edition count.
+{
+  const guide = { title: "Study Guide -- The Other Wes Moore by Wes Moore", author_name: ["SuperSummary"] };
+  const bill = { title: "Bill", author_name: ["Canada. Legislature. Legislative Assembly."] };
+  check("a SuperSummary study guide is dropped", isBookCompanion(guide, "The Name of the Wind"));
+  check("a study guide by any publisher is dropped by its title", isBookCompanion({ title: "Summary and Analysis of Circe", author_name: ["Worthy Reads"] }, "Circe"));
+  check("a guide-maker's book is dropped even without guide words in the title", isBookCompanion({ title: "The Night Circus", author_name: ["BookRags"] }, "night circus"));
+  check("a legislature's bill is dropped", isBookCompanion(bill, "The Name of the Wind"));
+  check("a search that asks for a study guide still gets one", !isBookCompanion(guide, "wes moore study guide"));
+  check("real books stay", ![
+    { title: "The Name of the Wind", author_name: ["Patrick Rothfuss", "Marc Simonetti"] },
+    { title: "The Hunger Games", author_name: ["Kate Egan"] },
+    { title: "A Slow Regard of Silent Things", author_name: ["Patrick Rothfuss"] },
+    { title: "Circe", author_name: ["Anne De Courcy"] }
+  ].some((row) => isBookCompanion(row, "anything")));
 }
 
 finish();
