@@ -5,6 +5,7 @@ import { reasonLabel } from "../model/blindspots.js";
 import { CONTEXT, FIT, WEIGHT, activeStatements } from "../model/statements.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { EXCLUDABLE_GENRES } from "../model/exclusions.js";
 
 // My Tastemake (#8, phase 1): what you've told Tastemake, which areas it may use, how picks are put together,
 // and a way to start over. It is the deeper management layer behind Library (Saved and Tried) and the Taste Profile.
@@ -190,6 +191,45 @@ function areasBlock() {
     </section>`;
 }
 
+// #48: hard boundaries. Kept apart from taste on purpose: nothing here is evidence or a dislike.
+function neverBlock() {
+  const exclusions = state.exclusions ?? [];
+  const blockedGenres = new Set(exclusions.filter((e) => e.kind === "genre").map((e) => e.key));
+  const others = exclusions.filter((e) => e.kind !== "genre");
+  const kindLabel = { creator: "Creator", series: "Series" };
+  return `
+    <section class="mine-block mine-never" aria-labelledby="mine-never">
+      <h2 id="mine-never">Never recommend</h2>
+      <p class="mine-blurb">Hard limits for new sets. Not a dislike, and they don’t change your Taste Profile. Search still finds everything.</p>
+      <fieldset class="mine-never-genres">
+        <legend>Kinds of thing</legend>
+        <div class="mine-never-chips">
+          ${EXCLUDABLE_GENRES.map((genre) => `
+            <label class="mine-never-chip ${blockedGenres.has(genre.id) ? "is-on" : ""}">
+              <input type="checkbox" data-mine-never-genre="${genre.id}" ${blockedGenres.has(genre.id) ? "checked" : ""} />
+              <span>${esc(genre.label)}</span>
+            </label>`).join("")}
+        </div>
+        <p class="mine-never-note">TV shows have no Horror or Romance label in the catalog, so those two cover movies, books and games.</p>
+      </fieldset>
+      <form class="mine-never-add" data-mine-never-form>
+        <label for="mine-never-creator">A creator</label>
+        <div class="mine-never-add-row">
+          <input id="mine-never-creator" name="creator" type="text" autocomplete="off" placeholder="e.g. Stephen King" maxlength="80" />
+          <button class="button button-secondary" type="submit">Add</button>
+        </div>
+        <p class="mine-never-note">Matches book authors, and a director, showrunner or studio once Tastemake knows it. To rule out a series, use “Don’t recommend…” on a pick.</p>
+      </form>
+      ${others.length ? `<ul class="mine-never-list" aria-label="Creators and series you ruled out">
+        ${others.map((e) => `
+          <li class="mine-never-row" data-mine-never-row="${esc(e.id)}">
+            <span><small>${kindLabel[e.kind] ?? "Rule"}</small>${esc(e.label)}</span>
+            <button class="button button-quiet mine-action" type="button" data-mine-never-remove="${esc(e.id)}" aria-label="Allow ${esc(e.label)} again">Remove</button>
+          </li>`).join("")}
+      </ul>` : ""}
+    </section>`;
+}
+
 function picksBlock() {
   return `
     <section class="mine-block" aria-labelledby="mine-picks">
@@ -229,6 +269,8 @@ export function renderMine() {
         ${areasBlock()}
         ${picksBlock()}
       </div>
+
+      ${neverBlock()}
 
       <section class="mine-data-summary" aria-labelledby="mine-data-summary-title">
         <div>

@@ -13,6 +13,7 @@ import { renderExperienceRefinement } from "../components/refinement.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { basisSentence, recommendationBasis } from "../model/loading-basis.js";
 import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE } from "../ai/ai-status.js";
+import { exclusionOptions } from "../model/exclusions.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -277,6 +278,21 @@ function feedbackPopover(item, saved) {
     </div>`;
 }
 
+// #48: a hard boundary, offered quietly under the reasons. Not a reaction: nothing about the pick is
+// recorded, and the menu only lists what Tastemake actually knows about this item.
+function excludeMenu(item) {
+  const options = exclusionOptions(item);
+  if (!options.length) return "";
+  return `
+        <details class="exclude-menu">
+          <summary>Don’t recommend…</summary>
+          <div class="exclude-options" role="group" aria-label="Never recommend">
+            ${options.map((option) => `<button type="button" class="exclude-option" data-exclude-item="${esc(item.id)}" data-exclude-kind="${option.kind}" data-exclude-key="${esc(option.key)}">${esc(option.label)}</button>`).join("")}
+            <p class="exclude-note">Not a dislike. It just won’t be suggested. Undo in My Tastemake.</p>
+          </div>
+        </details>`;
+}
+
 function cardSizeClass() {
   return "rec-span-4";
 }
@@ -321,6 +337,7 @@ function recommendationCard(item, index, total) {
             ${whyContent(item)}
           </div>
         </div>
+        ${saved ? "" : excludeMenu(item)}
 
         <div class="rec-interaction">
           ${saved ? `

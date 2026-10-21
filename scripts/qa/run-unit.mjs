@@ -35,6 +35,7 @@ const SUITES = [
   "example-profile-tests.mjs",
   "refinement-tests.mjs",
   "statements-tests.mjs",
+  "exclusions-tests.mjs",
   "browse-tests.mjs",
   "metadata-tests.mjs",
   "canonical-store-tests.mjs",

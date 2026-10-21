@@ -16,6 +16,7 @@ export function hydrateState(raw = {}) {
     blindSpots: raw.blindSpots ?? {},
     blindSpotDrafts: raw.blindSpotDrafts ?? {},
     patternStatements: raw.patternStatements ?? [],
+    exclusions: Array.isArray(raw.exclusions) ? raw.exclusions.slice(0, 100) : [],
     areas: raw.areas ?? {},
     curveball: raw.curveball !== false,
     recommendationFilter: raw.recommendationFilter ?? "all"
