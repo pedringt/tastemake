@@ -8,6 +8,7 @@ import { renderTastebreakPanel } from "../components/tastebreak.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
 import { assessSynopsis, blurbOf } from "../catalog/synopsis.mjs";
 import { renderArtwork } from "../components/artwork.js";
 
@@ -100,6 +101,7 @@ function savedCard(feedback) {
   const action = (name, label, className = "button button-secondary") => `
     <button class="${className} bookmark-action" type="button" data-bookmark-item="${item.id}" data-bookmark-action="${name}">${label}</button>`;
   const info = [displayLabel(item), item.year].filter(Boolean).join(" · ");
+  const why = sanitizeRecommendationCopy(item.reason);
 
   return `
     <details class="library-card library-card-compact ${item.artwork ? "has-artwork" : ""}" data-bookmark-id="${item.id}">
@@ -116,7 +118,7 @@ function savedCard(feedback) {
       <div class="library-compact-detail">
         <div class="library-detail-meta-slot" data-detail-slot="${item.id}">${renderDetailMeta(item)}</div>
         <p class="library-blurb">${esc(blurbOf(item))}</p>
-        ${item.reason ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${esc(item.reason)}</p>` : ""}
+        ${why ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${esc(why)}</p>` : ""}
         <div class="library-favorite-row">
           <button
             class="rec-favorite-star library-action"
