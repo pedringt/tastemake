@@ -48,6 +48,19 @@ for (const internal of [
   check("recommendation copy drops retrieval plumbing", sanitizeRecommendationCopy(internal) === "", internal);
 }
 
+// Oct 20: stored fallback picks from before 603ab19 put raw catalog tags into the sentence.
+check("legacy territory clause is dropped", sanitizeRecommendationCopy("House of Leaves may be worth trying because you liked Piranesi; it also shares some holes territory.") === "House of Leaves may be worth trying because you liked Piranesi.");
+for (const raw of [
+  "Ascendance of a Bookworm may be worth trying; it also shares some franchise:本好きの下剋上 territory.",
+  "This is a franchise:本好きの下剋上-leaning pick that may connect with things you've liked.",
+  "This is a quantum theory-leaning pick that may connect with things you've liked.",
+  "A cozy pick in the series:Red Rising vein."
+]) {
+  const cleaned = sanitizeRecommendationCopy(raw);
+  check("raw catalog tags never reach a reason", !/:\S|-leaning pick|territory/.test(cleaned), cleaned);
+}
+check("ordinary prose with a colon is kept", sanitizeRecommendationCopy("Same quiet dread: a house that is bigger inside.") === "Same quiet dread: a house that is bigger inside.");
+
 // hostile data in every untrusted slot
 const nasty = makeCustomItem(`${PAYLOAD} Title`, "movie");
 nasty.about = `${PAYLOAD} about`;
@@ -98,6 +111,15 @@ for (const [name, render] of Object.entries(screens)) {
   if (name === "browse") {
     check("browse: direct search entry uses the shared search flow", html.includes('data-action="open-search"') && html.includes("Search books, movies, shows, and games"), html);
   }
+}
+
+// A pick saved before Oct 20 renders without its raw catalog tag.
+{
+  const saved = state.recommendationSets;
+  state.recommendationSets = [[{ ...first, reason: "This is a franchise:本好きの下剋上-leaning pick that may connect with things you've liked." }, { ...second, reason: "House of Leaves may be worth trying; it also shares some holes territory." }, third]];
+  const html = screens.recommendations();
+  check("recommendations: saved legacy reasons render without raw tags", !/franchise:|territory|-leaning pick/.test(html), html.match(/editorial-rationale[^<]*<\/p>/g)?.join(" | "));
+  state.recommendationSets = saved;
 }
 
 // profile remains safe when its presentation state changes
