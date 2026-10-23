@@ -82,3 +82,19 @@ export function recordRevisionIfChanged(state, entry) {
   if (previous && stableRevisionShape(previous) === stableRevisionShape(entry)) return previous;
   return recordRevision(state, entry);
 }
+
+// Oct 23 smoke test: every level change that did not end at Strong said "more cautiously", so
+// emerging → supported (more confidence) read as less. The sentence follows the direction now.
+const LEVEL_RANK = { emerging: 0, supported: 1, strong: 2 };
+export function levelChangeConsequence(from, to) {
+  const a = LEVEL_RANK[String(from).toLowerCase()];
+  const b = LEVEL_RANK[String(to).toLowerCase()];
+  if (a == null || b == null) return "Tastemake updated how much it relies on this pattern.";
+  if (a === b) return "";
+  if (b > a) return b === LEVEL_RANK.strong
+    ? "This pattern can carry more weight in future recommendations."
+    : "Tastemake can lean on this pattern a little more.";
+  return b === LEVEL_RANK.emerging
+    ? "Tastemake will treat this pattern as an open question again."
+    : "Tastemake will lean on this pattern more cautiously.";
+}

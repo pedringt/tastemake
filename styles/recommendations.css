@@ -267,15 +267,18 @@
 }
 .why-caveat { margin-top:8px !important; font-style:italic; }
 /* Opening downward, the popover reaches into the next row; lift its own card above the neighbors. */
-.editorial-rec:has(.editorial-why:hover, .editorial-why:focus-within, .editorial-why.is-pinned) { position:relative; z-index:40; }
-.editorial-why:hover .why-popover,
-.editorial-why:focus-within .why-popover,
+.editorial-rec:has(.editorial-why:not(.is-dismissed):hover, .editorial-why:not(.is-dismissed):focus-within, .editorial-why.is-pinned) { position:relative; z-index:40; }
+/* Oct 23 smoke test: it opens over the reaction buttons, so only a pinned (clicked) popover takes clicks.
+   A hover/focus preview lets clicks through, and once closed (click again or Escape) it stays closed
+   until the pointer and focus leave (.is-dismissed, src/app.js). */
+.editorial-why:not(.is-dismissed):hover .why-popover,
+.editorial-why:not(.is-dismissed):focus-within .why-popover,
 .editorial-why.is-pinned .why-popover {
   opacity:1;
   visibility:visible;
-  pointer-events:auto;
   transform:translateY(0) rotate(calc(-.4deg * var(--tilt)));
 }
+.editorial-why.is-pinned .why-popover { pointer-events:auto; }
 
 /* #95: fixed, predictable aspect ratio; object-fit:cover on the real-artwork <img> below never
    stretches the image, and the container's own size never shifts once the layout is known — the
