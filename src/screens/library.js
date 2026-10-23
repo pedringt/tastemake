@@ -63,11 +63,43 @@ export function renderDetailMeta(item, detail = {}) {
     if (detail.publisher) lines.push(["Publisher", detail.publisher]);
     if (detail.platforms) lines.push(["Platforms", detail.platforms.join(", ")]);
   }
-  if (!lines.length) return "";
+  const where = renderWhereToGet(item, detail);
+  if (!lines.length) return where;
   return `
     <dl class="library-detail-meta">
       ${lines.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join("")}
-    </dl>`;
+    </dl>${where}`;
+}
+
+// #10: where to get it, kept below the facts and never used to choose recommendations. Movies and TV
+// use TMDb's watch-provider data, which JustWatch supplies and must be credited. Books get a library
+// and an Open Library link; games already list their platforms above.
+const WATCH_LABELS = [["stream", "Stream"], ["free", "Free"], ["ads", "With ads"], ["rent", "Rent"], ["buy", "Buy"]];
+export function renderWhereToGet(item, detail = {}) {
+  if (item.type === "movie" || item.type === "tv") {
+    const where = detail.whereToWatch;
+    if (!where) return "";
+    const rows = WATCH_LABELS.filter(([key]) => (where[key] ?? []).length);
+    const more = where.link ? ` <a href="${esc(where.link)}" target="_blank" rel="noopener">All options</a>` : "";
+    return `
+    <div class="where-to-get">
+      <h4>Where to watch <span>(${esc(where.region)})</span></h4>
+      ${rows.length
+        ? `<dl>${rows.map(([key, label]) => `<div><dt>${label}</dt><dd>${esc(where[key].join(", "))}</dd></div>`).join("")}</dl>`
+        : `<p>Not available to stream, rent or buy here right now.</p>`}
+      <p class="where-credit">Availability from JustWatch, via TMDb.${more}</p>
+    </div>`;
+  }
+  if (item.type === "book" && item.title) {
+    const title = [item.title, String(item.by ?? "").split(",")[0]].filter(Boolean).join(" ");
+    const openLibrary = item.provider === "openlibrary" && item.providerId ? `https://openlibrary.org/works/${encodeURIComponent(item.providerId)}` : null;
+    return `
+    <div class="where-to-get">
+      <h4>Where to read</h4>
+      <p><a href="https://search.worldcat.org/search?q=${encodeURIComponent(title)}" target="_blank" rel="noopener">Find it at a library</a>${openLibrary ? ` · <a href="${esc(openLibrary)}" target="_blank" rel="noopener">Borrow or see editions on Open Library</a>` : ""}</p>
+    </div>`;
+  }
+  return "";
 }
 
 // Open Library search gives books no synopsis, so a book's `about` is a placeholder ("First published
