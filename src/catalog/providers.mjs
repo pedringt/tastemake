@@ -225,19 +225,21 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
   const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
   const kind = type === "tv" ? "tv" : "movie";
   const response = await fetchWithTimeout(fetchImpl,
-    `https://api.themoviedb.org/3/${kind}/${encodeURIComponent(providerId)}?append_to_response=credits&language=en-US`,
+    `https://api.themoviedb.org/3/${kind}/${encodeURIComponent(providerId)}?append_to_response=credits,watch/providers&language=en-US`,
     { headers }
   );
   if (!response.ok) throw new Error(`tmdb detail ${response.status}`);
   const row = await response.json();
   const credits = row.credits ?? {};
   const cast = namesOf(credits.cast, 6);
+  const watch = compactWatchProviders(row["watch/providers"]?.results);
   if (kind === "movie") {
     const director = namesOf((credits.crew ?? []).filter((person) => person.job === "Director"), 2);
     return {
       director: director.length ? director.join(", ") : null,
       cast: cast.length ? cast : null,
-      runtime: row.runtime || null
+      runtime: row.runtime || null,
+      watch
     };
   }
   // TV: showrunner/creator comes from `created_by`, not the crew list. Not every series has one on record.
@@ -245,8 +247,35 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
   return {
     creator: creator.length ? creator.join(", ") : null,
     cast: cast.length ? cast : null,
-    yearsRun: tvYearsRun(row)
+    yearsRun: tvYearsRun(row),
+    watch
   };
+}
+
+// #10: where a movie or show can be watched, per country, from TMDb's watch-provider data (supplied by
+// JustWatch, which must be credited wherever it is shown). Names only, a few per kind. Never stored
+// in the canonical catalog (not a factual field there); the detail endpoint returns one country.
+const WATCH_KINDS = { flatrate: "stream", free: "free", ads: "ads", rent: "rent", buy: "buy" };
+export function compactWatchProviders(results) {
+  if (!results || typeof results !== "object") return null;
+  const out = {};
+  for (const [country, entry] of Object.entries(results)) {
+    if (!/^[A-Z]{2}$/.test(country) || !entry) continue;
+    const kinds = {};
+    for (const [from, to] of Object.entries(WATCH_KINDS)) {
+      const names = [...new Set((entry[from] ?? []).map((p) => clean(p.provider_name, 40)).filter(Boolean))].slice(0, 6);
+      if (names.length) kinds[to] = names;
+    }
+    out[country] = { link: typeof entry.link === "string" && entry.link.startsWith("https://www.themoviedb.org/") ? entry.link : null, ...kinds };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// The one country a viewer asked for, or null. "XX" from a browser language like "en-GB".
+export function watchForRegion(watch, region) {
+  const code = String(region ?? "").toUpperCase();
+  if (!watch || !/^[A-Z]{2}$/.test(code)) return null;
+  return watch[code] ? { region: code, ...watch[code] } : { region: code, none: true };
 }
 
 // A series still in production has a last_air_date (its latest episode), not an end year, so it
@@ -414,12 +443,14 @@ export async function fetchItemDetail(item, { env = process.env, fetchImpl = fet
 // This never blocks recommendation generation when called through enrichCanonicalItemWriteBehind.
 export async function fetchAndPersistItemDetail(item, { env = process.env, fetchImpl = fetch, query } = {}) {
   if (!item?.provider || !item?.providerId || !item?.type) return {};
-  const cacheKey = `canonical-enrichment:v2:${item.provider}:${item.type}:${item.providerId}`;
+  const cacheKey = `canonical-enrichment:v3:${item.provider}:${item.type}:${item.providerId}`;
   const detail = fetchImpl !== fetch
     ? await fetchItemDetail(item, { env, fetchImpl })
     : await cachedValue(cacheKey, () => fetchItemDetail(item, { env, fetchImpl }), { ttl: 86400, tags: ["canonical-enrichment"] });
-  if (detail && Object.values(detail).some((value) => value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length))) {
-    await mergeCanonicalFacts(item, detail, { env, query, source: item.provider });
+  // #10: watch providers change often and differ by country; they are served, never stored as facts.
+  const { watch, ...facts } = detail ?? {};
+  if (Object.values(facts).some((value) => value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length))) {
+    await mergeCanonicalFacts(item, facts, { env, query, source: item.provider });
   }
   return detail ?? {};
 }

@@ -1,4 +1,4 @@
-import { fetchAndPersistItemDetail } from "../src/catalog/providers.mjs";
+import { fetchAndPersistItemDetail, watchForRegion } from "../src/catalog/providers.mjs";
 import { cachedValue } from "../src/server/cache.mjs";
 import { requestQuery } from "../src/server/query.mjs";
 
@@ -18,8 +18,11 @@ export default async function handler(req, res) {
   if (!provider || !providerId) return res.status(400).json({ error: "provider and providerId are required" });
 
   try {
-    const cacheKey = `catalog-detail:v2:${provider}:${type}:${providerId}`;
-    const detail = await cachedValue(cacheKey, () => fetchAndPersistItemDetail({ provider, providerId, type }), { ttl: 3600, tags: ["catalog-detail"] });
+    const cacheKey = `catalog-detail:v3:${provider}:${type}:${providerId}`;
+    const cached = await cachedValue(cacheKey, () => fetchAndPersistItemDetail({ provider, providerId, type }), { ttl: 3600, tags: ["catalog-detail"] });
+    // #10: every country's watch providers are cached together; only the viewer's country is sent.
+    const { watch, ...detail } = cached ?? {};
+    if (watch) detail.whereToWatch = watchForRegion(watch, params.region);
     res.setHeader("cache-control", "public, max-age=300, stale-while-revalidate=3600");
     return res.status(200).json({ detail });
   } catch {
