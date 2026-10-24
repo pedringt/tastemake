@@ -1,9 +1,11 @@
 import { browseGenreById } from "./browse-genres.js";
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { isBookCompanion } from "./book-companions.mjs";
+import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 
 export const BROWSE_PAGE_SIZE = 12;
 const BOOK_LOOKAHEAD = 8;
+export const BOOK_BROWSE_TIMEOUT_MS = 15_000;
 
 async function resolveTmdbKeywordId(keyword, headers, fetchImpl) {
   const response = await fetchImpl(`https://api.themoviedb.org/3/search/keyword?query=${encodeURIComponent(keyword)}&page=1`, { headers });
@@ -44,9 +46,10 @@ async function browseRead(genre, page, env, fetchImpl) {
   // mergeUniqueBrowseItems.
   const offset = (page - 1) * BROWSE_PAGE_SIZE;
   const url = `https://openlibrary.org/search.json?subject=${encodeURIComponent(genre.provider.value)}&limit=${BROWSE_PAGE_SIZE + BOOK_LOOKAHEAD}&offset=${offset}&lang=en&fields=${fields}`;
-  const response = await fetchImpl(url, {
+  // Oct 24: this had no time limit, and one page hung 60 s until the function was cut off.
+  const response = await fetchWithTimeout(fetchImpl, url, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
-  });
+  }, BOOK_BROWSE_TIMEOUT_MS);
   if (!response.ok) throw new Error("openlibrary browse unavailable");
   const docs = (await response.json()).docs ?? [];
   return {

@@ -319,5 +319,47 @@ check("onboarded Browse stays recommendation-ready after starter migration", bro
   }
 }
 
+// ---- Oct 24 regression: v6 cached Open Library failures for a day (Horror and Romance page 2 stayed empty) ----
+{
+  const { default: handler, uncacheable } = await import("../../api/browse.mjs");
+  const { BOOK_BROWSE_TIMEOUT_MS } = await import("../../src/catalog/browse.mjs");
+  const realFetch = globalThis.fetch;
+  let olCalls = 0, mode = "fail", sawSignal = false;
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    if (u.includes("openlibrary.org")) {
+      olCalls += 1;
+      sawSignal = sawSignal || Boolean(init.signal);
+      if (mode === "fail") throw new Error("timeout");
+      if (mode === "empty") return { ok: true, json: async () => ({ docs: [] }) };
+      return { ok: true, json: async () => ({ docs: [{ key: "/works/OLOKW", title: "A Real Book", author_name: ["A"], first_publish_year: 2010 }] }) };
+    }
+    if (u.includes("query.wikidata.org")) return { ok: true, json: async () => ({ results: { bindings: [] } }) };
+    throw new Error(`unexpected ${u}`);
+  };
+  const call = async () => {
+    const res = { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status() { return this; }, json(b) { this.body = b; return this; } };
+    await handler({ method: "GET", query: { domain: "read", genre: "horror", page: "7" }, headers: {} }, res);
+    return res;
+  };
+  try {
+    const failed = await call();
+    check("a failed book page is answered empty, not cached by the browser", failed.body.items.length === 0 && failed.headers["cache-control"] === "no-store", failed.headers["cache-control"]);
+    mode = "empty";
+    const empty = await call();
+    eq("the next visit asks Open Library again (the failure was not cached)", olCalls, 2);
+    check("an empty book page isn't cached either", empty.headers["cache-control"] === "no-store");
+    mode = "ok";
+    const good = await call();
+    check("once Open Library answers, the page has its books", good.body.items.some((i) => i.title === "A Real Book") && olCalls === 3);
+    await call();
+    eq("and a good page is cached again (no fourth Open Library call)", olCalls, 3);
+    check("the Open Library call has a time limit", sawSignal && BOOK_BROWSE_TIMEOUT_MS === 15_000);
+    check("movie pages with results stay cacheable", !uncacheable("movies", { items: [{}], degraded: false }) && uncacheable("movies", { items: [], degraded: true }));
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 finish();
 
