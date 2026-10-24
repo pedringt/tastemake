@@ -660,5 +660,75 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   }
 }
 
+// ---- Oct 24: Google Books fills the book half when Open Library is slow or down ----------------------------
+{
+  const { searchBooks, googleBookItem } = await import("../../src/catalog/providers.mjs");
+  const key = { TASTEMAKE_GOOGLE_BOOKS_API_KEY: "g-key" };
+  const olDoc = { key: "/works/OLFASTW", title: "Fast Open Library Book", author_name: ["A"], first_publish_year: 2001 };
+  const volume = { id: "gVol1", volumeInfo: { title: "Google Book", authors: ["B Writer"], publishedDate: "2019-05-01", categories: ["Fiction / Fantasy"], imageLinks: { thumbnail: "http://books.google.com/x.jpg" }, infoLink: "http://books.google.com/info", ratingsCount: 40 } };
+  const harness = ({ olDelay = 0, olFails = false, googleFails = false, googleEmpty = false } = {}) => {
+    const asked = { ol: 0, google: 0 };
+    const fetchImpl = async (url) => {
+      const u = String(url);
+      if (u.includes("openlibrary.org")) { asked.ol += 1; await new Promise((r) => setTimeout(r, olDelay)); if (olFails) throw new Error("timeout"); return { ok: true, json: async () => ({ docs: [olDoc] }) }; }
+      if (u.includes("googleapis.com/books")) { asked.google += 1; if (googleFails) throw new Error("down"); return { ok: true, json: async () => ({ items: googleEmpty ? [] : [volume] }) }; }
+      throw new Error(`unexpected ${u}`);
+    };
+    return { asked, fetchImpl };
+  };
+
+  let h = harness();
+  let r = await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 80 });
+  check("Open Library answers in time: its books, Google never asked", r.source === "openlibrary" && h.asked.google === 0 && r.rows[0].title === "Fast Open Library Book");
+  h = harness({ olDelay: 300 });
+  r = await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 50 });
+  check("Open Library slow: Google fills in after the wait", r.source === "googlebooks" && r.rows[0].title === "Google Book", r.source);
+  h = harness({ olFails: true });
+  const t0 = Date.now();
+  r = await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 2000 });
+  check("Open Library fails: Google straight away, without waiting", r.source === "googlebooks" && Date.now() - t0 < 1000, `${Date.now() - t0} ms`);
+  h = harness({ olDelay: 150 });
+  r = await searchBooks("x", {}, h.fetchImpl, { fallbackAfterMs: 20 });
+  check("no Google key: Open Library only, however slow", r.source === "openlibrary" && h.asked.google === 0);
+  h = harness({ olDelay: 200, googleEmpty: true });
+  r = await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 20 });
+  check("Google finds nothing: Open Library's answer is still used when it comes", r.source === "openlibrary", r.source);
+  h = harness({ olFails: true, googleFails: true });
+  let threw = false;
+  try { await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 20 }); } catch { threw = true; }
+  check("both down: the book search fails (and the dialog says so)", threw);
+
+  const item = googleBookItem(volume);
+  check("Google items read like other books", item.id === "googlebooks-book-gVol1" && item.type === "book" && item.year === "2019" && item.by === "B Writer");
+  check("covers and links use https", item.artwork.startsWith("https://") && item.sourceUrl.startsWith("https://"));
+
+  // The endpoint never caches a Google fallback answer.
+  const { default: handler, uncacheable } = await import("../../api/catalog.mjs");
+  const realFetch = globalThis.fetch, realKey = process.env.TASTEMAKE_GOOGLE_BOOKS_API_KEY;
+  let googleCalls = 0;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes("openlibrary.org")) throw new Error("timeout");
+    if (u.includes("googleapis.com/books")) { googleCalls += 1; return { ok: true, json: async () => ({ items: [volume] }) }; }
+    throw new Error(`unexpected ${u}`);
+  };
+  process.env.TASTEMAKE_GOOGLE_BOOKS_API_KEY = "g-key";
+  const call = async () => {
+    const res = { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status() { return this; }, json(b) { this.body = b; return this; } };
+    await handler({ method: "GET", query: { q: "google fallback book", domain: "read" }, headers: {} }, res);
+    return res;
+  };
+  try {
+    const first = await call();
+    check("a Google fallback answer has the books", first.body.items.some((i) => i.provider === "googlebooks") && uncacheable(first.body));
+    check("...and is sent no-store", first.headers["cache-control"] === "no-store", first.headers["cache-control"]);
+    await call();
+    eq("...and never kept: the next search asks Google again", googleCalls, 2);
+  } finally {
+    globalThis.fetch = realFetch;
+    if (realKey === undefined) delete process.env.TASTEMAKE_GOOGLE_BOOKS_API_KEY; else process.env.TASTEMAKE_GOOGLE_BOOKS_API_KEY = realKey;
+  }
+}
+
 finish();
 

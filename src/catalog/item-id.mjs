@@ -10,5 +10,6 @@ export function buildItemId(provider, mediaType, providerId) {
   if (provider === "openlibrary") return `openlibrary-book-${String(providerId).replace(/[^A-Za-z0-9_-]/g, "")}`;
   if (provider === "tmdb") return `tmdb-${mediaType}-${providerId}`;
   if (provider === "igdb") return `igdb-game-${providerId}`;
+  if (provider === "googlebooks") return `googlebooks-book-${String(providerId).replace(/[^A-Za-z0-9_-]/g, "")}`;
   return null;
 }

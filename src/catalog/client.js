@@ -23,7 +23,8 @@ export async function searchExternalCatalog(query, domain = "all", { signal, ski
         // Books timed out or failed: say so, and don't keep this answer, so the next search tries again.
         const booksFailed = providers.openlibrary?.configured === true && providers.openlibrary.available === false;
         const value = { items: Array.isArray(payload.items) ? payload.items : [], providers, degraded: Boolean(payload.degraded), booksFailed };
-        if (!booksFailed) searchCache.set(key, { at: Date.now(), value });
+        // Google Books fallback results are not kept either (Google's caching terms).
+        if (!booksFailed && !providers.googlebooks?.fallback) searchCache.set(key, { at: Date.now(), value });
         return value;
       })
       .finally(() => pendingSearches.delete(key));

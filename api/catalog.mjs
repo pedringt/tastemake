@@ -3,6 +3,9 @@ import { cachedValue } from "../src/server/cache.mjs";
 import { requestQuery } from "../src/server/query.mjs";
 
 export const booksFailed = (payload) => payload?.providers?.openlibrary?.configured === true && payload.providers.openlibrary.available === false;
+// Not cached anywhere: a book miss (so the next try asks again), or Google Books fallback results (Google's
+// terms allow no caching beyond its own headers).
+export const uncacheable = (payload) => booksFailed(payload) || payload?.providers?.googlebooks?.fallback === true;
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -26,14 +29,14 @@ export default async function handler(req, res) {
     try {
       payload = await cachedValue(cacheKey, async () => {
         const result = await searchCatalog(query, { domain, skipBooks });
-        if (booksFailed(result)) throw Object.assign(new Error("books unavailable"), { partial: result });
+        if (uncacheable(result)) throw Object.assign(new Error("not cacheable"), { partial: result });
         return result;
       }, { ttl: 300, tags: ["catalog-search"] });
     } catch (error) {
       if (!error?.partial) throw error;
       payload = error.partial;
     }
-    const partial = booksFailed(payload);
+    const partial = uncacheable(payload);
     console.info("[tastemake-catalog]", JSON.stringify({ domain, skipBooks, partial, ms: Date.now() - started, results: payload.items?.length ?? 0 }));
     res.setHeader("cache-control", partial ? "no-store" : "public, max-age=60, stale-while-revalidate=300");
     return res.status(200).json(payload);

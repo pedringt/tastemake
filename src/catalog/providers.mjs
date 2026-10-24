@@ -168,6 +168,74 @@ async function searchOpenLibraryUncached(query, env, fetchImpl) {
   return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query)).slice(0, 8).map(openLibraryItem);
 }
 
+// ---- Book search fallback (Oct 24) ----------------------------------------------------------------
+// Open Library took 2-17 s this week. When it hasn't answered after GOOGLE_FALLBACK_AFTER_MS (or fails),
+// and TASTEMAKE_GOOGLE_BOOKS_API_KEY is set, Google Books is searched too and the first good answer
+// fills the book results. Open Library keeps running in the background and fills its day cache, so the
+// next search uses it. Google's terms forbid caching beyond its cache headers or keeping permanent
+// copies, so Google results are never cached by Tastemake or written to the catalog store (see
+// searchCatalog and api/catalog.mjs).
+const GOOGLE_FALLBACK_AFTER_MS = 4000;
+const GOOGLE_SEARCH_TIMEOUT_MS = 6000;
+
+export function googleBookItem(volume) {
+  const info = volume?.volumeInfo ?? {};
+  const year = /^\d{4}/.exec(String(info.publishedDate ?? ""))?.[0] ?? null;
+  const cover = info.imageLinks?.thumbnail ?? info.imageLinks?.smallThumbnail ?? null;
+  const item = {
+    id: buildItemId("googlebooks", "book", volume.id),
+    provider: "googlebooks",
+    providerId: String(volume.id),
+    title: clean(info.title, 120),
+    type: "book",
+    domains: ["read"],
+    by: (info.authors ?? []).slice(0, 3).map((a) => clean(a, 60)).join(", ") || undefined,
+    about: info.description ? clean(info.description) : year ? `First published ${year}.` : "Book from Google Books.",
+    year,
+    artwork: cover ? String(cover).replace(/^http:/, "https:") : null,
+    genres: (info.categories ?? []).slice(0, 8).map((c) => clean(c, 60)),
+    providerMeta: {},
+    sourceUrl: typeof info.infoLink === "string" ? info.infoLink.replace(/^http:/, "https:") : null,
+    _searchPopularity: Number(info.ratingsCount) || 0
+  };
+  return { ...item, ...sanitizeAbout(item) };
+}
+
+async function searchGoogleBooks(query, env, fetchImpl) {
+  const key = env.TASTEMAKE_GOOGLE_BOOKS_API_KEY;
+  if (!key) return [];
+  const response = await fetchWithTimeout(fetchImpl, `${GOOGLE_BOOKS}/volumes?q=${encodeURIComponent(query)}&maxResults=12&printType=books&langRestrict=en&key=${encodeURIComponent(key)}`, {}, GOOGLE_SEARCH_TIMEOUT_MS);
+  if (!response.ok) throw new Error(`googlebooks ${response.status}`);
+  return ((await response.json()).items ?? [])
+    .filter((volume) => volume?.id && volume.volumeInfo?.title && !isBookCompanion({ title: volume.volumeInfo.title, author_name: volume.volumeInfo.authors ?? [] }, query))
+    .slice(0, 8)
+    .map(googleBookItem);
+}
+
+// { rows, source } from whichever book source answers usefully first. Throws when both fail.
+export async function searchBooks(query, env = process.env, fetchImpl = fetch, { fallbackAfterMs = GOOGLE_FALLBACK_AFTER_MS } = {}) {
+  const openLibrary = searchOpenLibrary(query, env, fetchImpl);
+  if (!env.TASTEMAKE_GOOGLE_BOOKS_API_KEY) return { rows: await openLibrary, source: "openlibrary" };
+  openLibrary.catch(() => {});
+  try { waitUntil(openLibrary); } catch { /* local/off-platform tests have no request context */ }
+  return new Promise((resolve, reject) => {
+    let done = false, googleStarted = false, googleOut = false, openLibraryOut = false;
+    const finish = (value) => { if (!done) { done = true; clearTimeout(timer); resolve(value); } };
+    const failIfBothOut = () => { if (!done && googleOut && openLibraryOut) { done = true; reject(new Error("books unavailable")); } };
+    const startGoogle = () => {
+      if (googleStarted) return;
+      googleStarted = true;
+      searchGoogleBooks(query, env, fetchImpl)
+        .then((rows) => { if (rows.length) finish({ rows, source: "googlebooks" }); else { googleOut = true; failIfBothOut(); } })
+        .catch(() => { googleOut = true; failIfBothOut(); });
+    };
+    const timer = setTimeout(startGoogle, fallbackAfterMs);
+    openLibrary
+      .then((rows) => finish({ rows, source: "openlibrary" }))
+      .catch(() => { openLibraryOut = true; clearTimeout(timer); startGoogle(); failIfBothOut(); });
+  });
+}
+
 async function igdbToken(env, fetchImpl) {
   if (!env.IGDB_CLIENT_ID || !env.IGDB_CLIENT_SECRET) return null;
   const load = async () => {
@@ -535,7 +603,12 @@ export async function searchCatalog(query, { domain = "all", skipBooks = false, 
 
   const specs = [];
   if (domainAllows(domain, "movies") || domainAllows(domain, "tv")) specs.push(["tmdb", Boolean(env.TASTEMAKE_TMDB_TOKEN), () => searchTmdb(q, env, fetchImpl, domain)]);
-  if (domainAllows(domain, "read") && !skipBooks) specs.push(["openlibrary", true, () => searchOpenLibrary(q, env, fetchImpl)]);
+  let bookSource = null;
+  if (domainAllows(domain, "read") && !skipBooks) specs.push(["openlibrary", true, async () => {
+    const { rows, source } = await searchBooks(q, env, fetchImpl);
+    bookSource = source;
+    return rows;
+  }]);
   if (domainAllows(domain, "play")) specs.push(["igdb", Boolean(env.IGDB_CLIENT_ID && env.IGDB_CLIENT_SECRET), () => searchIgdb(q, env, fetchImpl)]);
 
   const settled = await Promise.all(specs.map(async ([name, configured, run]) => {
@@ -550,6 +623,8 @@ export async function searchCatalog(query, { domain = "all", skipBooks = false, 
     providers[name] = { available, configured, error };
     if (available) buckets.push(rows);
   }
+  // Books came from the Google fallback: callers must not cache this response (api/catalog.mjs).
+  if (bookSource === "googlebooks") providers.googlebooks = { available: true, configured: true, error: null, fallback: true };
 
   // "All" is a relevance-ranked search, not a provider carousel. Rank the combined
   // result set globally so obvious/canonical matches rise to the top regardless of
@@ -567,7 +642,7 @@ export async function searchCatalog(query, { domain = "all", skipBooks = false, 
   // real provider items search already fetched. This is write-behind only (nothing here is
   // awaited), so it can never add latency or throw into the search response, and it is a no-op
   // when TASTEMAKE_DATABASE_URL isn't configured (e.g. this sandbox, or a preview env without it).
-  canonicalizeWriteBehind(results, { env });
+  canonicalizeWriteBehind(results.filter((item) => item.provider !== "googlebooks"), { env });   // never keep Google copies
 
   return { items: results, providers, degraded };
 }
