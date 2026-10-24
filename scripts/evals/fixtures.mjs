@@ -218,3 +218,43 @@ export function productionShapedState({ favoritesCount = 8, reactions = 96, patt
   ];
   return s;
 }
+
+// ---- #250 PR 2: do directional reasons change picks? (node scripts/evals/run.mjs --suite reasons) ----------
+// Three book scenarios, each in three versions on the same fixed candidate pool: reaction only, plain
+// reasons ("Pacing"), and reasons with direction ("Pacing: too slow"). Better wording alone is not an
+// improvement: read whether the picks themselves move, and whether one book's reason stays item-local.
+const book = (id, title, by, genres, about) => ({ id: `openlibrary-book-${id}`, provider: "openlibrary", providerId: id, title, by, type: "book", domains: ["read"], genres, about, year: "2015" });
+const REASON_POOL = [
+  book("RP1W", "The Quiet Archive", "Mara Lune", ["Fantasy", "Magic"], "A contemplative, slow-moving fantasy about an archivist cataloguing a dying city, told in long reflective chapters."),
+  book("RP2W", "Lanterns Over Hesk", "Tobin Ree", ["Fantasy", "Magic"], "A patient, atmospheric slow burn: a mapmaker spends a winter learning a valley's old magic."),
+  book("RP3W", "Sixty Hours to Varn", "Ilse Morrow", ["Fantasy", "Adventure"], "A breakneck heist across a floating city, told in short propulsive chapters with a ticking clock."),
+  book("RP4W", "Knifepoint Crown", "Dace Hollin", ["Fantasy", "Adventure"], "Fast, punchy court intrigue where every chapter ends on a reversal."),
+  book("RP5W", "The Salt Bride", "Wren Calloway", ["Romance", "Fantasy"], "A sea-witch and a lighthouse keeper fall slowly in love while a storm cult rises; the romance runs alongside a mystery."),
+  book("RP6W", "Ember and Vow", "Sela Imre", ["Romance", "Fantasy"], "A fake-engagement fantasy romance where the courtship is the whole plot.")
+];
+const lovedBooks = [
+  book("RL1W", "The Hollow Orchard", "Ana Petri", ["Fantasy", "Magic"], "A gentle, lyrical fantasy about a village that remembers its dead."),
+  book("RL2W", "Glassmaker's Daughter", "Ines Varga", ["Fantasy", "Romance"], "A glassblower's apprentice, a slow romance, and a city made of light."),
+  book("RL3W", "River of Small Gods", "Oren Taal", ["Fantasy", "Mystery fiction"], "A river priest investigates why the small gods are going quiet.")
+];
+const missBook = book("RM1W", "The Thousand Stairs", "Kell Arden", ["Fantasy", "Romance"], "A long, slow climb through a monastery; a love triangle takes over the second half.");
+
+function reasonState(lovedReasons, missReasons) {
+  const s = emptyState([]);
+  s.recommendationSets = [];
+  lovedBooks.forEach((item, i) => { react(s, item, i === 0 ? "loved" : "liked"); s.feedbackByRecommendation[item.id].refinements = lovedReasons[i] ?? []; });
+  react(s, missBook, "disliked");
+  s.feedbackByRecommendation[missBook.id].refinements = missReasons;
+  return s;
+}
+const SCENARIOS = [
+  { id: "pacing", title: "Too slow vs slow burn", plain: [["pacing"], [], []], plainMiss: ["pacing"], directional: [["pacing:slow-burn"], [], []], directionalMiss: ["pacing:too-slow"] },
+  { id: "romance", title: "One romance-heavy miss among loved romances", plain: [[], ["story"], []], plainMiss: ["story"], directional: [[], ["romance:highlight"], []], directionalMiss: ["romance:took-over"] },
+  { id: "prose", title: "Prose that worked vs prose that didn't", plain: [["writing-prose"], [], []], plainMiss: ["writing-prose"], directional: [["writing-prose:beautiful"], [], []], directionalMiss: ["writing-prose:overwritten"] }
+];
+export const REASON_FIXTURES = SCENARIOS.flatMap((scenario) => [
+  { id: `${scenario.id}-reaction-only`, title: `${scenario.title}: reaction only`, purpose: "Baseline: no reasons at all.", candidates: REASON_POOL, build: () => reasonState([], []), expect: {} },
+  { id: `${scenario.id}-plain`, title: `${scenario.title}: plain reasons`, purpose: "Reasons without a direction.", candidates: REASON_POOL, build: () => reasonState(scenario.plain, scenario.plainMiss), expect: {} },
+  { id: `${scenario.id}-directional`, title: `${scenario.title}: reasons with direction`, purpose: "Reasons with a direction; picks should move with it, and one miss must not rule out a theme.", candidates: REASON_POOL, build: () => reasonState(scenario.directional, scenario.directionalMiss), expect: {} }
+]);
+

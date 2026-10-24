@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { MAX_REFINEMENTS, clearInvalidRefinements, contentOptionsFor, directionOptionsFor, normalizedRefinements, refinementOptionsFor, refinementRecords, toggleRefinement } from "../../src/model/refinements.js";
+import { MAX_REFINEMENTS, clearInvalidRefinements, contentOptionsFor, contentThemesFor, directionOptionsFor, normalizedRefinements, refinementOptionsFor, refinementRecords, toggleRefinement } from "../../src/model/refinements.js";
 import { reasonChangeSummary, trackReasonChanged, trackReasonsOpened } from "../../src/lib/reason-events.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
+import { buildContext } from "../../src/ai/context.js";
+import { buildPickPrompt, selectPromptEvidence } from "../../api/recommendations.mjs";
 import { evidenceFingerprint } from "../../src/ai/requests.js";
 import { hypothesisEvidenceKey } from "../../src/ai/hypothesis-profile.js";
 import { buildBackup, buildHtmlExport, parseBackupText } from "../../src/model/export.js";
@@ -130,9 +132,10 @@ assert.deepEqual(contentOptionsFor(book, null), []);
 const kept = { item: { ...book, genres: [] }, rating: "less", detail: "tried-disliked", refinements: ["romance:took-over", "pacing:too-slow"] };
 assert.deepEqual(normalizedRefinements(kept), ["romance:took-over", "pacing:too-slow"]);
 assert.deepEqual(refinementRecords(kept), [
-  { id: "romance:took-over", label: "Romance took over the story" },
-  { id: "pacing:too-slow", label: "Pacing: too slow" }
-], "records stay { id, label }, with the direction in the label");
+  { id: "romance:took-over", label: "Romance took over the story", dimension: "Romance", direction: "Romance took over the story" },
+  { id: "pacing:too-slow", label: "Pacing: too slow", dimension: "Pacing", direction: "Too slow" }
+], "records carry the label plus their dimension and direction (#250 PR 2)");
+assert.equal(refinementRecords({ ...kept, refinements: ["characters"] })[0].direction, null, "a plain dimension has no direction");
 assert.deepEqual(normalizedRefinements({ ...kept, refinements: ["pacing", "pacing:too-slow"] }), ["pacing"], "duplicate dimensions collapse to the first");
 
 // Polarity: liked <-> disliked clears; loved <-> liked keeps positive directions.
@@ -188,5 +191,33 @@ for (const leak of ["book-1", "Book", "pacing", "romance", "characters", "tried-
   assert(!wire.includes(leak), `usage events never carry ${leak}`);
 }
 assert.equal(trackReasonsOpened("library", { va: undefined }), null, "nothing is sent without Web Analytics");
+
+// ---- #250 PR 2: what the picks prompt sees ---------------------------------------------------------------
+{
+  const b = (id, title, genres) => ({ id, title, type: "book", domains: ["read"], provider: "openlibrary", providerId: id, genres });
+  eq2("themes come from the approved list, strictly", contentThemesFor(b("c1", "A", ["Romance", "Mystery fiction", "Magic"])).join(), "romance,mystery");
+  eq2("a compound subject is not a theme", contentThemesFor(b("c2", "B", ["Fiction, romance, fantasy"])).join(), "");
+  eq2("non-books get no themes", contentThemesFor({ type: "movie", genres: ["romance"] }).join(), "");
+
+  const loved = b("ol-a", "Loved A", ["Fantasy"]), disliked = b("ol-b", "Disliked B", ["Romance", "Fantasy"]);
+  const state = { selectedFavorites: new Set(), libraryFavorites: new Set(), feedbackByRecommendation: {
+    [loved.id]: { item: loved, rating: "more", detail: "loved-before", refinements: ["pacing:slow-burn"] },
+    [disliked.id]: { item: disliked, rating: "less", detail: "tried-disliked", refinements: ["romance:took-over", "pacing:too-slow"] }
+  }, recommendationSets: [], customItems: {}, patternStatements: [], areas: { read: true }, curveball: true };
+  const ctx = buildContext(state, [b("ol-c", "Candidate Romance", ["Romance", "Fantasy"]), b("ol-d", "Candidate Plain", ["Fantasy"])]);
+  const prompt = buildPickPrompt(ctx, 2);
+  assert(prompt.includes('"refinements":["Romance took over the story","Pacing: too slow"]'), "reasons reach the model as their labels, direction included");
+  assert(!/"refinements":\[\{/.test(prompt), "no reason objects (ids stay server-side)");
+  assert(prompt.includes('"themes":["romance"]'), "a candidate with a clear theme carries it");
+  eq2("only that one candidate carries themes", (prompt.match(/"themes":/g) ?? []).length, 1);
+  assert(/opposite directions are opposite signals/.test(prompt) && /must not rule out every candidate with that theme/.test(prompt), "the prompt says what directions and themes mean");
+
+  // Tie-break: same kind and weight, the one with reasons goes first and no extra row is added.
+  const rec = (ref, refinements) => ({ ref, itemId: ref, class: "experienced", kind: "experienced-positive", polarity: 1, weight: 1, domains: ["read"], refinements });
+  const picked = selectPromptEvidence({ evidence: [rec("ev:plain1", []), rec("ev:plain2", []), rec("ev:reasoned", [{ id: "pacing", label: "Pacing" }])], candidates: [{ domains: ["read"] }] }, 1);
+  eq2("among equals, the item with reasons wins the slot", picked.map((r) => r.ref).join(), "ev:reasoned");
+  eq2("...and the count does not grow", selectPromptEvidence({ evidence: [rec("ev:a", [{ id: "x", label: "X" }]), rec("ev:b", [])], candidates: [{ domains: ["read"] }] }, 1).length, 1);
+}
+function eq2(name, actual, expected) { assert.deepEqual(actual, expected, name); }
 
 console.log("refinement tests passed");

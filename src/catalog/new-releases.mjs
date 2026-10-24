@@ -13,6 +13,7 @@ import { igdbItem, igdbToken, tmdbItem } from "./providers.mjs";
 import { evidenceRecords } from "../model/evidence.js";
 import { fallbackReason } from "./fallback-reasons.mjs";
 import { isAdultTagged } from "./adult-content.mjs";
+import { excludedBy } from "../model/exclusions.js";
 
 export const WINDOW_DAYS = 7;
 export const MAX_RESULTS = 5;
@@ -107,8 +108,9 @@ export async function newReleasesFor(state, { env = process.env, fetchImpl = fet
     if (!(anchors[area] ?? []).length) return [];
     const list = await releaseList(area, window, code, env, fetchImpl);
     return list
-      // A shortlist nobody asked for stays clear of flagged synopses and explicitly adult-tagged titles.
-      .filter((item) => !known.has(item.id) && !item.aboutFlag && !isAdultTagged(item) && item.releaseDate)
+      // A shortlist nobody asked for stays clear of flagged synopses, explicitly adult-tagged titles and
+      // anything the person ruled out in Never recommend (#48).
+      .filter((item) => !known.has(item.id) && !item.aboutFlag && !isAdultTagged(item) && item.releaseDate && !excludedBy(item, state.exclusions ?? []))
       .map((item) => ({ item, anchor: bestAnchor(item, anchors[area]) }))
       .filter((entry) => entry.anchor)
       .sort((a, b) => b.anchor.score - a.anchor.score || b.item.popularity - a.item.popularity)

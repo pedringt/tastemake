@@ -35,6 +35,15 @@ export async function searchExternalCatalog(query, domain = "all", { signal } = 
 
 const detailCache = new Map();
 
+// #10: the country for "where to watch", from the browser's language ("en-GB" -> GB). US when unknown.
+export function viewerRegion(languages = typeof navigator === "undefined" ? [] : [navigator.language, ...(navigator.languages ?? [])]) {
+  for (const tag of languages) {
+    const match = /^[a-z]{2,3}[-_]([A-Za-z]{2})\b/.exec(String(tag ?? ""));
+    if (match) return match[1].toUpperCase();
+  }
+  return "US";
+}
+
 // #103 item 1/2: fetched once per item, only when a user actually expands it (Library/detail view),
 // never as part of bulk search or recommendation retrieval. A miss/error resolves to {} so the caller
 // can omit fields gracefully instead of showing an empty label.
@@ -45,7 +54,7 @@ export async function fetchCatalogItemDetail(item) {
 
   const request = (async () => {
     try {
-      const url = `/api/catalog-detail?provider=${encodeURIComponent(item.provider)}&providerId=${encodeURIComponent(item.providerId)}&type=${encodeURIComponent(item.type ?? "")}`;
+      const url = `/api/catalog-detail?provider=${encodeURIComponent(item.provider)}&providerId=${encodeURIComponent(item.providerId)}&type=${encodeURIComponent(item.type ?? "")}&region=${viewerRegion()}`;
       const response = await fetch(url, { headers: { accept: "application/json" } });
       if (!response.ok) return {};
       const payload = await response.json();

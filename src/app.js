@@ -39,7 +39,7 @@ import { AI_LOADING, cancelRequest } from "./ai/requests.js";
 import { createCandidatePrefetcher } from "./ai/prefetch.js";
 import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
-import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
+import { handleMineChange, handleMineClick, handleMineSubmit, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
 import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackQuality, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite, toggleExpandedFeedback } from "./actions/recommendations.js";
@@ -47,6 +47,7 @@ import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
 import { syncAiBadge } from "./ai/ai-status.js";
+import { addExclusion, dropExcludedFromActiveSet, makeExclusion } from "./model/exclusions.js";
 
 // app.js is orchestration only: routing between screens, rendering, focus/announce plumbing, and
 // dispatching DOM events to the action modules in ./actions/ and ./model/ (#39). Product rules and
@@ -187,6 +188,10 @@ const mineCtx = { render, updateStepper, restoreFocus, announce, navigate: (scre
 app.addEventListener("click", (event) => {
   if (state.screen !== "mine") return;
   handleMineClick(event, mineCtx);
+});
+
+app.addEventListener("submit", (event) => {
+  if (state.screen === "mine") handleMineSubmit(event, mineCtx);
 });
 
 app.addEventListener("change", (event) => {
@@ -452,8 +457,19 @@ function toggleWhyPopover(trigger) {
   const shouldPin = !wrapper.classList.contains("is-pinned");
   closeWhyPopovers(wrapper);
   wrapper.classList.toggle("is-pinned", shouldPin);
+  // Closing must hide it now, even though the pointer and focus are still on the trigger.
+  wrapper.classList.toggle("is-dismissed", !shouldPin);
   trigger.setAttribute("aria-expanded", String(shouldPin));
 }
+
+// A dismissed popover may preview again once the pointer leaves it, or focus comes back from elsewhere.
+app.addEventListener("mouseleave", (event) => {
+  if (event.target.classList?.contains("editorial-why")) event.target.classList.remove("is-dismissed");
+}, true);
+app.addEventListener("focusin", (event) => {
+  const wrapper = event.target.closest?.(".editorial-why");
+  if (wrapper && !wrapper.contains(event.relatedTarget)) wrapper.classList.remove("is-dismissed");
+});
 
 let recommendationSwipe = null;
 
@@ -713,6 +729,21 @@ app.addEventListener("click", async (event) => {
       if (slot) slot.innerHTML = renderNewThisWeek();
       restoreFocus(".new-release button", app);   // next release, or the page when none are left
       announce(said);
+    }
+    return;
+  }
+
+  const exclude = event.target.closest("[data-exclude-kind]");
+  if (exclude) {
+    const item = activeRecommendations(state).find((rec) => rec.id === exclude.dataset.excludeItem);
+    const exclusion = item ? makeExclusion(exclude.dataset.excludeKind, exclude.dataset.excludeKey, item) : null;
+    if (exclusion && addExclusion(state, exclusion)) {
+      const index = activeRecommendations(state).findIndex((rec) => rec.id === item.id);
+      const removed = dropExcludedFromActiveSet(state, exclusion);
+      render();
+      const cards = [...app.querySelectorAll(".editorial-rec")];
+      restoreFocus(null, cards[Math.min(index, cards.length - 1)]?.querySelector("button") || app.querySelector('[data-action="keep-discovering"]') || app);
+      announce(`Tastemake won’t recommend ${exclusion.kind === "genre" ? exclusion.label.toLowerCase() : exclusion.kind === "creator" ? `anything by ${exclusion.label}` : `the ${exclusion.label}`}. ${removed === 1 ? "1 pick" : `${removed} picks`} removed from this set. Undo in My Tastemake.`);
     }
     return;
   }
@@ -1008,9 +1039,11 @@ document.addEventListener("keydown", (event) => {
     renderPreservingCardPosition(itemId, `[data-feedback-item="${itemId}"][data-experience-path]`);
     return;
   }
-  const trigger = document.querySelector(".editorial-why.is-pinned .why-trigger");
+  const open = document.querySelector(".editorial-why.is-pinned") ?? document.activeElement?.closest?.(".editorial-why");
+  const trigger = open?.querySelector(".why-trigger");
   if (!trigger) return;
   closeWhyPopovers();
+  open.classList.add("is-dismissed");
   trigger.focus({ preventScroll: true });
 });
 

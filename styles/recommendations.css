@@ -267,15 +267,18 @@
 }
 .why-caveat { margin-top:8px !important; font-style:italic; }
 /* Opening downward, the popover reaches into the next row; lift its own card above the neighbors. */
-.editorial-rec:has(.editorial-why:hover, .editorial-why:focus-within, .editorial-why.is-pinned) { position:relative; z-index:40; }
-.editorial-why:hover .why-popover,
-.editorial-why:focus-within .why-popover,
+.editorial-rec:has(.editorial-why:not(.is-dismissed):hover, .editorial-why:not(.is-dismissed):focus-within, .editorial-why.is-pinned) { position:relative; z-index:40; }
+/* Oct 23 smoke test: it opens over the reaction buttons, so only a pinned (clicked) popover takes clicks.
+   A hover/focus preview lets clicks through, and once closed (click again or Escape) it stays closed
+   until the pointer and focus leave (.is-dismissed, src/app.js). */
+.editorial-why:not(.is-dismissed):hover .why-popover,
+.editorial-why:not(.is-dismissed):focus-within .why-popover,
 .editorial-why.is-pinned .why-popover {
   opacity:1;
   visibility:visible;
-  pointer-events:auto;
   transform:translateY(0) rotate(calc(-.4deg * var(--tilt)));
 }
+.editorial-why.is-pinned .why-popover { pointer-events:auto; }
 
 /* #95: fixed, predictable aspect ratio; object-fit:cover on the real-artwork <img> below never
    stretches the image, and the container's own size never shifts once the layout is known — the
@@ -772,3 +775,32 @@
 .new-release-actions .button { flex:0 0 auto; width:auto; min-width:0; min-height:34px; padding:4px 12px; font-size:12px; }
 /* The no-cover placeholder is too small here for its title; the type label is enough. */
 .new-release-artwork .artwork-fallback-title { display:none; }
+/* #48: "Don't recommend…" sits quietly under the reasons; it is a boundary, not a reaction. */
+.exclude-menu { margin-top:4px; }
+.exclude-menu > summary {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;   /* WCAG 2.2 target size */
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  list-style:none;
+}
+.exclude-menu > summary::-webkit-details-marker { display:none; }
+.exclude-menu > summary:focus-visible { outline:3px solid var(--pink); outline-offset:2px; border-radius:4px; }
+.exclude-options { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 4px; }
+.exclude-option {
+  min-height:32px;
+  padding:4px 10px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:#fff;
+  color:var(--navy);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.exclude-option:hover { border-color:var(--navy); }
+.exclude-option:focus-visible { outline:3px solid var(--pink); outline-offset:2px; }
+.exclude-note { flex-basis:100%; margin:2px 0 0; color:var(--muted); font-size:11px; line-height:1.35; }

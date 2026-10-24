@@ -4,16 +4,7 @@
 
 import { serializeAiState } from "./live-client.js";
 import { applySearchAction } from "../model/search.js";
-
-// The browser language's country ("en-GB" -> GB); US when unknown. Movie release dates are per country.
-function region() {
-  const tags = typeof navigator === "undefined" ? [] : [navigator.language, ...(navigator.languages ?? [])];
-  for (const tag of tags) {
-    const match = /^[a-z]{2,3}[-_]([A-Za-z]{2})\b/.exec(String(tag ?? ""));
-    if (match) return match[1].toUpperCase();
-  }
-  return "US";
-}
+import { viewerRegion } from "../catalog/client.js";
 
 export function maybeLoadNewReleases(state, onUpdate, fetchImpl = fetch) {
   if (state.newReleases?.status) return;
@@ -21,7 +12,7 @@ export function maybeLoadNewReleases(state, onUpdate, fetchImpl = fetch) {
   fetchImpl("/api/new-releases", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ state: serializeAiState(state), region: region() })
+    body: JSON.stringify({ state: serializeAiState(state), region: viewerRegion() })
   })
     .then((response) => (response.ok ? response.json() : { items: [] }))
     .catch(() => ({ items: [] }))

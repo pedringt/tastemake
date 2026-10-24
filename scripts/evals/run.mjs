@@ -19,7 +19,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FIXTURES, badResponses } from "./fixtures.mjs";
+import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, badResponses } from "./fixtures.mjs";
 import { scoreFixture } from "./scorers.mjs";
 import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
@@ -38,6 +38,10 @@ import { normalizeHypothesis } from "../../src/ai/hypothesis-profile.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
+// --suite reasons runs the #250 PR 2 comparison (three book scenarios x three reason versions) instead of
+// the default fixtures; nothing else about the run changes.
+const suite = args.includes("--suite") ? args[args.indexOf("--suite") + 1] : "default";
+const FIXTURES = suite === "reasons" ? REASON_FIXTURES : DEFAULT_FIXTURES;
 const producerName = args.includes("--producer") ? args[args.indexOf("--producer") + 1] : "baseline";
 const dryRun = args.includes("--dry-run");
 const confirmed = args.includes("--yes");
@@ -156,13 +160,13 @@ async function runOne(fixture) {
   let beforeProfile = [];
   if (fixture.before) {
     const s = fixture.before();
-    const beforeCtx = buildContext(s, EVAL_CANDIDATES);
+    const beforeCtx = buildContext(s, fixture.candidates ?? EVAL_CANDIDATES);
     before = validateHypotheses(await producer.infer(s, beforeCtx), beforeCtx);
     beforeProfile = before.accepted.map((h, index) => normalizeHypothesis(h, index, s));
   }
   const state = fixture.build();
   if (beforeProfile.length) state.modelHypotheses = beforeProfile;
-  const ctx = buildContext(state, EVAL_CANDIDATES);
+  const ctx = buildContext(state, fixture.candidates ?? EVAL_CANDIDATES);
   ctx.__fixture = fixture.id;
   const hyp = validateHypotheses(await producer.infer(state, ctx), ctx);
   const picks = validatePicks(await producer.pick(state, ctx), ctx);
@@ -182,7 +186,7 @@ for (const fixture of FIXTURES) {
 // Validator self-test: deliberately bad answers must all be rejected, for the right reason.
 const selfTest = [];
 for (const id of ["about-10", "intent-heavy", "single-miss"]) {
-  const fixture = FIXTURES.find((f) => f.id === id);
+  const fixture = DEFAULT_FIXTURES.find((f) => f.id === id);   // the self-test always uses the default fixtures
   const ctx = buildContext(fixture.build(), EVAL_CANDIDATES);
   const bad = badResponses(ctx);
   for (const c of bad.hypotheses) {

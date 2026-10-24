@@ -7,6 +7,7 @@
 import { bestAnchor, newReleasesFor, releaseWindow } from "../../src/catalog/new-releases.mjs";
 import { actOnNewRelease, releaseLabel } from "../../src/ai/new-releases.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
+import { makeExclusion } from "../../src/model/exclusions.js";
 import { emptyState, react } from "../evals/fixtures.mjs";
 import { createSuite } from "./lib/assert.mjs";
 
@@ -19,7 +20,7 @@ const game = (id, title, genres) => ({ id: `igdb-game-${id}`, provider: "igdb", 
 
 eq("the window is the last 7 and next 7 days", JSON.stringify(releaseWindow(now)), JSON.stringify({ from: "2026-10-16", to: "2026-10-30" }));
 
-function harness({ failTv = false } = {}) {
+function harness({ failTv = false, tvGenres = [9648, 18] } = {}) {
   const asked = [];
   const fetchImpl = async (url, init = {}) => {
     const u = String(url);
@@ -33,7 +34,7 @@ function harness({ failTv = false } = {}) {
       { id: 905, title: "Third Sci-fi", genre_ids: [878], release_date: "2026-10-21", overview: "More space.", popularity: 10 }
     ] }) };
     if (u.includes("/discover/tv")) return failTv ? { ok: false, status: 500, json: async () => ({}) } : { ok: true, json: async () => ({ results: [
-      { id: 801, name: "Mystery Office", genre_ids: [9648, 18], first_air_date: "2026-10-22", overview: "Coworkers and secrets.", popularity: 40 }
+      { id: 801, name: "Mystery Office", genre_ids: tvGenres, first_air_date: "2026-10-22", overview: "Coworkers and secrets.", popularity: 40 }
     ] }) };
     if (u.includes("api.igdb.com")) return { ok: true, json: async () => ([
       { id: 701, name: "Tiny Planets", summary: "Explore small worlds.", first_release_date: Date.parse("2026-10-27T00:00:00Z") / 1000, genres: [{ id: 9, name: "Puzzle" }, { id: 31, name: "Adventure" }], hypes: 40 }
@@ -69,6 +70,19 @@ function lovedState() {
   const igdb = asked.find((a) => a.url.includes("api.igdb.com"))?.body ?? "";
   check("games ask IGDB for the window by release date", igdb.includes(`first_release_date >= ${Date.parse("2026-10-16T00:00:00Z") / 1000}`) && igdb.includes("themes.name"), igdb);
   check("search-only fields don't leak", out.items.every((i) => !("popularity" in i) && !("_searchPopularity" in i)));
+}
+
+{
+  // #48: Never recommend applies here too.
+  const s = lovedState();
+  const crime = harness({ tvGenres: [80, 9648, 18] });
+  const withCrime = await newReleasesFor(s, { env, fetchImpl: crime.fetchImpl, now });
+  check("(setup) a crime show matches when nothing is blocked", withCrime.items.some((i) => i.title === "Mystery Office"));
+  const blocked = await newReleasesFor({ ...s, exclusions: [makeExclusion("genre", "crime")] }, { env, fetchImpl: harness({ tvGenres: [80, 9648, 18] }).fetchImpl, now });
+  check("a blocked kind of thing never shows", !blocked.items.some((i) => i.title === "Mystery Office"), blocked.items.map((i) => i.title).join(", "));
+  const vega = { id: "tmdb-movie-901", provider: "tmdb", type: "movie", title: "Signal From Vega", providerMeta: { collectionId: null } };
+  const noVega = await newReleasesFor({ ...s, exclusions: [makeExclusion("series", vega.id, vega)] }, { env, fetchImpl: harness().fetchImpl, now });
+  check("a blocked title or series never shows", !noVega.items.some((i) => i.title === "Signal From Vega"), noVega.items.map((i) => i.title).join(", "));
 }
 
 {
