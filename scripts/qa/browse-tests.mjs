@@ -120,6 +120,30 @@ const read = await browseCatalog({ domain: "read", genreId: "fantasy", page: 2, 
 eq("Read Browse returns books", read.items[0]?.type, "book");
 check("Read Browse reports more when the provider fills a page", read.hasMore);
 
+// Oct 23 review: junk was dropped after cutting to 12, so a page with study guides came up short.
+{
+  const junkAt = new Set([2, 5, 7, 14]);
+  const stream = Array.from({ length: 60 }, (_, i) => junkAt.has(i)
+    ? { key: `/works/OLJ${i}W`, title: `Study Guide -- Book ${i}`, author_name: ["SuperSummary"] }
+    : { key: `/works/OLV${i}W`, title: `Valid Book ${i}`, author_name: ["Author"], first_publish_year: 2000 });
+  const asked = [];
+  const pagedFetch = async (url) => {
+    const u = new URL(String(url));
+    asked.push(u);
+    const offset = Number(u.searchParams.get("offset")), limit = Number(u.searchParams.get("limit"));
+    return { ok: true, json: async () => ({ docs: stream.slice(offset, offset + limit) }) };
+  };
+  const page1 = await browseCatalog({ domain: "read", genreId: "fantasy", page: 1, env, fetchImpl: pagedFetch });
+  const page2 = await browseCatalog({ domain: "read", genreId: "fantasy", page: 2, env, fetchImpl: pagedFetch });
+  eq("a page with junk still fills to 12 books", page1.items.length, 12);
+  check("no junk is shown", ![...page1.items, ...page2.items].some((item) => /Study Guide/.test(item.title)));
+  check("pages keep their fixed starting point (asks for a few extra)", asked[0].searchParams.get("offset") === "0" && asked[1].searchParams.get("offset") === "12" && asked[0].searchParams.get("limit") === "20");
+  const merged = mergeUniqueBrowseItems(page1.items, page2.items);
+  eq("two pages together repeat nothing", new Set(merged.map((item) => item.id)).size, merged.length);
+  const expected = stream.slice(0, 24).filter((_, i) => !junkAt.has(i)).map((row) => row.title);
+  check("and skip nothing", expected.every((title) => merged.some((item) => item.title === title)), expected.filter((t) => !merged.some((item) => item.title === t)).join(", "));
+}
+
 const igdbGenres = [
   { id: 31, name: "Adventure" }, { id: 12, name: "Role-playing (RPG)" }, { id: 9, name: "Puzzle" },
   { id: 34, name: "Visual Novel" }, { id: 2, name: "Point-and-click" }, { id: 15, name: "Strategy" },

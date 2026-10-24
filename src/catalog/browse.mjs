@@ -3,6 +3,7 @@ import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs"
 import { isBookCompanion } from "./book-companions.mjs";
 
 export const BROWSE_PAGE_SIZE = 12;
+const BOOK_LOOKAHEAD = 8;
 
 async function resolveTmdbKeywordId(keyword, headers, fetchImpl) {
   const response = await fetchImpl(`https://api.themoviedb.org/3/search/keyword?query=${encodeURIComponent(keyword)}&page=1`, { headers });
@@ -37,15 +38,19 @@ const browseTv = (genre, page, env, fetchImpl) => browseTmdb(genre, page, env, f
 
 async function browseRead(genre, page, env, fetchImpl) {
   const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,editions,editions.title,editions.language";
+  // Oct 23 review: junk (study guides etc.) was dropped after cutting to 12, so such a page came up short.
+  // Each page asks for a few extra and fills to 12 after filtering. Pages still start at a fixed offset,
+  // so nothing is ever skipped; an extra that page N+1 also returns is dropped by the client's
+  // mergeUniqueBrowseItems.
   const offset = (page - 1) * BROWSE_PAGE_SIZE;
-  const url = `https://openlibrary.org/search.json?subject=${encodeURIComponent(genre.provider.value)}&limit=${BROWSE_PAGE_SIZE}&offset=${offset}&lang=en&fields=${fields}`;
+  const url = `https://openlibrary.org/search.json?subject=${encodeURIComponent(genre.provider.value)}&limit=${BROWSE_PAGE_SIZE + BOOK_LOOKAHEAD}&offset=${offset}&lang=en&fields=${fields}`;
   const response = await fetchImpl(url, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
   if (!response.ok) throw new Error("openlibrary browse unavailable");
   const docs = (await response.json()).docs ?? [];
   return {
-    items: docs.slice(0, BROWSE_PAGE_SIZE).filter((row) => !isBookCompanion(row)).map(openLibraryItem),
+    items: docs.filter((row) => !isBookCompanion(row)).slice(0, BROWSE_PAGE_SIZE).map(openLibraryItem),
     configured: true,
     hasMore: docs.length >= BROWSE_PAGE_SIZE
   };
