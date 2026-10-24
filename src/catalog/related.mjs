@@ -488,6 +488,7 @@ async function hydrateSelectedAnchorMetadata(items, { env, query }) {
 }
 
 const FINAL_SERIES_CHECK = 8;
+const YEAR_WAIT_MS = 400;
 
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
   const mode = state.recommendationFilter ?? "all";
@@ -642,14 +643,23 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   })).candidates;
   // Oct 20: Open Library has no position at all for some later entries (King of the Murgos, Malloreon #2).
   // Wikidata fills in only where Open Library gave nothing; it never overrides an Open Library position.
+  // Oct 24 review: this and the year check below ran one after the other (up to 1.5 s + 1.2 s). They now run
+  // at the same time, and the year check (display only) waits at most YEAR_WAIT_MS; its lookup finishes in
+  // the background and is cached for next time.
   const unknown = checkedTop.filter((item) => isBook(item) && bookSeriesPosition(item) == null);
-  const wikidata = unknown.length ? await wikidataSeriesPositions(unknown, { env, fetchImpl }) : new Map();
-  for (const [index, item] of checkedTop.entries()) {
+  const pool = [...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK)].slice(0, Math.max(limit, 10) + FINAL_SERIES_CHECK);
+  const [wikidata, withYears] = await Promise.all([
+    unknown.length ? wikidataSeriesPositions(unknown, { env, fetchImpl }) : new Map(),
+    correctOldBookYears(pool, { env, fetchImpl, waitMs: YEAR_WAIT_MS })
+  ]);
+  const corrected = new Map(withYears.filter((item, index) => item !== pool[index]).map((item) => [item.id, item]));
+  const finalItem = (item) => {
     const position = wikidata.get(item.id);
-    if (position) checkedTop[index] = { ...item, providerMeta: { ...(item.providerMeta ?? {}), seriesPosition: position } };
-  }
-  // Older books' first-publication years from Wikidata (wikidata-years.mjs); only books dated before 1980.
-  const ranked = await correctOldBookYears([...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK)].filter((item) => !isLaterSeriesEntry(item)).slice(0, Math.max(limit, 10)), { env, fetchImpl });
+    const base = corrected.has(item.id) ? { ...item, year: corrected.get(item.id).year, about: corrected.get(item.id).about } : item;
+    return position ? { ...base, providerMeta: { ...(base.providerMeta ?? {}), seriesPosition: position } } : base;
+  };
+  for (const [index, item] of checkedTop.entries()) checkedTop[index] = finalItem(item);
+  const ranked = [...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK).map(finalItem)].filter((item) => !isLaterSeriesEntry(item)).slice(0, Math.max(limit, 10));
   const style = state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced");
   if (style === "adventurous" && state.curveball !== false && ranked.length > 6) {
     // Balanced keeps the normal top-ranked set. Adventurous preserves the five strongest fits

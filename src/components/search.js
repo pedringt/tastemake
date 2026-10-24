@@ -4,6 +4,7 @@ import { displayLabel, domainFilterOptions, itemMeta } from "../data/domains.js"
 import { esc } from "../lib/html.js";
 import { resolveCustomCatalogItem, searchExternalCatalog } from "../catalog/client.js";
 import { renderArtwork } from "./artwork.js";
+import { starIcon } from "./star.js";
 
 // Search dialog (#13). It lives outside #app, so re-rendering a screen never closes it.
 // Nothing here changes state except an explicit button: applySearchAction, or toggleStarterFavorite.
@@ -117,7 +118,7 @@ export function initSearch({ onChange, announce, goTo }) {
       const resultMain = (item) => `${renderArtwork(item, "search-artwork")}<span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(itemMeta(item))}</span>${hints.has(item.id) ? `<small class="search-result-hint">${esc(hints.get(item.id))}</small>` : ""}</span>`;
       list = `<p class="search-hint search-results-hint">${picking
           ? (state.starterReplaceId ? "Click a result to swap it into your Favorites." : "Click a result to add it to your Favorites. Click again to remove it.")
-          : "☆ adds something to Favorites (marked Tried · Loved). Open a result to react any other way."}</p>
+          : "“Favorite” adds something to your Favorites (marked Tried · Loved). Click a title to react any other way."}</p>
         ${ui.booksLoading ? `<p class="search-books-pending" role="status" aria-live="polite"><span class="search-spinner" aria-hidden="true"></span> Still finding books…</p>` : ""}
         ${ui.booksFailed ? `<p class="search-books-pending is-failed" role="status">Books are slow to load right now. Try the search again in a moment.</p>` : ""}
         <ul class="search-results" aria-label="Results">
@@ -154,12 +155,12 @@ export function initSearch({ onChange, announce, goTo }) {
     const star = state.selectedFavorites.has(item.id) ? "" : `
               <button
                 type="button"
-                class="rec-favorite-star search-row-star ${favorite ? "is-favorite" : ""}"
+                class="search-row-star ${favorite ? "is-favorite" : ""}"
                 data-search-row-favorite="${item.id}"
                 aria-pressed="${favorite}"
                 aria-label="${favorite ? `Remove ${esc(item.title)} from Favorites` : `Add ${esc(item.title)} to Favorites`}"
                 title="${favorite ? "Remove from Favorites" : "Add to Favorites"}"
-              ><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>`;
+              >${starIcon(favorite)}<span>${favorite ? "Favorited" : "Favorite"}</span></button>`;
     return `
             <li class="search-result-row">
               <button type="button" class="search-result" data-search-pick="${item.id}">
@@ -243,7 +244,7 @@ export function initSearch({ onChange, announce, goTo }) {
           aria-label="${favorite ? "Remove from Favorites" : "Add to Favorites"}"
           title="${favorite ? "Remove from Favorites" : "Add to Favorites"}"
           aria-pressed="${favorite}"
-        ><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>
+        >${starIcon(favorite)}</button>
         <span>Favorites are automatically marked Tried · Loved.</span>
       </div>
 

@@ -16,6 +16,7 @@ import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE } from "../ai/ai-status.js";
 import { renderArtwork } from "../components/artwork.js";
 import { releaseLabel } from "../ai/new-releases.js";
 import { exclusionOptions } from "../model/exclusions.js";
+import { starIcon } from "../components/star.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -188,7 +189,7 @@ function favoriteToggle(itemId) {
       aria-label="${label}"
       title="${label}"
       aria-pressed="${isFavorite}"
-    ><span aria-hidden="true">${isFavorite ? "★" : "☆"}</span></button>`;
+    >${starIcon(isFavorite)}</button>`;
 }
 
 function mediaArt(item, index) {

@@ -804,3 +804,6 @@
 .exclude-option:hover { border-color:var(--navy); }
 .exclude-option:focus-visible { outline:3px solid var(--pink); outline-offset:2px; }
 .exclude-note { flex-basis:100%; margin:2px 0 0; color:var(--muted); font-size:11px; line-height:1.35; }
+
+/* Oct 24: the star is an SVG (src/components/star.js), so it sits at the true center of round buttons. */
+.star-icon { display:block; flex:none; }

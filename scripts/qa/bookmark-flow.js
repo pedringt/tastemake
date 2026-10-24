@@ -239,10 +239,23 @@ export async function run() {
   check("row star adds a Favorite in one click",state.libraryFavorites.has("igdb-game-603"));
   check("row star marks it Tried · Loved",state.feedbackByRecommendation["igdb-game-603"]?.detail==="loved-before");
   check("row star shows pressed and keeps focus",$('[data-search-row-favorite="igdb-game-603"]')?.getAttribute("aria-pressed")==="true"&&document.activeElement===$('[data-search-row-favorite="igdb-game-603"]'));
+  // Oct 24: after setup the add action is a labeled button, and stars are drawn shapes, not text characters.
+  check("the row's Favorite button says so",/Favorited/.test($('[data-search-row-favorite="igdb-game-603"]')?.textContent||"")&&/Favorite/.test($('[data-search-row-favorite="tmdb-movie-601"]')?.textContent||""));
+  check("stars are SVG shapes, never ☆/★ text",Boolean($('[data-search-row-favorite] svg.star-icon'))&&!/[☆★]/.test(document.body.textContent));
   await act('[data-search-pick="tmdb-movie-601"]');
   check("clicking a result row opens its sheet without recording anything",Boolean($("#search-sheet-title"))&&!state.feedbackByRecommendation["tmdb-movie-601"]);
   $("#search-dialog")?.close();
   await sleep(120);
+
+  // Oct 24: an onboarded user who finishes setup lands on their Favorites in Library, never on the empty
+  // four-slot first-run screen (their Favorites live in Library after onboarding).
+  history.pushState({}, "", "/setup");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  await sleep(150);
+  state.setupReturn="favorites";
+  if($('[data-action="setup-done"]')) await act('[data-action="setup-done"]',200);
+  check("finishing setup after onboarding opens Favorites in Library",state.screen==="library"&&state.libraryView==="tried"&&state.libraryReactionFilter==="favorites",`${state.screen}/${state.libraryView}/${state.libraryReactionFilter}`);
+  check("not the empty first-run screen",!$(".starter-placeholder")&&!/0 of 4/.test(document.body.textContent));
 
   // Look picker reflects the two replacement concepts and retained skins.
   document.querySelector("[data-open-look]")?.click();
