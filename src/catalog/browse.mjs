@@ -1,6 +1,7 @@
 import { browseGenreById } from "./browse-genres.js";
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { isBookCompanion } from "./book-companions.mjs";
+import { correctOldBookYears } from "./wikidata-years.mjs";
 
 export const BROWSE_PAGE_SIZE = 12;
 const BOOK_LOOKAHEAD = 8;
@@ -50,7 +51,7 @@ async function browseRead(genre, page, env, fetchImpl) {
   if (!response.ok) throw new Error("openlibrary browse unavailable");
   const docs = (await response.json()).docs ?? [];
   return {
-    items: docs.filter((row) => !isBookCompanion(row)).slice(0, BROWSE_PAGE_SIZE).map(openLibraryItem),
+    items: await correctOldBookYears(docs.filter((row) => !isBookCompanion(row)).slice(0, BROWSE_PAGE_SIZE).map(openLibraryItem), { env, fetchImpl }),
     configured: true,
     hasMore: docs.length >= BROWSE_PAGE_SIZE
   };

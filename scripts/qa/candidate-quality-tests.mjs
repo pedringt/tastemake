@@ -13,6 +13,7 @@ import { bookGenreFamilies, igdbGenreOverlap, igdbGenreWhereClause, retrieveCata
 import { plainTitle, wikidataSeriesPositions } from "../../src/catalog/wikidata-series.mjs";
 import { isBookCompanion } from "../../src/catalog/book-companions.mjs";
 import { firstPublishedYear, searchCatalog } from "../../src/catalog/providers.mjs";
+import { correctOldBookYears } from "../../src/catalog/wikidata-years.mjs";
 import { createSuite } from "./lib/assert.mjs";
 
 const { check, eq, finish } = createSuite("candidate quality tests");
@@ -575,4 +576,30 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   eq("three junk results still leave a full 8 real books", books.length, 8);
 }
 
+// ---- Oct 24: older books' years from Wikidata (Open Library says The Great Gatsby is 1920; it's 1925) ------
+{
+  const ol = (id, title, year, about = `First published ${year}.`) => ({ id: `openlibrary-book-${id}`, provider: "openlibrary", providerId: id, type: "book", domains: ["read"], title, year: String(year), about });
+  const asked = [];
+  const wikidata = (rows) => async (url) => { asked.push(decodeURIComponent(String(url))); return { ok: true, json: async () => ({ results: { bindings: rows.map(([olid, year]) => ({ olid: { value: olid }, year: { value: String(year) } })) } }) }; };
+  const items = [ol("OL468431W", "The Great Gatsby", 1920), ol("OL27448W", "The Lord of the Rings", 1954), ol("OL893415W", "Dune", 1965), ol("OL8400950W", "The Blade Itself", 2006), { id: "tmdb-movie-1", provider: "tmdb", title: "A Film", year: "1925" }];
+  const out = await correctOldBookYears(items, { env: {}, fetchImpl: wikidata([["OL468431W", 1925], ["OL27448W", 1954]]) });
+  eq("Gatsby gets Wikidata's year", out[0].year, "1925");
+  eq("...and the placeholder line follows it", out[0].about, "First published 1925.");
+  eq("an agreeing year is unchanged", out[1].year, "1954");
+  eq("no Wikidata date: Open Library's year stays", out[2].year, "1965");
+  check("only pre-1980 Open Library books are asked about, in one request", asked.length === 1 && asked[0].includes('"OL468431W"') && !asked[0].includes("OL8400950W") && !asked[0].includes("tmdb"), asked.join(" | "));
+  check("matched by Open Library id (P648) only, no titles", /wdt:P648/.test(asked[0]) && !/rdfs:label/.test(asked[0]));
+  check("everything else passes through untouched", out[3] === items[3] && out[4] === items[4]);
+  const real = await correctOldBookYears([ol("OL1W", "Old Book", 1950, "A real synopsis.")], { env: {}, fetchImpl: wikidata([["OL1W", 1948]]) });
+  eq("a real synopsis is never replaced", real[0].about, "A real synopsis.");
+  const down = await correctOldBookYears(items.slice(0, 1), { env: {}, fetchImpl: async () => { throw new Error("timeout"); } });
+  eq("Wikidata down: Open Library's year stays", down[0].year, "1920");
+  let called = false;
+  await correctOldBookYears([ol("OL2W", "New Book", 2015)], { env: {}, fetchImpl: async () => { called = true; } });
+  check("no old books, no request", !called);
+  const odd = await correctOldBookYears(items.slice(0, 1), { env: {}, fetchImpl: wikidata([["OL468431W", 3020]]) });
+  eq("an impossible year is ignored", odd[0].year, "1920");
+}
+
 finish();
+

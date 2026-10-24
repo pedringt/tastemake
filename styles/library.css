@@ -399,3 +399,7 @@
 .where-to-get p { margin:0; }
 .where-to-get a { color:var(--note-ink,#5749bf); font-weight:700; }
 .where-to-get .where-credit { margin-top:4px; color:var(--muted); font-size:11px; }
+
+/* #29: long sections stop at 30 with a "Show all" button. */
+.library-show-all { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:4px 0; color:var(--muted); font-size:13px; }
+.library-show-all .button { width:auto; flex:0 0 auto; }

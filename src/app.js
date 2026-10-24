@@ -950,6 +950,21 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const showAll = event.target.closest("[data-library-show-all]");
+  if (showAll) {
+    const key = showAll.dataset.libraryShowAll;
+    const grids = [...app.querySelectorAll(".library-grid")];
+    const gridIndex = grids.indexOf(showAll.closest(".library-grid"));
+    const firstHidden = grids[gridIndex]?.querySelectorAll(":scope > .library-card").length ?? 0;
+    (state.libraryExpanded ??= new Set()).add(key);
+    render();
+    // Land on the first card that was just revealed, so keyboard users continue where the list was cut.
+    const revealed = app.querySelectorAll(".library-grid")[gridIndex]?.querySelectorAll(":scope > .library-card")[firstHidden]?.querySelector("summary");
+    restoreFocus(null, revealed ?? app);
+    announce("Showing all of them.");
+    return;
+  }
+
   const libraryTab = event.target.closest("[data-library-tab]");
   if (libraryTab) {
     state.libraryView = libraryTab.dataset.libraryTab === "tried" ? "tried" : "saved";
