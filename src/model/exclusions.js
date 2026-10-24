@@ -47,7 +47,7 @@ export function genresOf(item) {
   const themes = (item?.providerMeta?.themes ?? []).map(String);
   return EXCLUDABLE_GENRES.filter((genre) => {
     if (item?.provider === "tmdb") return (item.type === "tv" ? genre.tmdbTv : genre.tmdbMovie).some((id) => ids.includes(id));
-    if (item?.provider === "openlibrary") return Boolean(genre.book) && genres.some((g) => genre.book.test(g));
+    if (item?.provider === "openlibrary" || item?.provider === "googlebooks") return Boolean(genre.book) && genres.some((g) => genre.book.test(g));
     if (item?.provider === "igdb") return Boolean(genre.game) && [...genres, ...themes].some((g) => genre.game.test(g));
     return false;
   }).map((genre) => genre.id);
