@@ -146,6 +146,9 @@ function openLibraryItem(row) {
 // at most SEARCH_YEAR_WAIT_MS (the Wikidata lookup keeps going and fills its own cache for next time).
 const BOOK_SEARCH_TTL_SECONDS = 24 * 60 * 60;
 const SEARCH_YEAR_WAIT_MS = 500;
+// Oct 24: Open Library answered in 9-17 s, past the old 8 s limit, so every book search failed. Books
+// load behind the movie/TV/game results now, so waiting longer costs little (api/catalog.mjs has 30 s).
+export const BOOK_SEARCH_TIMEOUT_MS = 20_000;
 
 async function searchOpenLibrary(query, env, fetchImpl) {
   const load = () => searchOpenLibraryUncached(query, env, fetchImpl);
@@ -160,7 +163,7 @@ async function searchOpenLibraryUncached(query, env, fetchImpl) {
   // Asks for a few extra so dropping study guides and the like (book-companions.mjs) still leaves 8.
   const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=12&lang=en&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
-  });
+  }, BOOK_SEARCH_TIMEOUT_MS);
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
   return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query)).slice(0, 8).map(openLibraryItem);
 }

@@ -43,6 +43,10 @@ export async function run() {
     if(url.pathname==="/api/catalog"){
       const q=(url.searchParams.get("q")||"").toLowerCase();
       // Search speed (Oct 24): the book half answers late, the rest at once.
+      if(q==="failbooks"){
+        const fast=[{id:"tmdb-movie-891",provider:"tmdb",providerId:"891",title:"Failbooks The Movie",type:"movie",domains:["movies"],about:"A film.",artwork:null}];
+        return {ok:true,status:200,json:async()=>({items:fast,providers:{tmdb:{configured:true,available:true,error:null},openlibrary:{configured:true,available:false,error:"timeout"}},degraded:false})};
+      }
       if(q==="slowbooks"){
         const fast=[{id:"tmdb-movie-881",provider:"tmdb",providerId:"881",title:"Slowbooks The Movie",type:"movie",domains:["movies"],about:"A film.",artwork:null}];
         if(url.searchParams.get("skip")==="read") return {ok:true,status:200,json:async()=>({items:fast,providers:{},degraded:false})};
@@ -283,6 +287,8 @@ export async function run() {
   await sleep(600);
   check("books join the list when they arrive",Boolean($('[data-search-pick="openlibrary-book-882"]'))&&Boolean($('[data-search-pick="tmdb-movie-881"]')));
   check("and the note goes away",!/Still finding books/.test($("#search-view")?.textContent||""));
+  await type("#search-input","failbooks",500);
+  check("when books fail, the other results stay and a note says so",Boolean($('[data-search-pick="tmdb-movie-891"]'))&&/Books are slow to load right now/.test($("#search-view")?.textContent||""),$("#search-view")?.textContent.slice(0,200));
   $("#search-dialog")?.close();
   await sleep(120);
 

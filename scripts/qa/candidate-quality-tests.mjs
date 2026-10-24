@@ -623,5 +623,42 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   eq("Browse and recommendations still wait for the correction", uncapped[0].year, "1925");
 }
 
+// ---- Oct 24: Open Library answered in 9-17 s; books must not fail for good, or stick as a cached miss -------
+{
+  const { BOOK_SEARCH_TIMEOUT_MS } = await import("../../src/catalog/providers.mjs");
+  const vercel = JSON.parse((await import("node:fs")).readFileSync(new URL("../../vercel.json", import.meta.url), "utf8"));
+  check("book search waits 20 s", BOOK_SEARCH_TIMEOUT_MS === 20_000);
+  check("and the catalog function is allowed longer than that", vercel.functions["api/catalog.mjs"].maxDuration * 1000 > BOOK_SEARCH_TIMEOUT_MS + 2000, vercel.functions["api/catalog.mjs"].maxDuration);
+
+  const { default: handler, booksFailed } = await import("../../api/catalog.mjs");
+  const realFetch = globalThis.fetch;
+  let olCalls = 0, olWorks = false;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("openlibrary.org")) {
+      olCalls += 1;
+      if (!olWorks) throw new Error("timeout");
+      return { ok: true, json: async () => ({ docs: [{ key: "/works/OLQW", title: "Quietbook", author_name: ["A"], first_publish_year: 2001 }] }) };
+    }
+    throw new Error(`unexpected ${url}`);
+  };
+  const call = async () => {
+    const res = { headers: {}, statusCode: 0, body: null, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status(c) { this.statusCode = c; return this; }, json(b) { this.body = b; return this; } };
+    await handler({ method: "GET", query: { q: "quietbook search", domain: "read" }, headers: {} }, res);
+    return res;
+  };
+  try {
+    const first = await call();
+    check("a failed book search is answered, marked failed", booksFailed(first.body) && first.statusCode === 200);
+    check("...and told not to be cached anywhere", first.headers["cache-control"] === "no-store", first.headers["cache-control"]);
+    olWorks = true;
+    const second = await call();
+    check("the next try asks Open Library again (the miss was not cached)", olCalls === 2, olCalls);
+    check("and gets the books once Open Library answers", second.body.items.some((i) => i.title === "Quietbook") && !booksFailed(second.body));
+    check("a good result is cacheable again", /public/.test(second.headers["cache-control"] ?? ""), second.headers["cache-control"]);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 finish();
 

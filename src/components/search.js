@@ -28,7 +28,7 @@ export function initSearch({ onChange, announce, goTo }) {
   const opener = document.querySelector("#open-search");
   if (!dialog || !input || !view || !opener || typeof dialog.showModal !== "function") return;
 
-  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "", booksLoading: false };
+  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "", booksLoading: false, booksFailed: false };
   let catalogTimer = null;
   let catalogController = null;
   let catalogSeq = 0;
@@ -119,11 +119,14 @@ export function initSearch({ onChange, announce, goTo }) {
           ? (state.starterReplaceId ? "Click a result to swap it into your Favorites." : "Click a result to add it to your Favorites. Click again to remove it.")
           : "☆ adds something to Favorites (marked Tried · Loved). Open a result to react any other way."}</p>
         ${ui.booksLoading ? `<p class="search-books-pending" role="status" aria-live="polite"><span class="search-spinner" aria-hidden="true"></span> Still finding books…</p>` : ""}
+        ${ui.booksFailed ? `<p class="search-books-pending is-failed" role="status">Books are slow to load right now. Try the search again in a moment.</p>` : ""}
         <ul class="search-results" aria-label="Results">
           ${hits.map((item) => picking ? favoriteResult(item, resultMain(item)) : lookupResult(item, resultMain(item))).join("")}
         </ul>`;
     } else {
-      list = `<p class="search-hint" role="status">Nothing matches “${esc(query)}”. Try a different spelling, or add it yourself below.</p>`;
+      list = ui.booksFailed
+        ? `<p class="search-hint" role="status">No movies, shows or games match “${esc(query)}”, and books are slow to load right now. Try the search again in a moment.</p>`
+        : `<p class="search-hint" role="status">Nothing matches “${esc(query)}”. Try a different spelling, or add it yourself below.</p>`;
     }
 
     const addLabel = readyToSearch && !ui.catalogLoading && !hits.length
@@ -313,7 +316,7 @@ export function initSearch({ onChange, announce, goTo }) {
   }
 
   function open() {
-    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "", booksLoading: false });
+    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "", booksLoading: false, booksFailed: false });
     input.value = "";
     syncFilters();
     render();
@@ -337,6 +340,7 @@ export function initSearch({ onChange, announce, goTo }) {
     ui.catalogLoading = true;
     ui.catalogError = "";
     ui.booksLoading = false;
+    ui.booksFailed = false;
     render();
     // Search speed (Oct 24): for "All", movies/TV/games are asked for separately and shown as soon as they
     // arrive (well under a second); the full, globally ranked list replaces them once books are in.
@@ -357,12 +361,15 @@ export function initSearch({ onChange, announce, goTo }) {
       if (seq !== catalogSeq) return;
       ui.external = payload.items;
       ui.catalogError = payload.degraded ? "unavailable" : "";
+      ui.booksFailed = Boolean(payload.booksFailed) && !payload.degraded;
     } catch (error) {
       if (error?.name === "AbortError" || seq !== catalogSeq) return;
       // Books failed after the fast results showed: keep those rather than blanking the list.
       if (!showedFast) {
         ui.external = [];
         ui.catalogError = "unavailable";
+      } else {
+        ui.booksFailed = true;
       }
     } finally {
       if (seq === catalogSeq) {
