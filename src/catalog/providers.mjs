@@ -256,6 +256,20 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
 // JustWatch, which must be credited wherever it is shown). Names only, a few per kind. Never stored
 // in the canonical catalog (not a factual field there); the detail endpoint returns one country.
 const WATCH_KINDS = { flatrate: "stream", free: "free", ads: "ads", rent: "rent", buy: "buy" };
+
+// Oct 23: TMDb lists every plan and resold channel of a service separately ("Paramount Plus Premium",
+// "Paramount Plus Essential", "Paramount+ Amazon Channel", "Paramount+ Roku Premium Channel"), so one
+// service filled the list. Plans and channels collapse to the service; the "All options" link keeps the detail.
+const CHANNEL_SUFFIX = /\s+(?:amazon|roku premium|roku|apple tv|youtube)\s+channel$/i;
+const PLAN_SUFFIX = /\s+(?:(?:standard|basic|premium)\s+)?with\s+ads$|\s+(?:premium\s+plus|premium|essential|basic|standard)$/i;
+export function watchServiceName(name) {
+  let text = String(name ?? "").replace(/\s+/g, " ").trim();
+  for (const pattern of [CHANNEL_SUFFIX, PLAN_SUFFIX]) {
+    const shorter = text.replace(pattern, "").trim();
+    if (shorter) text = shorter;
+  }
+  return text.replace(/\s+Plus$/i, "+").replace(/\s+Plus\b/i, "+");
+}
 export function compactWatchProviders(results) {
   if (!results || typeof results !== "object") return null;
   const out = {};
@@ -263,7 +277,11 @@ export function compactWatchProviders(results) {
     if (!/^[A-Z]{2}$/.test(country) || !entry) continue;
     const kinds = {};
     for (const [from, to] of Object.entries(WATCH_KINDS)) {
-      const names = [...new Set((entry[from] ?? []).map((p) => clean(p.provider_name, 40)).filter(Boolean))].slice(0, 6);
+      const seen = new Set();
+      const names = (entry[from] ?? [])
+        .map((p) => watchServiceName(clean(p.provider_name, 40)))
+        .filter((n) => n && !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase()))
+        .slice(0, 6);
       if (names.length) kinds[to] = names;
     }
     out[country] = { link: typeof entry.link === "string" && entry.link.startsWith("https://www.themoviedb.org/") ? entry.link : null, ...kinds };
@@ -443,7 +461,7 @@ export async function fetchItemDetail(item, { env = process.env, fetchImpl = fet
 // This never blocks recommendation generation when called through enrichCanonicalItemWriteBehind.
 export async function fetchAndPersistItemDetail(item, { env = process.env, fetchImpl = fetch, query } = {}) {
   if (!item?.provider || !item?.providerId || !item?.type) return {};
-  const cacheKey = `canonical-enrichment:v3:${item.provider}:${item.type}:${item.providerId}`;
+  const cacheKey = `canonical-enrichment:v4:${item.provider}:${item.type}:${item.providerId}`;
   const detail = fetchImpl !== fetch
     ? await fetchItemDetail(item, { env, fetchImpl })
     : await cachedValue(cacheKey, () => fetchItemDetail(item, { env, fetchImpl }), { ttl: 86400, tags: ["canonical-enrichment"] });
