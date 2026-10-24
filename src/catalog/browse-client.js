@@ -15,6 +15,7 @@ export async function fetchBrowsePage(domain, genre, page = 1, { signal } = {}) 
     hasMore: Boolean(payload.hasMore),
     degraded: Boolean(payload.degraded)
   };
-  browseCache.set(key, { at: Date.now(), value });
+  // A failed or empty page isn't kept, so going back to it tries again (Oct 24).
+  if (!value.degraded && value.items.length) browseCache.set(key, { at: Date.now(), value });
   return value;
 }
