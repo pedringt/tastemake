@@ -3,7 +3,7 @@ const KEY = "tastemake:test-state:v1";
 const SET_FIELDS = ["selectedFavorites", "libraryFavorites", "blindSpotDismissed", "setupAreas"];
 const FIELDS = [
   "selectedFavorites", "feedbackByRecommendation", "recommendationSets", "recommendationExhausted",
-  "libraryFavorites", "customItems", "blindSpots", "patternStatements", "blindSpotDismissed",
+  "libraryFavorites", "customItems", "blindSpots", "patternStatements", "exclusions", "blindSpotDismissed",
   "tastebreaks", "hypothesisHistory", "modelHypotheses", "profileView", "mapPattern", "mapItem",
   "mapFilter", "favoriteFilter", "recommendationFilter", "libraryFilter", "expandedFeedback",
   "areas", "curveball", "displayName", "setupAreas", "recommendationStyle", "setupComplete",

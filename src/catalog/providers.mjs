@@ -95,7 +95,20 @@ function openLibraryAuthors(names = []) {
   return clean((names.length > 2 ? names.slice(0, 1) : names).join(", "), 120);
 }
 
+// Open Library's first_publish_year is the earliest date on any edition, so one mis-dated record wins.
+// Oct 23 smoke test: The Blade Itself, The Lies of Locke Lamora and The Alloy of Law all read 2001, from
+// one Gollancz reprint each imported with a 2001 date (the real years are 2006, 2006, 2011). When the
+// earliest year stands alone, 4+ years before every other edition of a modern book, the next year is used.
+// Older books are left alone: a long gap before the first reprint is normal for them.
+export function firstPublishedYear(row = {}) {
+  const first = Number(row.first_publish_year) || null;
+  const years = [...new Set([].concat(row.publish_year ?? []).map(Number).filter((y) => y > 0))].sort((a, b) => a - b);
+  if (!first || years.length < 3 || years[0] !== first || first < 1980) return first;
+  return years[1] - years[0] >= 4 ? years[1] : first;
+}
+
 function openLibraryItem(row) {
+  const firstYear = firstPublishedYear(row);
   const key = String(row.key ?? "").replace("/works/", "");
   const englishTitle = englishEditionTitle(row);
   const item = {
@@ -107,8 +120,8 @@ function openLibraryItem(row) {
     type: "book",
     domains: ["read"],
     by: openLibraryAuthors(row.author_name ?? []),
-    about: row.first_publish_year ? `First published ${row.first_publish_year}.` : "Book from Open Library.",
-    year: row.first_publish_year ? String(row.first_publish_year) : null,
+    about: firstYear ? `First published ${firstYear}.` : "Book from Open Library.",
+    year: firstYear ? String(firstYear) : null,
     artwork: row.cover_i ? `https://covers.openlibrary.org/b/id/${row.cover_i}-L.jpg?default=false` : null,
     genres: (row.subject ?? []).slice(0, 12).map((x) => clean(x, 60)),
     // #142: Open Library's own series metadata (series_key), when the record has it, lets the
@@ -128,12 +141,13 @@ function openLibraryItem(row) {
 }
 
 async function searchOpenLibrary(query, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,series_position,isbn,edition_count,editions,editions.title,editions.language";
-  const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&lang=en&fields=${fields}`, {
+  const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,series_name,series_position,isbn,edition_count,editions,editions.title,editions.language";
+  // Asks for a few extra so dropping study guides and the like (book-companions.mjs) still leaves 8.
+  const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=12&lang=en&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
-  return ((await response.json()).docs ?? []).slice(0, 8).filter((row) => !isBookCompanion(row, query)).map(openLibraryItem);
+  return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query)).slice(0, 8).map(openLibraryItem);
 }
 
 async function igdbToken(env, fetchImpl) {
@@ -165,6 +179,8 @@ function igdbItem(row) {
     // shares a collection id) so the shared novelty guard can suppress sequels without title guessing.
     providerMeta: {
       genreIds: (row.genres ?? []).map((x) => x.id),
+      // #48: IGDB keeps Horror, Romance, Warfare and Kids as themes, not genres.
+      themes: (row.themes ?? []).map((x) => clean(x.name, 40)).filter(Boolean),
       collectionId: row.collection?.id ?? null,
       franchiseId: (row.franchises ?? [])[0]?.id ?? row.franchise?.id ?? null
     },
@@ -185,7 +201,7 @@ async function searchIgdb(query, env, fetchImpl) {
       authorization: `Bearer ${token}`,
       "content-type": "text/plain"
     },
-    body: `search "${String(query).replace(/"/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id,total_rating_count; limit 20;`
+    body: `search "${String(query).replace(/"/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.name,collection.id,franchises.id,total_rating_count; limit 20;`
   });
   if (!response.ok) throw new Error(`igdb ${response.status}`);
   const rows = await response.json();
@@ -209,19 +225,21 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
   const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
   const kind = type === "tv" ? "tv" : "movie";
   const response = await fetchWithTimeout(fetchImpl,
-    `https://api.themoviedb.org/3/${kind}/${encodeURIComponent(providerId)}?append_to_response=credits&language=en-US`,
+    `https://api.themoviedb.org/3/${kind}/${encodeURIComponent(providerId)}?append_to_response=credits,watch/providers&language=en-US`,
     { headers }
   );
   if (!response.ok) throw new Error(`tmdb detail ${response.status}`);
   const row = await response.json();
   const credits = row.credits ?? {};
   const cast = namesOf(credits.cast, 6);
+  const watch = compactWatchProviders(row["watch/providers"]?.results);
   if (kind === "movie") {
     const director = namesOf((credits.crew ?? []).filter((person) => person.job === "Director"), 2);
     return {
       director: director.length ? director.join(", ") : null,
       cast: cast.length ? cast : null,
-      runtime: row.runtime || null
+      runtime: row.runtime || null,
+      watch
     };
   }
   // TV: showrunner/creator comes from `created_by`, not the crew list. Not every series has one on record.
@@ -229,8 +247,35 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
   return {
     creator: creator.length ? creator.join(", ") : null,
     cast: cast.length ? cast : null,
-    yearsRun: tvYearsRun(row)
+    yearsRun: tvYearsRun(row),
+    watch
   };
+}
+
+// #10: where a movie or show can be watched, per country, from TMDb's watch-provider data (supplied by
+// JustWatch, which must be credited wherever it is shown). Names only, a few per kind. Never stored
+// in the canonical catalog (not a factual field there); the detail endpoint returns one country.
+const WATCH_KINDS = { flatrate: "stream", free: "free", ads: "ads", rent: "rent", buy: "buy" };
+export function compactWatchProviders(results) {
+  if (!results || typeof results !== "object") return null;
+  const out = {};
+  for (const [country, entry] of Object.entries(results)) {
+    if (!/^[A-Z]{2}$/.test(country) || !entry) continue;
+    const kinds = {};
+    for (const [from, to] of Object.entries(WATCH_KINDS)) {
+      const names = [...new Set((entry[from] ?? []).map((p) => clean(p.provider_name, 40)).filter(Boolean))].slice(0, 6);
+      if (names.length) kinds[to] = names;
+    }
+    out[country] = { link: typeof entry.link === "string" && entry.link.startsWith("https://www.themoviedb.org/") ? entry.link : null, ...kinds };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// The one country a viewer asked for, or null. "XX" from a browser language like "en-GB".
+export function watchForRegion(watch, region) {
+  const code = String(region ?? "").toUpperCase();
+  if (!watch || !/^[A-Z]{2}$/.test(code)) return null;
+  return watch[code] ? { region: code, ...watch[code] } : { region: code, none: true };
 }
 
 // A series still in production has a last_air_date (its latest episode), not an end year, so it
@@ -398,12 +443,14 @@ export async function fetchItemDetail(item, { env = process.env, fetchImpl = fet
 // This never blocks recommendation generation when called through enrichCanonicalItemWriteBehind.
 export async function fetchAndPersistItemDetail(item, { env = process.env, fetchImpl = fetch, query } = {}) {
   if (!item?.provider || !item?.providerId || !item?.type) return {};
-  const cacheKey = `canonical-enrichment:v2:${item.provider}:${item.type}:${item.providerId}`;
+  const cacheKey = `canonical-enrichment:v3:${item.provider}:${item.type}:${item.providerId}`;
   const detail = fetchImpl !== fetch
     ? await fetchItemDetail(item, { env, fetchImpl })
     : await cachedValue(cacheKey, () => fetchItemDetail(item, { env, fetchImpl }), { ttl: 86400, tags: ["canonical-enrichment"] });
-  if (detail && Object.values(detail).some((value) => value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length))) {
-    await mergeCanonicalFacts(item, detail, { env, query, source: item.provider });
+  // #10: watch providers change often and differ by country; they are served, never stored as facts.
+  const { watch, ...facts } = detail ?? {};
+  if (Object.values(facts).some((value) => value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length))) {
+    await mergeCanonicalFacts(item, facts, { env, query, source: item.provider });
   }
   return detail ?? {};
 }

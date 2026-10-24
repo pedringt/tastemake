@@ -22,6 +22,8 @@ function fresh() {
     blindSpots: {},
     // What the user said about a pattern (user-confirmed; outranks inference; not taste evidence). See statements.js.
     patternStatements: [],
+    // #48: "never recommend" boundaries. Not taste evidence (src/model/exclusions.js).
+    exclusions: [],
     blindSpotDrafts: {},
     blindSpotDismissed: new Set(),
     // Tastebreak (#19 v1): confirmed/rejected patterns and a free-text note per item, wizard drafts in
@@ -124,6 +126,7 @@ export const state = {
   ...initial,
   ...persisted,
   patternStatements: normalizePersistedPatternStatements(persisted.patternStatements ?? initial.patternStatements),
+  exclusions: Array.isArray(persisted.exclusions) ? persisted.exclusions : initial.exclusions,
   selectedFavorites: persisted.selectedFavorites instanceof Set ? persisted.selectedFavorites : initial.selectedFavorites,
   libraryFavorites: persisted.libraryFavorites instanceof Set ? persisted.libraryFavorites : initial.libraryFavorites,
   blindSpotDismissed: persisted.blindSpotDismissed instanceof Set ? persisted.blindSpotDismissed : initial.blindSpotDismissed,
@@ -161,6 +164,7 @@ export function restoreStateFromBackupText(text) {
   Object.assign(state, fresh(), restored, {
     look,
     patternStatements: normalizePersistedPatternStatements(restored.patternStatements ?? []),
+    exclusions: Array.isArray(restored.exclusions) ? restored.exclusions : [],
     selectedFavorites: restored.selectedFavorites instanceof Set ? restored.selectedFavorites : new Set(restored.selectedFavorites ?? []),
     libraryFavorites: restored.libraryFavorites instanceof Set ? restored.libraryFavorites : new Set(restored.libraryFavorites ?? []),
     blindSpotDismissed: restored.blindSpotDismissed instanceof Set ? restored.blindSpotDismissed : new Set(restored.blindSpotDismissed ?? []),

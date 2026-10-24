@@ -1,5 +1,6 @@
 import { setStatement, toggleDomainExclusion } from "../../src/model/statements.js";
 import { createSuite } from "./lib/assert.mjs";
+import { levelChangeConsequence } from "../../src/model/history.js";
 import { isTastebreakCandidate, startTastebreak, tastebreakPatterns } from "../../src/model/tastebreak.js";
 
 const { check, eq, finish } = createSuite("statements tests");
@@ -65,6 +66,16 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   eq("a pattern the user said is 'not me' is left out", isTastebreakCandidate(loved, { ...state, patternStatements: [{ hypothesisId: "ai-world", says: "not-me" }] }), false);
   eq("an untried item is never offered", isTastebreakCandidate({ item: book, rating: "not-tried", detail: "bookmarked" }, state), false);
   eq("no citing pattern, no Tastebreak", isTastebreakCandidate(loved, { ...state, modelHypotheses: [other] }), false);
+}
+
+// Oct 23 smoke test: "emerging → supported" was explained as "lean on this pattern more cautiously".
+{
+  check("up a level reads as more confidence", /a little more/.test(levelChangeConsequence("emerging", "supported")), levelChangeConsequence("emerging", "supported"));
+  check("up to Strong reads as more weight", /more weight/.test(levelChangeConsequence("supported", "strong")));
+  check("down from Strong reads as more cautious", /more cautiously/.test(levelChangeConsequence("strong", "supported")));
+  check("down to Emerging reads as an open question again", /open question/.test(levelChangeConsequence("supported", "emerging")));
+  check("capitalized levels work too", /a little more/.test(levelChangeConsequence("Emerging", "Supported")));
+  eq("no change, no sentence", levelChangeConsequence("supported", "supported"), "");
 }
 
 finish();

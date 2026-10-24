@@ -270,7 +270,7 @@ function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
 }
 
 async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,series_position,editions,editions.title,editions.language";
+  const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,series_name,series_position,editions,editions.title,editions.language";
   const load = async () => {
     const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&lang=en&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
@@ -406,7 +406,7 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
         authorization: `Bearer ${token}`,
         "content-type": "text/plain"
       },
-      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where ${igdbGenreWhereClause(genreIds)}${excludeClause}; sort total_rating_count desc; limit 12;`
+      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.name,collection.id,franchises.id; where ${igdbGenreWhereClause(genreIds)}${excludeClause}; sort total_rating_count desc; limit 12;`
     });
     if (!response.ok) return [];
     return (await response.json()).map(igdbItem).filter((row) => row.providerId !== item.providerId);

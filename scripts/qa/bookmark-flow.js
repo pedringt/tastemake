@@ -26,7 +26,7 @@ export async function run() {
   const recSet=(offset)=>Array.from({length:5},(_,i)=>({
     id:`tmdb-movie-${offset+i}`,provider:"tmdb",providerId:String(offset+i),
     title:`Catalog Pick ${offset+i}`,type:"movie",domains:["movies"],about:`Real catalog recommendation ${i+1}.`,
-    artwork:null,rank:i===4?null:i+1,fit:i===4?"Exploratory fit":"Catalog match",prediction:"Worth testing",
+    artwork:null,genres:i===1?["27"]:[],rank:i===4?null:i+1,fit:i===4?"Exploratory fit":"Catalog match",prediction:"Worth testing",
     surprise:i===4,reason:"Related to a favorite from the real catalog. Live AI did not rank this fallback set.",ai:null
   }));
   let recCalls=0;
@@ -248,7 +248,48 @@ export async function run() {
     check("the why popover opens without covering the pick's title or reason",whyCard.querySelector(".editorial-why").classList.contains("is-pinned")&&!covers,`${Math.round(pop.top)}`);
     check("its card is lifted above the next row while it is open",getComputedStyle(whyCard).zIndex==="40",getComputedStyle(whyCard).zIndex);
     await act('.editorial-rec .why-trigger',120);
+    // Oct 23 smoke test: the second click unpinned it, but focus (and the pointer) kept it on screen over the reaction buttons.
+    const shown=()=>getComputedStyle(whyCard.querySelector(".why-popover")).visibility==="visible";
+    check("a second click hides it even though the link still has focus",document.activeElement===whyCard.querySelector(".why-trigger")&&!shown(),getComputedStyle(whyCard.querySelector(".why-popover")).visibility);
+    check("a preview that is not pinned never takes clicks",getComputedStyle(whyCard.querySelector(".why-popover")).pointerEvents==="none");
+    // Headless pages are not the focused window, so focus events are sent by hand (a real browser sends them).
+    const trigger=whyCard.querySelector(".why-trigger");
+    trigger.blur(); trigger.dispatchEvent(new FocusEvent("focusout",{bubbles:true,relatedTarget:null})); await sleep(30);
+    trigger.focus(); trigger.dispatchEvent(new FocusEvent("focusin",{bubbles:true,relatedTarget:null})); await sleep(150);
+    const wrap=whyCard.querySelector(".editorial-why");
+    check("focusing the link again allows the preview",wrap.matches(".editorial-why:not(.is-dismissed):focus-within"),wrap.className);
+    state.recommendationFeedbackItemId=null;   // an open feedback panel takes Escape first; this check is about the popover
+    document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true})); await sleep(150);
+    check("Escape hides a focused preview and keeps focus on the link",wrap.classList.contains("is-dismissed")&&!wrap.matches(".editorial-why:not(.is-dismissed):focus-within")&&document.activeElement===trigger,wrap.className);
+    whyCard.querySelector(".why-trigger").blur();
   } else check("a recommendation card exists for the why popover check",false);
+
+  // #48: "Don't recommend…" is a boundary, not a reaction.
+  await act('[data-step-jump="recommendations"]',200);
+  const horrorCard=[...document.querySelectorAll(".editorial-rec")].find(card=>card.querySelector('[data-exclude-key="horror"]'));
+  check("a horror pick offers 'All horror'",Boolean(horrorCard));
+  if(horrorCard){
+    const horrorId=horrorCard.dataset.recId;
+    const before=Object.keys(state.feedbackByRecommendation).length;
+    horrorCard.querySelector(".exclude-menu > summary").click();
+    await sleep(60);
+    await act(`.editorial-rec[data-rec-id="${horrorId}"] [data-exclude-key="horror"]`,200);
+    check("the card leaves the set right away",!document.querySelector(`.editorial-rec[data-rec-id="${horrorId}"]`)&&!state.recommendationSets.at(-1).some(x=>x.id===horrorId));
+    check("the block is saved",state.exclusions.some(e=>e.id==="genre:horror"));
+    check("nothing is recorded about the pick",Object.keys(state.feedbackByRecommendation).length===before&&!state.feedbackByRecommendation[horrorId]);
+    check("focus stays on the page, not lost",document.activeElement&&document.activeElement!==document.body);
+    document.querySelector("[data-open-mine]")?.click();
+    await sleep(250);
+    check("My Tastemake shows Horror as blocked",$('[data-mine-never-genre="horror"]')?.checked===true,state.screen);
+    const box=$('[data-mine-never-genre="horror"]');
+    if(box){ box.click(); await sleep(200); }
+    check("unchecking it allows horror again",!state.exclusions.some(e=>e.id==="genre:horror"));
+    const input=$("#mine-never-creator");
+    if(input){ input.value="Stephen King"; $("[data-mine-never-form]").requestSubmit(); await sleep(200); }
+    check("a creator can be added by name",state.exclusions.some(e=>e.id==="creator:stephen king")&&Boolean($('[data-mine-never-remove="creator:stephen king"]')));
+    await act('[data-mine-never-remove="creator:stephen king"]',200);
+    check("and removed again",!state.exclusions.length);
+  }
 
   // No-AI mode (Oct 20 smoke test): when the AI budget is used up, every surface says so calmly.
   const badge=()=>$(".prototype-label");
