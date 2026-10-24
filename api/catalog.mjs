@@ -2,6 +2,8 @@ import { searchCatalog } from "../src/catalog/providers.mjs";
 import { cachedValue } from "../src/server/cache.mjs";
 import { requestQuery } from "../src/server/query.mjs";
 
+export const booksFailed = (payload) => payload?.providers?.openlibrary?.configured === true && payload.providers.openlibrary.available === false;
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("allow", "GET");
@@ -17,9 +19,23 @@ export default async function handler(req, res) {
   try {
     const started = Date.now();
     const cacheKey = `catalog:v3:${domain}${skipBooks ? ":skip-read" : ""}:${query.toLowerCase()}`;
-    const payload = await cachedValue(cacheKey, () => searchCatalog(query, { domain, skipBooks }), { ttl: 300, tags: ["catalog-search"] });
-    console.info("[tastemake-catalog]", JSON.stringify({ domain, skipBooks, ms: Date.now() - started, results: payload.items?.length ?? 0 }));
-    res.setHeader("cache-control", "public, max-age=60, stale-while-revalidate=300");
+    // A search whose books failed is answered but never cached (here, by the CDN or by the browser), so the
+    // next try asks Open Library again instead of serving the book-less result for minutes. cachedValue
+    // never stores a producer failure, so the partial result travels on the error.
+    let payload;
+    try {
+      payload = await cachedValue(cacheKey, async () => {
+        const result = await searchCatalog(query, { domain, skipBooks });
+        if (booksFailed(result)) throw Object.assign(new Error("books unavailable"), { partial: result });
+        return result;
+      }, { ttl: 300, tags: ["catalog-search"] });
+    } catch (error) {
+      if (!error?.partial) throw error;
+      payload = error.partial;
+    }
+    const partial = booksFailed(payload);
+    console.info("[tastemake-catalog]", JSON.stringify({ domain, skipBooks, partial, ms: Date.now() - started, results: payload.items?.length ?? 0 }));
+    res.setHeader("cache-control", partial ? "no-store" : "public, max-age=60, stale-while-revalidate=300");
     return res.status(200).json(payload);
   } catch {
     res.setHeader("cache-control", "no-store");

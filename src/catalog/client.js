@@ -19,8 +19,11 @@ export async function searchExternalCatalog(query, domain = "all", { signal, ski
       .then(async (response) => {
         if (!response.ok) throw new Error(`catalog search failed: ${response.status}`);
         const payload = await response.json();
-        const value = { items: Array.isArray(payload.items) ? payload.items : [], providers: payload.providers ?? {}, degraded: Boolean(payload.degraded) };
-        searchCache.set(key, { at: Date.now(), value });
+        const providers = payload.providers ?? {};
+        // Books timed out or failed: say so, and don't keep this answer, so the next search tries again.
+        const booksFailed = providers.openlibrary?.configured === true && providers.openlibrary.available === false;
+        const value = { items: Array.isArray(payload.items) ? payload.items : [], providers, degraded: Boolean(payload.degraded), booksFailed };
+        if (!booksFailed) searchCache.set(key, { at: Date.now(), value });
         return value;
       })
       .finally(() => pendingSearches.delete(key));
