@@ -12,6 +12,7 @@ import { domainById } from "../src/data/domains.js";
 import { isAdultTagged, triedAdultTagged } from "../src/catalog/adult-content.mjs";
 import { evidenceRecords } from "../src/model/evidence.js";
 import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
+import { contentThemesFor } from "../src/model/refinements.js";
 import { excludedBy } from "../src/model/exclusions.js";
 
 const MAX_BODY_BYTES = 160_000;
@@ -53,9 +54,13 @@ function compactEvidenceRecord(record) {
     domains: record.domains ?? [],
     kind: record.kind,
     polarity: record.polarity,
-    refinements: record.refinements ?? []
+    // #250 PR 2: the label alone ("Pacing: too slow", "Romance took over the story") carries dimension and
+    // direction; ids and the structured fields stay server-side for validation.
+    refinements: (record.refinements ?? []).map((entry) => (typeof entry === "string" ? entry : entry.label ?? entry.id)).filter(Boolean)
   };
 }
+
+const hasReasons = (record) => ((record.refinements ?? []).length > 0 ? 1 : 0);
 
 function promptEvidencePriority(record) {
   if (record.kind === "experienced-favorite" || record.kind === "starter-favorite") return 4;
@@ -85,7 +90,9 @@ export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
   };
   const ranked = (records) => records
     .map((record, index) => ({ record, index }))
-    .sort((a, b) => promptEvidencePriority(b.record) - promptEvidencePriority(a.record) || b.record.weight - a.record.weight || a.index - b.index)
+    // #250 PR 2: among equals, items the person gave reasons for go first, so reasons reach the model
+    // without adding rows (the per-area counts stay 4 liked + 1 disliked).
+    .sort((a, b) => promptEvidencePriority(b.record) - promptEvidencePriority(a.record) || b.record.weight - a.record.weight || hasReasons(b.record) - hasReasons(a.record) || a.index - b.index)
     .map(({ record }) => record);
   const rotate = (records, offset = 0) => {
     if (!records.length) return records;
@@ -115,12 +122,17 @@ function pickPromptPayload(ctx) {
     evidence: selectPromptEvidence(ctx).map(compactEvidenceRecord),
     // The model ranks candidates; it does not need provider ids or validation-only hypothesis fields.
     // Keep synopsis copy short so input processing stays bounded without removing the useful premise.
-    candidates: ctx.candidates.map(({ id, title, type, domains, about, year, genres }) => ({
-      id, title, type, domains,
-      about: typeof about === "string" ? about.slice(0, 220) : about,
-      year,
-      genres: (genres ?? []).slice(0, 8)
-    })),
+    candidates: ctx.candidates.map((item) => {
+      const { id, title, type, domains, about, year, genres } = item;
+      const themes = contentThemesFor(item);
+      return {
+        id, title, type, domains,
+        about: typeof about === "string" ? about.slice(0, 220) : about,
+        year,
+        genres: (genres ?? []).slice(0, 8),
+        ...(themes.length ? { themes } : {})
+      };
+    }),
     curveball: ctx.curveball,
     statements: ctx.statements,
     contexts: ctx.contexts
@@ -158,6 +170,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     "Make each why distinct from the others in this response: start each one differently, and name the specific thing that connects the pick to the cited item (for example its tone, setting, structure, theme or craft). Avoid stock phrases such as 'in the vein of', 'your love of', 'you enjoyed in', 'similar to' and 'fans of'.",
     "User-facing explanations must say why the pick may fit the person, not how retrieval found it. Never mention providers, catalog branches/paths/neighbors/signals, metadata, similarity scores, embeddings, retrieval provenance, or raw overlap counts. A disliked item may only appear as explicit contrast, never as the positive reason a pick fits.",
     "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. Use them as item-local context, not as standalone evidence or a global preference unless multiple independent experienced items support that broader pattern.",
+    "A refinement may name a direction (\"Pacing: too slow\", \"Pacing: slow burn paid off\"): keep the direction, since opposite directions are opposite signals. A candidate's themes mean the theme is present, not that it dominates the book; one item's reason about a theme (\"Romance took over the story\") must not rule out every candidate with that theme.",
     "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; never cite intent-only evidence as support; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; explain why the pick may fit in specific plain English, in one sentence of 14 words or fewer; internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; if curveball is true you may choose at most one exploratory pick by putting only its itemId in curveballItemId, otherwise use null; if curveball is false curveballItemId must be null; do not write the word curveball in why.",
     "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
   ].join("\n\n");
