@@ -29,7 +29,7 @@ export async function run() {
     artwork:null,genres:i===1?["27"]:[],rank:i===4?null:i+1,fit:i===4?"Exploratory fit":"Catalog match",prediction:"Worth testing",
     surprise:i===4,reason:"Related to a favorite from the real catalog. Live AI did not rank this fallback set.",ai:null
   }));
-  let recCalls=0;
+  let recCalls=0, newReleaseCalls=0;
   // "off": catalog fallback (the default); "paused": the AI budget is used up (#263); "model": live AI answered.
   let aiMode="off";
   // #120: candidate warm-ups (src/ai/prefetch.js) are counted apart from real recommendation requests.
@@ -59,6 +59,10 @@ export async function run() {
       if(aiMode==="paused") return {ok:true,status:200,json:async()=>({source:"catalog",reason:"AI features are paused for now.",picks,meta:{paidCallMade:false,budgetPaused:true,catalogCandidates:picks.length}})};
       if(aiMode==="model") return {ok:true,status:200,json:async()=>({source:"model",reason:null,picks,meta:{paidCallMade:false,catalogCandidates:picks.length}})};
       return {ok:true,status:200,json:async()=>({source:"catalog",reason:"live AI off in browser QA",picks,meta:{paidCallMade:false,catalogCandidates:picks.length}})};
+    }
+    if(url.pathname==="/api/new-releases"){
+      newReleaseCalls++;
+      return {ok:true,status:200,json:async()=>({items:[{id:"tmdb-movie-990",provider:"tmdb",providerId:"990",title:"Signal From Vega",type:"movie",domains:["movies"],about:"Astronomers hear something.",artwork:null,genres:["878"],releaseDate:"2026-10-24",reason:"Shares sci-fi with Moon Garden."}]})};
     }
     if(url.pathname==="/api/hypotheses"){
       if(aiMode==="paused") return {ok:true,status:200,json:async()=>({source:"unavailable",reason:"AI features are paused for now.",hypotheses:[],meta:{budgetPaused:true,paidCallMade:false}})};
@@ -264,6 +268,15 @@ export async function run() {
     whyCard.querySelector(".why-trigger").blur();
   } else check("a recommendation card exists for the why popover check",false);
 
+  // #6: New this week for you, under the set; fetched once per visit.
+  await act('[data-step-jump="recommendations"]',250);
+  check("the new-this-week strip shows under the set",Boolean($('.new-this-week [data-new-release="tmdb-movie-990"]'))&&/Shares sci-fi with Moon Garden/.test($(".new-this-week")?.textContent||""),$(".new-this-week")?.textContent?.slice(0,120));
+  await act('[data-step-jump="library"]',150);
+  await act('[data-step-jump="recommendations"]',200);
+  check("it is fetched once per visit, not on every render",newReleaseCalls===1,newReleaseCalls);
+  await act('[data-new-release-item="tmdb-movie-990"][data-new-release-action="bookmark"]',150);
+  check("Save puts the release in Saved",state.feedbackByRecommendation["tmdb-movie-990"]?.detail==="bookmarked");
+  check("and the strip hides once it's empty",!$(".new-this-week"));
   // #48: "Don't recommend…" is a boundary, not a reaction.
   await act('[data-step-jump="recommendations"]',200);
   const horrorCard=[...document.querySelectorAll(".editorial-rec")].find(card=>card.querySelector('[data-exclude-key="horror"]'));

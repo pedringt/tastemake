@@ -19,7 +19,8 @@ import { renderFavorites } from "./screens/favorites.js";
 import { favoritesDestination } from "./model/library.js";
 import { renderBrowse } from "./screens/browse.js";
 import { renderProfile } from "./screens/profile.js";
-import { renderRecommendations } from "./screens/recommendations.js";
+import { renderNewThisWeek, renderRecommendations } from "./screens/recommendations.js";
+import { actOnNewRelease, maybeLoadNewReleases } from "./ai/new-releases.js";
 import { detailDescription, renderDetailMeta, renderLibrary } from "./screens/library.js";
 import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/client.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
@@ -103,6 +104,14 @@ function render() {
   syncAiBadge(state);
   app.innerHTML = exampleBannerHtml() + views[state.screen]();
   candidatePrefetcher.schedule(state);
+  // #6: fetched once per visit, after the first set exists (not for the example profile); only its own
+  // slot is redrawn when it arrives.
+  if (state.screen === "recommendations" && state.onboarded && !isViewingExample() && activeRecommendations(state).length) {
+    maybeLoadNewReleases(state, () => {
+      const slot = app.querySelector("[data-new-this-week-slot]");
+      if (slot) slot.innerHTML = renderNewThisWeek();
+    });
+  }
 }
 
 function updateStepper() {
@@ -707,6 +716,19 @@ app.addEventListener("click", async (event) => {
           ? `${title} removed from Favorites. Your Loved reaction stays.`
           : `${title} removed from Favorites. ${state.selectedFavorites.size} of 4 selected.`));
       if (makeFavorite && state.onboarded) primeProfileInBackground();
+    }
+    return;
+  }
+
+  const newRelease = event.target.closest("[data-new-release-action]");
+  if (newRelease) {
+    const said = actOnNewRelease(state, newRelease.dataset.newReleaseItem, newRelease.dataset.newReleaseAction);
+    if (said) {
+      persistState(state);
+      const slot = app.querySelector("[data-new-this-week-slot]");
+      if (slot) slot.innerHTML = renderNewThisWeek();
+      restoreFocus(".new-release button", app);   // next release, or the page when none are left
+      announce(said);
     }
     return;
   }

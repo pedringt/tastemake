@@ -13,6 +13,8 @@ import { renderExperienceRefinement } from "../components/refinement.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { basisSentence, recommendationBasis } from "../model/loading-basis.js";
 import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE } from "../ai/ai-status.js";
+import { renderArtwork } from "../components/artwork.js";
+import { releaseLabel } from "../ai/new-releases.js";
 import { exclusionOptions } from "../model/exclusions.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
@@ -511,6 +513,35 @@ function renderNextSteps() {
     </div>`;
 }
 
+// #6: a small strip of this week's releases that match the person's own experienced taste (no AI). Hidden
+// while loading and when nothing matches, so it never shows an empty frame.
+export function renderNewThisWeek() {
+  const items = state.newReleases?.items ?? [];
+  if (state.aiStatus === "loading" || state.newReleases?.status !== "ready" || !items.length) return "";
+  return `
+      <section class="new-this-week" aria-labelledby="new-this-week-title">
+        <div class="new-this-week-head">
+          <h2 id="new-this-week-title">New this week for you</h2>
+          <p>Just out or coming in the next week, matched to things you've loved. Saving one doesn't change your Taste Profile.</p>
+        </div>
+        <ul class="new-this-week-list">
+          ${items.map((item) => `
+            <li class="new-release" data-new-release="${esc(item.id)}">
+              ${renderArtwork(item, "new-release-artwork")}
+              <div class="new-release-copy">
+                <span class="new-release-meta">${esc(displayLabel(item))} · ${esc(releaseLabel(item.releaseDate))}</span>
+                <strong>${esc(item.title)}</strong>
+                <span class="new-release-why">${esc(item.reason ?? "")}</span>
+                <span class="new-release-actions">
+                  <button class="button button-secondary" type="button" data-new-release-item="${esc(item.id)}" data-new-release-action="bookmark" aria-label="Save ${esc(item.title)}">Save</button>
+                  <button class="button button-quiet" type="button" data-new-release-item="${esc(item.id)}" data-new-release-action="not-interested" aria-label="Not interested in ${esc(item.title)}">Not interested</button>
+                </span>
+              </div>
+            </li>`).join("")}
+        </ul>
+      </section>`;
+}
+
 export function renderRecommendations() {
   const items = activeRecommendations(state);
   const reacted = currentRoundReactedCount(state);
@@ -559,6 +590,8 @@ export function renderRecommendations() {
       </div>
 
       ${renderKeepDiscoveringBar()}
+
+      <div data-new-this-week-slot>${renderNewThisWeek()}</div>
 
       ${state.aiStatus === "loading" ? "" : `
       <div class="recommendation-footer page-actions">
