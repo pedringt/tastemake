@@ -28,7 +28,7 @@ export function initSearch({ onChange, announce, goTo }) {
   const opener = document.querySelector("#open-search");
   if (!dialog || !input || !view || !opener || typeof dialog.showModal !== "function") return;
 
-  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" };
+  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "", booksLoading: false };
   let catalogTimer = null;
   let catalogController = null;
   let catalogSeq = 0;
@@ -118,6 +118,7 @@ export function initSearch({ onChange, announce, goTo }) {
       list = `<p class="search-hint search-results-hint">${picking
           ? (state.starterReplaceId ? "Click a result to swap it into your Favorites." : "Click a result to add it to your Favorites. Click again to remove it.")
           : "☆ adds something to Favorites (marked Tried · Loved). Open a result to react any other way."}</p>
+        ${ui.booksLoading ? `<p class="search-books-pending" role="status" aria-live="polite"><span class="search-spinner" aria-hidden="true"></span> Still finding books…</p>` : ""}
         <ul class="search-results" aria-label="Results">
           ${hits.map((item) => picking ? favoriteResult(item, resultMain(item)) : lookupResult(item, resultMain(item))).join("")}
         </ul>`;
@@ -312,7 +313,7 @@ export function initSearch({ onChange, announce, goTo }) {
   }
 
   function open() {
-    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" });
+    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "", booksLoading: false });
     input.value = "";
     syncFilters();
     render();
@@ -335,22 +336,50 @@ export function initSearch({ onChange, announce, goTo }) {
     const seq = ++catalogSeq;
     ui.catalogLoading = true;
     ui.catalogError = "";
+    ui.booksLoading = false;
     render();
+    // Search speed (Oct 24): for "All", movies/TV/games are asked for separately and shown as soon as they
+    // arrive (well under a second); the full, globally ranked list replaces them once books are in.
+    const signal = catalogController.signal;
+    let showedFast = false;
+    if (ui.filter === "all") {
+      searchExternalCatalog(query, "all", { signal, skipBooks: true }).then((fast) => {
+        if (seq !== catalogSeq || !ui.catalogLoading || !fast.items.length) return;
+        showedFast = true;
+        ui.external = fast.items;
+        ui.catalogLoading = false;
+        ui.booksLoading = true;
+        if (ui.mode === "results") renderKeepingFocus();
+      }).catch(() => {});
+    }
     try {
-      const payload = await searchExternalCatalog(query, ui.filter, { signal: catalogController.signal });
+      const payload = await searchExternalCatalog(query, ui.filter, { signal });
       if (seq !== catalogSeq) return;
       ui.external = payload.items;
       ui.catalogError = payload.degraded ? "unavailable" : "";
     } catch (error) {
       if (error?.name === "AbortError" || seq !== catalogSeq) return;
-      ui.external = [];
-      ui.catalogError = "unavailable";
+      // Books failed after the fast results showed: keep those rather than blanking the list.
+      if (!showedFast) {
+        ui.external = [];
+        ui.catalogError = "unavailable";
+      }
     } finally {
       if (seq === catalogSeq) {
         ui.catalogLoading = false;
-        if (ui.mode === "results") render();
+        ui.booksLoading = false;
+        if (ui.mode === "results") renderKeepingFocus();
       }
     }
+  }
+
+  // Swapping in the full list must not throw away a keyboard user's place: refocus the same result.
+  function renderKeepingFocus() {
+    const active = document.activeElement;
+    const id = view.contains(active) ? (active.dataset.searchPick || active.dataset.searchFavorite || active.dataset.searchRowFavorite) : null;
+    const attr = active?.dataset.searchPick ? "data-search-pick" : active?.dataset.searchFavorite ? "data-search-favorite" : "data-search-row-favorite";
+    render();
+    if (id) view.querySelector(`[${attr}="${CSS.escape(id)}"]`)?.focus();
   }
 
   function queueExternal() {

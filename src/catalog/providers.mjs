@@ -141,15 +141,28 @@ function openLibraryItem(row) {
   return { ...item, ...sanitizeAbout(item) };
 }
 
+// Book search results are cached for a day: Open Library is slow (2-10 s, Oct 24) and its catalog barely
+// changes. Only the provider result is cached; older books' years are corrected on every search, waiting
+// at most SEARCH_YEAR_WAIT_MS (the Wikidata lookup keeps going and fills its own cache for next time).
+const BOOK_SEARCH_TTL_SECONDS = 24 * 60 * 60;
+const SEARCH_YEAR_WAIT_MS = 500;
+
 async function searchOpenLibrary(query, env, fetchImpl) {
+  const load = () => searchOpenLibraryUncached(query, env, fetchImpl);
+  const items = fetchImpl === fetch
+    ? await cachedValue(`openlibrary-search:v1:${String(query).toLowerCase()}`, load, { ttl: BOOK_SEARCH_TTL_SECONDS, tags: ["catalog-search"] })
+    : await load();
+  return correctOldBookYears(items, { env, fetchImpl, waitMs: SEARCH_YEAR_WAIT_MS });
+}
+
+async function searchOpenLibraryUncached(query, env, fetchImpl) {
   const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,series_name,series_position,isbn,edition_count,editions,editions.title,editions.language";
   // Asks for a few extra so dropping study guides and the like (book-companions.mjs) still leaves 8.
   const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=12&lang=en&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
-  const items = ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query)).slice(0, 8).map(openLibraryItem);
-  return correctOldBookYears(items, { env, fetchImpl });
+  return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query)).slice(0, 8).map(openLibraryItem);
 }
 
 async function igdbToken(env, fetchImpl) {
@@ -513,13 +526,13 @@ export function enrichCanonicalItemWriteBehind(item, options = {}) {
   try { waitUntil(task); } catch { /* local/off-platform tests have no request context */ }
 }
 
-export async function searchCatalog(query, { domain = "all", env = process.env, fetchImpl = fetch } = {}) {
+export async function searchCatalog(query, { domain = "all", skipBooks = false, env = process.env, fetchImpl = fetch } = {}) {
   const q = clean(query, 100);
   if (q.length < 2) return { items: [], providers: {}, degraded: false };
 
   const specs = [];
   if (domainAllows(domain, "movies") || domainAllows(domain, "tv")) specs.push(["tmdb", Boolean(env.TASTEMAKE_TMDB_TOKEN), () => searchTmdb(q, env, fetchImpl, domain)]);
-  if (domainAllows(domain, "read")) specs.push(["openlibrary", true, () => searchOpenLibrary(q, env, fetchImpl)]);
+  if (domainAllows(domain, "read") && !skipBooks) specs.push(["openlibrary", true, () => searchOpenLibrary(q, env, fetchImpl)]);
   if (domainAllows(domain, "play")) specs.push(["igdb", Boolean(env.IGDB_CLIENT_ID && env.IGDB_CLIENT_SECRET), () => searchIgdb(q, env, fetchImpl)]);
 
   const settled = await Promise.all(specs.map(async ([name, configured, run]) => {

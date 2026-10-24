@@ -601,5 +601,27 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   eq("an impossible year is ignored", odd[0].year, "1920");
 }
 
+// ---- Oct 24: search speed ---------------------------------------------------------------------------------
+{
+  const asked = [];
+  const fetchImpl = async (url) => { asked.push(String(url)); return { ok: true, json: async () => ({ results: [], docs: [] }) }; };
+  await searchCatalog("dune", { domain: "all", skipBooks: true, env: { TASTEMAKE_TMDB_TOKEN: "t" }, fetchImpl });
+  check("the fast half of an All search never asks Open Library", asked.length > 0 && !asked.some((u) => u.includes("openlibrary.org")), asked.join(" | "));
+  asked.length = 0;
+  await searchCatalog("dune", { domain: "all", env: { TASTEMAKE_TMDB_TOKEN: "t" }, fetchImpl });
+  check("the full search still does", asked.some((u) => u.includes("openlibrary.org")));
+
+  const old = [{ id: "openlibrary-book-OLG", provider: "openlibrary", providerId: "OLG", type: "book", title: "Gatsby", year: "1920", about: "First published 1920." }];
+  let finished = false;
+  const slowWikidata = async () => { await new Promise((r) => setTimeout(r, 400)); finished = true; return { ok: true, json: async () => ({ results: { bindings: [{ olid: { value: "OLG" }, year: { value: "1925" } }] } }) }; };
+  const t0 = Date.now();
+  const capped = await correctOldBookYears(old, { env: {}, fetchImpl: slowWikidata, waitMs: 100 });
+  check("search stops waiting for Wikidata after its cap", Date.now() - t0 < 300 && capped[0].year === "1920", `${Date.now() - t0} ms, ${capped[0].year}`);
+  await new Promise((r) => setTimeout(r, 450));
+  check("...while the lookup itself carries on (to fill the cache)", finished);
+  const uncapped = await correctOldBookYears(old, { env: {}, fetchImpl: slowWikidata });
+  eq("Browse and recommendations still wait for the correction", uncapped[0].year, "1925");
+}
+
 finish();
 

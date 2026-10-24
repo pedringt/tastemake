@@ -2,17 +2,19 @@ const searchCache = new Map();
 const pendingSearches = new Map();
 const CLIENT_CACHE_MS = 5 * 60 * 1000;
 
-export async function searchExternalCatalog(query, domain = "all", { signal } = {}) {
+// skipBooks: the fast half of an "All" search (TMDb + IGDB answer in under a second; Open Library can
+// take several). The search dialog shows it while the full search, books included, is still coming.
+export async function searchExternalCatalog(query, domain = "all", { signal, skipBooks = false } = {}) {
   const q = String(query ?? "").trim();
   if (q.length < 2) return { items: [], providers: {} };
 
-  const key = `${domain}:${q.toLowerCase()}`;
+  const key = `${domain}${skipBooks ? ":skip-read" : ""}:${q.toLowerCase()}`;
   const cached = searchCache.get(key);
   if (cached && Date.now() - cached.at < CLIENT_CACHE_MS) return cached.value;
 
   let request = pendingSearches.get(key);
   if (!request) {
-    const url = `/api/catalog?q=${encodeURIComponent(q)}&domain=${encodeURIComponent(domain)}`;
+    const url = `/api/catalog?q=${encodeURIComponent(q)}&domain=${encodeURIComponent(domain)}${skipBooks ? "&skip=read" : ""}`;
     request = fetch(url, { headers: { accept: "application/json" } })
       .then(async (response) => {
         if (!response.ok) throw new Error(`catalog search failed: ${response.status}`);
