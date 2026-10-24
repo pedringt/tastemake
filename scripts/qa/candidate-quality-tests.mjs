@@ -12,6 +12,7 @@
 import { bookGenreFamilies, igdbGenreOverlap, igdbGenreWhereClause, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { plainTitle, wikidataSeriesPositions } from "../../src/catalog/wikidata-series.mjs";
 import { isBookCompanion } from "../../src/catalog/book-companions.mjs";
+import { firstPublishedYear, searchCatalog } from "../../src/catalog/providers.mjs";
 import { createSuite } from "./lib/assert.mjs";
 
 const { check, eq, finish } = createSuite("candidate quality tests");
@@ -544,6 +545,34 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
     { title: "A Slow Regard of Silent Things", author_name: ["Patrick Rothfuss"] },
     { title: "Circe", author_name: ["Anne De Courcy"] }
   ].some((row) => isBookCompanion(row, "anything")));
+}
+
+// ---- Oct 23 smoke test: one mis-dated edition made several books read "First published 2001" ----------
+// Real Open Library rows (first_publish_year and the start of publish_year).
+{
+  const row = (first, years) => ({ first_publish_year: first, publish_year: years });
+  eq("The Blade Itself: a lone 2001 reprint record is ignored", firstPublishedYear(row(2001, [2001, 2006, 2007, 2009])), 2006);
+  eq("The Alloy of Law", firstPublishedYear(row(2001, [2001, 2011, 2012, 2013])), 2011);
+  eq("Dune keeps 1965", firstPublishedYear(row(1965, [1965, 1966, 1967])), 1965);
+  eq("The Hobbit keeps 1937 (older books often waited years for a reprint)", firstPublishedYear(row(1937, [1937, 1938, 1946])), 1937);
+  eq("Piranesi keeps 2020", firstPublishedYear(row(2020, [2020, 2021, 2022])), 2020);
+  eq("too few editions to judge: Open Library's year stands", firstPublishedYear(row(2001, [2001, 2010])), 2001);
+  eq("no year at all", firstPublishedYear({}), null);
+}
+
+// ---- Oct 23 review: search dropped junk after cutting to 8, so a page with junk showed fewer books ------
+{
+  let asked = "";
+  const docs = [
+    { key: "/works/OLG1W", title: "Study Guide -- Something", author_name: ["SuperSummary"] },
+    { key: "/works/OLG2W", title: "Bill", author_name: ["Canada. Legislature. Legislative Assembly."] },
+    { key: "/works/OLG3W", title: "Summary of Something", author_name: ["Instaread"] },
+    ...Array.from({ length: 9 }, (_, n) => ({ key: `/works/OLB${n}W`, title: `Real Book ${n}`, author_name: ["Author"], first_publish_year: 2000 + n }))
+  ];
+  const result = await searchCatalog("real book", { domain: "read", env: {}, fetchImpl: async (url) => { if (/openlibrary/.test(url)) asked = String(url); return { ok: true, json: async () => ({ docs }) }; } });
+  const books = (result.items ?? result).filter((item) => item.provider === "openlibrary");
+  check("search asks Open Library for extra results", /limit=12/.test(asked), asked);
+  eq("three junk results still leave a full 8 real books", books.length, 8);
 }
 
 finish();

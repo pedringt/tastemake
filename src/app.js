@@ -448,8 +448,19 @@ function toggleWhyPopover(trigger) {
   const shouldPin = !wrapper.classList.contains("is-pinned");
   closeWhyPopovers(wrapper);
   wrapper.classList.toggle("is-pinned", shouldPin);
+  // Closing must hide it now, even though the pointer and focus are still on the trigger.
+  wrapper.classList.toggle("is-dismissed", !shouldPin);
   trigger.setAttribute("aria-expanded", String(shouldPin));
 }
+
+// A dismissed popover may preview again once the pointer leaves it, or focus comes back from elsewhere.
+app.addEventListener("mouseleave", (event) => {
+  if (event.target.classList?.contains("editorial-why")) event.target.classList.remove("is-dismissed");
+}, true);
+app.addEventListener("focusin", (event) => {
+  const wrapper = event.target.closest?.(".editorial-why");
+  if (wrapper && !wrapper.contains(event.relatedTarget)) wrapper.classList.remove("is-dismissed");
+});
 
 let recommendationSwipe = null;
 
@@ -1006,9 +1017,11 @@ document.addEventListener("keydown", (event) => {
     renderPreservingCardPosition(itemId, `[data-feedback-item="${itemId}"][data-experience-path]`);
     return;
   }
-  const trigger = document.querySelector(".editorial-why.is-pinned .why-trigger");
+  const open = document.querySelector(".editorial-why.is-pinned") ?? document.activeElement?.closest?.(".editorial-why");
+  const trigger = open?.querySelector(".why-trigger");
   if (!trigger) return;
   closeWhyPopovers();
+  open.classList.add("is-dismissed");
   trigger.focus({ preventScroll: true });
 });
 

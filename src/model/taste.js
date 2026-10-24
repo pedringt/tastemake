@@ -125,7 +125,9 @@ export function activeRecommendations(state) {
   return sets.length ? sets[sets.length - 1] : [];
 }
 
-export function currentRoundRatedCount(state) {
+// Picks in the current set the person has reacted to in any way: a rating, Save, or Not interested.
+// Oct 23 smoke test: the counter said "rated", so a Save read as a rating; it is shown as "reacted to".
+export function currentRoundReactedCount(state) {
   return activeRecommendations(state).filter((item) => state.feedbackByRecommendation[item.id]).length;
 }
 
@@ -138,7 +140,7 @@ export function previousRoundReacted(state) {
 
 export function currentRoundComplete(state) {
   const active = activeRecommendations(state);
-  return active.length > 0 && currentRoundRatedCount(state) === active.length;
+  return active.length > 0 && currentRoundReactedCount(state) === active.length;
 }
 
 // A user should not have to react to anything before asking for another set (product decision,

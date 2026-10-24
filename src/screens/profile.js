@@ -10,6 +10,7 @@ import { libraryItems } from "../model/library.js";
 import { evidenceRecords } from "../model/evidence.js";
 import { renderTasteMap } from "./tastemap.js";
 import { AI_PAUSED_EXPLAINER } from "../ai/ai-status.js";
+import { levelChangeConsequence } from "../model/history.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -209,9 +210,7 @@ function learningPanel(patterns = []) {
     let consequence = "";
     if (previous.level && current.level && previous.level !== current.level) {
       changed = `${previous.level} → ${current.level}.`;
-      consequence = String(current.level).toLowerCase() === "strong"
-        ? "This pattern can carry more weight in future recommendations."
-        : "Tastemake will lean on this pattern more cautiously.";
+      consequence = levelChangeConsequence(previous.level, current.level);
     } else if (String(previous.claim ?? "") !== String(current.claim ?? "")) {
       changed = "The pattern became more specific.";
       consequence = "Future picks will use the narrower interpretation instead of the older broad one.";

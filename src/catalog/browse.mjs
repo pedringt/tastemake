@@ -36,7 +36,7 @@ const browseMovies = (genre, page, env, fetchImpl) => browseTmdb(genre, page, en
 const browseTv = (genre, page, env, fetchImpl) => browseTmdb(genre, page, env, fetchImpl, "tv");
 
 async function browseRead(genre, page, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,editions,editions.title,editions.language";
+  const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,editions,editions.title,editions.language";
   const offset = (page - 1) * BROWSE_PAGE_SIZE;
   const url = `https://openlibrary.org/search.json?subject=${encodeURIComponent(genre.provider.value)}&limit=${BROWSE_PAGE_SIZE}&offset=${offset}&lang=en&fields=${fields}`;
   const response = await fetchImpl(url, {

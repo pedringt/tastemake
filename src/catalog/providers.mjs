@@ -95,7 +95,20 @@ function openLibraryAuthors(names = []) {
   return clean((names.length > 2 ? names.slice(0, 1) : names).join(", "), 120);
 }
 
+// Open Library's first_publish_year is the earliest date on any edition, so one mis-dated record wins.
+// Oct 23 smoke test: The Blade Itself, The Lies of Locke Lamora and The Alloy of Law all read 2001, from
+// one Gollancz reprint each imported with a 2001 date (the real years are 2006, 2006, 2011). When the
+// earliest year stands alone, 4+ years before every other edition of a modern book, the next year is used.
+// Older books are left alone: a long gap before the first reprint is normal for them.
+export function firstPublishedYear(row = {}) {
+  const first = Number(row.first_publish_year) || null;
+  const years = [...new Set([].concat(row.publish_year ?? []).map(Number).filter((y) => y > 0))].sort((a, b) => a - b);
+  if (!first || years.length < 3 || years[0] !== first || first < 1980) return first;
+  return years[1] - years[0] >= 4 ? years[1] : first;
+}
+
 function openLibraryItem(row) {
+  const firstYear = firstPublishedYear(row);
   const key = String(row.key ?? "").replace("/works/", "");
   const englishTitle = englishEditionTitle(row);
   const item = {
@@ -107,8 +120,8 @@ function openLibraryItem(row) {
     type: "book",
     domains: ["read"],
     by: openLibraryAuthors(row.author_name ?? []),
-    about: row.first_publish_year ? `First published ${row.first_publish_year}.` : "Book from Open Library.",
-    year: row.first_publish_year ? String(row.first_publish_year) : null,
+    about: firstYear ? `First published ${firstYear}.` : "Book from Open Library.",
+    year: firstYear ? String(firstYear) : null,
     artwork: row.cover_i ? `https://covers.openlibrary.org/b/id/${row.cover_i}-L.jpg?default=false` : null,
     genres: (row.subject ?? []).slice(0, 12).map((x) => clean(x, 60)),
     // #142: Open Library's own series metadata (series_key), when the record has it, lets the
@@ -128,12 +141,13 @@ function openLibraryItem(row) {
 }
 
 async function searchOpenLibrary(query, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,series_position,isbn,edition_count,editions,editions.title,editions.language";
-  const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&lang=en&fields=${fields}`, {
+  const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,series_name,series_position,isbn,edition_count,editions,editions.title,editions.language";
+  // Asks for a few extra so dropping study guides and the like (book-companions.mjs) still leaves 8.
+  const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=12&lang=en&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
-  return ((await response.json()).docs ?? []).slice(0, 8).filter((row) => !isBookCompanion(row, query)).map(openLibraryItem);
+  return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query)).slice(0, 8).map(openLibraryItem);
 }
 
 async function igdbToken(env, fetchImpl) {

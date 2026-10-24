@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { renderDomainFilter } from "../components/domain-filter.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas, previousRoundReacted } from "../model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundReactedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas, previousRoundReacted } from "../model/taste.js";
 import { isDeclined, isExperienced, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
@@ -513,9 +513,9 @@ function renderNextSteps() {
 
 export function renderRecommendations() {
   const items = activeRecommendations(state);
-  const rated = currentRoundRatedCount(state);
+  const reacted = currentRoundReactedCount(state);
   const roundTwo = state.recommendationSets.length > 1 && previousRoundReacted(state);
-  const segments = items.map((_, index) => `<span class="progress-segment ${index < rated ? "is-filled" : ""}"></span>`).join("");
+  const segments = items.map((_, index) => `<span class="progress-segment ${index < reacted ? "is-filled" : ""}"></span>`).join("");
 
   return `
     <section class="recommendations-screen">
@@ -531,8 +531,8 @@ export function renderRecommendations() {
 
         <div class="rec-progress-card">
           <div class="rec-progress-top">
-            <strong>${rated}/${items.length}</strong>
-            <span>rated</span>
+            <strong>${reacted}/${items.length}</strong>
+            <span>reacted to</span>
           </div>
           <div class="progress-track" aria-hidden="true">${segments}</div>
           <div class="progress-note">${currentRoundComplete(state) ? (outOfPicks(state) ? "caught up" : "new set unlocked") : "react as you go"}</div>

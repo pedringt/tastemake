@@ -248,6 +248,20 @@ export async function run() {
     check("the why popover opens without covering the pick's title or reason",whyCard.querySelector(".editorial-why").classList.contains("is-pinned")&&!covers,`${Math.round(pop.top)}`);
     check("its card is lifted above the next row while it is open",getComputedStyle(whyCard).zIndex==="40",getComputedStyle(whyCard).zIndex);
     await act('.editorial-rec .why-trigger',120);
+    // Oct 23 smoke test: the second click unpinned it, but focus (and the pointer) kept it on screen over the reaction buttons.
+    const shown=()=>getComputedStyle(whyCard.querySelector(".why-popover")).visibility==="visible";
+    check("a second click hides it even though the link still has focus",document.activeElement===whyCard.querySelector(".why-trigger")&&!shown(),getComputedStyle(whyCard.querySelector(".why-popover")).visibility);
+    check("a preview that is not pinned never takes clicks",getComputedStyle(whyCard.querySelector(".why-popover")).pointerEvents==="none");
+    // Headless pages are not the focused window, so focus events are sent by hand (a real browser sends them).
+    const trigger=whyCard.querySelector(".why-trigger");
+    trigger.blur(); trigger.dispatchEvent(new FocusEvent("focusout",{bubbles:true,relatedTarget:null})); await sleep(30);
+    trigger.focus(); trigger.dispatchEvent(new FocusEvent("focusin",{bubbles:true,relatedTarget:null})); await sleep(150);
+    const wrap=whyCard.querySelector(".editorial-why");
+    check("focusing the link again allows the preview",wrap.matches(".editorial-why:not(.is-dismissed):focus-within"),wrap.className);
+    state.recommendationFeedbackItemId=null;   // an open feedback panel takes Escape first; this check is about the popover
+    document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true})); await sleep(150);
+    check("Escape hides a focused preview and keeps focus on the link",wrap.classList.contains("is-dismissed")&&!wrap.matches(".editorial-why:not(.is-dismissed):focus-within")&&document.activeElement===trigger,wrap.className);
+    whyCard.querySelector(".why-trigger").blur();
   } else check("a recommendation card exists for the why popover check",false);
 
   // #48: "Don't recommend…" is a boundary, not a reaction.
