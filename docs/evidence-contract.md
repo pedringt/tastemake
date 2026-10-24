@@ -81,6 +81,7 @@ Optional reasons are stored on the reaction (`feedback.refinements`, `src/model/
 - Content chips ("Romance took over the story") are offered only when one of the item's own provider subjects exactly matches an approved list; anything not on the list (including sensitive, identity and religious subjects) never becomes an option. Which ids are valid comes from the vocabulary, so a chosen reason never disappears because metadata changed.
 - A reason describes that one experience. One reason never becomes a global preference.
 - Reasons reach the model prompts and the Taste Profile ("You said …" next to cited items). They do not affect candidate retrieval or the deterministic fallback.
+- In the picks prompt (#250 PR 2) each reason is its label, direction included ("Pacing: too slow"). Among evidence rows of equal kind and weight, items with reasons go first; the number of rows does not grow. Candidate books carry `themes` from the same approved list and strict match, and the prompt says a theme means *present*, not *dominant*, and that one item's reason about a theme must not rule out every candidate with it.
 - A Taste Profile pattern must keep each reason with its own item and dimension (#256): "Characters" on one book plus "Writing / prose: flat" on another is not "flat characters". The validator rejects that.
 
 ## What patterns are, and how sure Tastemake is (#26)

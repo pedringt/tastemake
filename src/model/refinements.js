@@ -153,11 +153,30 @@ export function normalizedRefinements(feedback) {
 
 // Records stay { id, label }: they travel into model prompts as-is, and the dimension/direction can be
 // read back from the id (dimensionOf).
+// #250 PR 2: each record also names its dimension and, when chosen, its direction, so the picks prompt and
+// the eval can tell "Pacing: too slow" from "Pacing: slow burn paid off" without parsing the label.
 export function refinementRecords(feedback) {
   const polarity = refinablePolarity(feedback);
   if (!polarity) return [];
-  const labels = labelsFor(feedback?.item, polarity);
-  return normalizedRefinements(feedback).map((id) => ({ id, label: labels.get(id) ?? id }));
+  const item = feedback?.item;
+  const labels = labelsFor(item, polarity);
+  return normalizedRefinements(feedback).map((id) => {
+    const dimension = dimensionOf(id);
+    const content = (CONTENT[item?.type] ?? []).find((entry) => entry.dimension === dimension);
+    const plain = refinementOptionsFor(item).find((option) => option.id === dimension)?.label ?? content?.label ?? dimension;
+    const directionId = directionPart(id);
+    const direction = !directionId ? null
+      : content ? content[polarity]?.label ?? null
+      : directionOptionsFor(item, dimension, polarity).find((option) => option.id === directionId)?.label ?? null;
+    return { id, label: labels.get(id) ?? id, dimension: plain, direction };
+  });
+}
+
+// #250 PR 2: themes a candidate book clearly has, from the same approved list and strict subject match
+// as the content chips. Present, not dominant: a tag never says how much of the book a theme takes up.
+export function contentThemesFor(item) {
+  const subjects = new Set((item?.genres ?? []).map(normalizeSubject));
+  return (CONTENT[item?.type] ?? []).filter((entry) => entry.subjects.some((subject) => subjects.has(subject))).map((entry) => entry.dimension);
 }
 
 export function clearInvalidRefinements(feedback, previousPolarity = null) {
