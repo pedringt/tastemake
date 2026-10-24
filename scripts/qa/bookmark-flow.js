@@ -42,6 +42,13 @@ export async function run() {
     const url=new URL(String(input),location.href);
     if(url.pathname==="/api/catalog"){
       const q=(url.searchParams.get("q")||"").toLowerCase();
+      // Search speed (Oct 24): the book half answers late, the rest at once.
+      if(q==="slowbooks"){
+        const fast=[{id:"tmdb-movie-881",provider:"tmdb",providerId:"881",title:"Slowbooks The Movie",type:"movie",domains:["movies"],about:"A film.",artwork:null}];
+        if(url.searchParams.get("skip")==="read") return {ok:true,status:200,json:async()=>({items:fast,providers:{},degraded:false})};
+        await new Promise(r=>setTimeout(r,500));
+        return {ok:true,status:200,json:async()=>({items:[...fast,{id:"openlibrary-book-882",provider:"openlibrary",providerId:"882",title:"Slowbooks The Novel",type:"book",domains:["read"],about:"A book.",artwork:null}],providers:{},degraded:false})};
+      }
       const domain=url.searchParams.get("domain")||"all";
       let items=q==="test"?mixed:favs.filter(x=>x.title.toLowerCase().includes(q));
       if(domain!=="all") items=items.filter(x=>x.domains.includes(domain));
@@ -267,6 +274,17 @@ export async function run() {
     check("Escape hides a focused preview and keeps focus on the link",wrap.classList.contains("is-dismissed")&&!wrap.matches(".editorial-why:not(.is-dismissed):focus-within")&&document.activeElement===trigger,wrap.className);
     whyCard.querySelector(".why-trigger").blur();
   } else check("a recommendation card exists for the why popover check",false);
+
+  // Search speed (Oct 24): movies/TV/games show first, books join when they arrive.
+  await act("#open-search");
+  await type("#search-input","slowbooks",330);
+  check("fast results show before books arrive",Boolean($('[data-search-pick="tmdb-movie-881"]'))&&!$('[data-search-pick="openlibrary-book-882"]'),$("#search-view")?.textContent.slice(0,160));
+  check("with a note that books are still coming",/Still finding books/.test($("#search-view")?.textContent||""));
+  await sleep(600);
+  check("books join the list when they arrive",Boolean($('[data-search-pick="openlibrary-book-882"]'))&&Boolean($('[data-search-pick="tmdb-movie-881"]')));
+  check("and the note goes away",!/Still finding books/.test($("#search-view")?.textContent||""));
+  $("#search-dialog")?.close();
+  await sleep(120);
 
   // #6: New this week for you, under the set; fetched once per visit.
   await act('[data-step-jump="recommendations"]',250);

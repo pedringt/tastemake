@@ -11,6 +11,7 @@
 // - One request per batch, a short timeout, cached a week; any failure keeps Open Library's year.
 
 import { cachedValue } from "../server/cache.mjs";
+import { waitUntil } from "@vercel/functions";
 import { sparql, sparqlString } from "./wikidata-series.mjs";
 
 export const OLD_BOOK_BEFORE = 1980;
@@ -44,10 +45,15 @@ export async function wikidataFirstYears(workIds, { env = process.env, fetchImpl
 
 // Returns the same list with older books' years (and a placeholder "First published …" line) corrected
 // where Wikidata knows better. Items that need no lookup cost nothing.
-export async function correctOldBookYears(items, options = {}) {
+// waitMs (search): stop waiting after that long and keep Open Library's years this time. The lookup itself
+// keeps running and caches its answer, so the next search for the same books gets the corrected years.
+export async function correctOldBookYears(items, { waitMs = null, ...options } = {}) {
   const old = items.filter(isOldBook);
   if (!old.length) return items;
-  const years = await wikidataFirstYears(old.map((item) => item.providerId), options);
+  const lookup = wikidataFirstYears(old.map((item) => item.providerId), options);
+  // Keep the function alive until the lookup has cached its answer, even after the response is sent.
+  if (waitMs != null) { try { waitUntil(lookup); } catch { /* local/off-platform tests have no request context */ } }
+  const years = waitMs == null ? await lookup : await Promise.race([lookup, new Promise((resolve) => setTimeout(() => resolve({}), waitMs))]);
   return items.map((item) => {
     const year = isOldBook(item) ? years[item.providerId] : null;
     if (!year || String(year) === String(item.year)) return item;
