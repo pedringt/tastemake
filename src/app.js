@@ -365,6 +365,15 @@ async function resolveExistingCustomItems() {
 }
 
 function navigate(screen, { replace = false, scroll = true, libraryView = "saved" } = {}) {
+  // Oct 24: after onboarding, Favorites live in Library (selectedFavorites is emptied by the migration), so
+  // the four-slot first-run screen always looked empty. Every route to it (finishing setup, the look
+  // picker, old links) goes to Library > Tried > Favorites instead, as page loads already did (#103).
+  if (screen === "favorites" && state.onboarded) {
+    const destination = favoritesDestination(state);
+    if (destination.libraryReactionFilter) state.libraryReactionFilter = destination.libraryReactionFilter;
+    screen = destination.screen;
+    libraryView = destination.libraryView ?? libraryView;
+  }
   if (!canAccess(screen)) return;
   // Saved is the Library's actionable home. Re-entering Library starts there rather than
   // resurrecting whichever secondary tab happened to be open last time, unless the caller is

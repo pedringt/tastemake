@@ -290,4 +290,34 @@ const onboarded = makeState();
 onboarded.onboarded = true;
 check("onboarded Browse stays recommendation-ready after starter migration", browseReadyForRecommendations(onboarded));
 
+// ---- Oct 24 review: book pages cached a day, older years corrected after the cache --------------------------
+{
+  const { default: handler } = await import("../../api/browse.mjs");
+  const realFetch = globalThis.fetch;
+  let olCalls = 0, wikidataDelay = 800;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes("openlibrary.org")) { olCalls += 1; return { ok: true, json: async () => ({ docs: [{ key: "/works/OLGATSBYW", title: "The Great Gatsby Test", author_name: ["F. Scott Fitzgerald"], first_publish_year: 1920 }] }) }; }
+    if (u.includes("query.wikidata.org")) { await new Promise((r) => setTimeout(r, wikidataDelay)); return { ok: true, json: async () => ({ results: { bindings: [{ olid: { value: "OLGATSBYW" }, year: { value: "1925" } }] } }) }; }
+    throw new Error(`unexpected ${u}`);
+  };
+  const call = async () => {
+    const res = { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status() { return this; }, json(b) { this.body = b; return this; } };
+    await handler({ method: "GET", query: { domain: "read", genre: "fantasy", page: "9" }, headers: {} }, res);
+    return res.body;
+  };
+  try {
+    const t0 = Date.now();
+    const first = await call();
+    check("a slow Wikidata answer doesn't hold up the page", Date.now() - t0 < 750 && first.items[0]?.year === "1920", `${Date.now() - t0} ms, ${first.items[0]?.year}`);
+    await new Promise((r) => setTimeout(r, 900));
+    const second = await call();
+    eq("the next visit gets the corrected year (the slow answer was never cached into the page)", second.items[0]?.year, "1925");
+    eq("while the page itself came from the cache", olCalls, 1);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 finish();
+

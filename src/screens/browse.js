@@ -7,6 +7,7 @@ import { browseReadyForRecommendations } from "../model/browse.js";
 import { esc } from "../lib/html.js";
 import { blurbOf } from "../catalog/synopsis.mjs";
 import { pathForFeedback } from "../model/reaction-flow.js";
+import { starIcon } from "../components/star.js";
 
 function favoriteToggle(itemId) {
   const isFavorite = state.onboarded ? state.libraryFavorites.has(itemId) : state.selectedFavorites.has(itemId);
@@ -19,7 +20,7 @@ function favoriteToggle(itemId) {
       aria-label="${label}"
       title="${label}"
       aria-pressed="${isFavorite}"
-    ><span aria-hidden="true">${isFavorite ? "★" : "☆"}</span></button>`;
+    >${starIcon(isFavorite)}</button>`;
 }
 
 function experienceButton(itemId, value, label, pressed) {

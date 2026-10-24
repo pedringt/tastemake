@@ -11,6 +11,7 @@ import { esc } from "../lib/html.js";
 import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
 import { assessSynopsis, blurbOf } from "../catalog/synopsis.mjs";
 import { renderArtwork } from "../components/artwork.js";
+import { starIcon } from "../components/star.js";
 
 // #94: Library has one simple mental model — Recommendations is discovery, Library is your stuff.
 // Saved = things you want to watch/read/play later (not yet tried; never taste evidence on its own).
@@ -160,7 +161,7 @@ function savedCard(feedback) {
             aria-label="Add to Favorites"
             title="Add to Favorites"
             aria-pressed="false"
-          ><span aria-hidden="true">☆</span></button>
+          >${starIcon(false)}</button>
           <span>Favorite marks this Tried · Loved automatically.</span>
         </div>
         <details class="library-reaction-edit library-saved-tried">
@@ -228,7 +229,7 @@ function triedCard(entry) {
           aria-label="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
           title="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
           aria-pressed="${entry.isFavorite}"
-        ><span aria-hidden="true">${entry.isFavorite ? "★" : "☆"}</span></button>
+        >${starIcon(entry.isFavorite)}</button>
         <span>${entry.isFavorite ? "Favorite" : "Favorite marks this Tried · Loved."}</span>
       </div>`
     : `
@@ -295,7 +296,7 @@ function dislikedBlock(items) {
             <div class="library-disliked-row">
               <span>${esc(item.title)} <em>${esc(displayLabel(item))}</em></span>
               <span class="library-restore" role="group" aria-label="Correct ${esc(item.title)}">
-                <button class="rec-favorite-star library-action" type="button" data-library-item="${id}" data-library-action="favorite" aria-label="Add to Favorites" title="Add to Favorites" aria-pressed="false"><span aria-hidden="true">☆</span></button>
+                <button class="rec-favorite-star library-action" type="button" data-library-item="${id}" data-library-action="favorite" aria-label="Add to Favorites" title="Add to Favorites" aria-pressed="false">${starIcon(false)}</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="liked">Actually, I liked it</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>
               </span>
