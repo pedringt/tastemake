@@ -4,6 +4,7 @@ import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { buildItemId } from "./item-id.mjs";
 import { bookSeriesFromRow } from "./book-series.mjs";
 import { isBookCompanion } from "./book-companions.mjs";
+import { correctOldBookYears } from "./wikidata-years.mjs";
 import { fallbackSummary, sanitizeAbout } from "./synopsis.mjs";
 import { waitUntil } from "@vercel/functions";
 import { rankSearchResults, searchRelevance } from "./search-ranking.mjs";
@@ -147,7 +148,8 @@ async function searchOpenLibrary(query, env, fetchImpl) {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   });
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
-  return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query)).slice(0, 8).map(openLibraryItem);
+  const items = ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query)).slice(0, 8).map(openLibraryItem);
+  return correctOldBookYears(items, { env, fetchImpl });
 }
 
 async function igdbToken(env, fetchImpl) {

@@ -239,4 +239,41 @@ check("correcting it away from Loved clears its Favorite flag (no Disliked/Liked
   check("an unknown id is null", libraryItemById(s, "nope") === null);
 }
 
+// ---- #29 growth check: long sections stop at 30; only the open tab renders --------------------------------
+{
+  const { renderLibrary, LIBRARY_SHOW_LIMIT } = await import("../../src/screens/library.js");
+  const state = fresh();
+  state.onboarded = true;
+  const item = (i, type = "movie") => ({ id: `tmdb-${type}-${5000 + i}`, provider: "tmdb", providerId: String(5000 + i), title: `Long List ${i}`, type, domains: [type === "tv" ? "tv" : "movies"] });
+  for (let i = 0; i < 45; i++) state.feedbackByRecommendation[item(i).id] = { item: item(i), rating: "more", detail: "liked-before" };
+  for (let i = 100; i < 135; i++) state.feedbackByRecommendation[item(i, "tv").id] = { item: item(i, "tv"), rating: "not-tried", detail: "bookmarked" };
+  const count = (html, attr) => (html.match(new RegExp(`${attr}="`, "g")) ?? []).length;
+
+  state.libraryView = "tried";
+  let html = renderLibrary();
+  eq("Tried shows the first 30 of 45", count(html, "data-library-id"), LIBRARY_SHOW_LIMIT);
+  check("with a Show all button that says how many", /data-library-show-all="tried-tried">Show all 45/.test(html) && /Showing 30 of 45/.test(html));
+  eq("the closed Saved tab is not rendered", count(html, "data-bookmark-id"), 0);
+  check("but its panel stays for the tab's aria-controls", /id="library-panel-saved"[^>]*hidden/.test(html));
+
+  state.libraryExpanded = new Set(["tried-tried"]);
+  html = renderLibrary();
+  eq("Show all opens the whole section", count(html, "data-library-id"), 45);
+  check("and the button goes away", !/data-library-show-all="tried-tried"/.test(html));
+
+  state.libraryView = "saved";
+  html = renderLibrary();
+  eq("Saved is capped the same way", count(html, "data-bookmark-id"), LIBRARY_SHOW_LIMIT);
+  check("with its own Show all", /data-library-show-all="saved">Show all 35/.test(html));
+  eq("the closed Tried tab is not rendered", count(html, "data-library-id"), 0);
+
+  state.libraryExpanded = new Set();
+  for (const id of Object.keys(state.feedbackByRecommendation).slice(10)) delete state.feedbackByRecommendation[id];
+  state.libraryView = "tried";
+  check("a short section has no button", !/data-library-show-all/.test(renderLibrary()));
+  const persisted = (await import("node:fs")).readFileSync(new URL("../../src/persistence.js", import.meta.url), "utf8");
+  check("the open state is never saved", /const FIELDS = \[/.test(persisted) && !persisted.includes("libraryExpanded"));
+}
+
 finish();
+

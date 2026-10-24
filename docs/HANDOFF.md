@@ -1,6 +1,6 @@
 # Tastemake handoff: start here
 
-Last refreshed **Oct 20, 2026**, against `main` at `304d4d0` (#254). If `main` has moved on, run `git log --oneline 304d4d0..origin/main` and read those PRs before trusting the "Current state" section. Where this file and the code disagree, the code wins; fix this file.
+Last refreshed **Oct 24, 2026**, against `main` at `30a3f33` (#285). If `main` has moved on, run `git log --oneline 30a3f33..origin/main` and read those PRs before trusting the "Current state" section. Where this file and the code disagree, the code wins; fix this file.
 
 ## What Tastemake is
 
@@ -14,10 +14,11 @@ Authority model, in one line: **AI interprets, ranks and explains; the software 
 
 | What | Where |
 |---|---|
-| Repo | https://github.com/pedringt/tastemake (squash merges to `main`; `main` has no branch protection) |
-| Production | https://tastemake.vercel.app, Vercel project `tastemake`, team `cairn10`, Hobby plan. Every push to `main` deploys production; PR branches get Vercel previews |
+| Repo | https://github.com/pedringt/tastemake (PRs merge to `main` with merge commits since Oct 23; `main` has no branch protection) |
+| Production | https://tastemake.vercel.app, Vercel project `tastemake`, team `cairn10`, Hobby plan. Every push to `main` deploys production (about 30 s). No PR previews (#264) |
 | Front end | `index.html` + native ES modules in `src/` (no build step, no bundler). `src/screens/` (one file per screen), `src/model/` (evidence, taste, library rules), `src/actions/`, `src/components/`, `src/catalog/` (providers, search ranking, novelty and series rules), `src/ai/` (contract, validator, deterministic baseline, prompt context), `src/data/domains.js` (the one domain registry) |
-| Serverless API (`api/`) | `recommendations.mjs` (picks), `hypotheses.mjs` (Taste Profile), `catalog.mjs` / `catalog-detail.mjs` / `browse.mjs` / `resolve-item.mjs` (TMDb, Open Library, IGDB), `ai-metrics.mjs` (read-only telemetry) |
+| Serverless API (`api/`) | `recommendations.mjs` (picks), `hypotheses.mjs` (Taste Profile), `catalog.mjs` / `catalog-detail.mjs` (incl. where to watch) / `browse.mjs` / `resolve-item.mjs` (TMDb, Open Library, IGDB), `new-releases.mjs` (New this week, no model call), `ai-metrics.mjs` (read-only telemetry) |
+| Outside data | TMDb, Open Library, IGDB, Wikidata (series positions and older books' years, by Open Library id), JustWatch via TMDb (where to watch; must be credited). Official APIs only, no scraping |
 | Server helpers | `src/server/`: `anthropic.mjs` (live gate, Messages API call, `thinkingTypeFor`, JSON parsing), `ai-metrics.mjs` (per-model rates, telemetry), `db.mjs` (Neon Postgres via `TASTEMAKE_DATABASE_URL`), `request-state.mjs`, `cache.mjs`, `query.mjs` |
 | User data | The browser's `localStorage` only (`src/persistence.js`). No accounts. The Neon database holds the canonical catalog store and AI-call telemetry, not user profiles |
 | Tests | `scripts/qa/` (unit suites, headless-Chrome suites, `full-sweep.mjs`) |
@@ -48,7 +49,8 @@ Authority model, in one line: **AI interprets, ranks and explains; the software 
   - 98 calls, 91% success, about $2.16 estimated;
   - recommendations p50 about 6.5s;
   - Taste Profile p50 about 9s.
-- **Paid evals:** only through the **ai-eval** GitHub workflow (Actions → ai-eval → Run workflow).
+- **Two different API keys (Oct 23):** production uses the key in Vercel, and it works. The eval workflows use the `ANTHROPIC_API_KEY` GitHub repo secret, whose account was out of credits on Oct 23: every eval call came back "budget used up" (and cost $0). Paid evals stay blocked until that account has credits or the secret is changed. `node scripts/evals/run.mjs --producer endpoint --yes` uses production's key instead, but it can only measure what is deployed (no previews), so it works for a "before", not for a PR's "after".
+- **Paid evals:** through the **ai-eval** and **stress-eval** GitHub workflows (Actions → Run workflow; `gh workflow run … --ref <branch>` runs a branch's code).
   - Inputs: `models`, `repeats`, `max_calls`. It checks the call budget first, then uses the `ANTHROPIC_API_KEY` repo secret.
   - About 21 calls per model per repeat (11 Taste Profile, 10 picks). Worst-case cost from the Oct 12 dry run: about $0.03 for Haiku 5.5 and about $0.54 for Sonnet 5.5 per model per repeat.
   - Every paid run needs Paige's OK, with the call count and cost stated first.
@@ -59,7 +61,7 @@ Authority model, in one line: **AI interprets, ranks and explains; the software 
 1. Branch from a freshly fetched `origin/main`. Batch related changes into **one branch and one PR**: the Hobby plan's deploy limit is shared with Paige's other projects.
 2. Run `npm test` locally. CI (`test`) and the Vercel preview must pass.
 3. Model, prompt or context changes are product changes. Do a free dry run, then (with Paige's OK) a paid before/after on the `ai-eval` workflow. Never loosen a scorer to pass ([ai-evals.md](ai-evals.md)).
-4. **Merge only with Paige's explicit OK, each time.** Squash merge. Merging deploys production.
+4. **Merge only with Paige's explicit OK, each time.** Merging deploys production. When several PRs merge together, merge one at a time, wait for GitHub to recompute mergeability ("UNKNOWN" is not a conflict), and for a real conflict merge `main` into the branch, run `npm test`, push and wait for CI before merging.
 5. After a merge, check production yourself (load the site; `/api/ai-metrics` for AI changes). Don't rely only on green checks.
 
 ## Product rules (do not break)
@@ -74,38 +76,36 @@ Full rulebook: [evidence-contract.md](evidence-contract.md). Validator rules: [a
 - User corrections ("Not really me", etc.) outrank model inference. Novelty, sequel and franchise suppression is deterministic and the model can't override it.
 - No seeded or demo data.
 
-## Current state and open work (Oct 20)
+## Current state and open work (Oct 24)
 
-**Recently shipped (all on production):**
-- #245: #28 stress-test harness (`scripts/evals/stress/`).
-- #246: structured outputs (JSON schemas) for picks and the Taste Profile.
-- #247: picks prompt asks for the specific link to the cited item and bans five stock phrases. Net gain on Haiku: vague hedges 31% -> 8% of explanations; "echo"-family words rose, but conspicuous repetition only went 4% -> 7% of sets (#260, calibrated against Paige's marks).
-- #251 (#250 PR 1): reasons on tried reactions get directions for books ("Pacing: too slow"), content chips from a book's own subjects ("Romance took over the story"), a limit of 5, the Taste Profile's "You said" line, and anonymous usage counts.
-- #253: one-click Favorites while picking (click a result to add or remove it); a ☆ on each search row after setup.
-- #254: Library search button no longer 360px tall on phones; `stretchedControls` layout check.
+**Shipped Oct 20–24 (all on production):**
+- **Recommendations and explanations:** #247 distinct explanations; #260 per-set repetition checks (stress eval); #268 no-AI picks name what they share with a favorite; #272 no raw catalog tags in reasons; #274 second-set headline; #282 (#250 PR 2) reasons with direction reach the picks prompt, candidate books carry approved themes, items with reasons win evidence ties, `--suite reasons` eval.
+- **Books:** #251 (#250 PR 1) reasons with direction, content chips, "You said"; #258 series position, faithful reasons, English titles; #265 genre-first retrieval; #266 more later-in-series books caught, Tastebreak reachable again (#19); #269 Wikidata series positions; #276 + #280 + #285 study guides and legislature records filtered from search, Browse and recommendations (filter before the page limit); #280 lone mis-dated editions no longer set a modern book's year; this PR: older books' years from Wikidata.
+- **New features:** #277 **Never recommend** (creator / series / genre; from a pick's "Don't recommend…" or My Tastemake; never taste evidence); #281 + #284 **Where to watch / read** in Library items (TMDb + JustWatch credit; one entry per service); #283 **New this week for you** (strip under the set; movies/TV/games, last and next 7 days, matched to experienced taste without AI; respects Never recommend); #275 Paige's Example Profile.
+- **AI paused, honestly:** #263 calm budget message; #271 notice on Recommendations, "AI paused" header badge, honest empty Profile.
+- **UI:** #253 one-click Favorites; #254, #259 popover design pass; #276 + #280 "More about why" opens below and closes reliably (click again or Escape); #280 counter says "reacted to"; "What changed" follows the direction of a confidence change; #273 favicon; this PR: Library sections show 30 with "Show all", only the open tab renders (#29).
+- **Infrastructure:** #262 free fixes and Hardcover probe; #264 build only `main`; #270 browser tests start with empty storage and no HTTP cache.
 
 **Open PRs (each waits for Paige's OK to merge):**
-- **#258 book-review fixes** (closes #255, #256, #257): series position from Open Library (later books in a series are held back), the Taste Profile validator keeps a user's reasons with their own item and dimension, English edition titles, narrators dropped from authors, `genre:` tags for content chips, adult-tagged curveballs only if tried. Paid before/after on Haiku done (Oct 20, about $0.0125): rule checks pass; prompt wording change reverted.
-- **#259 popover design pass:** one summary line, neutral chips that fill with ✓ when chosen, directions under their chip, and "This pick was: Too obvious · A great discovery" replacing "More feedback". Markup and CSS only.
-- **#260 #28 Stage 0:** per-set repetition checks in the stress report (stock-word families, the "you … in <title>" frame, shared openings and phrases, would-trigger rate, 200-explanation minimum). Thresholds calibrated Oct 20 from 24 reference sets Paige marked (`scripts/evals/stress/reference-sets.json`); she kept 10/10 post-#247 sets and 1/14 pre-#247 ones. Vagueness, not stock words, is what she dropped sets for, so the report also measures a vague-hedge share.
-- **#261 #28 Stage 1** (judge its paid run on hedge share and named titles, not only stock words; see the comment on #261): a required per-pick `anchor` (setting/character/structure/tone/theme/pacing/voice) before `why`, a positive rule, four varied examples, no banned list; the validator rejects a third same-anchor pick. **Needs a paid stress run before merging** (120 calls, about $0.03–0.09; or 372 to match Oct 20). Blocked on API credits as of Oct 20.
-- **This PR's free fixes:** #243 ("The Making of …" no longer outranks a game's DLC) and swipe tests for #248.
+- **#261 #28 Stage 1** (per-pick anchor instead of banned phrases): needs the paid stress run (120 calls, about $0.03–0.09). Blocked on the GitHub eval key (above). Baseline to compare against: the Oct 20 `prompt/varied-pick-explanations` stress run.
+- **#267 #252 part 1** ("Also true for" another area): needs a paid before/after with an eval case that actually uses "Also true for" (no fixture does yet; Paige chose to add one). About 42 calls, about $0.05. Same blocker.
 
 **Open issues worth knowing:**
-- **#250** (book reasons): PR 1 shipped; PR 2 (prompt labels with direction, candidate themes, tie-break for items with reasons) not started.
-- **#249** (Hardcover): research done. Report: `reports/Hardcover as book metadata source.md` (local, git-excluded). Verdict: legitimate and useful for romance-central vs minor via tag counts, but beta and sparse; six questions for Hardcover listed there. `scripts/dev/hardcover-probe.mjs` checks the real schema once a free read-only token exists.
-- **#252** cross-media "bridge picks" and "applies to … too": designed, not started.
-- **#28** repetition: research report `reports/Reducing repetitive AI explanations.md`. Stage 0 (#260), Stage 1 (#261); Stage 2 is a runtime check that regenerates only flagged picks.
-- **#248:** swipe already shipped (0077572); its wording half is superseded by #259. Close after #259 merges.
-- **#19 Tastebreak:** v1 is offered only when a pick's `ai.tests` matches a pattern, and the picks prompt never sets `tests`, so it is unreachable for live picks. See the comment on #19.
-- **Backlog:** #29, #37. **Parked by Paige:** #6, #7, #9, #10, #11, #14, #15, #17, #48, #69.
+- **#250 PR 2** shipped (#282); its paid comparison (`--suite reasons`, 18 calls, about $0.022) is waiting on the eval key.
+- **#252 part 2** bridge picks: designed in the issue, not started; it's the next big product step.
+- **#278** eval: does each counter-example actually contradict its pattern? (paid grader). **#279** "up to date" next to Refresh (copy decision for Paige).
+- **#29** Library growth: measurements posted on the issue (data size and speed fine at 500 items; length was the problem, now capped).
+- **#6** New this week: books need a source of upcoming releases (#249 Hardcover, on hold); returning TV seasons aren't covered yet.
+- **#10** Where to watch: Library only; recommendation cards don't fetch details.
+- **#249** Hardcover: on hold by Paige. **#28** Stage 2 (regenerate only flagged picks) after Stage 1.
+- **Parked by Paige:** #7, #9, #11, #14, #15, #17, #69.
 
 ## Gotchas
 
 - **No `.env` in commits, ever** (`.gitignore` covers it). Never read or print key or model env values.
 - **No model calls in `npm test`.** Paid runs only via `ai-eval`, with Paige's OK.
 - **Browser suites in a worktree:** `scripts/qa/headless.sh` writes its harness pages and Chrome profile under `.git/`. In a worktree `.git` is a file, so run the browser suites from a plain copy of the tree (for example `rsync` without `.git`, then `git init`).
-- **Flow suite fails on leftover onboarded state:** delete the reused Chrome profile `.git/tm-chrome-profile` and re-run.
+- **Browser suites "NO RESULT after 3 tries":** the reused Chrome profile `.git/tm-chrome-profile` can get stuck (seen Oct 21 after Chrome updated). Delete it; the harness rebuilds it. Leftover storage and cached files no longer leak between runs (#270).
 - **No build step:** a bare npm import in `src/` (`import x from "pkg"`) breaks the whole app in the browser. Production went blank once this way (#162, fixed in #168). Analytics now loads by script tag for this reason.
 - **`main` is unprotected,** and automated PRs (Vercel installers, bots) have merged unreviewed before. At the start of a session, check `git log origin/main` for commits nobody expected.
 - **Payload size:** `/api/recommendations` caps the request body. If a 413 comes back, look for new fields added to pick or feedback objects. Don't just trim another field (#163, #165).
@@ -113,6 +113,7 @@ Full rulebook: [evidence-contract.md](evidence-contract.md). Validator rules: [a
 - **Unverified:** the canonical-store batching (#159) has not been spot-checked against a real Neon database since it landed.
 - **No PR previews** (#264, Oct 20): Vercel builds only `main`, so PRs get CI but no preview deploy, and every merge is the first time a change runs on Vercel. Before #264, previews also lacked the TMDb/IGDB and live-AI variables (Production only), so only books worked there. Check risky changes locally (`python3 -m http.server 4173`) and on production right after merging.
 - **AI budget pause** (#263): when the Anthropic budget is used up, picks and the Taste Profile fall back with a calm "AI features are paused" message (`AI_BUDGET_MESSAGE` in `src/server/anthropic.mjs`). Fallback book picks are the raw catalog order, so retrieval quality matters most then (see `bookGenreFamilies` in `src/catalog/related.mjs`).
-- **Merging from an agent session:** Claude Code's auto-mode check blocks `gh pr merge` even with Paige's OK in chat. Paige merges on GitHub (Squash and merge, then Confirm), or allows `Bash(gh pr merge:*)` in her own settings.
+- **Merging from an agent session:** since Oct 23, `gh pr merge <n> --merge` works from Claude Code when Paige asks in chat. Before that the auto-mode check blocked it and Paige merged on GitHub.
+- **Live checks cost money only on `/api/recommendations` and `/api/hypotheses`.** Catalog, detail, Browse and New this week make no model call. When AI is live, one recommendation request is one paid Haiku call.
 - **Eval sample size:** wording metrics need about 200 explanations per variant to tell a 20% -> 10% change from noise; the 21-call `ai-eval` gives about 49. Use the stress eval for wording decisions.
 - **Research notes and reports** live in `research_notes/` and `reports/` at the repo root, excluded locally via `.git/info/exclude` (not committed).

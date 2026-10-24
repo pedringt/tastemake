@@ -4,6 +4,7 @@ import { withBookSeriesEvidence } from "./book-series-editions.mjs";
 import { bookSeriesPosition, isBook, isLaterSeriesEntry } from "./book-series.mjs";
 import { wikidataSeriesPositions } from "./wikidata-series.mjs";
 import { isBookCompanion } from "./book-companions.mjs";
+import { correctOldBookYears } from "./wikidata-years.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
@@ -647,7 +648,8 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     const position = wikidata.get(item.id);
     if (position) checkedTop[index] = { ...item, providerMeta: { ...(item.providerMeta ?? {}), seriesPosition: position } };
   }
-  const ranked = [...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK)].filter((item) => !isLaterSeriesEntry(item));
+  // Older books' first-publication years from Wikidata (wikidata-years.mjs); only books dated before 1980.
+  const ranked = await correctOldBookYears([...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK)].filter((item) => !isLaterSeriesEntry(item)).slice(0, Math.max(limit, 10)), { env, fetchImpl });
   const style = state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced");
   if (style === "adventurous" && state.curveball !== false && ranked.length > 6) {
     // Balanced keeps the normal top-ranked set. Adventurous preserves the five strongest fits

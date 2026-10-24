@@ -187,7 +187,7 @@ function renderSavedView() {
       <h2 class="visually-hidden">Saved to try</h2>
       <div class="library-grid">
         ${saved.length
-          ? saved.map(savedCard).join("")
+          ? capped(saved, "saved", savedCard)
           : `<div class="filter-empty bookmark-empty">Nothing saved yet. From Recommendations, react "Not tried" on something and choose "Save to Saved" to come back to it here.</div>`}
       </div>
     </div>`;
@@ -259,7 +259,18 @@ function triedCard(entry) {
     </details>`;
 }
 
-function section(title, note, entries, emptyText) {
+// #29 growth check (Oct 23): at 500 items Tried was one ~12,500px list. Long sections show their first
+// LIBRARY_SHOW_LIMIT cards and a "Show all" button; which sections are open is per visit, never saved.
+export const LIBRARY_SHOW_LIMIT = 30;
+function capped(entries, key, render) {
+  const open = state.libraryExpanded?.has(key);
+  const shown = open ? entries : entries.slice(0, LIBRARY_SHOW_LIMIT);
+  const more = entries.length - shown.length;
+  return `${shown.map(render).join("")}${more > 0 ? `
+        <div class="library-show-all"><button class="button button-secondary" type="button" data-library-show-all="${key}">Show all ${entries.length}</button><span>Showing ${shown.length} of ${entries.length}.</span></div>` : ""}`;
+}
+
+function section(title, note, entries, emptyText, key = title.toLowerCase()) {
   return `
     <section class="library-section" aria-label="${title}">
       <div class="library-section-head">
@@ -267,7 +278,7 @@ function section(title, note, entries, emptyText) {
         <p>${note}</p>
       </div>
       <div class="library-grid">
-        ${entries.length ? entries.map(triedCard).join("") : `<div class="filter-empty library-empty">${emptyText}</div>`}
+        ${entries.length ? capped(entries, `tried-${key}`, triedCard) : `<div class="filter-empty library-empty">${emptyText}</div>`}
       </div>
     </section>`;
 }
@@ -394,11 +405,12 @@ export function renderLibrary() {
         ${renderDomainFilter({ selected: state.libraryFilter, scope: "library", label: "Filter your library by type" })}
       </div>
 
+      <!-- #29: only the open tab is rendered; the other panel stays in place (empty) for its tab's aria-controls. -->
       <div id="library-panel-saved" role="tabpanel" aria-labelledby="library-tab-saved" ${view === "saved" ? "" : "hidden"}>
-        ${renderSavedView()}
+        ${view === "saved" ? renderSavedView() : ""}
       </div>
       <div id="library-panel-tried" role="tabpanel" aria-labelledby="library-tab-tried" ${view === "tried" ? "" : "hidden"}>
-        ${renderTriedView()}
+        ${view === "tried" ? renderTriedView() : ""}
       </div>
 
       <div class="recommendation-footer page-actions">

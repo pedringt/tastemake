@@ -22,7 +22,7 @@ const TIMEOUT_MS = 1500;
 const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 const userAgent = (env) => env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)";
-const sparqlString = (text) => `"${String(text).replace(/["\\\n\r]/g, " ").trim()}"`;
+export const sparqlString = (text) => `"${String(text).replace(/["\\\n\r]/g, " ").trim()}"`;
 
 // The title Wikidata is likely to use: no "(Malloreon)" suffix, no subtitle.
 export function plainTitle(title) {
@@ -36,7 +36,7 @@ function smallestOrdinal(values) {
   return numbers.length ? Math.min(...numbers) : null;
 }
 
-async function sparql(query, { env, fetchImpl, timeoutMs }) {
+export async function sparql(query, { env, fetchImpl, timeoutMs }) {
   const response = await fetchWithTimeout(fetchImpl, ENDPOINT + encodeURIComponent(query), {
     headers: { "user-agent": userAgent(env), accept: "application/sparql-results+json" }
   }, timeoutMs);
