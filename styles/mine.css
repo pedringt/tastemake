@@ -206,3 +206,36 @@
   font-size:12px;
   line-height:1.45;
 }
+
+/* #48: Never recommend. */
+.mine-never { margin-top:16px; }
+.mine-never-genres { margin:12px 0 0; padding:0; border:0; }
+.mine-never-genres legend, .mine-never-add label { margin-bottom:6px; padding:0; color:var(--navy); font-weight:700; font-size:14px; }
+.mine-never-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.mine-never-chip {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:38px;
+  padding:6px 12px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:#fff;
+  color:var(--navy);
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+}
+.mine-never-chip.is-on { border-color:var(--navy); background:var(--tint-warm,#fff9e6); }
+.mine-never-chip input { width:18px; height:18px; margin:0; accent-color:var(--navy); }
+.mine-never-chip input:focus-visible { outline:3px solid var(--pink); outline-offset:2px; }
+.mine-never-note { margin:6px 0 0; color:var(--muted); font-size:12px; line-height:1.4; }
+.mine-never-add { margin-top:16px; }
+.mine-never-add label { display:block; }
+.mine-never-add-row { display:flex; gap:8px; }
+.mine-never-add-row .button { flex:0 0 auto; width:auto; min-width:0; padding-inline:18px; }
+.mine-never-add-row input { flex:1; min-width:0; min-height:40px; padding:6px 10px; border:1px solid var(--line); border-radius:10px; font:inherit; }
+.mine-never-add-row input:focus-visible { outline:3px solid var(--pink); outline-offset:2px; }
+.mine-never-list { display:grid; gap:6px; margin:14px 0 0; padding:0; list-style:none; }
+.mine-never-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; }
+.mine-never-row small { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; }

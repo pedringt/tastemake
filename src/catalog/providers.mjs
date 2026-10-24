@@ -165,6 +165,8 @@ function igdbItem(row) {
     // shares a collection id) so the shared novelty guard can suppress sequels without title guessing.
     providerMeta: {
       genreIds: (row.genres ?? []).map((x) => x.id),
+      // #48: IGDB keeps Horror, Romance, Warfare and Kids as themes, not genres.
+      themes: (row.themes ?? []).map((x) => clean(x.name, 40)).filter(Boolean),
       collectionId: row.collection?.id ?? null,
       franchiseId: (row.franchises ?? [])[0]?.id ?? row.franchise?.id ?? null
     },
@@ -185,7 +187,7 @@ async function searchIgdb(query, env, fetchImpl) {
       authorization: `Bearer ${token}`,
       "content-type": "text/plain"
     },
-    body: `search "${String(query).replace(/"/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id,total_rating_count; limit 20;`
+    body: `search "${String(query).replace(/"/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.name,collection.id,franchises.id,total_rating_count; limit 20;`
   });
   if (!response.ok) throw new Error(`igdb ${response.status}`);
   const rows = await response.json();

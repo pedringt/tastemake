@@ -12,6 +12,7 @@ import { domainById } from "../src/data/domains.js";
 import { isAdultTagged, triedAdultTagged } from "../src/catalog/adult-content.mjs";
 import { evidenceRecords } from "../src/model/evidence.js";
 import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
+import { excludedBy } from "../src/model/exclusions.js";
 
 const MAX_BODY_BYTES = 160_000;
 const DEFAULT_VISITOR_LIMIT = 6;
@@ -297,8 +298,10 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   const state = hydrateState(rawState);
 
   let started = Date.now();
-  const retrieved = await retrieve(state, { env, fetchImpl });
-  logStage("candidateRetrieval", Date.now() - started, { candidates: retrieved.length });
+  // #48: "never recommend" boundaries come off before anything is picked, for live AI and fallback alike.
+  const pool = await retrieve(state, { env, fetchImpl });
+  const retrieved = state.exclusions.length ? pool.filter((item) => !excludedBy(item, state.exclusions)) : pool;
+  logStage("candidateRetrieval", Date.now() - started, { candidates: retrieved.length, excluded: pool.length - retrieved.length });
 
   started = Date.now();
   const ctx = buildContext(state, retrieved);

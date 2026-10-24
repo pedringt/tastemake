@@ -406,7 +406,7 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
         authorization: `Bearer ${token}`,
         "content-type": "text/plain"
       },
-      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where ${igdbGenreWhereClause(genreIds)}${excludeClause}; sort total_rating_count desc; limit 12;`
+      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.name,collection.id,franchises.id; where ${igdbGenreWhereClause(genreIds)}${excludeClause}; sort total_rating_count desc; limit 12;`
     });
     if (!response.ok) return [];
     return (await response.json()).map(igdbItem).filter((row) => row.providerId !== item.providerId);

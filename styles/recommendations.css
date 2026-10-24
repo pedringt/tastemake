@@ -756,3 +756,33 @@
   .first-insight-nudge { align-items:stretch; flex-direction:column; gap:10px; }
   .first-insight-nudge .button { width:100%; }
 }
+
+/* #48: "Don't recommend…" sits quietly under the reasons; it is a boundary, not a reaction. */
+.exclude-menu { margin-top:4px; }
+.exclude-menu > summary {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;   /* WCAG 2.2 target size */
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  list-style:none;
+}
+.exclude-menu > summary::-webkit-details-marker { display:none; }
+.exclude-menu > summary:focus-visible { outline:3px solid var(--pink); outline-offset:2px; border-radius:4px; }
+.exclude-options { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 4px; }
+.exclude-option {
+  min-height:32px;
+  padding:4px 10px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:#fff;
+  color:var(--navy);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.exclude-option:hover { border-color:var(--navy); }
+.exclude-option:focus-visible { outline:3px solid var(--pink); outline-offset:2px; }
+.exclude-note { flex-basis:100%; margin:2px 0 0; color:var(--muted); font-size:11px; line-height:1.35; }
