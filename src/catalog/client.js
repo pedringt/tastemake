@@ -23,8 +23,9 @@ export async function searchExternalCatalog(query, domain = "all", { signal, ski
         // Books timed out or failed: say so, and don't keep this answer, so the next search tries again.
         const booksFailed = providers.openlibrary?.configured === true && providers.openlibrary.available === false;
         const value = { items: Array.isArray(payload.items) ? payload.items : [], providers, degraded: Boolean(payload.degraded), booksFailed };
-        // Google Books fallback results are not kept either (Google's caching terms).
-        if (!booksFailed && !providers.googlebooks?.fallback) searchCache.set(key, { at: Date.now(), value });
+        // Nor when any other source failed, or for Google Books fallback results (Google's caching terms).
+        const sourceFailed = Object.values(providers).some((p) => p?.configured === true && p.available === false);
+        if (!sourceFailed && !providers.googlebooks?.fallback) searchCache.set(key, { at: Date.now(), value });
         return value;
       })
       .finally(() => pendingSearches.delete(key));
@@ -71,6 +72,8 @@ export async function fetchCatalogItemDetail(item) {
   })();
 
   detailCache.set(key, request);
+  // An empty answer (provider down, or a network error) isn't kept, so opening the item again retries.
+  request.then((detail) => { if (!detail || !Object.keys(detail).length) detailCache.delete(key); });
   return request;
 }
 

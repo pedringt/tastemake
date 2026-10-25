@@ -12,10 +12,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "POST required" });
   }
   if (Number(req.headers?.["content-length"] || 0) > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
-  if (typeof req.body === "string" && Buffer.byteLength(req.body, "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
+  // On Vercel, reading req.body throws when the JSON is invalid, so that read is inside the try too (Oct 24).
+  let raw;
+  try { raw = req.body; } catch { return res.status(400).json({ error: "invalid request" }); }
+  if (typeof raw === "string" && Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
   let body;
   try {
-    body = req.body && typeof req.body === "object" ? req.body : JSON.parse(req.body || "{}");
+    body = raw && typeof raw === "object" ? raw : JSON.parse(raw || "{}");
   } catch {
     return res.status(400).json({ error: "invalid request" });
   }
