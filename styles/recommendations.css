@@ -766,7 +766,9 @@
 .new-this-week-head p { margin:4px 0 12px; color:var(--muted); font-size:13px; line-height:1.4; max-width:70ch; }
 .new-this-week-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; margin:0; padding:0; list-style:none; }
 .new-release { display:flex; gap:10px; align-items:flex-start; padding:10px; border:1px solid var(--line); border-radius:12px; background:#fff; min-width:0; }
-.new-release-artwork { flex:0 0 56px; width:56px; height:84px; border-radius:6px; object-fit:cover; overflow:hidden; }
+.new-release-artwork { flex:0 0 56px; width:56px; height:84px; border-radius:6px; overflow:hidden; }
+/* Oct 24: without this the poster rendered at full size (780x1170) and the box showed only its corner. */
+.new-release-artwork img { width:100%; height:100%; display:block; object-fit:cover; }
 .new-release-copy { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .new-release-meta { color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
 .new-release-copy strong { color:var(--navy); font-size:15px; line-height:1.25; overflow-wrap:anywhere; }
