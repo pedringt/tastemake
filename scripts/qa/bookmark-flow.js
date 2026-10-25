@@ -73,7 +73,7 @@ export async function run() {
     }
     if(url.pathname==="/api/new-releases"){
       newReleaseCalls++;
-      return {ok:true,status:200,json:async()=>({items:[{id:"tmdb-movie-990",provider:"tmdb",providerId:"990",title:"Signal From Vega",type:"movie",domains:["movies"],about:"Astronomers hear something.",artwork:null,genres:["878"],releaseDate:"2026-10-24",reason:"Shares sci-fi with Moon Garden."}]})};
+      return {ok:true,status:200,json:async()=>({items:[{id:"tmdb-movie-990",provider:"tmdb",providerId:"990",title:"Signal From Vega",type:"movie",domains:["movies"],about:"Astronomers hear something.",artwork:"data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="780" height="1170"><rect width="780" height="1170" fill="#345"/></svg>'),genres:["878"],releaseDate:"2026-10-24",reason:"Shares sci-fi with Moon Garden."}]})};
     }
     if(url.pathname==="/api/hypotheses"){
       if(aiMode==="paused") return {ok:true,status:200,json:async()=>({source:"unavailable",reason:"AI features are paused for now.",hypotheses:[],meta:{budgetPaused:true,paidCallMade:false}})};
@@ -307,6 +307,13 @@ export async function run() {
 
   // #6: New this week for you, under the set; fetched once per visit.
   await act('[data-step-jump="recommendations"]',250);
+  {
+    // Oct 24: the poster rendered at its full size inside the 56x84 box, showing only a corner.
+    const box=$('.new-this-week [data-new-release="tmdb-movie-990"] .new-release-artwork'), img=box?.querySelector("img");
+    if(img && !img.complete) await new Promise(r=>{img.onload=r; img.onerror=r; setTimeout(r,500);});
+    const b=box?.getBoundingClientRect(), i=img?.getBoundingClientRect();
+    check("the release poster fills its box instead of overflowing it",Boolean(img)&&Math.round(i.width)===Math.round(b.width)&&Math.round(i.height)<=Math.round(b.height)+1,img?`${Math.round(i.width)}x${Math.round(i.height)} in ${Math.round(b.width)}x${Math.round(b.height)}`:"no img");
+  }
   check("the new-this-week strip shows under the set",Boolean($('.new-this-week [data-new-release="tmdb-movie-990"]'))&&/Shares sci-fi with Moon Garden/.test($(".new-this-week")?.textContent||""),$(".new-this-week")?.textContent?.slice(0,120));
   await act('[data-step-jump="library"]',150);
   await act('[data-step-jump="recommendations"]',200);
