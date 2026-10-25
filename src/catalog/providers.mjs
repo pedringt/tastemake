@@ -287,7 +287,7 @@ async function searchIgdb(query, env, fetchImpl) {
       authorization: `Bearer ${token}`,
       "content-type": "text/plain"
     },
-    body: `search "${String(query).replace(/"/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.name,collection.id,franchises.id,total_rating_count; limit 20;`
+    body: `search "${String(query).replace(/["\\]/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.name,collection.id,franchises.id,total_rating_count; limit 20;`
   });
   if (!response.ok) throw new Error(`igdb ${response.status}`);
   const rows = await response.json();
@@ -545,15 +545,32 @@ export async function fetchItemDetail(item, { env = process.env, fetchImpl = fet
 // #135: provider-backed lazy enrichment. Detail fetching is cached separately from the canonical
 // write, so a transient DB failure can retry on the next encounter without re-fetching the provider.
 // This never blocks recommendation generation when called through enrichCanonicalItemWriteBehind.
+// True when a detail has at least one real fact. fetchItemDetail answers {} when the provider failed.
+export const hasDetailFacts = (detail) => {
+  const { watch, ...facts } = detail ?? {};
+  return Object.values(facts).some((value) => value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length));
+};
+
 export async function fetchAndPersistItemDetail(item, { env = process.env, fetchImpl = fetch, query } = {}) {
   if (!item?.provider || !item?.providerId || !item?.type) return {};
-  const cacheKey = `canonical-enrichment:v4:${item.provider}:${item.type}:${item.providerId}`;
-  const detail = fetchImpl !== fetch
-    ? await fetchItemDetail(item, { env, fetchImpl })
-    : await cachedValue(cacheKey, () => fetchItemDetail(item, { env, fetchImpl }), { ttl: 86400, tags: ["canonical-enrichment"] });
+  // Oct 24: a failed or empty answer was kept a day (Piranesi showed no description). It is never cached now:
+  // cachedValue doesn't store a producer failure, so the empty answer travels on the error.
+  const cacheKey = `canonical-enrichment:v5:${item.provider}:${item.type}:${item.providerId}`;
+  const produce = async () => {
+    const result = await fetchItemDetail(item, { env, fetchImpl });
+    if (!hasDetailFacts(result)) throw Object.assign(new Error("not cacheable"), { partial: result ?? {} });
+    return result;
+  };
+  let detail;
+  try {
+    detail = fetchImpl !== fetch ? await produce() : await cachedValue(cacheKey, produce, { ttl: 86400, tags: ["canonical-enrichment"] });
+  } catch (error) {
+    if (!error?.partial) throw error;
+    detail = error.partial;
+  }
   // #10: watch providers change often and differ by country; they are served, never stored as facts.
   const { watch, ...facts } = detail ?? {};
-  if (Object.values(facts).some((value) => value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length))) {
+  if (hasDetailFacts(facts)) {
     await mergeCanonicalFacts(item, facts, { env, query, source: item.provider });
   }
   return detail ?? {};

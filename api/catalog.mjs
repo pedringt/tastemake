@@ -3,9 +3,12 @@ import { cachedValue } from "../src/server/cache.mjs";
 import { requestQuery } from "../src/server/query.mjs";
 
 export const booksFailed = (payload) => payload?.providers?.openlibrary?.configured === true && payload.providers.openlibrary.available === false;
-// Not cached anywhere: a book miss (so the next try asks again), or Google Books fallback results (Google's
-// terms allow no caching beyond its own headers).
-export const uncacheable = (payload) => booksFailed(payload) || payload?.providers?.googlebooks?.fallback === true;
+// Any configured source that failed (books, TMDb or IGDB), so the next try asks again (Oct 24: a failed
+// game search was kept for the cache's lifetime). Also Google Books fallback results (Google's terms allow no
+// caching beyond its own headers).
+export const sourceFailed = (payload) => Object.values(payload?.providers ?? {}).some((p) => p?.configured === true && p.available === false);
+// Not cached anywhere.
+export const uncacheable = (payload) => sourceFailed(payload) || payload?.providers?.googlebooks?.fallback === true;
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {

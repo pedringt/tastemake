@@ -21,8 +21,7 @@ const DEFAULT_WINDOW_MS = 60_000;
 const MAX_PROMPT_EVIDENCE = 18;
 const rateBuckets = globalThis.__tastemakeAiRateBuckets ??= new Map();
 
-function parseBody(req) {
-  const body = req.body;
+function parseBody(body) {
   if (body && typeof body === "object") return body;
   if (typeof body === "string") return JSON.parse(body);
   return {};
@@ -474,9 +473,12 @@ export default async function handler(req, res) {
   // as a rising number in [tastemake-recommendations-payload] well before any user hits a 413.
   console.info("[tastemake-recommendations-payload]", JSON.stringify({ bytes: contentLength, capBytes: MAX_BODY_BYTES, pctOfCap: contentLength ? Math.round((contentLength / MAX_BODY_BYTES) * 100) : null }));
   if (contentLength > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
-  if (typeof req.body === "string" && Buffer.byteLength(req.body, "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
+  // On Vercel, reading req.body throws when the JSON is invalid, so that read is inside the try too (Oct 24).
+  let raw;
+  try { raw = req.body; } catch { return res.status(400).json({ error: "invalid request" }); }
+  if (typeof raw === "string" && Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
   let body;
-  try { body = parseBody(req); } catch { return res.status(400).json({ error: "invalid request" }); }
+  try { body = parseBody(raw); } catch { return res.status(400).json({ error: "invalid request" }); }
   const warm = body?.warm === true;
   // A warm request makes no model call, so it has its own bucket and never uses up the visitor's
   // live-AI allowance; it still has one, since it does make provider calls.

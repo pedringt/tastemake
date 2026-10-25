@@ -730,5 +730,87 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   }
 }
 
-finish();
+// ---- Oct 24 deep test: failed answers are never cached; game search survives a backslash; fan books -------
+{
+  const { default: detailHandler } = await import("../../api/catalog-detail.mjs");
+  const { default: catalogHandler, uncacheable } = await import("../../api/catalog.mjs");
+  const realFetch = globalThis.fetch;
+  const makeRes = () => ({ headers: {}, statusCode: 0, body: null, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status(c) { this.statusCode = c; return this; }, json(b) { this.body = b; return this; } });
+  const get = async (fn, query) => { const res = makeRes(); await fn({ method: "GET", query, headers: {} }, res); return res; };
 
+  // Item details: Open Library down, then back.
+  let olUp = false, workCalls = 0;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes("openlibrary.org/works/OLDEEPW.json")) {
+      workCalls += 1;
+      if (!olUp) throw new Error("timeout");
+      return { ok: true, json: async () => ({ description: "A house of endless halls." }) };
+    }
+    if (u.includes("openlibrary.org/search.json")) return { ok: true, json: async () => ({ docs: [{ number_of_pages_median: 272 }] }) };
+    throw new Error(`unexpected ${u}`);
+  };
+  try {
+    const query = { provider: "openlibrary", providerId: "OLDEEPW", type: "book" };
+    const failed = await get(detailHandler, query);
+    check("a failed detail answers empty", failed.statusCode === 200 && !Object.keys(failed.body.detail).length, JSON.stringify(failed.body));
+    eq("...sent no-store", failed.headers["cache-control"], "no-store");
+    olUp = true;
+    const ok = await get(detailHandler, query);
+    eq("the next look asks again (the failure was not kept)", workCalls, 2);
+    check("and gets the description and pages", ok.body.detail.description === "A house of endless halls." && ok.body.detail.pageCount === 272, JSON.stringify(ok.body));
+    check("a real detail is cacheable", /public/.test(ok.headers["cache-control"] ?? ""), ok.headers["cache-control"]);
+    await get(detailHandler, query);
+    eq("...and is kept once it is real", workCalls, 2);
+    eq("missing type is refused", (await get(detailHandler, { provider: "openlibrary", providerId: "OLDEEPW" })).statusCode, 400);
+    eq("an unknown type is refused", (await get(detailHandler, { ...query, type: "album" })).statusCode, 400);
+    eq("an unknown provider is refused", (await get(detailHandler, { ...query, provider: "nope" })).statusCode, 400);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+
+  // Game search: IGDB failing is never cached; a backslash doesn't break the query.
+  const realEnv = { id: process.env.IGDB_CLIENT_ID, secret: process.env.IGDB_CLIENT_SECRET };
+  process.env.IGDB_CLIENT_ID = "id"; process.env.IGDB_CLIENT_SECRET = "secret";
+  let igdbUp = false, igdbCalls = 0;
+  const bodies = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    if (u.includes("id.twitch.tv")) return { ok: true, json: async () => ({ access_token: "tok", expires_in: 3600 }) };
+    if (u.includes("api.igdb.com")) {
+      igdbCalls += 1; bodies.push(String(init.body ?? ""));
+      if (!igdbUp) return { ok: false, status: 500, json: async () => ({}) };
+      return { ok: true, json: async () => ([{ id: 42, name: "Deep Test Quest", first_release_date: 1600000000, genres: [{ id: 12, name: "RPG" }] }]) };
+    }
+    throw new Error(`unexpected ${u}`);
+  };
+  try {
+    const failed = await get(catalogHandler, { q: "deep test quest", domain: "play" });
+    check("a failed game search is answered, uncacheable", failed.statusCode === 200 && uncacheable(failed.body), JSON.stringify(failed.body.providers));
+    eq("...sent no-store", failed.headers["cache-control"], "no-store");
+    igdbUp = true;
+    const ok = await get(catalogHandler, { q: "deep test quest", domain: "play" });
+    eq("the next try asks IGDB again", igdbCalls, 2);
+    check("and gets the game", ok.body.items.some((i) => i.title === "Deep Test Quest") && !uncacheable(ok.body));
+    const slash = await get(catalogHandler, { q: 'deep test quest\\', domain: "play" });
+    check("a trailing backslash still finds games", slash.body.items.some((i) => i.title === "Deep Test Quest"), JSON.stringify(slash.body.providers));
+    check("...because backslashes and quotes never reach IGDB's query", /search "deep test quest";/.test(bodies.at(-1)), bodies.at(-1));
+  } finally {
+    globalThis.fetch = realFetch;
+    for (const [k, v] of [["IGDB_CLIENT_ID", realEnv.id], ["IGDB_CLIENT_SECRET", realEnv.secret]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
+
+  // Fan books, art books and official guides are not book picks (unless asked for).
+  check("a fan book is dropped", isBookCompanion({ title: "Ascendance of a Bookworm: Fanbook 3", author_name: ["Miya Kazuki"] }, "ascendance of a bookworm"));
+  check("an art book and an official guide are dropped", isBookCompanion({ title: "The Art of Arcane: Art Book", author_name: ["X"] }, "arcane") && isBookCompanion({ title: "The Witcher Official Guide", author_name: ["X"] }, "witcher"));
+  check("a search that asks for the fan book still gets it", !isBookCompanion({ title: "Ascendance of a Bookworm: Fanbook 3", author_name: ["Miya Kazuki"] }, "bookworm fanbook"));
+  check("real books with nearby words stay", ![
+    { title: "Ascendance of a Bookworm: Part 3 Volume 1", author_name: ["Miya Kazuki"] },
+    { title: "The Art of Racing in the Rain", author_name: ["Garth Stein"] },
+    { title: "Guidebook to Murder", author_name: ["Lynn Cahoon"] },
+    { title: "The Hitchhiker's Guide to the Galaxy", author_name: ["Douglas Adams"] },
+    { title: "Companions", author_name: ["Katie M. Flynn"] }
+  ].some((row) => isBookCompanion(row, "anything")));
+}
+
+finish();

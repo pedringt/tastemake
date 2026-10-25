@@ -518,4 +518,20 @@ rr=res(); await handler({method:"POST",headers:{"content-length":"999999"},body:
   eq("no GET endpoint touched req.query (the url.parse getter)",touched,0);
 }
 
+// Oct 24 deep test: invalid JSON is a 400 with a JSON body on every POST endpoint. On Vercel, reading
+// req.body itself throws for invalid JSON, so both shapes are checked.
+{
+  const { default: hypothesesHandler } = await import("../../api/hypotheses.mjs");
+  const { default: newReleasesHandler } = await import("../../api/new-releases.mjs");
+  const throwing = { method: "POST", headers: { "content-type": "application/json" }, get body() { throw new SyntaxError("Invalid JSON"); } };
+  const broken = { method: "POST", headers: {}, body: "{not json" };
+  for (const [name, fn] of [["recommendations", handler], ["hypotheses", hypothesesHandler], ["new-releases", newReleasesHandler]]) {
+    for (const [shape, req] of [["platform parse", throwing], ["raw string", broken]]) {
+      const r = res();
+      await fn(req, r);
+      check(`${name} (${shape}): invalid JSON is a 400 with a JSON error`, r.code === 400 && r.body?.error === "invalid request", `${r.code} ${JSON.stringify(r.body)}`);
+    }
+  }
+}
+
 finish();
