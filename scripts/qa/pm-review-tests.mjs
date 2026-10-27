@@ -49,7 +49,7 @@ function rated() {
   check("a word that only appears inside a title doesn't", !reasonNamesSource("a grim war story", [{ title: "God of War" }]));
 
   const prompt = buildPickPrompt({ evidence: [], candidates: [], curveball: false, statements: [], contexts: [] }, 6);
-  check("the model is told to name a cited item in each reason", prompt.includes("naming at least one cited item by its title"));
+  check("the model is told to name a cited item in each reason", prompt.includes("naming at least one cited item by the shortest form of its title"));
 }
 
 // ---- Surprise Me: one name ------------------------------------------------------------------------------
@@ -90,6 +90,43 @@ function rated() {
   const handler = app.slice(app.indexOf('closest("[data-rec-favorite]")'));
   check("starring in Browse counts toward 'rated this visit', before the re-render",
     handler.indexOf("browseRatedThisVisit.push") > 0 && handler.indexOf("browseRatedThisVisit.push") < handler.indexOf("renderPreservingCardPosition"));
+}
+
+// ---- Oct 27 smoke test follow-ups ----------------------------------------------------------------------------
+{
+  const { isOffTopicBook } = await import("../../src/catalog/search-ranking.mjs");
+  const { isBookCompanion } = await import("../../src/catalog/book-companions.mjs");
+  const { searchCatalog } = await import("../../src/catalog/providers.mjs");
+  // Open Library's real answer for "Project Hail Mary" on Oct 27 (titles and authors only).
+  const docs = [
+    { key: "/works/OL21745884W", title: "Project Hail Mary", author_name: ["Andy Weir"] },
+    { key: "/works/OL36735881W", title: "The Martian / Artemis / Project Hail Mary", author_name: ["Andy Weir"] },
+    { key: "/works/OL25960717W", title: "SUMMARY and REVIEW : PROJECT HAIL MARY", author_name: ["Unique Summary"] },
+    { key: "/works/OL1W", title: "Summary of Andy Weir's Project Hail Mary", author_name: ["Irb Media"] },
+    { key: "/works/OL7166017M", title: "Blake Estate oral history project" },
+    { key: "/works/OL259509W", title: "La dame aux camélias [novel]", author_name: ["Alexandre Dumas fils"] },
+    { key: "/works/OL2W", title: "Frankenstein", author_name: ["Mary Shelley"] }
+  ];
+  const fetchImpl = async (url) => {
+    if (String(url).includes("openlibrary.org/search.json")) return { ok: true, json: async () => ({ docs }) };
+    throw new Error(`unexpected ${url}`);
+  };
+  const titles = (await searchCatalog("Project Hail Mary", { domain: "read", env: {}, fetchImpl })).items.map((i) => i.title);
+  check("book search keeps the real book and its collection", titles.includes("Project Hail Mary") && titles.includes("The Martian / Artemis / Project Hail Mary"), titles.join(" | "));
+  check("...and drops 'Summary and Review' and other summaries", !titles.some((t) => /summary/i.test(t)), titles.join(" | "));
+  check("...and books that match neither title nor author", !titles.some((t) => /Blake Estate|camélias|Frankenstein/.test(t)), titles.join(" | "));
+
+  check("a search for an author still finds their books", !isOffTopicBook("The Martian", ["Andy Weir"], "andy weir"));
+  check("a search for a series still finds its books", !isOffTopicBook("The Way of Kings", ["Brandon Sanderson"], "stormlight archive", ["The Stormlight Archive"]));
+  check("a shared first name isn't an author match", isOffTopicBook("Frankenstein", ["Mary Shelley"], "Project Hail Mary"));
+  check("asking for a summary still finds one", !isBookCompanion({ title: "SUMMARY and REVIEW : PROJECT HAIL MARY" }, "project hail mary summary"));
+
+  const prompt = buildPickPrompt({ evidence: [], candidates: [], curveball: false, statements: [], contexts: [] }, 6);
+  check("reasons stay at 14 words with the title counted, using a short form of long titles", prompt.includes("14 words or fewer counting the title") && prompt.includes("'Everything' for Everything Everywhere All at Once"));
+
+  rated();
+  const mine = renderMine();
+  check("My Tastemake's setup note is in plain words", mine.includes("They don’t change your Taste Profile.") && !/taste evidence/.test(mine.replace(/<[^>]+>/g, "")));
 }
 
 finish();

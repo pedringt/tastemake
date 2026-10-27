@@ -72,6 +72,23 @@ export function matchClass(title, query) {
   return { score: MATCH.none };
 }
 
+// Oct 27 smoke test: a book search for "Project Hail Mary" also listed "Blake Estate oral history project"
+// and "La dame aux camélias", which Open Library's full-text search matched on one loose word. A book
+// whose title doesn't match the query is kept only when the query names one of its authors ("andy weir"
+// should still find his books) or matches one of its series ("stormlight archive" finds The Way of Kings).
+const NAME_SUFFIXES = new Set(["jr", "sr", "fils", "ii", "iii", "iv"]);
+
+export function isOffTopicBook(title, authors, query, seriesNames = []) {
+  if (matchClass(title, query).score) return false;
+  if ([].concat(seriesNames ?? []).some((name) => matchClass(name, query).score)) return false;
+  const words = new Set(normalizeSearch(query).split(" "));
+  return ![].concat(authors ?? []).some((name) => {
+    const parts = normalizeSearch(name).split(" ").filter((part) => part && !NAME_SUFFIXES.has(part));
+    const surname = parts.at(-1);
+    return Boolean(surname && surname.length >= 3 && words.has(surname));
+  });
+}
+
 // Each provider reports popularity on its own scale: TMDb `popularity`, IGDB `total_rating_count`,
 // Open Library `edition_count`. Comparing them raw let one provider's numbers dominate "All". Each is
 // mapped onto 0..1 on a log scale between a floor (at or below it a work is effectively unknown) and

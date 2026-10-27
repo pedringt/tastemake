@@ -7,7 +7,7 @@ import { isBookCompanion } from "./book-companions.mjs";
 import { correctOldBookYears } from "./wikidata-years.mjs";
 import { fallbackSummary, sanitizeAbout } from "./synopsis.mjs";
 import { waitUntil } from "@vercel/functions";
-import { rankSearchResults, searchRelevance } from "./search-ranking.mjs";
+import { isOffTopicBook, rankSearchResults, searchRelevance } from "./search-ranking.mjs";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
@@ -153,7 +153,7 @@ export const BOOK_SEARCH_TIMEOUT_MS = 20_000;
 async function searchOpenLibrary(query, env, fetchImpl) {
   const load = () => searchOpenLibraryUncached(query, env, fetchImpl);
   const items = fetchImpl === fetch
-    ? await cachedValue(`openlibrary-search:v1:${String(query).toLowerCase()}`, load, { ttl: BOOK_SEARCH_TTL_SECONDS, tags: ["catalog-search"] })
+    ? await cachedValue(`openlibrary-search:v2:${String(query).toLowerCase()}`, load, { ttl: BOOK_SEARCH_TTL_SECONDS, tags: ["catalog-search"] })
     : await load();
   return correctOldBookYears(items, { env, fetchImpl, waitMs: SEARCH_YEAR_WAIT_MS });
 }
@@ -165,7 +165,7 @@ async function searchOpenLibraryUncached(query, env, fetchImpl) {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
   }, BOOK_SEARCH_TIMEOUT_MS);
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
-  return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query)).slice(0, 8).map(openLibraryItem);
+  return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query) && !isOffTopicBook(row.title, row.author_name, query, row.series_name)).slice(0, 8).map(openLibraryItem);
 }
 
 // ---- Book search fallback (Oct 24) ----------------------------------------------------------------
@@ -207,7 +207,7 @@ async function searchGoogleBooks(query, env, fetchImpl) {
   const response = await fetchWithTimeout(fetchImpl, `${GOOGLE_BOOKS}/volumes?q=${encodeURIComponent(query)}&maxResults=12&printType=books&langRestrict=en&key=${encodeURIComponent(key)}`, {}, GOOGLE_SEARCH_TIMEOUT_MS);
   if (!response.ok) throw new Error(`googlebooks ${response.status}`);
   return ((await response.json()).items ?? [])
-    .filter((volume) => volume?.id && volume.volumeInfo?.title && !isBookCompanion({ title: volume.volumeInfo.title, author_name: volume.volumeInfo.authors ?? [] }, query))
+    .filter((volume) => volume?.id && volume.volumeInfo?.title && !isBookCompanion({ title: volume.volumeInfo.title, author_name: volume.volumeInfo.authors ?? [] }, query) && !isOffTopicBook(volume.volumeInfo.title, volume.volumeInfo.authors, query))
     .slice(0, 8)
     .map(googleBookItem);
 }

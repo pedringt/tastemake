@@ -7,7 +7,7 @@
 // Works on a raw Open Library row (title, author_name). A search that asks for one ("name of the wind
 // study guide") still gets it.
 
-const COMPANION_TITLE = /\b(?:study guide|summary (?:of|and analysis)|analysis of|sparknotes|cliffs ?notes|reading guide|workbook for|trivia|quiz book|fan ?books?|art ?books?|official (?:guide|companion|handbook)|companion (?:guide|book)|colou?ring book)\b/i;
+const COMPANION_TITLE = /\b(?:study guide|summary (?:of|and analysis|(?:and|&) review)|review and summary|analysis of|sparknotes|cliffs ?notes|reading guide|workbook for|trivia|quiz book|fan ?books?|art ?books?|official (?:guide|companion|handbook)|companion (?:guide|book)|colou?ring book)\b/i;
 const COMPANION_PUBLISHER = /^(?:supersummary|bookrags|sparknotes|cliffsnotes|instaread|shmoop|bookcaps|book caps|readtrepreneur|quickread|gradesaver|worth books|kidpub)\b/i;
 const GOVERNMENT_AUTHOR = /\b(?:legislature|legislative assembly|parliament|congress\.|general assembly|house of commons)\b/i;
 

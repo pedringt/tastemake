@@ -166,7 +166,7 @@ function setupBlock() {
         <div><dt>Discovery style</dt><dd>${esc(style)}</dd></div>
       </dl>
       <button class="button button-quiet mine-setup-edit" type="button" data-action="edit-setup">Edit setup</button>
-      <p class="mine-blurb">These are product settings, not taste evidence.</p>
+      <p class="mine-blurb">These are product settings. They don’t change your Taste Profile.</p>
     </section>`;
 }
 
