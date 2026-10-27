@@ -4,6 +4,8 @@
 // only: allowed values (levels, cross-domain labels, which ids may be cited) stay with the validators,
 // so what counts as a good answer is unchanged.
 
+import { ANCHORS } from "../ai/contract.js";
+
 const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] };
 const strings = { type: "array", items: { type: "string" } };
 
@@ -14,8 +16,9 @@ export const PICKS_OUTPUT_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { itemId: { type: "string" }, why: { type: "string" }, cites: strings },
-        required: ["itemId", "why", "cites"],
+        // #28 Stage 1: anchor comes before why, so the element is chosen before the sentence is written.
+        properties: { itemId: { type: "string" }, anchor: { type: "string", enum: ANCHORS }, why: { type: "string" }, cites: strings },
+        required: ["itemId", "anchor", "why", "cites"],
         additionalProperties: false
       }
     },

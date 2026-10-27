@@ -1,4 +1,4 @@
-import { CIRCULAR_PATTERNS, CONTRACT_VERSION, CROSS_DOMAIN, GENRE_ONLY, IDENTITY_PATTERNS, LEVELS } from "./contract.js";
+import { ANCHORS, CIRCULAR_PATTERNS, CONTRACT_VERSION, CROSS_DOMAIN, GENRE_ONLY, IDENTITY_PATTERNS, LEVELS, MAX_PICKS_PER_ANCHOR } from "./contract.js";
 import { domainScope } from "../model/interpretations.js";
 import { isAdultTagged, triedAdultTagged } from "../catalog/adult-content.mjs";
 
@@ -305,12 +305,17 @@ export function validatePicks(response, ctx) {
   }
   const used = new Set();
   const evidenceUse = new Map();
+  const anchorUse = new Map();
   let curveballs = 0;
   for (const p of response.picks) {
     const reasons = checkShape(p, { itemId: "string", why: "string", cites: "refs", tests: "nullable-string", kind: "enum:kind" });
     if (!reasons.length) {
       if (!candidates.has(p.itemId)) reasons.push("not one of the eligible candidates (invented, already reacted to, or area off)");
       if (used.has(p.itemId)) reasons.push("duplicate pick");
+      // #28 Stage 1: optional for producers that do not set it; when present it must be a known anchor,
+      // and no more than MAX_PICKS_PER_ANCHOR kept picks in one set may share it.
+      if (p.anchor != null && !ANCHORS.includes(p.anchor)) reasons.push(`anchor "${p.anchor}" not one of ${ANCHORS.join("/")}`);
+      else if (p.anchor != null && (anchorUse.get(p.anchor) ?? 0) >= MAX_PICKS_PER_ANCHOR) reasons.push(`anchor "${p.anchor}" already used by ${MAX_PICKS_PER_ANCHOR} picks in this set`);
       const candidate = candidates.get(p.itemId);
       if (candidate && p.tests && !(candidate.hypotheses ?? []).some((id) => sameHypothesis(id, p.tests))) reasons.push("tests a pattern that is not attached to this candidate");
       const rejectedStatement = p.tests && (ctx.statements ?? []).find((x) => x.says === "not-me" && sameHypothesis(x.hypothesisId, p.tests));
@@ -349,6 +354,7 @@ export function validatePicks(response, ctx) {
     if (reasons.length) { rejected.push({ proposal: p, reasons }); continue; }
     used.add(p.itemId);
     for (const ref of new Set(p.cites)) evidenceUse.set(ref, (evidenceUse.get(ref) ?? 0) + 1);
+    if (p.anchor != null) anchorUse.set(p.anchor, (anchorUse.get(p.anchor) ?? 0) + 1);
     if (p.kind === "curveball") curveballs += 1;
     accepted.push({ ...p, item: candidates.get(p.itemId), authority: "inferred", source: "model", contract: CONTRACT_VERSION });
   }

@@ -9,6 +9,7 @@ import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } fro
 import { PICKS_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState } from "../src/server/request-state.mjs";
 import { domainById } from "../src/data/domains.js";
+import { ANCHORS, MAX_PICKS_PER_ANCHOR } from "../src/ai/contract.js";
 import { isAdultTagged, triedAdultTagged } from "../src/catalog/adult-content.mjs";
 import { evidenceRecords } from "../src/model/evidence.js";
 import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
@@ -169,7 +170,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
   return [
     "You are the recommendation interpreter inside Tastemake.",
     "The product, not you, decides what is evidence, which candidates are eligible, and what state may change.",
-    `Choose exactly ${count} items from candidates and return JSON only in this compact shape: {"picks":[{"itemId":"...","why":"...","cites":["ev:..."]}],"curveballItemId":null}. If you choose one exploratory pick, replace null with that candidate itemId string. Software adds validation-only fields after you respond.`,
+    `Choose exactly ${count} items from candidates and return JSON only in this compact shape: {"picks":[{"itemId":"...","anchor":"setting","why":"...","cites":["ev:..."]}],"curveballItemId":null}. If you choose one exploratory pick, replace null with that candidate itemId string. Software adds validation-only fields after you respond.`,
     // Real report (2026-09-28): with the domain filter set to "All", one real request returned 5/6
     // picks from a single domain (games), and the very next returned 6/6 from a different single
     // domain (movies) -- candidate retrieval already interleaves a mixed pool across domains, but
@@ -190,10 +191,14 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     // several places but assigned nowhere), so any non-null `tests` the model chose was guaranteed to
     // fail validation. The instruction below now says that plainly instead of implying a real
     // per-candidate hypothesis id usually exists to test.
-    "Across the final set, vary the concrete reason for each pick and avoid repeating the same opening phrase or sentence template. Treat dislikes as useful counterexamples, not the user's defining taste: prefer positive evidence as the main anchor, use a negative only when it adds specific contrast, and never center more than one pick on the same disliked item.",
-    // Oct 19 (stress eval #28): explanations reused the same openings and stock phrases across picks
-    // ("in the vein of", "your love of", "you enjoyed in"); about 75% shared a 4-word phrase with another.
-    "Make each why distinct from the others in this response: start each one differently, and name the specific thing that connects the pick to the cited item (for example its tone, setting, structure, theme or craft). Avoid stock phrases such as 'in the vein of', 'your love of', 'you enjoyed in', 'similar to' and 'fans of'.",
+    "Treat dislikes as useful counterexamples, not the user's defining taste: prefer positive evidence as the main basis, use a negative only when it adds specific contrast, and never center more than one pick on the same disliked item.",
+    // #28 Stage 1 (Oct 20): #247's list of banned phrases moved the model to the next stock words (stress
+    // eval, about 2,100 explanations per model: sets that would trigger a repetition check rose from 23% to
+    // 35% on Haiku, 16% to 54% on Sonnet, almost all "echo / mirror / recall / resonate"). Research on
+    // short-text diversity points the other way: say what to write, give each item its own attribute, and
+    // show examples that differ in shape. So: no banned words, an anchor per pick, varied examples.
+    `For each pick, first choose its anchor: the one concrete element that links it to the cited item, one of ${ANCHORS.join(", ")}. Give each pick a different anchor where you can, and never the same anchor to more than ${MAX_PICKS_PER_ANCHOR} picks. Then write the why about that element: name the specific thing in the cited item (a place, a person, a device, a mood) and say plainly what this pick does with it, in words that fit that element.`,
+    "Each why should have its own sentence shape. These examples show different shapes only; do not reuse their wording or titles: <example>A drowned house of statues and tides, as patient as Piranesi's halls.</example> <example>Builds a thieves' guild with Locke Lamora's nerve but darker politics.</example> <example>You liked Mistborn's heist plot; this whole book is one long con.</example> <example>Bleak and funny at once, the balance Barry strikes at its best.</example>",
     "User-facing explanations must say why the pick may fit the person, not how retrieval found it. Never mention providers, catalog branches/paths/neighbors/signals, metadata, similarity scores, embeddings, retrieval provenance, or raw overlap counts. A disliked item may only appear as explicit contrast, never as the positive reason a pick fits.",
     "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. Use them as item-local context, not as standalone evidence or a global preference unless multiple independent experienced items support that broader pattern.",
     "A refinement may name a direction (\"Pacing: too slow\", \"Pacing: slow burn paid off\"): keep the direction, since opposite directions are opposite signals. A candidate's themes mean the theme is present, not that it dominates the book; one item's reason about a theme (\"Romance took over the story\") must not rule out every candidate with that theme.",
@@ -235,7 +240,7 @@ function clientPicks(validated) {
     prediction: "Worth testing",
     surprise: pick.kind === "curveball",
     reason: sanitizeRecommendationCopy(pick.why) || "Tastemake is testing this against things you've liked before.",
-    ai: { cites: pick.cites, tests: pick.tests, kind: pick.kind, contract: pick.contract }
+    ai: { cites: pick.cites, tests: pick.tests, kind: pick.kind, anchor: pick.anchor ?? null, contract: pick.contract }
   }));
 }
 
