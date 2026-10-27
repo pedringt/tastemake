@@ -177,7 +177,14 @@ export function checkCurrentScreen() {
     if (!node.textContent.trim() || field?.contains(node) || !isVisible(node.parentElement) || node.parentElement?.closest?.('.editorial-art[aria-hidden="true"]')) continue;
     const range = document.createRange();
     range.selectNodeContents(node);
-    for (const r of range.getClientRects()) {
+    // Oct 27: a line-clamped title keeps its hidden lines in the text's client rects, so measure only the
+    // part inside the nearest clipping ancestor (Electric night at 1440 flagged a clamped title's 3rd line).
+    let clipper = node.parentElement;
+    while (clipper && clipper !== screen && getComputedStyle(clipper).overflow === "visible") clipper = clipper.parentElement;
+    const clip = clipper && clipper !== screen ? clipper.getBoundingClientRect() : null;
+    for (const raw of range.getClientRects()) {
+      const r = clip ? { left: Math.max(raw.left, clip.left), right: Math.min(raw.right, clip.right), top: Math.max(raw.top, clip.top), bottom: Math.min(raw.bottom, clip.bottom) } : raw;
+      r.width = r.right - r.left; r.height = r.bottom - r.top;
       if (r.width < 2 || r.height < 2) continue;
       const clash = controls.find((c) => !c.contains(node) && overlapArea(r, c.getBoundingClientRect()) > 12);
       if (clash) {
