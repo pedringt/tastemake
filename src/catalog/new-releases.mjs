@@ -1,6 +1,7 @@
 // #6: "New this week for you." Movies, TV and games released in the last 7 or next 7 days, matched to the
 // person's own experienced taste without AI: a release must share a genre with something they loved, liked
-// or favorited in the same area, and it is explained the way no-AI picks are ("Shares sci-fi with Arrival").
+// or favorited in the same area, and it is explained by what it shares, in its own new-release wording
+// ("New sci-fi this week, in the same genre as Arrival").
 // Server-only. Release lists are shared across visitors and cached; matching is per request.
 //
 // Sources: TMDb discover (movies by primary release date in the viewer's country; new series by first air
@@ -11,7 +12,7 @@ import { cachedValue } from "../server/cache.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { igdbItem, igdbToken, tmdbItem } from "./providers.mjs";
 import { evidenceRecords } from "../model/evidence.js";
-import { fallbackReason } from "./fallback-reasons.mjs";
+import { newReleaseReason, specificGenre } from "./fallback-reasons.mjs";
 import { isAdultTagged } from "./adult-content.mjs";
 import { excludedBy } from "../model/exclusions.js";
 
@@ -85,13 +86,17 @@ function anchorsByArea(state) {
 }
 
 // The anchor in the same area that shares the most genres with the release (heavier evidence wins ties).
+// Oct 27: an anchor sharing a specific genre ("sci-fi") beats one sharing only broad ones ("comedy", "drama"),
+// so the reason can name something that says more.
 export function bestAnchor(release, anchors = []) {
   const keys = genreKeys(release);
   let best = null;
   for (const anchor of anchors) {
-    const shared = [...genreKeys(anchor.item)].filter((g) => keys.has(g)).length;
+    const common = [...genreKeys(anchor.item)].filter((g) => keys.has(g));
+    const shared = common.length;
     if (!shared) continue;
-    const score = shared + anchor.weight / 10;
+    const specific = common.some((g) => specificGenre(g, anchor.item.provider));
+    const score = (specific ? 10 : 0) + shared + anchor.weight / 10;
     if (!best || score > best.score) best = { ...anchor, shared, score };
   }
   return best;
@@ -127,7 +132,7 @@ export async function newReleasesFor(state, { env = process.env, fetchImpl = fet
     region: code,
     items: picks.map(({ item, anchor }, index) => {
       const { popularity, _searchPopularity, ...rest } = item;
-      return { ...rest, reason: fallbackReason(item, anchor.item, { index }), relatedToTitle: anchor.item.title };
+      return { ...rest, reason: newReleaseReason(item, anchor.item, { index }), relatedToTitle: anchor.item.title };
     })
   };
 }
