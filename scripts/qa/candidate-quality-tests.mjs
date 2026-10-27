@@ -678,24 +678,24 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   };
 
   let h = harness();
-  let r = await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 80 });
+  let r = await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 80 });
   check("Open Library answers in time: its books, Google never asked", r.source === "openlibrary" && h.asked.google === 0 && r.rows[0].title === "Fast Open Library Book");
   h = harness({ olDelay: 300 });
-  r = await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 50 });
+  r = await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 50 });
   check("Open Library slow: Google fills in after the wait", r.source === "googlebooks" && r.rows[0].title === "Google Book", r.source);
   h = harness({ olFails: true });
   const t0 = Date.now();
-  r = await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 2000 });
+  r = await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 2000 });
   check("Open Library fails: Google straight away, without waiting", r.source === "googlebooks" && Date.now() - t0 < 1000, `${Date.now() - t0} ms`);
   h = harness({ olDelay: 150 });
-  r = await searchBooks("x", {}, h.fetchImpl, { fallbackAfterMs: 20 });
+  r = await searchBooks("book", {}, h.fetchImpl, { fallbackAfterMs: 20 });
   check("no Google key: Open Library only, however slow", r.source === "openlibrary" && h.asked.google === 0);
   h = harness({ olDelay: 200, googleEmpty: true });
-  r = await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 20 });
+  r = await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 20 });
   check("Google finds nothing: Open Library's answer is still used when it comes", r.source === "openlibrary", r.source);
   h = harness({ olFails: true, googleFails: true });
   let threw = false;
-  try { await searchBooks("x", key, h.fetchImpl, { fallbackAfterMs: 20 }); } catch { threw = true; }
+  try { await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 20 }); } catch { threw = true; }
   check("both down: the book search fails (and the dialog says so)", threw);
 
   const item = googleBookItem(volume);
@@ -715,7 +715,7 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   process.env.TASTEMAKE_GOOGLE_BOOKS_API_KEY = "g-key";
   const call = async () => {
     const res = { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status() { return this; }, json(b) { this.body = b; return this; } };
-    await handler({ method: "GET", query: { q: "google fallback book", domain: "read" }, headers: {} }, res);
+    await handler({ method: "GET", query: { q: "google book", domain: "read" }, headers: {} }, res);
     return res;
   };
   try {
