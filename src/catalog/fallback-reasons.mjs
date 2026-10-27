@@ -71,3 +71,35 @@ export function fallbackReason(item, anchor, { index = 0, curveball = false } = 
   ];
   return reasons[index % reasons.length]();
 }
+
+// Oct 27: "New this week for you" used fallbackReason, so a release read "Another comedy pick, linked to The
+// Bear by drama" or "An action film found through ...": retrieval words, and nothing said it was new. These
+// say it's new and name only the genres it actually shares with the favorite. Broad-only matches ("drama",
+// "comedy") get one plain line that says so instead of dressing it up.
+export function specificGenre(value, provider) {
+  const tag = readableTag(value, provider);
+  return Boolean(tag) && !BROAD_GENRE.test(tag);
+}
+
+const RELEASE_KIND = { tv: "series", game: "game", book: "book" };
+
+export function newReleaseReason(item, anchor, { index = 0 } = {}) {
+  const from = anchor?.title || null;
+  // IGDB keeps some genres as themes (#48) and bestAnchor matches on them, so the wording can name them too.
+  const withThemes = (x) => (x ? { ...x, genres: [...(x.genres ?? []), ...(x.providerMeta?.themes ?? [])] } : x);
+  const [a, b] = sharedTags(withThemes(item), withThemes(anchor));
+  const kind = RELEASE_KIND[item.type] ?? "film";
+  if (!from) return `New this week.`;
+  if (!a) return `New this week, with a genre in common with ${from}.`;
+  if (BROAD_GENRE.test(a)) {
+    if (!b) return `A new ${a} ${kind}; it shares only that genre with ${from}.`;
+    const pair = [a, b].sort().join() === "comedy,drama" ? "comedy-drama" : `${a} and ${b}`;
+    return `A new ${pair} ${kind}, like ${from}.`;
+  }
+  // Games name their genre as a kind of game ("a new role-playing game"), never "new role-playing".
+  const name = (tags) => (item.type === "game" ? `${tags} game` : tags);
+  const reasons = b
+    ? [() => `New ${name(`${a} ${b}`)}, sharing both with ${from}.`, () => (item.type === "game" ? `A new ${a} and ${b} game, like ${from}.` : `A new ${kind} with ${a} and ${b}, like ${from}.`)]
+    : [() => `New ${name(a)} this week, in the same genre as ${from}.`, () => `A new ${a} ${kind}, like ${from}.`];
+  return reasons[index % reasons.length]();
+}
