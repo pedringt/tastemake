@@ -23,7 +23,7 @@
 // screen,screenfew`), so `--profiles all` still means the four above:
 //   screen    movies and TV only, no books at all.
 //   screenfew movies and TV, plus two literary novels (few books, none on the bridge shelf).
-// Their pools hold six book candidates found from one of their Loved sci-fi or mystery films or shows,
+// Their pools hold six book candidates found from one of their Loved sci-fi or horror films,
 // marked the way retrieval marks a bridge candidate (bridge, relatedToId, relatedTo). Code without bridge
 // picks sees them as ordinary book candidates, so the same profiles run on main as the "before".
 //
@@ -119,13 +119,20 @@ const SPECS = {
   },
   screenfew: {
     seed: 606,
-    evidence: { "movies:thriller": 1, "tv:thriller": 1, "movies:sci-fi": 0.5, "tv:drama": 0.5, "tv:comedy": 0.5 },
+    // Oct 27 (#314): bridges from horror, not mystery. Mystery alone is too broad to count as a shared vibe,
+    // so retrieval never offers a mystery-only bridge, and the eval shouldn't either.
+    evidence: { "movies:thriller": 1, "tv:thriller": 1, "movies:horror": 0.75, "movies:sci-fi": 0.5, "tv:drama": 0.5, "tv:comedy": 0.5 },
     fixed: { "read:literary-fiction": 2 },
     mix: { loved: 0.5, liked: 0.35, disliked: 0.15 },
-    candidates: { "movies:thriller": 8, "tv:thriller": 6, "movies:sci-fi": 4, "tv:drama": 4, "tv:comedy": 4, "read:literary-fiction": 4 },
-    bridges: { sourceShelf: "tv:thriller", shelf: "read:mystery-thriller", tmdbGenre: 9648, label: "mystery", count: 6 }
+    candidates: { "movies:thriller": 8, "tv:thriller": 6, "movies:horror": 2, "movies:sci-fi": 2, "tv:drama": 4, "tv:comedy": 4, "read:literary-fiction": 4 },
+    bridges: { sourceShelf: "movies:horror", shelf: "read:horror", tmdbGenre: 27, label: "horror", count: 6 }
   }
 };
+
+// Live bridge retrieval drops later series books found through Wikidata (src/catalog/bridge-candidates.mjs,
+// #314). This generator works offline, so the books on the bridge shelves that Wikidata placed later than
+// #1 (asked Oct 27, wikidataSeriesPositions over read:sci-fi and read:horror) are listed here.
+const LATER_SERIES_BOOKS = new Set(["OL1963251W", "OL893515W", "OL1963279W", "OL893508W", "OL17897265W", "OL77828W"]);
 
 const LOVED_REFS = { movie: ["characters", "visual-style"], tv: ["characters", "humor"], book: ["world-setting", "writing-prose"], game: ["exploration", "story"] };
 const DISLIKED_REFS = { movie: ["pacing"], tv: ["humor"], book: ["pacing", "structure"], game: ["difficulty-challenge"] };
@@ -221,7 +228,8 @@ export function buildProfileSpec(shape, sizeLabel, snapshot = loadSnapshot()) {
     if (chosen.length < n) throw new Error(`not enough unseen candidates on ${shelf} for ${shape}-${sizeLabel}`);
     return chosen;
   });
-  // Bridge books: first books of their series, no companions, sharing the label with a Loved source.
+  // Bridge books: first books of their series, no companions, one per author (as retrieval does, #314),
+  // sharing the label with a Loved source.
   let bridges = [];
   if (spec.bridges) {
     const { shelf, tmdbGenre, label, count } = spec.bridges;
@@ -229,8 +237,10 @@ export function buildProfileSpec(shape, sizeLabel, snapshot = loadSnapshot()) {
     const source = evidenceItems.find((i) => loved.has(i.id) && i.provider === "tmdb" && (i.genres ?? []).includes(String(tmdbGenre)));
     if (!source) throw new Error(`${shape}-${sizeLabel}: no Loved item with TMDb genre ${tmdbGenre} to bridge from`);
     const pool = shuffled(byShelf[shelf] ?? [], rnd).filter((it) => !used.has(it.id) && !usedTitles.has(it.title.toLowerCase())
-      && !isLaterSeriesEntry(it) && !isBookCompanion({ title: it.title, author_name: String(it.by ?? "").split(",").map((a) => a.trim()).filter(Boolean) }));
-    const chosen = pool.slice(0, count);
+      && !isLaterSeriesEntry(it) && !LATER_SERIES_BOOKS.has(it.providerId) && !isBookCompanion({ title: it.title, author_name: String(it.by ?? "").split(",").map((a) => a.trim()).filter(Boolean) }));
+    const authors = new Set();
+    const firstAuthor = (it) => String(it.by ?? "").split(",")[0].trim().toLowerCase();
+    const chosen = pool.filter((it) => !firstAuthor(it) || (!authors.has(firstAuthor(it)) && authors.add(firstAuthor(it)))).slice(0, count);
     if (chosen.length < count) throw new Error(`not enough bridge books on ${shelf} for ${shape}-${sizeLabel}`);
     chosen.forEach((it) => { used.add(it.id); usedTitles.add(it.title.toLowerCase()); });
     perShelf.push(chosen);
