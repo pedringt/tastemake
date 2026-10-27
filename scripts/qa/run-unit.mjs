@@ -39,6 +39,7 @@ const SUITES = [
   "exclusions-tests.mjs",
   "browse-tests.mjs",
   "similar-tests.mjs",
+  "bridges-tests.mjs",
   "taste-score-tests.mjs",
   "pm-review-tests.mjs",
   "metadata-tests.mjs",

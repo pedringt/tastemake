@@ -32,6 +32,7 @@ import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
 import { fetchBrowsePage } from "./catalog/browse-client.js";
 import { fetchSimilar } from "./catalog/similar-client.js";
+import { bridgeTargetNoun } from "./catalog/bridges.mjs";
 import { mergeUniqueBrowseItems } from "./model/browse.js";
 import { applyResolvedCatalogItem, applySearchAction, markCustomResolution } from "./model/search.js";
 import { isExperienced, isStrongPositive } from "./model/evidence.js";
@@ -346,7 +347,8 @@ async function loadBrowse({ reset = false, focusSelector = null } = {}) {
 // Oct 27: "See similar" shows its results on Browse, so they get the same rating buttons and reasons.
 let similarController = null;
 
-async function openSimilar(itemId) {
+// #252 part 2: with a targetDomain it's "with these vibes" from another medium (src/catalog/bridges.mjs).
+async function openSimilar(itemId, targetDomain = null) {
   const item = state.customItems?.[itemId] ?? state.feedbackByRecommendation[itemId]?.item;
   if (!item) return;
   similarController?.abort();
@@ -355,15 +357,15 @@ async function openSimilar(itemId) {
   const controller = new AbortController();
   similarController = controller;
   Object.assign(state, {
-    browseSimilar: { id: item.id, title: item.title, type: item.type },
+    browseSimilar: { id: item.id, title: item.title, type: item.type, targetDomain },
     browseItems: [], browsePage: 0, browseHasMore: false, browseError: false, browseLoading: true
   });
   navigate("browse");
   restoreFocus(".browse-similar-head h2", app);
-  announce(`Finding things like ${item.title}.`);
+  announce(targetDomain ? `Finding ${bridgeTargetNoun(targetDomain).toLowerCase()} with the vibes of ${item.title}.` : `Finding things like ${item.title}.`);
   const exclude = [...new Set([...Object.keys(state.feedbackByRecommendation), ...state.libraryFavorites, ...state.selectedFavorites])];
   try {
-    const items = await fetchSimilar(item, exclude, { signal: controller.signal });
+    const items = await fetchSimilar(item, exclude, { signal: controller.signal, targetDomain });
     if (controller.signal.aborted || state.browseSimilar?.id !== item.id) return;
     state.browseItems = items;
     state.browseError = false;
@@ -376,7 +378,8 @@ async function openSimilar(itemId) {
   if (state.screen !== "browse") return;
   render();
   updateStepper();
-  announce(state.browseItems.length ? `${state.browseItems.length} like ${item.title}.` : `Nothing new turned up like ${item.title}.`);
+  if (targetDomain) announce(state.browseItems.length ? `${state.browseItems.length} with the vibes of ${item.title}.` : "Nothing close turned up for this one.");
+  else announce(state.browseItems.length ? `${state.browseItems.length} like ${item.title}.` : `Nothing new turned up like ${item.title}.`);
 }
 
 function maybeLoadBrowse() {
@@ -971,7 +974,7 @@ app.addEventListener("click", async (event) => {
 
   const seeSimilar = event.target.closest("[data-see-similar]");
   if (seeSimilar) {
-    void openSimilar(seeSimilar.dataset.seeSimilar);
+    void openSimilar(seeSimilar.dataset.seeSimilar, seeSimilar.dataset.similarTarget || null);
     return;
   }
 
