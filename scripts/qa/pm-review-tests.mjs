@@ -129,4 +129,30 @@ function rated() {
   check("My Tastemake's setup note is in plain words", mine.includes("They don’t change your Taste Profile.") && !/taste evidence/.test(mine.replace(/<[^>]+>/g, "")));
 }
 
+// ---- Oct 27 smoke test after #301: series searches -----------------------------------------------------------
+{
+  const { searchCatalog } = await import("../../src/catalog/providers.mjs");
+  // Open Library's real answer for "stormlight archive" on Oct 27: no series_name on any row.
+  const sanderson = ["Brandon Sanderson"];
+  const docs = ["Edgedancer", "Words of Radiance", "The Way of Kings", "Oathbringer", "Dawnshard", "Rhythm of War", "The Stormlight Archive", "Wind and Truth"]
+    .map((title, i) => ({ key: `/works/OL${i + 100}W`, title, author_name: sanderson }))
+    .concat({ key: "/works/OL999W", title: "Blake Estate oral history project" });
+  const fetchImpl = async (url) => ({ ok: true, json: async () => ({ docs }) });
+  const titles = (await searchCatalog("stormlight archive", { domain: "read", env: {}, fetchImpl })).items.map((i) => i.title);
+  check("a series search keeps the series' books by the same author as the matching result", ["The Way of Kings", "Words of Radiance", "Oathbringer"].every((t) => titles.includes(t)), titles.join(" | "));
+  check("...and still drops an unrelated book with no shared author", !titles.includes("Blake Estate oral history project"), titles.join(" | "));
+
+  // A study guide's author never vouches for anything: companions are dropped first.
+  const guideDocs = [
+    { key: "/works/OL1W", title: "Project Hail Mary", author_name: ["Andy Weir"] },
+    { key: "/works/OL2W", title: "Summary of Project Hail Mary", author_name: ["Irb Media"] },
+    { key: "/works/OL3W", title: "Irb Media Cookbook", author_name: ["Irb Media"] }
+  ];
+  const guideTitles = (await searchCatalog("Project Hail Mary", { domain: "read", env: {}, fetchImpl: async () => ({ ok: true, json: async () => ({ docs: guideDocs }) }) })).items.map((i) => i.title);
+  check("a summary publisher's other books don't ride along", !guideTitles.includes("Irb Media Cookbook"), guideTitles.join(" | "));
+
+  const prompt = buildPickPrompt({ evidence: [], candidates: [], curveball: false, statements: [], contexts: [] }, 6);
+  check("the model is told not to open a reason with the pick's own title", prompt.includes("don't start the why with the pick's own title"));
+}
+
 finish();

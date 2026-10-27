@@ -78,8 +78,9 @@ export function matchClass(title, query) {
 // should still find his books) or matches one of its series ("stormlight archive" finds The Way of Kings).
 const NAME_SUFFIXES = new Set(["jr", "sr", "fils", "ii", "iii", "iv"]);
 
-export function isOffTopicBook(title, authors, query, seriesNames = []) {
+export function isOffTopicBook(title, authors, query, seriesNames = [], titleMatchAuthors = new Set()) {
   if (matchClass(title, query).score) return false;
+  if ([].concat(authors ?? []).some((name) => titleMatchAuthors.has(normalizeSearch(name)))) return false;
   if ([].concat(seriesNames ?? []).some((name) => matchClass(name, query).score)) return false;
   const words = new Set(normalizeSearch(query).split(" "));
   return ![].concat(authors ?? []).some((name) => {
@@ -87,6 +88,19 @@ export function isOffTopicBook(title, authors, query, seriesNames = []) {
     const surname = parts.at(-1);
     return Boolean(surname && surname.length >= 3 && words.has(surname));
   });
+}
+
+// Oct 27 smoke test (after #301): "stormlight archive" lost The Way of Kings and the rest, because Open
+// Library leaves series_name empty for them and only the box sets carry the series in their title. A book
+// that shares an author with a result whose title does match is kept too: the box set is by Brandon
+// Sanderson, so his other books stay. Rows: whatever the provider returns; `fields` says where the title,
+// authors and series names are. Run after the companion filter, so a study guide's author never counts.
+export function dropOffTopicBooks(rows, query, { title, authors, series = () => [] }) {
+  const titleMatchAuthors = new Set(rows
+    .filter((row) => matchClass(title(row), query).score)
+    .flatMap((row) => [].concat(authors(row) ?? []).map(normalizeSearch))
+    .filter(Boolean));
+  return rows.filter((row) => !isOffTopicBook(title(row), authors(row), query, series(row), titleMatchAuthors));
 }
 
 // Each provider reports popularity on its own scale: TMDb `popularity`, IGDB `total_rating_count`,
