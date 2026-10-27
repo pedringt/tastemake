@@ -143,8 +143,11 @@ export function completenessScore(item) {
 // Work type: a documentary about the work, a news/talk/reality show, or a trailer/making-of is
 // rarely what a title search means. Uses TMDb's own genre ids plus a short list of generic
 // derivative-work words, and only when the query itself does not ask for that kind of thing.
-const DERIVATIVE_GENRES = new Set([99, 10763, 10764, 10767]); // Documentary, News, Reality, Talk
-const DERIVATIVE_WORDS = /\b(making of|behind the scenes|retrospective|featurette|trailer|teaser|soundtrack|documentary)\b/;
+// Oct 27: Music (10402) too, for score listings ("Project Hail Mary | Watch Rocky Sleep"), and
+// screenplays, scores, collector's editions and box sets ("Andy Weir's 3-Book Collection Set"), which
+// should rank below the work itself.
+const DERIVATIVE_GENRES = new Set([99, 10402, 10763, 10764, 10767]); // Documentary, Music, News, Reality, Talk
+const DERIVATIVE_WORDS = /\b(making of|behind the scenes|retrospective|featurette|trailer|teaser|soundtrack|documentary|screenplay|song reader|(?:original|motion picture) score|collector s edition|box(?:ed)? set|collection set|\d+ book (?:set|collection|bundle))\b/;
 const DERIVATIVE_PENALTY = 0.15;
 
 function isDerivative(item, query) {
@@ -183,6 +186,91 @@ export function scoreSearchResult(item, query) {
     + (match.literal ? LITERAL_EXACT_BONUS : 0)
     + NOTABILITY_WEIGHT * notabilityScore(item, query)
     - extraWords;
+}
+
+// ---- Oct 27: tie-ins and editions --------------------------------------------------------------------
+// Ranking only re-orders, so "Project Hail Mary" still listed "Project Hail Mary | Watch Rocky Sleep" (a
+// TMDb music listing for the score) and "Project Hail Mary: A Novel" (an Open Library work with no
+// author, 1 edition, no cover), and "Everything Everywhere All at Once" listed its coverless 1-edition
+// screenplay, song reader and collector's edition. Open Library keeps each of those as its own work, so
+// dedupe by id never catches them. After ranking, pruneSearchResults:
+//   1. merges book editions of one work (same title once ": a novel" and edition words are stripped,
+//      same first author or none on one side), keeping the one with more editions;
+//   2. drops a result whose title is another result's title plus a tie-in suffix, but only when it is
+//      also weak: a book with at most 1 edition and no cover, or no author; or a TMDb documentary or
+//      music listing. Real box sets and screenplays with metadata stay, demoted by DERIVATIVE_WORDS.
+// A query that asks for the suffix ("everything everywhere screenplay") keeps it, like isBookCompanion.
+const EDITION_SUFFIX = "a novel|(?:the )?(?:collector s|deluxe|special|(?:\\d+(?:st|nd|rd|th) )?anniversary)(?: \\w+)? edition";
+const TIE_IN_SUFFIX = new RegExp(`^(?:${EDITION_SUFFIX}|(?:the )?screenplay(?: book)?|song reader|(?:the )?(?:original )?(?:motion picture )?(?:score|soundtrack))$`);
+const EDITION_TAIL = new RegExp(`^(.+?) (${EDITION_SUFFIX})$`);
+const PLAIN_WORDS = new Set(["a", "the", "book", "original", "motion", "picture", "edition"]);
+const isBook = (item) => item?.provider === "openlibrary" || item?.provider === "googlebooks";
+// Open Library's edition_count travels as _searchPopularity; a Google volume is one edition.
+const editionCount = (item) => item?.provider === "openlibrary" ? Number(item._searchPopularity) || 0 : 1;
+const firstAuthor = (item) => normalizeSearch(String(item?.by ?? "").split(",")[0]);
+const asksFor = (suffix, query) => {
+  const wanted = new Set(normalizeSearch(query).split(" "));
+  return normalizeSearch(suffix).split(" ").some((word) => word && !PLAIN_WORDS.has(word) && wanted.has(word));
+};
+
+// The suffix after `base` when `title` is `base` plus "| ..." or a tie-in/edition suffix; otherwise null.
+export function tieInSuffix(title, base) {
+  const raw = String(title ?? "");
+  const wanted = normalizeSearch(base);
+  if (!wanted) return null;
+  const bar = raw.indexOf("|");
+  if (bar > 0 && normalizeSearch(raw.slice(0, bar)) === wanted && normalizeSearch(raw.slice(bar + 1))) return raw.slice(bar + 1).trim();
+  const got = normalizeSearch(raw);
+  if (!got.startsWith(`${wanted} `)) return null;
+  const rest = got.slice(wanted.length + 1);
+  return TIE_IN_SUFFIX.test(rest) ? rest : null;
+}
+
+function isWeakTieIn(item, query) {
+  if (isBook(item)) return !firstAuthor(item) || (editionCount(item) <= 1 && !item.artwork);
+  if (item?.provider !== "tmdb" || matchClass(item.title, query).score === MATCH.exact) return false;
+  return (item.providerMeta?.genreIds ?? []).some((id) => Number(id) === 99 || Number(id) === 10402);
+}
+
+export function dropWeakTieIns(items, query) {
+  const titles = items.map((item) => item?.title).filter(Boolean);
+  return items.filter((item) => {
+    if (!isWeakTieIn(item, query)) return true;
+    const suffix = titles.map((base) => base === item.title ? null : tieInSuffix(item.title, base)).find(Boolean);
+    return !suffix || asksFor(suffix, query);
+  });
+}
+
+// "Project Hail Mary: A Novel" keys as "project hail mary", unless the query asks for that edition.
+function editionKey(title, query) {
+  const key = stripLeadingArticle(title);
+  const tail = key.match(EDITION_TAIL);
+  return tail && !asksFor(tail[2], query) ? tail[1] : key;
+}
+
+// More editions wins; then a cover and an author.
+function strongerEdition(a, b) {
+  const meta = (item) => (item.artwork ? 1 : 0) + (firstAuthor(item) ? 1 : 0);
+  const diff = editionCount(b) - editionCount(a) || meta(b) - meta(a);
+  return diff > 0 ? b : a;
+}
+
+// Ranked order is kept: the merged work sits where the first of its editions ranked. Different first
+// authors never merge.
+export function mergeBookEditions(items, query) {
+  const out = [];
+  for (const item of items) {
+    const key = isBook(item) ? editionKey(item.title, query) : null;
+    const twin = key ? out.findIndex((kept) => isBook(kept) && editionKey(kept.title, query) === key
+      && (!firstAuthor(kept) || !firstAuthor(item) || firstAuthor(kept) === firstAuthor(item))) : -1;
+    if (twin === -1) out.push(item);
+    else out[twin] = strongerEdition(out[twin], item);
+  }
+  return out;
+}
+
+export function pruneSearchResults(items, query) {
+  return dropWeakTieIns(mergeBookEditions(items, query), query);
 }
 
 // Stable: equal scores keep the provider's own order.
