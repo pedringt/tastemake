@@ -182,6 +182,24 @@ async function mergeCanonicalCandidates(live, storeItems, { buildProviderMeta })
   return merged.slice(0, 20);
 }
 
+// Oct 27: TMDb recommendations include low-rated filler (Afterburn, Rebel Moon - Part One for someone who
+// loves Everything Everywhere All at Once). A row is dropped when enough people rated it and the average is
+// low. Under 50 votes a title is new or obscure, so the floor never applies. If dropping would leave fewer
+// than 6 rows for an anchor, dropped rows come back in TMDb's order, so a niche anchor never goes empty.
+const TMDB_FLOOR_MIN_VOTES = 50;
+const TMDB_FLOOR_AVERAGE = 5.8;
+const TMDB_FLOOR_KEEP = 6;
+
+export function applyTmdbQualityFloor(rows) {
+  const low = (row) => row._voteCount >= TMDB_FLOOR_MIN_VOTES && row._voteAverage < TMDB_FLOOR_AVERAGE;
+  const kept = rows.filter((row) => !low(row));
+  return [...kept, ...rows.filter(low).slice(0, Math.max(0, TMDB_FLOOR_KEEP - kept.length))];
+}
+
+// The vote fields only feed the floor above. They are stripped wherever items leave this module (the
+// canonical store write, recommendation candidates, See similar), so they never become product state.
+const withoutVotes = (items) => items.map(({ _voteAverage, _voteCount, ...item }) => item);
+
 async function tmdbRelated(item, env, fetchImpl, queryImpl) {
   if (!env.TASTEMAKE_TMDB_TOKEN || item.provider !== "tmdb") return [];
   const load = async () => {
@@ -190,12 +208,16 @@ async function tmdbRelated(item, env, fetchImpl, queryImpl) {
       headers: { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" }
     });
     if (!response.ok) return [];
-    return ((await response.json()).results ?? []).slice(0, 12).map((row) => tmdbItem(row, kind));
+    return applyTmdbQualityFloor(((await response.json()).results ?? []).slice(0, 12).map((row) => ({
+      ...tmdbItem(row, kind),
+      _voteAverage: Number(row.vote_average) || 0,
+      _voteCount: Number(row.vote_count) || 0
+    })));
   };
   const storePromise = relatedCanonicalItems(item, item.genres ?? [], { env, query: queryImpl });
   const livePromise = fetchImpl !== fetch
     ? load()
-    : cachedValue(`related:v2:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
+    : cachedValue(`related:v3:tmdb:${item.type}:${item.providerId}`, load, { ttl: 900, tags: ["related-catalog"] });
   const [live, storeItems] = await Promise.all([livePromise, storePromise]);
   return mergeCanonicalCandidates(live, storeItems, {
     buildProviderMeta: (storeItem) => ({ genreIds: storeItem.genres ?? [], collectionId: null })
@@ -589,7 +611,8 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
       // #135 foundation: write-behind canonicalization of real related candidates (see the same
       // note in providers.mjs's searchCatalog). Not awaited, never throws, no-op when
       // TASTEMAKE_DATABASE_URL isn't configured.
-      canonicalizeWriteBehind(related, { env });
+      related = withoutVotes(related);
+      canonicalizeWriteBehind(related, { env, query: queryImpl });
       return related.map((candidate) => ({ ...candidate, relatedTo: item.title, relatedToId: item.id }));
     } catch {
       console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: 0, errored: true }));
@@ -750,7 +773,8 @@ export async function similarToItem(item, { env = process.env, fetchImpl = fetch
   } catch {
     return [];
   }
-  canonicalizeWriteBehind(related, { env });
+  related = withoutVotes(related);
+  canonicalizeWriteBehind(related, { env, query: queryImpl });
   const key = (candidate) => `${candidate.provider}:${candidate.type ?? ""}:${candidate.providerId}`;
   const blocked = new Set([item.id, ...exclude]);
   // Later volumes (Frieren vol. 12) are left out, as they are from recommendations.

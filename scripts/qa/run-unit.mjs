@@ -47,6 +47,7 @@ const SUITES = [
   "fetch-timeout-tests.mjs",
   "cache-tests.mjs",
   "candidate-quality-tests.mjs",
+  "related-quality-floor-tests.mjs",
   "synopsis-tests.mjs",
   "search-meta-tests.mjs",
   "search-ranking-tests.mjs",
