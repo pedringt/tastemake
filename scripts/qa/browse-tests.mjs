@@ -37,6 +37,8 @@ const moviesFetch = async (url) => {
   const u = String(url);
   if (u.includes("/discover/movie")) {
     check("Movies Sci-fi uses the movie genre id", u.includes("with_genres=878"), u);
+    // Oct 27 PM review: "Rate what you know" opened on this week's releases. Most-voted first.
+    check("Movies Browse lists the most-voted titles, not what is trending this week", u.includes("sort_by=vote_count.desc") && !u.includes("popularity.desc"), u);
     return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: i + 1, title: `Movie ${i + 1}`, release_date: "2020-01-01", genre_ids: [878] })) }) };
   }
   throw new Error(`unexpected movies URL: ${u}`);

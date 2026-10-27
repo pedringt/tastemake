@@ -6,7 +6,7 @@ import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
 // No model call: each result's reason names what it shares with the item.
 const MAX_BODY_BYTES = 40_000;
 const MAX_EXCLUDE = 500;
-const PROVIDERS = new Set(["tmdb", "openlibrary", "igdb"]);
+const PROVIDERS = new Set(["tmdb", "openlibrary", "igdb", "googlebooks"]);
 const TYPES = new Set(["movie", "tv", "book", "game"]);
 
 const clean = (value, max = 200) => String(value ?? "").slice(0, max);

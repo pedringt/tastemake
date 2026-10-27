@@ -139,6 +139,20 @@ function fakeQuery(rows) {
 }
 
 {
+  // Oct 27 PM review: a Google Books favorite (search's fallback copy) started no book searches at all.
+  const google = { id: "googlebooks-book-xyz", provider: "googlebooks", providerId: "xyz", title: "The Way of Kings", by: "Brandon Sanderson", type: "book", domains: ["read"], genres: ["Fiction"] };
+  const state = { customItems: { [google.id]: google }, selectedFavorites: [google.id] };
+  const fetchImpl = async (url) => {
+    const u = String(url);
+    if (u.includes("search.json?title=")) return { ok: true, json: async () => ({ docs: [{ key: "/works/OL262758W", title: "The Way of Kings", author_name: ["Brandon Sanderson"], subject: ["Epic fantasy fiction", "Magic"] }] }) };
+    return { ok: true, json: async () => ({ docs: [{ key: "/works/OL555W", title: "Mistborn", author_name: ["Brandon Sanderson"], subject: ["Epic fantasy fiction", "Magic"] }] }) };
+  };
+  const candidates = await retrieveCatalogCandidates(state, { env: {}, fetchImpl, query: fakeQuery([stormlightRow]) });
+  check("a Google Books favorite now leads to related books", candidates.some((c) => c.title === "Mistborn") && candidates.some((c) => c.providerId === "OL999W"), candidates.map((c) => c.title).join(" | "));
+  check("...found from that favorite", candidates.filter((c) => c.type === "book").every((c) => c.relatedToId === google.id));
+}
+
+{
   // Live fetch returns the *same* book the store also has -- must appear exactly once.
   const state = {
     customItems: { [wayOfKings.id]: wayOfKings },

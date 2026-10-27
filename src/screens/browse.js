@@ -187,7 +187,7 @@ export function renderBrowse() {
 
       `}
 
-      ${ready ? `
+      ${ready && !state.onboarded ? `
         <div class="browse-ready" role="status">
           <div><strong>You've given Tastemake enough to start.</strong><span>You can keep browsing or see what it recommends.</span></div>
           <button class="button button-primary" type="button" data-action="show-recs">See my recommendations →</button>
@@ -211,8 +211,8 @@ export function renderBrowse() {
 
       ${!state.browseLoading && !state.browseError && !state.browseItems.length ? `
         <div class="browse-empty" role="status">
-          <strong>${state.browseSimilar ? "Nothing new turned up." : "Nothing useful showed up in this batch."}</strong>
-          <span>${state.browseSimilar ? "You may have rated the close matches already. Try browsing by genre." : "Try another genre or search for a title directly."}</span>
+          <strong>${state.browseSimilar ? "No close matches turned up." : "Nothing useful showed up in this batch."}</strong>
+          <span>${state.browseSimilar ? "You may have rated them already, or the catalog knows too little about this one. Try browsing by genre." : "Try another genre or search for a title directly."}</span>
           <button class="button button-secondary" type="button" data-action="open-search">Search instead</button>
         </div>` : ""}
 
