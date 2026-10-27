@@ -336,6 +336,8 @@ check("correcting it away from Loved clears its Favorite flag (no Disliked/Liked
   const css = fs.readFileSync(new URL("../../styles/base.css", import.meta.url), "utf8");
   const order = [...html.matchAll(/data-step-jump="([a-z]+)"/g)].map((m) => m[1]);
   eq("nav order puts Browse right after Recommendations", order.join(","), "favorites,recommendations,browse,model,library");
+  // Oct 27: Library used to be faded as a "secondary" link (#81); all four nav links now look the same.
+  check("every nav link is a plain step, none styled secondary", [...html.matchAll(/<a class="([^"]+)"[^>]*data-step-jump=/g)].every((m) => m[1] === "step") && !/step-secondary/.test(html + css));
   check("Browse is not hidden after setup (Favorites still is)", !/:not\(\.is-onboarding\) \.step\[data-step-jump="browse"\]/.test(css) && /:not\(\.is-onboarding\) \.step\[data-step-jump="favorites"\] \{ display:none; \}/.test(css));
 
   const { renderBrowse } = await import("../../src/screens/browse.js");
