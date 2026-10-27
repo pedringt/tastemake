@@ -236,8 +236,8 @@ function picksBlock() {
       <h2 id="mine-picks">How new sets are put together</h2>
       <label class="mine-toggle mine-toggle-wide ${state.curveball ? "is-on" : ""}">
         <input type="checkbox" data-mine-curveball ${state.curveball ? "checked" : ""} />
-        <span class="mine-toggle-name">Include a curveball</span>
-        <span class="mine-toggle-about">One less-obvious pick (Surprise Me) in each new set. Off means the five best fits. This changes how a set is chosen, not what Tastemake thinks you like.</span>
+        <span class="mine-toggle-name">Include a Surprise Me pick</span>
+        <span class="mine-toggle-about">One less-obvious pick in each new set, often found from something you liked but didn’t love. Off means the five best fits. This changes how a set is chosen, not what Tastemake thinks you like.</span>
       </label>
     </section>`;
 }
@@ -286,15 +286,15 @@ export function renderMine() {
           <p class="mine-data-note">The readable HTML copy includes Saved, Tried, Favorites and your Taste Profile. The JSON backup can restore Tastemake after you reset it for testing.</p>
         </div>
         <div class="mine-data-counts" aria-label="Evidence summary">
-          <span><strong>${tasteCount}</strong> taste evidence</span>
-          <span><strong>${steerCount}</strong> intent signals</span>
-          <span><strong>${told.blindSpots.length}</strong> blind spots</span>
+          <span><strong>${tasteCount}</strong> ${tasteCount === 1 ? "rating" : "ratings"} shaping your taste</span>
+          <span><strong>${steerCount}</strong> ${steerCount === 1 ? "save or skip" : "saves and skips"}</span>
+          <span><strong>${told.blindSpots.length}</strong> ${told.blindSpots.length === 1 ? "blind spot" : "blind spots"} you noted</span>
         </div>
       </section>
 
       <details class="mine-evidence-manager">
         <summary>
-          <span><strong>Manage evidence & corrections</strong><small>Open this only when you want to change something you've told Tastemake.</small></span>
+          <span><strong>Manage ratings & corrections</strong><small>Open this only when you want to change something you've told Tastemake.</small></span>
           <span class="mine-count">${told.total}</span>
         </summary>
         <div class="mine-evidence-manager-body">

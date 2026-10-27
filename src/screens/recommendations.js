@@ -202,10 +202,47 @@ function testedPattern(item) {
 
 function whyKicker(item, pattern) {
   const isCurveball = item.surprise || item.ai?.kind === "curveball";
-  if (isCurveball) return "Exploratory pick";
+  if (isCurveball) return "Surprise Me";
   if (!pattern) return "Why this one";
   const level = String(pattern.strength ?? "Emerging");
   return level === "Emerging" ? "A first test" : "Testing a pattern";
+}
+
+// Oct 27 PM review: every reason should point at something the person rated. The model is told to name
+// it, and the card also shows what each pick was grounded in (the items the pick cites, or the rated item
+// retrieval found it from) whenever the reason text doesn't already name one.
+const RATING_WORDS = { "loved-before": "Loved", "liked-before": "Liked" };
+
+export function groundingFor(item) {
+  const ids = [...new Set([
+    ...(item.ai?.cites ?? []).map((ref) => String(ref).replace(/^ev:/, "")),
+    ...(item.relatedToId ? [item.relatedToId] : [])
+  ])];
+  return ids.map((id) => {
+    const feedback = state.feedbackByRecommendation[id];
+    const title = feedback?.item?.title ?? state.customItems?.[id]?.title ?? (id === item.relatedToId ? item.relatedTo : null);
+    if (!title) return null;
+    const favorite = state.selectedFavorites?.has?.(id) || state.libraryFavorites?.has?.(id);
+    return { id, title, label: favorite ? "Favorite" : RATING_WORDS[feedback?.detail] ?? null, foundFrom: id === item.relatedToId };
+  }).filter(Boolean).slice(0, 3);
+}
+
+const groundingText = (sources) => sources.map((source) => `${source.title}${source.label ? ` (${source.label.toLowerCase()})` : ""}`).join(", ");
+
+export function reasonNamesSource(reason, sources) {
+  const text = String(reason ?? "").toLowerCase();
+  // A short form counts: "Everything's playful energy" names Everything Everywhere All at Once.
+  return sources.some((source) => {
+    const title = source.title.toLowerCase();
+    const short = title.split(/[:(\-–—]/)[0].trim().split(/\s+/).filter((word) => !["the", "a", "an"].includes(word))[0];
+    return text.includes(title) || (short && short.length >= 4 && new RegExp(`\\b${short.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(text));
+  });
+}
+
+function groundingLine(item) {
+  const sources = groundingFor(item);
+  if (!sources.length || reasonNamesSource(readableRecommendationCopy(item.reason, item), sources)) return "";
+  return `<p class="editorial-grounding">Based on ${esc(groundingText(sources))}</p>`;
 }
 
 function whyContent(item) {
@@ -214,19 +251,28 @@ function whyContent(item) {
   const kicker = whyKicker(item, pattern);
   const label = pattern ? `${kicker}: ${esc(pattern.title)}` : kicker;
   const rationale = readableRecommendationCopy(item.reason, item);
+  const sources = groundingFor(item);
+  const foundFrom = sources.find((source) => source.foundFrom);
+  const closest = sources.filter((source) => !source.foundFrom);
 
   let uncertainty = "";
   const level = String(pattern?.strength ?? "Emerging");
-  if (isCurveball) uncertainty = "This deliberately stretches beyond your strongest patterns, so a miss is useful information rather than a failure.";
+  if (isCurveball) uncertainty = foundFrom?.label === "Liked"
+    ? `It comes from something you liked but didn't love, so it tests the edges of your taste. A miss is useful information.`
+    : "This deliberately stretches beyond your strongest patterns, so a miss is useful information rather than a failure.";
   else if (!pattern) uncertainty = "Tastemake does not have a stable named pattern behind this yet, so this is still an early test.";
   else if (pattern.status === "conditional") uncertainty = "This pattern has only held in some contexts, so this pick may expose where the boundary is.";
   else if (level === "Emerging") uncertainty = "This pattern is still early. One reaction could make Tastemake narrow it, strengthen it, or drop it.";
   else if (level === "Strong") uncertainty = "The pattern is strong, but Tastemake may still be wrong about which details of it matter most to you.";
   else uncertainty = "This is supported, but your reaction can still make Tastemake refine what the pattern actually means.";
 
+  // The card already shows the reason; repeat it here only when the card had to cut it short.
+  const truncated = truncateCopy(rationale, RATIONALE_MAX_CHARS) !== rationale;
   return `
     <span class="why-kicker">${label}</span>
-    <p><strong>Why this might work:</strong> ${esc(rationale)}</p>
+    ${truncated ? `<p><strong>Why this might work:</strong> ${esc(rationale)}</p>` : ""}
+    ${foundFrom ? `<p><strong>Found from:</strong> ${esc(groundingText([foundFrom]))}, through the catalog's related titles.</p>` : ""}
+    ${closest.length ? `<p><strong>Closest things you rated:</strong> ${esc(groundingText(closest))}</p>` : ""}
     ${pattern ? `<p><strong>Pattern being tested:</strong> ${esc(pattern.claim)}</p>` : ""}
     <p class="why-caveat"><strong>What could miss:</strong> ${esc(uncertainty)}</p>`;
 }
@@ -262,7 +308,7 @@ function excludeMenu(item) {
           <summary>Don’t recommend…</summary>
           <div class="exclude-options" role="group" aria-label="Never recommend">
             ${options.map((option) => `<button type="button" class="exclude-option" data-exclude-item="${esc(item.id)}" data-exclude-kind="${option.kind}" data-exclude-key="${esc(option.key)}">${esc(option.label)}</button>`).join("")}
-            <p class="exclude-note">Not a dislike. It just won’t be suggested. Undo in My Tastemake.</p>
+            <p class="exclude-note">Not a dislike. It just won’t be suggested. Undo it anytime in My Tastemake (the person icon at the top).</p>
           </div>
         </details>`;
 }
@@ -278,7 +324,7 @@ function recommendationCard(item, index, total) {
 
   return `
     <article class="editorial-rec ${layoutClass} ${saved ? "is-rated" : ""} ${state.recommendationFeedbackItemId === item.id ? "has-feedback-open" : ""}" data-rec-id="${item.id}">
-      ${item.surprise ? `<span class="surprise-burst" aria-hidden="true">GO<br />WEIRD</span>` : ""}
+      ${item.surprise ? `<span class="surprise-burst" aria-hidden="true">SURPRISE<br />ME</span>` : ""}
 
       ${mediaArt(item, index)}
 
@@ -298,6 +344,7 @@ function recommendationCard(item, index, total) {
         </div>
 
         <p class="editorial-rationale">${esc(truncateCopy(readableRecommendationCopy(item.reason, item), RATIONALE_MAX_CHARS))}</p>
+        ${groundingLine(item)}
         <p class="editorial-about">${esc(truncateCopy(safeAbout(item), ABOUT_MAX_CHARS))}</p>
 
         <div class="editorial-why">
@@ -529,7 +576,7 @@ export function renderRecommendations() {
           <h1>${roundTwo ? "Okay, that changed things." : "Things worth your time."}</h1>
           <p class="lede">${roundTwo
             ? "A new set shaped by your recent reactions."
-            : "Movies, shows, books, games, and the occasional curveball. Try the ones that interest you and react naturally."}</p>
+            : "Movies, shows, books, games, and one Surprise Me pick. Try the ones that interest you and react naturally."}</p>
         </div>
 
         <div class="rec-progress-card">

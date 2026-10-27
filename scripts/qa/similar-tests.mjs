@@ -53,6 +53,33 @@ const fetchImpl = async (url) => {
   check("nor fan books", !titles.some((t) => /Fanbook/.test(t)), titles.join(" | "));
 }
 
+// Oct 27 PM review: a book picked from Google Books (search's fallback) found nothing. It is matched to its
+// Open Library work by title and author, and that work's subjects are used.
+{
+  const googlePhm = { id: "googlebooks-book-abc", provider: "googlebooks", providerId: "abc", type: "book", title: "Project Hail Mary", by: "Andy Weir", domains: ["read"], genres: ["Fiction"] };
+  const urls = [];
+  const olFetch = async (url) => {
+    const u = String(url);
+    urls.push(u);
+    if (u.includes("search.json?title=")) return { ok: true, json: async () => ({ docs: [
+      { key: "/works/OL9W", title: "Project Hail Mary: A Novel Study Guide", author_name: ["SuperSummary"], subject: ["Science fiction"] },
+      { key: "/works/OL1W", title: "Project Hail Mary", author_name: ["Andy Weir"], subject: ["Science fiction", "Space exploration", "Astronauts"] }
+    ] }) };
+    if (u.includes("subject%3A")) return { ok: true, json: async () => ({ docs: [
+      { key: "/works/OL1W", title: "Project Hail Mary", author_name: ["Andy Weir"], subject: ["Science fiction", "Space exploration", "Astronauts"] },
+      { key: "/works/OL2W", title: "The Martian", author_name: ["Andy Weir"], subject: ["Science fiction", "Space exploration", "Mars"] },
+      { key: "/works/OL3W", title: "Children of Time", author_name: ["Adrian Tchaikovsky"], subject: ["Science fiction", "Space exploration"] }
+    ] }) };
+    throw new Error(`unexpected ${u}`);
+  };
+  const titles = (await similarToItem(googlePhm, { env: {}, fetchImpl: olFetch, query: async () => [] })).map((i) => i.title);
+  check("asks Open Library for the same book by title and author", urls.some((u) => u.includes("title=Project%20Hail%20Mary") && u.includes("author=Andy%20Weir")));
+  check("then finds related books from its subjects", titles.includes("The Martian") && titles.includes("Children of Time"), titles.join(" | "));
+  check("never the book itself", !titles.includes("Project Hail Mary"), titles.join(" | "));
+  const unmatched = async (url) => (String(url).includes("search.json?title=") ? { ok: true, json: async () => ({ docs: [{ key: "/works/OL5W", title: "Some Other Book", author_name: ["Someone"] }] }) } : olFetch(url));
+  eq("no matching Open Library work means nothing, not a guess", (await similarToItem(googlePhm, { env: {}, fetchImpl: unmatched, query: async () => [] })).length, 0);
+}
+
 eq("an item without provider ids finds nothing (no guessing)", (await similarToItem({ title: "Custom", type: "book" }, { env, fetchImpl })).length, 0);
 eq("a provider failure is an empty list, not an error", (await similarToItem(arrival, { env, fetchImpl: async () => { throw new Error("down"); } })).length, 0);
 
@@ -69,6 +96,8 @@ eq("a provider failure is an empty list, not an error", (await similarToItem(arr
   globalThis.fetch = fetchImpl;
   process.env.TASTEMAKE_TMDB_TOKEN = "t";
   try {
+    // The stubbed fetch refuses anything but TMDb, so this stays offline; it only checks the request is accepted.
+    eq("a Google Books item is accepted (it used to be a 400)", (await call({ method: "POST", body: { item: { id: "googlebooks-book-abc", provider: "googlebooks", providerId: "abc", type: "book", title: "Project Hail Mary", domains: ["read"] } } })).code, 200);
     const res = await call({ method: "POST", body: { item: arrival, exclude: ["tmdb-movie-1003"] } });
     check("answers with similar items", res.code === 200 && res.body.items.length >= 2, JSON.stringify(res.body).slice(0, 200));
     check("each with a reason naming the item it's like", res.body.items.every((i) => typeof i.reason === "string" && i.reason.length > 0 && /Arrival/.test(i.reason)), res.body.items.map((i) => i.reason).join(" / "));
@@ -106,7 +135,7 @@ eq("a provider failure is an empty list, not an error", (await similarToItem(arr
   state.browseLoading = true;
   check("while loading it says what it's looking for", renderBrowse().includes("Finding things like Piranesi…"));
   state.browseLoading = false;
-  check("nothing found says why it may be", renderBrowse().includes("You may have rated the close matches already."));
+  check("nothing found says why it may be", renderBrowse().includes("You may have rated them already, or the catalog knows too little about this one."));
 }
 
 finish();

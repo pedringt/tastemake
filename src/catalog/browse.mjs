@@ -18,7 +18,9 @@ async function resolveTmdbKeywordId(keyword, headers, fetchImpl) {
 async function browseTmdb(genre, page, env, fetchImpl, mediaType) {
   if (!env.TASTEMAKE_TMDB_TOKEN) return { items: [], configured: false };
   const headers = { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" };
-  const common = `sort_by=popularity.desc&include_adult=false&language=en-US&page=${page}`;
+  // Oct 27 PM review: "Rate what you know" opened on 2026 releases, because popularity.desc is what's
+  // trending this week. Most-voted titles are ones people have actually seen (games already sort this way).
+  const common = `sort_by=vote_count.desc&include_adult=false&language=en-US&page=${page}`;
   let filter = "";
   if (genre.provider.kind === "keyword") {
     const keywordId = await resolveTmdbKeywordId(genre.provider.value, headers, fetchImpl);

@@ -197,6 +197,15 @@
   margin:8px 0 0;
 }
 
+/* Oct 27: what the pick was grounded in, shown when the reason doesn't name it. */
+.editorial-grounding {
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+  line-height:1.4;
+  margin:5px 0 0;
+}
+
 /* #95/#121: default card copy prioritizes the recommendation rationale over the catalog synopsis —
    the synopsis string itself is capped at a clean boundary (see truncateCopy in recommendations.js)
    rather than clamped/clipped here. */
@@ -358,8 +367,8 @@
   background:var(--lime);
   color:var(--navy);
   font-family:var(--hand);
-  font-size:17px;
-  line-height:.8;
+  font-size:10px;   /* "SURPRISE ME" (Oct 27): sized so SURPRISE fits inside the star like the old "WEIRD" */
+  line-height:.9;
   clip-path:polygon(50% 0%,61% 20%,80% 8%,82% 31%,100% 37%,84% 52%,96% 71%,73% 72%,70% 96%,51% 82%,35% 100%,29% 77%,5% 84%,16% 61%,0% 49%,22% 40%,10% 20%,34% 23%);
   transform:rotate(calc(9deg * var(--tilt)));
 }

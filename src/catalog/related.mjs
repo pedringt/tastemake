@@ -292,7 +292,39 @@ async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
 // once the post-#130 overlap gate ran (#131). Results across queries are merged/deduped by Open
 // Library work key, then ranked by overlap strength (see openLibraryOverlapStrength above) so the
 // combined pool stays large without readmitting the Atomic-Habits-style false positive #130 fixed.
+// Oct 27 PM review: a book picked from Google Books (search's fallback while Open Library is slow) never
+// led anywhere. Google gives one broad category ("Fiction") and Tastemake keeps no copy of Google data, so
+// the same book is looked up on Open Library by title and author, and its subjects are used instead.
+const normalizeBookTitle = (title) => String(title ?? "").toLowerCase().split(/[:(]/)[0].replace(/[^a-z0-9]+/g, " ").trim();
+const authorWords = (names) => new Set([].concat(names ?? []).join(" ").toLowerCase().split(/[^a-z]+/).filter((word) => word.length >= 3));
+
+export async function openLibraryWorkFor(item, env, fetchImpl, timeoutMs) {
+  const title = normalizeBookTitle(item?.title);
+  if (!title) return null;
+  const author = String(item.by ?? "").split(",")[0].trim();
+  const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,series_name,series_position,editions,editions.title,editions.language";
+  const load = async () => {
+    const url = `https://openlibrary.org/search.json?title=${encodeURIComponent(item.title)}${author ? `&author=${encodeURIComponent(author)}` : ""}&limit=5&lang=en&fields=${fields}`;
+    const response = await fetchWithTimeout(fetchImpl, url, {
+      headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
+    }, timeoutMs);
+    if (!response.ok) return null;
+    const wanted = authorWords(item.by?.split(","));
+    const row = ((await response.json()).docs ?? []).find((doc) => normalizeBookTitle(doc.title) === title
+      && !isBookCompanion(doc)
+      && (!wanted.size || [...authorWords(doc.author_name)].some((word) => wanted.has(word))));
+    return row ? openLibraryItem(row) : null;
+  };
+  if (fetchImpl !== fetch) return load();
+  return cachedValue(`related:v1:openlibrary-work:${title}:${author.toLowerCase()}`, load, { ttl: 24 * 60 * 60, tags: ["related-catalog"] });
+}
+
 async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
+  if (item.provider === "googlebooks") {
+    const work = await openLibraryWorkFor(item, env, fetchImpl, timeoutMs);
+    if (!work) return [];
+    return (await openLibraryRelated(work, env, fetchImpl, queryImpl, timeoutMs)).filter((candidate) => candidate.providerId !== work.providerId);
+  }
   if (item.provider !== "openlibrary") return [];
   const sourceSubjects = meaningfulBookSubjects(item.genres ?? []);
   // Query genre subjects first ("American fantasy fiction" before "orphans"), keeping Open Library's order
@@ -544,7 +576,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     try {
       let related = [];
       if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
-      else if (item.provider === "openlibrary") {
+      else if (item.provider === "openlibrary" || item.provider === "googlebooks") {
         const timeoutMs = mode === "all" ? Number(env.TASTEMAKE_OPENLIBRARY_MIXED_TIMEOUT_MS || 1750) : undefined;
         related = await openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs);
       }
@@ -709,7 +741,7 @@ export async function similarToItem(item, { env = process.env, fetchImpl = fetch
   let related = [];
   try {
     if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
-    else if (item.provider === "openlibrary") related = await openLibraryRelated(item, env, fetchImpl, queryImpl);
+    else if (item.provider === "openlibrary" || item.provider === "googlebooks") related = await openLibraryRelated(item, env, fetchImpl, queryImpl);
     else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl, queryImpl);
   } catch {
     return [];

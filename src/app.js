@@ -788,6 +788,8 @@ app.addEventListener("click", async (event) => {
       ?? "Item";
     if (setRecommendationFavorite(itemId, makeFavorite)) {
       state.recommendationFeedbackItemId = null;
+      // Starring after setup rates it Loved, so Browse counts it like any other rating (Oct 27).
+      if (makeFavorite && state.onboarded && state.screen === "browse" && !state.browseRatedThisVisit.includes(itemId)) state.browseRatedThisVisit.push(itemId);
       renderPreservingCardPosition(itemId, `[data-rec-favorite="${itemId}"]`);
       announce(makeFavorite
         ? (state.onboarded
@@ -824,7 +826,7 @@ app.addEventListener("click", async (event) => {
       render();
       const cards = [...app.querySelectorAll(".editorial-rec")];
       restoreFocus(null, cards[Math.min(index, cards.length - 1)]?.querySelector("button") || app.querySelector('[data-action="keep-discovering"]') || app);
-      announce(`Tastemake won’t recommend ${exclusion.kind === "genre" ? exclusion.label.toLowerCase() : exclusion.kind === "creator" ? `anything by ${exclusion.label}` : `the ${exclusion.label}`}. ${removed === 1 ? "1 pick" : `${removed} picks`} removed from this set. Undo in My Tastemake.`);
+      announce(`Tastemake won’t recommend ${exclusion.kind === "genre" ? exclusion.label.toLowerCase() : exclusion.kind === "creator" ? `anything by ${exclusion.label}` : `the ${exclusion.label}`}. ${removed === 1 ? "1 pick" : `${removed} picks`} removed from this set. Undo it anytime in My Tastemake.`);
     }
     return;
   }

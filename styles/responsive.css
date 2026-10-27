@@ -136,7 +136,7 @@
   .reaction-stamp { display:inline-block; margin-top:8px; }
   .reaction-rail { grid-template-columns:1fr; }
   .rating-button { min-height:44px; }
-  .surprise-burst { width:68px; height:68px; font-size:15px; }
+  .surprise-burst { width:68px; height:68px; font-size:8.5px; }
   .why-popover { width:min(300px,calc(100vw - 34px)); }
   .quality-note-row { display:block; }
   .quality-note-help { display:block; margin-top:7px; }

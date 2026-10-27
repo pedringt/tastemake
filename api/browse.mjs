@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   const started = Date.now();
-  const key = `browse:v7:${domain}:${genre}:${page}`;
+  const key = `browse:v8:${domain}:${genre}:${page}`;
   // Oct 24: book pages took 0.8-8.8 s cold (Open Library) and 0.08 s cached, and Open Library's subject
   // lists barely change, so book pages are kept a day. Other areas answer fast and keep 15 minutes.
   // A failed page (or an empty book page) is answered but never cached, here or by the browser, so the
