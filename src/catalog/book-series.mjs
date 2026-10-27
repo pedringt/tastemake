@@ -80,9 +80,14 @@ export function seriesPositionFromValue(raw) {
 // read as a position.
 const TITLE_SERIES_MIDDLE = /,\s*((?:book|bk|vol|volume|part)\.?\s*(?:\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten))\s*[:\-–—]/i;
 
+// Oct 27 smoke test: manga and light-novel volumes end the title with the number ("Frieren: Beyond Journey's
+// End, Vol. 12", "Witch Hat Atelier Volume 2"). "Book"/"Part" only count after a comma or colon.
+const TITLE_SERIES_END = /(?:(?:[,:]\s*|\s)((?:vol|volume)\.?\s*\d{1,3})|[,:]\s*((?:book|bk|part)\.?\s*(?:\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)))\s*$/i;
+
 function seriesPositionFromTitle(title) {
   const text = String(title ?? "");
-  const match = text.match(TITLE_SERIES_SUFFIX) ?? text.match(TITLE_SERIES_MIDDLE);
+  const end = text.match(TITLE_SERIES_END);
+  const match = text.match(TITLE_SERIES_SUFFIX) ?? text.match(TITLE_SERIES_MIDDLE) ?? (end && [end[0], end[1] ?? end[2]]);
   return match ? seriesPositionFromValue(match[1]) : null;
 }
 

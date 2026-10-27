@@ -357,6 +357,11 @@ check("correcting it away from Loved clears its Favorite flag (no Disliked/Liked
   check("after a rating it counts it and links to recommendations", out.includes("1 rated this visit") && out.includes('data-action="show-recs">See recommendations →'));
   check("and asks what worked, already open", /<details class="experience-refinement is-compact" open data-refinement-item="tmdb-movie-8001"/.test(out));
 
+  // Oct 27 smoke test: the count lagged one render because it was updated after the re-render.
+  const app = fs.readFileSync(new URL("../../src/app.js", import.meta.url), "utf8");
+  const handler = app.slice(app.indexOf('closest("[data-experience-outcome][data-feedback-item]")'));
+  check("a Browse rating is counted before the screen re-renders", handler.indexOf("browseRatedThisVisit.push") > 0 && handler.indexOf("browseRatedThisVisit.push") < handler.indexOf("renderPreservingCardPosition"));
+
   const before = fresh();
   before.browseItems = [film];
   check("before setup, Browse keeps its favorites framing", renderBrowse().includes("inspiration") && renderBrowse().includes("of 4 favorites"));

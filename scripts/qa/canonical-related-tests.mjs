@@ -122,6 +122,23 @@ function fakeQuery(rows) {
 }
 
 {
+  // Oct 27 smoke test: a fan book already in the store came back as a pick. Store books get the same
+  // companion filter as live Open Library rows.
+  const fanbookRow = {
+    canonical_title: "Ascendance of a Bookworm: Fanbook 3",
+    year: "2022",
+    factual: { author: "Miya Kazuki", subjects: ["Epic fantasy fiction", "Light novels"] },
+    provider: "openlibrary:book",
+    provider_id: "OL777W"
+  };
+  const state = { customItems: { [wayOfKings.id]: wayOfKings }, selectedFavorites: [wayOfKings.id] };
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ docs: [] }) });
+  const candidates = await retrieveCatalogCandidates(state, { env: {}, fetchImpl, query: fakeQuery([stormlightRow, fanbookRow]) });
+  check("a fan book from the store never reaches the pool", !candidates.some((c) => c.providerId === "OL777W"), candidates.map((c) => c.title).join(" | "));
+  check("...while a real store book still does", candidates.some((c) => c.providerId === "OL999W"));
+}
+
+{
   // Live fetch returns the *same* book the store also has -- must appear exactly once.
   const state = {
     customItems: { [wayOfKings.id]: wayOfKings },

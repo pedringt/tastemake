@@ -865,6 +865,9 @@ app.addEventListener("click", async (event) => {
     const itemId = experienceOutcome.dataset.feedbackItem;
     const outcome = experienceOutcome.dataset.experienceOutcome;
     if (saveExperienceOutcome(itemId, outcome)) {
+      const rated = ["loved", "liked", "disliked"].includes(outcome);
+      // Counted before the render, so Browse's "rated this visit" shows it straight away (Oct 27).
+      if (rated && state.screen === "browse" && !state.browseRatedThisVisit.includes(itemId)) state.browseRatedThisVisit.push(itemId);
       // Untried intent has no deeper taste questions, so finish the small editor after Save/Not interested.
       // Tried reactions keep it open so optional refinement/series/discovery feedback is available.
       if (outcome === "save" || outcome === "not-interested") state.recommendationFeedbackItemId = null;
@@ -872,10 +875,7 @@ app.addEventListener("click", async (event) => {
         ? `[data-feedback-item="${itemId}"][data-experience-path="not-tried"]`
         : focusSelector);
       announceReaction(itemId, announce);
-      if (["loved", "liked", "disliked"].includes(outcome)) {
-        if (state.screen === "browse" && !state.browseRatedThisVisit.includes(itemId)) state.browseRatedThisVisit.push(itemId);
-        primeProfileInBackground();
-      }
+      if (rated) primeProfileInBackground();
     }
     return;
   }
