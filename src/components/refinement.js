@@ -16,7 +16,7 @@ function chip(itemId, id, label, { pressed, disabled, extraClass = "" }) {
   >${pressed ? `<span class="refinement-check" aria-hidden="true">✓</span>` : ""}${esc(label)}</button>`;
 }
 
-export function renderExperienceRefinement(itemId, item, feedback, { compact = false } = {}) {
+export function renderExperienceRefinement(itemId, item, feedback, { compact = false, open = false } = {}) {
   const positive = isExperiencedPositive(feedback);
   const negative = isExperiencedNegative(feedback);
   if (!positive && !negative) return "";
@@ -53,7 +53,7 @@ export function renderExperienceRefinement(itemId, item, feedback, { compact = f
   };
 
   return `
-    <details class="experience-refinement ${compact ? "is-compact" : ""}" ${selected.length ? "open" : ""} data-refinement-item="${itemId}">
+    <details class="experience-refinement ${compact ? "is-compact" : ""}" ${selected.length || open ? "open" : ""} data-refinement-item="${itemId}">
       <summary>
         <span class="experience-refinement-invite">${question}</span>
         <span class="experience-refinement-meta">${selected.length ? `${selected.length} of ${MAX_REFINEMENTS}` : "Optional"}</span>

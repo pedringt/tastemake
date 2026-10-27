@@ -88,33 +88,3 @@
 .experience-refinement.is-compact { margin-top:12px; }
 .library-disliked .experience-refinement { margin:10px 0 4px; }
 
-/* "This pick was: Too obvious · A great discovery": feedback about the pick, not about the user's taste,
-   so it is one small line rather than a second expandable section. */
-.quality-line {
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:6px;
-  margin-top:10px;
-  padding-top:8px;
-  border-top:1px solid var(--line,#dcdcf0);
-}
-.quality-line-label {
-  color:var(--faint,#747994);
-  font-size:11px;
-  font-weight:700;
-  margin-right:2px;
-}
-.detail-chip.quality-line-chip,
-.detail-chip.quality-line-chip:nth-child(n) {
-  min-height:28px;
-  padding:4px 9px;
-  border:1px solid var(--line,#dcdcf0);
-  background:transparent;
-  color:var(--ink,#1a2256);
-}
-.detail-chip.quality-line-chip[aria-pressed="true"] {
-  border-color:var(--navy);
-  background:var(--navy);
-  color:#fff;
-}

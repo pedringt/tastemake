@@ -117,39 +117,12 @@ function experienceChoices(itemId, feedback) {
         ${outcomeButton(itemId, "save", "Save", isBookmarked(feedback))}
         ${outcomeButton(itemId, "not-interested", "Not interested", isDeclined(feedback))}
       </div>
-      <span class="quality-note-help">Save it for later, or skip it.</span>
     </div>`;
 }
 
 // #52/#53: the primary question is now whether the user has actually experienced the item.
 // Only the concrete second-step answer becomes stored feedback. This keeps intent separate from
 // taste evidence while making the first interaction understandable without algorithm vocabulary.
-
-// Discovery quality is about whether the pick was a good use of a recommendation slot, never about
-// whether it fits the user's taste — kept visually and conceptually apart from More/Less/detail chips so
-// the two don't read as competing negative reactions (#53).
-// "This pick was: Too obvious · A great discovery" -- feedback about the pick, never about taste (#53).
-// Design pass (Oct 20): one small inline line, not a second "More feedback" section that read like more of
-// "What worked for you?".
-function qualityLine(itemId, feedback) {
-  const choice = (value, label) => `<button
-          class="detail-chip quality-chip quality-line-chip"
-          type="button"
-          data-feedback-item="${itemId}"
-          data-feedback-quality="${value}"
-          aria-pressed="${feedback.quality === value}"
-        >${label}</button>`;
-  return `
-    <div class="quality-line" role="group" aria-label="How was this pick? Optional. This is about the pick, not your taste.">
-      <span class="quality-line-label" aria-hidden="true">This pick was</span>
-      ${choice("too-obvious", "Too obvious")}
-      ${choice("surprised-me", "A great discovery")}
-    </div>`;
-}
-
-function hasQualityNote(feedback) {
-  return isPositiveExperience(feedback);
-}
 
 function seriesExperienceFeedback(item, feedback) {
   if (!hasSeriesSignal(item) || (!isPositiveExperience(feedback) && !isExperiencedNegative(feedback))) return "";
@@ -262,7 +235,6 @@ function feedbackPopover(item, saved) {
   const path = experiencePath(item.id, saved);
   if (state.recommendationFeedbackItemId !== item.id || !path) return "";
 
-  const showQuality = hasQualityNote(saved);
 
   return `
     <div class="rec-feedback-popover" role="dialog" aria-modal="false" aria-label="Feedback for ${esc(item.title)}">
@@ -276,7 +248,6 @@ function feedbackPopover(item, saved) {
       ${experienceChoices(item.id, saved)}
       ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
       ${saved ? seriesExperienceFeedback(item, saved) : ""}
-      ${showQuality ? qualityLine(item.id, saved) : ""}
       ${saved ? renderBlindSpotPanel(item.id) : ""}
     </div>`;
 }
@@ -576,10 +547,10 @@ export function renderRecommendations() {
         ${renderDomainFilter({ selected: state.recommendationFilter, scope: "recommendations", label: "Generate recommendations by type" })}
         <span class="filter-context">Choose the kind of recommendation set you want next.</span>
       </div>
-      <!-- #117: Browse's post-onboarding home is here, as an alternate discovery mode, not a permanent
-           top-level nav item. Looking around is still never taste evidence on its own. -->
+      <!-- Oct 27: Browse is back in the nav as the place to rate things; this link points there for that.
+           Looking around is still never taste evidence on its own, only ratings are. -->
       <p class="recommendation-browse-link">
-        <button class="button button-quiet" type="button" data-action="browse">Browse by genre instead &rarr;</button>
+        <button class="button button-quiet" type="button" data-action="browse">Rate more in Browse &rarr;</button>
       </p>
       ${renderAiStatus()}
       ${renderFirstInsightNudge()}

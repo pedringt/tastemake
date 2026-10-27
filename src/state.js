@@ -75,10 +75,12 @@ function fresh() {
     // evidence, and — like the rest of state — lives only in memory; there is no persisted schema
     // to migrate, so there is nothing that can duplicate or lose data across a reload.
     libraryView: "saved",
-    // #52: per-item explicit open/closed override for the discovery-quality note, keyed by item id.
-    // Purely a display preference, not evidence. Without an override it defaults to open once there is
-    // already an answer in it (see qualityExpanded in screens/recommendations.js) and closed otherwise,
-    // but an explicit click always wins over that default in either direction.
+    // Oct 27: things just rated from Saved stay on that list, with "What worked for you?" open, until Done
+    // or leaving Library. In memory only; never saved, never evidence.
+    savedJustTried: [],
+    // Oct 27: things rated on Browse since arriving there, for its "rated this visit" count. In memory only.
+    browseRatedThisVisit: [],
+    // Unused since the "This pick was" line was removed (Oct 27); kept so saved data loads unchanged.
     expandedFeedback: {},
     // My Tastemake (#8): settings, not taste. Areas are "show me / don't show me this kind of thing" and say
     // nothing about what the user likes; the curveball setting only changes how new sets are put together.

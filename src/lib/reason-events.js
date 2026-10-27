@@ -8,7 +8,7 @@ import { directionOptionsFor, normalizedRefinements, refinablePolarity } from ".
 export const REASONS_OPENED_EVENT = "Reasons opened";
 export const REASON_CHANGED_EVENT = "Reason changed";
 
-const SURFACES = new Set(["recommendations", "library"]);
+const SURFACES = new Set(["recommendations", "library", "browse"]);
 const surfaceOf = (surface) => (SURFACES.has(surface) ? surface : "other");
 
 function send(name, data, va) {

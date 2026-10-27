@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { isBookmarked, isPositiveExperience } from "../model/taste.js";
+import { isBookmarked } from "../model/taste.js";
 import { isStrongPositive } from "../model/evidence.js";
 import { clearInvalidRefinements, refinablePolarity } from "../model/refinements.js";
 
@@ -11,6 +11,16 @@ export const triedOutcomes = {
   "tried-liked": ["more", "liked-before"],
   "tried-disliked": ["less", "tried-disliked"]
 };
+
+// Oct 27: rating something in Saved used to move it to Tried at once, so its reasons were never asked
+// for. It now stays on the Saved list, open to "What worked for you?", until Done or leaving Library.
+export function keepOnSavedList(itemId) {
+  if (!state.savedJustTried.includes(itemId)) state.savedJustTried.push(itemId);
+}
+
+export function finishSavedTried(itemId) {
+  state.savedJustTried = state.savedJustTried.filter((id) => id !== itemId);
+}
 
 export function saveBookmarkAction(itemId, action) {
   const existing = state.feedbackByRecommendation[itemId];
@@ -26,7 +36,8 @@ export function saveBookmarkAction(itemId, action) {
   const outcome = triedOutcomes[action];
   if (!outcome) return false;
   const [rating, detail] = outcome;
-  state.feedbackByRecommendation[itemId] = { item: existing.item, rating, detail, refinements: [], quality: existing.quality, wasBookmarked: true };
+  state.feedbackByRecommendation[itemId] = { item: existing.item, rating, detail, refinements: [], wasBookmarked: true };
+  keepOnSavedList(itemId);
   return true;
 }
 
@@ -64,6 +75,5 @@ export function saveLibraryAction(itemId, action) {
   clearInvalidRefinements(existing, previousPolarity);
   if (!isStrongPositive(existing)) state.libraryFavorites.delete(itemId);
   // "Surprised me" only makes sense after Loved / Liked it before.
-  if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
   return true;
 }
