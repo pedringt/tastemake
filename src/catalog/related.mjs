@@ -323,6 +323,9 @@ async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
   for (const storeItem of storeItems) {
     const key = String(storeItem.providerId ?? "");
     if (!key || byKey.has(key)) continue;
+    // Oct 27 smoke test: store books skipped the companion filter live rows get, so "Ascendance of a
+    // Bookworm: Fanbook 3" came back through here.
+    if (isBookCompanion({ title: storeItem.title, author_name: String(storeItem.by ?? "").split(",").map((a) => a.trim()).filter(Boolean) })) continue;
     const strength = openLibraryOverlapStrength(sourceSubjects, storeItem.subject ?? []);
     if (!strength) continue;
     byKey.set(key, { storeItem, strength });
@@ -714,7 +717,8 @@ export async function similarToItem(item, { env = process.env, fetchImpl = fetch
   canonicalizeWriteBehind(related, { env });
   const key = (candidate) => `${candidate.provider}:${candidate.type ?? ""}:${candidate.providerId}`;
   const blocked = new Set([item.id, ...exclude]);
-  const sameType = uniq(related).filter((candidate) => candidate.type === item.type && !blocked.has(candidate.id) && key(candidate) !== key(item));
+  // Later volumes (Frieren vol. 12) are left out, as they are from recommendations.
+  const sameType = uniq(related).filter((candidate) => candidate.type === item.type && !blocked.has(candidate.id) && key(candidate) !== key(item) && !isLaterSeriesEntry(candidate));
   return applyNoveltyGuard(sameType, [item]).primary
     .slice(0, limit)
     .map((candidate) => ({ ...candidate, relatedTo: item.title, relatedToId: item.id }));

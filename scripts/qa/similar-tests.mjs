@@ -37,6 +37,22 @@ const fetchImpl = async (url) => {
   check("each knows what it was found from", out.every((i) => i.relatedToId === arrival.id && i.relatedTo === "Arrival"));
 }
 
+// Oct 27 smoke test: "Books like Piranesi" listed Frieren vol. 12. Later volumes are left out, as in recommendations.
+{
+  const frieren = { id: "openlibrary-book-OL1W", provider: "openlibrary", providerId: "OL1W", type: "book", title: "Frieren: Beyond Journey's End, Vol. 1", domains: ["read"], genres: ["Fantasy fiction", "Magic"] };
+  const docs = [
+    { key: "/works/OL2W", title: "Witch Hat Atelier, Vol. 2", author_name: ["Kamome Shirahama"], subject: ["Fantasy fiction", "Magic"] },
+    { key: "/works/OL3W", title: "Frieren: Beyond Journey's End, Vol. 12", author_name: ["Kanehito Yamada"], subject: ["Fantasy fiction", "Magic"] },
+    { key: "/works/OL4W", title: "Witch Hat Atelier, Vol. 1", author_name: ["Kamome Shirahama"], subject: ["Fantasy fiction", "Magic"] },
+    { key: "/works/OL5W", title: "Ascendance of a Bookworm: Fanbook 3", author_name: ["Miya Kazuki"], subject: ["Fantasy fiction", "Magic"] }
+  ];
+  const bookFetch = async () => ({ ok: true, json: async () => ({ docs }) });
+  const titles = (await similarToItem(frieren, { env: {}, fetchImpl: bookFetch, query: async () => [] })).map((i) => i.title);
+  check("a series' first volume can be suggested", titles.includes("Witch Hat Atelier, Vol. 1"), titles.join(" | "));
+  check("later volumes are not", !titles.some((t) => /Vol\. (2|12)$/.test(t)), titles.join(" | "));
+  check("nor fan books", !titles.some((t) => /Fanbook/.test(t)), titles.join(" | "));
+}
+
 eq("an item without provider ids finds nothing (no guessing)", (await similarToItem({ title: "Custom", type: "book" }, { env, fetchImpl })).length, 0);
 eq("a provider failure is an empty list, not an error", (await similarToItem(arrival, { env, fetchImpl: async () => { throw new Error("down"); } })).length, 0);
 
