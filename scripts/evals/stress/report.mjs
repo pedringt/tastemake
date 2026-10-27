@@ -10,8 +10,8 @@
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { DEFINITIONS, MIN_EXPLANATIONS_PER_VARIANT, NEEDS_HUMAN_REVIEW, metricsFor, perSetSummary, reliability } from "./metrics.mjs";
-import { SIZES, SHAPES } from "./profiles.mjs";
+import { DEFINITIONS, MIN_EXPLANATIONS_PER_VARIANT, NEEDS_HUMAN_REVIEW, bridgeMetrics, metricsFor, perSetSummary, reliability } from "./metrics.mjs";
+import { SIZES, ALL_SHAPES } from "./profiles.mjs";
 
 export function readRecords(paths) {
   const files = paths.flatMap((p) => (statSync(p).isDirectory() ? readdirSync(p, { recursive: true }).map((f) => join(p, String(f))).filter((f) => f.endsWith(".jsonl")) : [p]));
@@ -80,7 +80,7 @@ export function buildReport({ calls, headers }) {
   const patterns = patternsByProfile(calls);
   const models = [...new Set(calls.map((c) => c.model))].sort();
   const sizes = [...new Set(calls.map((c) => c.size))].sort(sizeOrder);
-  const shapes = SHAPES.filter((s) => calls.some((c) => c.shape === s));
+  const shapes = ALL_SHAPES.filter((s) => calls.some((c) => c.shape === s));
   const lines = ["# Tastemake #28 stress eval: reasoning at scale", ""];
   const usd = calls.reduce((a, c) => a + (c.costUsd ?? 0), 0);
   const dry = headers.some((h) => h.dryRun);
@@ -136,6 +136,20 @@ export function buildReport({ calls, headers }) {
     lines.push("", `**${model}, all sizes:** ${all.sets} sets, ${all.explanations} explanations${all.enoughSample ? "" : ` (under ${MIN_EXPLANATIONS_PER_VARIANT}: indicative only)`}; would trigger ${fmt(all.wouldTriggerRate)}. Triggers: ${Object.entries(all.triggerCounts).map(([k, v]) => `${k} (${v})`).join(", ") || "none"}.`);
   }
   lines.push("");
+
+  // #252 part 2: only when some call was offered a marked bridge candidate (profiles screen / screenfew).
+  const bridgeCalls = calls.filter((c) => (c.offered ?? []).some((o) => o.bridge));
+  if (bridgeCalls.length) {
+    const group = calls.filter((c) => c.kind === "picks" && ["screen", "screenfew"].includes(c.shape));
+    lines.push("## Cross-media bridge (#252 part 2)", "", "Over pick calls on the screen / screenfew profiles. Compare the same table from main (before) and the bridge branch (after).", "",
+      "| Model | Size | Calls | Offered a bridge | Bridge pick rate | 2+ bridge picks | As exploratory | Why names source | Why says test | Bridge rejections | Fallback | Fallback used bridge | ms median / p90 |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+    for (const model of models) for (const size of sizes) {
+      const b = bridgeMetrics(group.filter((c) => c.model === model && c.size === size));
+      if (!b.calls) continue;
+      lines.push(`| ${model} | ${size} | ${b.calls} | ${fmt(b.bridgeOfferedShare)} | ${fmt(b.bridgePickRate)} | ${b.setsWithTwoOrMoreBridgePicks} | ${fmt(b.bridgeAsExploratory)} | ${fmt(b.bridgeWhyNamesSource)} | ${fmt(b.bridgeWhySaysTest)} | ${b.bridgeRejected}${Object.keys(b.bridgeRejectionReasons).length ? ` (${cell(Object.entries(b.bridgeRejectionReasons).map(([k, v]) => `${k}: ${v}`).join("; "))})` : ""} | ${fmt(b.fallbackShare)} | ${b.fallbackUsingBridge} | ${fmt(b.msMedian)} / ${fmt(b.msP90)} |`);
+    }
+    lines.push("");
+  }
 
   lines.push("## Needs human review (not scored here)", "", ...NEEDS_HUMAN_REVIEW.map((q) => `- ${q}`), "", "The review sample (`review-sample.md`, `review-sample.json`) lists picks per model and profile with the cited evidence and its reaction, so these can be judged by reading.", "");
   lines.push("## Metric definitions", "", "| Metric | Definition |", "|---|---|", ...DEFINITIONS.map(([k, v]) => `| ${k} | ${cell(v)} |`), "");

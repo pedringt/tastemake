@@ -19,6 +19,14 @@
 //   split     similar items, different reactions: tight clusters (fantasy books, RPGs, TV comedy, horror
 //             films) where neighbours alternate Loved and disliked, with contrasting refinements.
 //
+// #252 part 2 (Oct 27): two more shapes for the bridge-pick before/after, chosen by name only (`--profiles
+// screen,screenfew`), so `--profiles all` still means the four above:
+//   screen    movies and TV only, no books at all.
+//   screenfew movies and TV, plus two literary novels (few books, none on the bridge shelf).
+// Their pools hold six book candidates found from one of their Loved sci-fi or mystery films or shows,
+// marked the way retrieval marks a bridge candidate (bridge, relatedToId, relatedTo). Code without bridge
+// picks sees them as ordinary book candidates, so the same profiles run on main as the "before".
+//
 // Everything is seeded (mulberry32 over a fixed seed per shape and size), so the same profile id always
 // builds the same state. profiles.json is the committed, reviewable output; the unit tests check that
 // rebuilding from the snapshot reproduces it exactly.
@@ -27,6 +35,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { visibleDomains } from "../../../src/data/domains.js";
+import { isLaterSeriesEntry } from "../../../src/catalog/book-series.mjs";
+import { isBookCompanion } from "../../../src/catalog/book-companions.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const SNAPSHOT_PATH = join(here, "catalog-snapshot.json");
@@ -34,6 +44,8 @@ export const PROFILES_PATH = join(here, "profiles.json");
 
 export const SIZES = { 10: 10, 50: 50, 100: 120 };   // size label -> experienced items ("100+" is 120)
 export const SHAPES = ["narrow", "broad", "dislikes", "split"];
+export const BRIDGE_SHAPES = ["screen", "screenfew"];
+export const ALL_SHAPES = [...SHAPES, ...BRIDGE_SHAPES];
 export const CANDIDATE_POOL = 36;
 export const OFFERED_PER_ROUND = 6;                  // production offers six (offeredCandidates in api/recommendations.mjs)
 
@@ -95,11 +107,31 @@ const SPECS = {
     evidence: { "read:fantasy": 1, "play:rpg": 1, "tv:comedy": 1, "movies:horror": 1 },
     mix: "alternate",
     candidates: { "read:fantasy": 9, "play:rpg": 9, "tv:comedy": 9, "movies:horror": 9 }
+  },
+  // `bridges`: six books from `shelf`, found from the first favorite (drawn from `sourceShelf` with TMDb
+  // genre `tmdbGenre`), sharing `label` with it. `fixed`: experienced items drawn outside the weighted mix.
+  screen: {
+    seed: 505,
+    evidence: { "movies:sci-fi": 1.5, "movies:thriller": 1, "tv:sci-fi": 0.5, "tv:thriller": 0.5, "tv:comedy": 0.5, "movies:drama": 0.25, "tv:drama": 0.25 },
+    mix: { loved: 0.5, liked: 0.35, disliked: 0.15 },
+    candidates: { "movies:sci-fi": 8, "movies:thriller": 6, "tv:sci-fi": 4, "tv:thriller": 4, "tv:comedy": 4, "tv:drama": 2, "play:narrative": 2 },
+    bridges: { sourceShelf: "movies:sci-fi", shelf: "read:sci-fi", tmdbGenre: 878, label: "sci-fi", count: 6 }
+  },
+  screenfew: {
+    seed: 606,
+    evidence: { "movies:thriller": 1, "tv:thriller": 1, "movies:sci-fi": 0.5, "tv:drama": 0.5, "tv:comedy": 0.5 },
+    fixed: { "read:literary-fiction": 2 },
+    mix: { loved: 0.5, liked: 0.35, disliked: 0.15 },
+    candidates: { "movies:thriller": 8, "tv:thriller": 6, "movies:sci-fi": 4, "tv:drama": 4, "tv:comedy": 4, "read:literary-fiction": 4 },
+    bridges: { sourceShelf: "tv:thriller", shelf: "read:mystery-thriller", tmdbGenre: 9648, label: "mystery", count: 6 }
   }
 };
 
 const LOVED_REFS = { movie: ["characters", "visual-style"], tv: ["characters", "humor"], book: ["world-setting", "writing-prose"], game: ["exploration", "story"] };
 const DISLIKED_REFS = { movie: ["pacing"], tv: ["humor"], book: ["pacing", "structure"], game: ["difficulty-challenge"] };
+
+// Horror, sci-fi, fantasy, mystery, thriller, comedy, romance, history.
+const BRIDGE_TMDB_GENRES = ["27", "878", "14", "9648", "53", "35", "10749", "36"];
 
 function favoriteCount(size) { return size <= 10 ? 3 : size <= 50 ? 5 : 6; }
 
@@ -145,7 +177,15 @@ export function buildProfileSpec(shape, sizeLabel, snapshot = loadSnapshot()) {
   const used = new Set();
   // Titles that appear under two ids (a film and its remake) are kept apart: a candidate never shares
   // a title with something already in the profile.
-  const evidenceItems = draw(byShelf, spec.evidence, size, rnd, used);
+  const fixedCount = Object.values(spec.fixed ?? {}).reduce((sum, n) => sum + n, 0);
+  // A bridge shape's first favorite is the Loved item its bridge books are found from. It carries
+  // `tmdbGenre` and none of the other TMDb genres a bridge can share (src/catalog/bridges.mjs on the bridge
+  // branch), so what it shares with each bridge book is exactly `label`.
+  const sourceFirst = spec.bridges
+    ? draw({ source: byShelf[spec.bridges.sourceShelf].filter((i) => (i.genres ?? []).filter((g) => BRIDGE_TMDB_GENRES.includes(g)).join() === String(spec.bridges.tmdbGenre)) }, { source: 1 }, 1, rnd, used)
+    : [];
+  const evidenceItems = [...sourceFirst, ...draw(byShelf, spec.evidence, size - fixedCount - sourceFirst.length, rnd, used)];
+  for (const [shelf, n] of Object.entries(spec.fixed ?? {})) evidenceItems.push(...draw(byShelf, { [shelf]: 1 }, n, rnd, used));
   const usedTitles = new Set(evidenceItems.map((i) => i.title.toLowerCase()));
   const nFav = favoriteCount(size);
   const favorites = evidenceItems.slice(0, nFav);
@@ -181,6 +221,22 @@ export function buildProfileSpec(shape, sizeLabel, snapshot = loadSnapshot()) {
     if (chosen.length < n) throw new Error(`not enough unseen candidates on ${shelf} for ${shape}-${sizeLabel}`);
     return chosen;
   });
+  // Bridge books: first books of their series, no companions, sharing the label with a Loved source.
+  let bridges = [];
+  if (spec.bridges) {
+    const { shelf, tmdbGenre, label, count } = spec.bridges;
+    const loved = new Set([...favorites.map((i) => i.id), ...reactions.filter((r) => r.how === "loved").map((r) => r.id)]);
+    const source = evidenceItems.find((i) => loved.has(i.id) && i.provider === "tmdb" && (i.genres ?? []).includes(String(tmdbGenre)));
+    if (!source) throw new Error(`${shape}-${sizeLabel}: no Loved item with TMDb genre ${tmdbGenre} to bridge from`);
+    const pool = shuffled(byShelf[shelf] ?? [], rnd).filter((it) => !used.has(it.id) && !usedTitles.has(it.title.toLowerCase())
+      && !isLaterSeriesEntry(it) && !isBookCompanion({ title: it.title, author_name: String(it.by ?? "").split(",").map((a) => a.trim()).filter(Boolean) }));
+    const chosen = pool.slice(0, count);
+    if (chosen.length < count) throw new Error(`not enough bridge books on ${shelf} for ${shape}-${sizeLabel}`);
+    chosen.forEach((it) => { used.add(it.id); usedTitles.add(it.title.toLowerCase()); });
+    perShelf.push(chosen);
+    bridges = chosen.map((it) => ({ id: it.id, fromId: source.id, fromDomain: source.domains[0], sharedGenres: [label] }));
+  }
+
   // Spread each shelf evenly through the pool (item k of n sits at (k + 0.5) / n), ties broken by the
   // seeded generator, so every 6-item window mixes shelves in roughly the pool's proportions.
   const candidates = perShelf
@@ -190,13 +246,16 @@ export function buildProfileSpec(shape, sizeLabel, snapshot = loadSnapshot()) {
 
   return {
     id: `${shape}-${sizeLabel}`, shape, size: sizeLabel, experienced: size, seed: spec.seed * 1000 + size,
-    favorites: favorites.map((i) => i.id), reactions, intent, candidates: candidates.slice(0, CANDIDATE_POOL)
+    favorites: favorites.map((i) => i.id), reactions, intent, candidates: candidates.slice(0, CANDIDATE_POOL),
+    ...(bridges.length ? { bridges } : {})
   };
 }
 
 export function buildAllProfileSpecs(snapshot = loadSnapshot()) {
   const out = [];
   for (const sizeLabel of Object.keys(SIZES)) for (const shape of SHAPES) out.push(buildProfileSpec(shape, sizeLabel, snapshot));
+  // #252 part 2: after the original twelve, so those stay byte-for-byte where they were.
+  for (const sizeLabel of Object.keys(SIZES)) for (const shape of BRIDGE_SHAPES) out.push(buildProfileSpec(shape, sizeLabel, snapshot));
   return out;
 }
 
@@ -241,9 +300,17 @@ export function profileState(spec, { round = 0, snapshot = loadSnapshot(), items
   return state;
 }
 
+// Bridge books carry the marks retrieval gives them (src/catalog/bridge-candidates.mjs): found from the
+// Loved source, with the genres both share.
 export function candidateItems(spec, { snapshot = loadSnapshot(), itemsById = null } = {}) {
   const items = itemsById ?? new Map(snapshot.items.map((i) => [i.id, strip(i)]));
-  return spec.candidates.map((id) => items.get(id));
+  const marks = new Map((spec.bridges ?? []).map((b) => [b.id, b]));
+  return spec.candidates.map((id) => {
+    const item = items.get(id);
+    const mark = marks.get(id);
+    if (!mark) return item;
+    return { ...item, relatedTo: items.get(mark.fromId)?.title ?? null, relatedToId: mark.fromId, bridge: { fromId: mark.fromId, fromDomain: mark.fromDomain, sharedGenres: mark.sharedGenres } };
+  });
 }
 
 export function itemsIndex(snapshot = loadSnapshot()) {
