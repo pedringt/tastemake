@@ -13,6 +13,7 @@ import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
 import { assessSynopsis, blurbOf } from "../catalog/synopsis.mjs";
 import { renderArtwork } from "../components/artwork.js";
 import { starIcon } from "../components/star.js";
+import { bridgeTargetFor, bridgeTargetNoun } from "../catalog/bridges.mjs";
 
 // #94: Library has one simple mental model — Recommendations is discovery, Library is your stuff.
 // Saved = things you want to watch/read/play later (not yet tried; never taste evidence on its own).
@@ -237,6 +238,12 @@ function reactionButton(itemId, action, label, pressed) {
 const SIMILAR_NOUN = { movie: "movies", tv: "shows", book: "books", game: "games" };
 const canSeeSimilar = (item) => Boolean(item?.provider && item?.providerId && SIMILAR_NOUN[item.type]);
 const similarNoun = (item) => SIMILAR_NOUN[item.type] ?? "";
+// #252 part 2 (Oct 27): one cross-medium button next to it, "Books with these vibes", only when the item's
+// own genres have a shelf in that medium and the area is on (src/catalog/bridges.mjs).
+function vibesButton(item, id) {
+  const target = bridgeTargetFor(item, state.areas);
+  return target ? `<button class="button button-quiet library-see-similar" type="button" data-see-similar="${id}" data-similar-target="${target}">${esc(bridgeTargetNoun(target))} with these vibes →</button>` : "";
+}
 
 function triedCard(entry) {
   const { item, id, source } = entry;
@@ -269,7 +276,8 @@ function triedCard(entry) {
         >${starIcon(entry.isFavorite)}</button>
         <span>${entry.isFavorite ? "Favorite" : "Starring it also marks it as loved."}</span>
       </div>
-      ${canSeeSimilar(item) ? `<button class="button button-quiet library-see-similar" type="button" data-see-similar="${id}">See similar ${esc(similarNoun(item))} →</button>` : ""}`
+      ${canSeeSimilar(item) ? `<button class="button button-quiet library-see-similar" type="button" data-see-similar="${id}">See similar ${esc(similarNoun(item))} →</button>` : ""}
+      ${canSeeSimilar(item) ? vibesButton(item, id) : ""}`
     : `
       <div class="library-starter-actions">
         <button class="button button-quiet" type="button" data-starter-replace="${id}">Replace</button>
