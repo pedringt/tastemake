@@ -85,12 +85,15 @@ const SHELVES = {
   "tv:fantasy": [show(2001, "The Leftovers", [18, 9648, 10765])],
   "tv:thriller": [show(2002, "True Detective", [18, 9648, 80])]
 };
+// Oct 27: results now go through the series lookups too (Open Library editions, then Wikidata). They are
+// stubbed to answer nothing, which leaves positions unknown (the lookups fail open).
+const noSeries = async () => ({ ok: false, json: async () => ({}) });
 const calls = [];
 const browse = async ({ domain, genreId }) => { calls.push(`${domain}:${genreId}`); return { items: SHELVES[`${domain}:${genreId}`] ?? [], hasMore: false, degraded: false }; };
 
 await section("the gates", async () => {
   calls.length = 0;
-  const out = await bridgeCandidates(arrival, "read", { browse, exclude: ["openlibrary-book-OL5W"] });
+  const out = await bridgeCandidates(arrival, "read", { browse, fetchImpl: noSeries, exclude: ["openlibrary-book-OL5W"] });
   const titles = out.map((i) => i.title);
   eq("asks only the shelves the mapping names", calls.join(","), "read:sci-fi");
   check("finds books from the Sci-fi shelf", titles.includes("The Left Hand of Darkness") && titles.includes("Story of Your Life and Others"), titles.join(" | "));
@@ -104,12 +107,14 @@ await section("the gates", async () => {
   check("with only the genres both share", out.every((i) => i.bridge.sharedGenres.join() === "sci-fi"), out.map((i) => i.bridge?.sharedGenres?.join("+")).join(" | "));
 
   calls.length = 0;
-  const screen = await bridgeCandidates(piranesi, "screen", { browse });
+  const screen = await bridgeCandidates(piranesi, "screen", { browse, fetchImpl: noSeries });
   const screenTitles = screen.map((i) => i.title);
   eq("a book asks four screen shelves", calls.length, 4);
   check("a thriller film with no mystery tag is not offered for Piranesi", !screenTitles.includes("Heat"), screenTitles.join(" | "));
-  check("a mystery film from the thriller shelf is", screenTitles.includes("Shutter Island"), screenTitles.join(" | "));
-  check("shows come from TMDb TV shelves", screenTitles.includes("The Leftovers") && screenTitles.includes("True Detective"), screenTitles.join(" | "));
+  // Oct 27: mystery alone is too broad to count as a vibe; it needs a second shared genre.
+  check("a film sharing only mystery is not offered for Piranesi", !screenTitles.includes("Shutter Island"), screenTitles.join(" | "));
+  check("nor a show sharing only mystery", !screenTitles.includes("True Detective"), screenTitles.join(" | "));
+  check("shows come from TMDb TV shelves", screenTitles.includes("The Leftovers"), screenTitles.join(" | "));
   eq("a show found on the fantasy shelf that is also a mystery shares both, so it comes first", screen[0]?.title, "The Leftovers");
   check("no book comes back for a book", screen.every((i) => i.type !== "book"));
 
@@ -125,11 +130,69 @@ await section("through the real browse calls", async () => {
       { key: "/works/OL1W", title: "The Left Hand of Darkness", author_name: ["Ursula K. Le Guin"], first_publish_year: 1969, subject: ["Science fiction"] },
       { key: "/works/OL4W", title: "SparkNotes: Ender's Game", author_name: ["SparkNotes"], subject: ["Science fiction"] }
     ] }) };
+    if (/openlibrary\.org\/works\/.*editions\.json|query\.wikidata\.org/.test(String(url))) return { ok: false, json: async () => ({}) };
     throw new Error(`unexpected ${url}`);
   };
   const out = await bridgeCandidates(arrival, "read", { env: {}, fetchImpl });
-  check("uses Browse's Open Library subject search", urls.length === 1 && urls[0].includes("subject=science_fiction"), urls.join(" "));
+  const searches = urls.filter((u) => u.includes("/search.json"));
+  check("uses Browse's Open Library subject search", searches.length === 1 && searches[0].includes("subject=science_fiction"), urls.join(" "));
+  check("and checks series positions with Open Library editions and Wikidata only", urls.every((u) => u.startsWith("https://openlibrary.org/") || u.startsWith("https://query.wikidata.org/")), urls.join(" "));
   eq("and its filters", out.map((i) => i.title).join(" | "), "The Left Hand of Darkness");
+});
+
+// Oct 27 smoke test on production: Arrival's books included Agatha Christie and the Hardy Boys on mystery
+// alone, two Asimov Robot novels in a row, and book 2s (The Naked Sun, The Fall of Hyperion); Circe's
+// films were the first two Harry Potters.
+await section("match quality (Oct 27)", async () => {
+  const arrivalMystery = { ...arrival, genres: ["878", "18", "9648"], providerMeta: { genreIds: [878, 18, 9648], collectionId: null } };
+  const shelves = {
+    "read:sci-fi": [
+      ol("OL40W", "The Caves of Steel", ["Science fiction", "Mystery fiction"], { by: "Isaac Asimov" }),
+      ol("OL41W", "The Naked Sun", ["Science fiction", "Mystery fiction"], { by: "Isaac Asimov" }),
+      ol("OL42W", "Hyperion", ["Science fiction"], { by: "Dan Simmons" }),
+      ol("OL43W", "The Fall of Hyperion", ["Science fiction"], { by: "Dan Simmons" })
+    ],
+    "read:mystery-thriller": [
+      ol("OL44W", "Peril at End House", ["Mystery fiction", "Detectives"], { by: "Agatha Christie" }),
+      ol("OL45W", "The Hidden Staircase", ["Mystery fiction"], { by: "Leslie McFarlane" })
+    ]
+  };
+  const shelfBrowse = async ({ domain, genreId }) => ({ items: shelves[`${domain}:${genreId}`] ?? [], hasMore: false, degraded: false });
+  // Wikidata knows the second books' places in their series (P179 with a P1545 ordinal).
+  const ordinals = { OL41W: "2", OL43W: "2", OL40W: "1", OL42W: "1" };
+  const asked = [];
+  const wikidata = async (url) => {
+    const u = decodeURIComponent(String(url));
+    asked.push(u.slice(0, 60));
+    if (!u.startsWith("https://query.wikidata.org/")) return { ok: false, json: async () => ({}) };
+    const ids = [...u.matchAll(/"(OL\d+W)"/g)].map((m) => m[1]).filter((id) => ordinals[id]);
+    return { ok: true, json: async () => ({ results: { bindings: ids.map((id) => ({ olid: { value: id }, ordinal: { value: ordinals[id] } })) } }) };
+  };
+
+  const titles = (await bridgeCandidates(arrivalMystery, "read", { browse: shelfBrowse, fetchImpl: wikidata })).map((i) => i.title);
+  check("a book sharing only mystery isn't offered for Arrival", !titles.includes("Peril at End House") && !titles.includes("The Hidden Staircase"), titles.join(" | "));
+  check("a book sharing sci-fi and mystery is", titles.includes("The Caves of Steel"), titles.join(" | "));
+  check("a book 2 that Wikidata knows about is left out", !titles.includes("The Naked Sun") && !titles.includes("The Fall of Hyperion"), titles.join(" | "));
+  check("its series' first book stays", titles.includes("Hyperion"), titles.join(" | "));
+  check("the series lookup only asked Open Library editions and Wikidata", asked.every((u) => u.startsWith("https://openlibrary.org/") || u.startsWith("https://query.wikidata.org/")), asked.join(" "));
+
+  // One per author even when both are first books, and the lookup failing never drops anything.
+  const down = async () => { throw new Error("down"); };
+  const sameAuthor = (await bridgeCandidates(arrivalMystery, "read", { browse: async () => ({ items: [
+    ol("OL50W", "The Caves of Steel", ["Science fiction", "Mystery fiction"], { by: "Isaac Asimov" }),
+    ol("OL51W", "Foundation", ["Science fiction"], { by: "Isaac Asimov" }),
+    ol("OL52W", "Kindred", ["Science fiction"], { by: "Octavia E. Butler" })
+  ], hasMore: false, degraded: false }), fetchImpl: down })).map((i) => i.title);
+  eq("one book per author, the closer match first", sameAuthor.join(" | "), "The Caves of Steel | Kindred");
+
+  // One per franchise on screen: the first two Harry Potter films for Circe.
+  const circe = { id: "openlibrary-book-OL18012166W", provider: "openlibrary", providerId: "OL18012166W", type: "book", title: "Circe", by: "Madeline Miller", domains: ["read"], genres: ["Fantasy fiction", "Greek mythology"] };
+  const films = (await bridgeCandidates(circe, "movies", { browse: async ({ genreId }) => ({ items: genreId === "fantasy" ? [
+    movie(3001, "Harry Potter and the Philosopher's Stone", [12, 14]),
+    movie(3002, "Harry Potter and the Chamber of Secrets", [12, 14]),
+    movie(3003, "The Lord of the Rings: The Fellowship of the Ring", [12, 14])
+  ] : [], hasMore: false, degraded: false }), fetchImpl: down })).map((i) => i.title);
+  check("one film per franchise", films.filter((t) => /Harry Potter/.test(t)).length === 1 && films.includes("The Lord of the Rings: The Fellowship of the Ring"), films.join(" | "));
 });
 
 await section("the reason wording", () => {
@@ -141,7 +204,7 @@ await section("the reason wording", () => {
   const words = ["horror", "sci-fi", "fantasy", "mystery", "thriller", "comedy", "romance", "historical", "drama", "crime", "animation"];
   const named = (text) => words.filter((w) => new RegExp(`\\b${w}\\b`).test(text));
   return (async () => {
-    const all = [...await bridgeCandidates(piranesi, "screen", { browse }), ...await bridgeCandidates(arrival, "read", { browse })];
+    const all = [...await bridgeCandidates(piranesi, "screen", { browse, fetchImpl: noSeries }), ...await bridgeCandidates(arrival, "read", { browse, fetchImpl: noSeries })];
     check("every reason names only genres the result shares", all.every((item, index) => {
       const text = bridgeReason(item, { index });
       return text && named(text).every((w) => item.bridge.sharedGenres.includes(w));
@@ -178,7 +241,7 @@ await section("the endpoint", async () => {
     eq("with books, minus the excluded one", res.body.items.map((i) => i.title).join(" | "), "The Left Hand of Darkness");
     check("each marked as a bridge with a reason naming only sci-fi", res.body.items.every((i) => i.bridge?.fromId === arrival.id && i.reason === "Shares sci-fi with Arrival."), JSON.stringify(res.body.items.map((i) => i.reason)));
     eq("never cached (it depends on what you've rated)", res.headers["cache-control"], "no-store");
-    check("no call to anything but Open Library", urls.every((u) => u.startsWith("https://openlibrary.org/")), urls.join(" "));
+    check("no call to anything but Open Library and Wikidata (series positions)", urls.every((u) => u.startsWith("https://openlibrary.org/") || u.startsWith("https://query.wikidata.org/")), urls.join(" "));
     const empty = await call({ method: "POST", body: { item: marriageStory, targetDomain: "read" } });
     check("nothing to bridge is an empty answer, not an error", empty.code === 200 && empty.body.items.length === 0);
   } finally {
