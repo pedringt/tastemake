@@ -106,6 +106,19 @@ export const FIXTURES = [
     expect: { maxCrossDomain: "tentative" }
   },
   {
+    // Oct 27 (#252 part 1): "Also true for" is the user's word, not evidence. Picks may connect to it, but the
+    // Taste Profile must not treat it as support in that area.
+    id: "user-said-also-true", title: "The user said a pattern also holds for books",
+    purpose: "alsoAppliesTo lets picks reach another area, but never raises cross-domain support on its own.",
+    build: () => {
+      const s = emptyState();
+      catalogItems.filter((i) => i.domains.includes("movies") && i.hypotheses.includes("H04")).slice(0, 3).forEach((item) => react(s, item, "loved"));
+      s.patternStatements = [{ hypothesisId: "H04", label: hypotheses.find((h) => h.id === "H04").title, says: "accurate", alsoAppliesTo: ["read"] }];
+      return s;
+    },
+    expect: { maxCrossDomain: "tentative" }
+  },
+  {
     id: "user-said-not-me", title: "The user said a pattern is not them",
     purpose: "A user-confirmed statement outranks inference: that pattern must not come back.",
     build: () => { const s = emptyState(); ["eeaao", "barry", "wwdits"].forEach((id) => react(s, byId(id), "loved")); s.patternStatements = [{ hypothesisId: "H04", label: hypotheses.find((h) => h.id === "H04").title, says: "not-me" }]; return s; },

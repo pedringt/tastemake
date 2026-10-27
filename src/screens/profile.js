@@ -4,7 +4,7 @@ import { CONTEXT, FIT, WEIGHT, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
-import { displayLabel, domainById } from "../data/domains.js";
+import { displayLabel, domainById, visibleDomains } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { libraryItems } from "../model/library.js";
 import { evidenceRecords } from "../model/evidence.js";
@@ -43,6 +43,18 @@ function domainScopeControls(item, record) {
 
 // Pattern corrections: what the user says here is user-confirmed and outranks inference, but it is not taste
 // evidence, so it never changes the confidence level (see src/model/statements.js).
+// #252: after "Yes", the user can say the pattern also holds in areas it has no evidence in yet.
+function alsoAppliesControls(item, said) {
+  const others = visibleDomains().filter((domain) => !(item.domains ?? []).includes(domain.id) && state.areas?.[domain.id] !== false);
+  if (!others.length) return "";
+  const chosen = said?.alsoAppliesTo ?? [];
+  return `
+          <div class="signal-say-group" role="group" aria-label="Is “${esc(item.title)}” also true for other areas?">
+            <span class="signal-say-label">Also true for</span>
+            ${others.map((domain) => `<button type="button" class="button button-secondary signal-say-button" data-also-pattern="${item.id}" data-also-domain="${domain.id}" aria-pressed="${chosen.includes(domain.id)}">${esc(domain.label)}</button>`).join("")}
+          </div>`;
+}
+
 function sayControls(item, said, record) {
   const fit = said?.says ?? null;
   const primary = `
@@ -69,6 +81,7 @@ function sayControls(item, said, record) {
             ${sayButton(item, "context", "broad", "Usually", said)}
             ${sayButton(item, "context", "some", "Depends", said)}
           </div>
+          ${alsoAppliesControls(item, said)}
         </div>
       </div>`;
   }
@@ -115,6 +128,8 @@ function statementConsequence(item, said) {
   else if (said.says === "accurate") text = "Tastemake can keep using this pattern when it explains a future pick.";
 
   if (excluded.length) text += ` It will not use it for ${excluded.join(", ")}.`;
+  const also = (said.alsoAppliesTo ?? []).map((id) => domainById(id)?.label ?? id);
+  if (also.length) text += ` You said it also holds for ${also.join(", ")}, so Tastemake can use it there too.`;
   if (!text) return "";
   return `<div class="signal-consequence"><strong>What this changes</strong><span>${esc(text)}</span></div>`;
 }

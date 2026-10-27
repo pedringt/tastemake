@@ -29,9 +29,10 @@ const allFixtures = [...FIXTURES.map((f) => ({ id: f.id, state: f.build() })), {
 // Characters of the full prompt that main (430270b) built for each fixture, measured offline. The eval
 // fixtures carry no earlier profile; production-shaped carries a full 12-pattern one, as a long-running
 // production profile does.
+// user-said-also-true (added Oct 27) was measured the same way, on a checkout of 430270b.
 const BEFORE_CHARS = {
   "cold-4": 4475, "starter-6": 4902, "about-10": 5797, "intent-heavy": 4902, "single-miss": 5585,
-  "recurring-miss": 5576, "cross-domain": 5365, "user-said-not-me": 5676, "scale-50": 12862,
+  "recurring-miss": 5576, "cross-domain": 5365, "user-said-not-me": 5676, "user-said-also-true": 5703, "scale-50": 12862,
   "scale-100": 20585, "production-shaped": 43773
 };
 // Small fixtures are mostly the fixed instructions; the larger the evidence, the more the trim must save.
