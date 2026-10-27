@@ -35,7 +35,7 @@ export const PROFILES_PATH = join(here, "profiles.json");
 export const SIZES = { 10: 10, 50: 50, 100: 120 };   // size label -> experienced items ("100+" is 120)
 export const SHAPES = ["narrow", "broad", "dislikes", "split"];
 export const CANDIDATE_POOL = 36;
-export const OFFERED_PER_ROUND = 6;                  // production offers ctx.candidates.slice(0, 6)
+export const OFFERED_PER_ROUND = 6;                  // production offers six (offeredCandidates in api/recommendations.mjs)
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
