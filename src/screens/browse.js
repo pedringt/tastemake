@@ -93,6 +93,7 @@ function browseCard(item) {
           </div>
           ${favoriteToggle(item.id)}
         </div>
+        ${state.browseSimilar && item.reason ? `<p class="browse-why">${esc(item.reason)}</p>` : ""}
         <p class="browse-about">${esc(blurbOf(item))}</p>
 
         ${starterFavorite ? `
@@ -116,6 +117,20 @@ function browseCard(item) {
         ${feedbackPanel(item, feedback)}
       </div>
     </article>`;
+}
+
+const SIMILAR_NOUN = { movie: "Movies", tv: "Shows", book: "Books", game: "Games" };
+
+function similarHead() {
+  const { title, type } = state.browseSimilar;
+  return `
+      <div class="browse-results-head browse-similar-head">
+        <div>
+          <h2>${esc(SIMILAR_NOUN[type] ?? "More")} like ${esc(title)}</h2>
+          <p>Found from what they share with it. Rate the ones you've tried.</p>
+        </div>
+        <button class="button button-quiet" type="button" data-browse-similar-close>← Browse by genre</button>
+      </div>`;
 }
 
 export function renderBrowse() {
@@ -156,6 +171,7 @@ export function renderBrowse() {
         <p>Know what you want? Search directly. Not sure? Browse by category below.</p>
       </div>
 
+      ${state.browseSimilar ? similarHead() : `
       <div class="browse-controls">
         <div class="browse-domain-tabs" role="group" aria-label="Browse category">
           ${domains.map((domain) => `
@@ -169,31 +185,34 @@ export function renderBrowse() {
         </div>
       </div>
 
+      `}
+
       ${ready ? `
         <div class="browse-ready" role="status">
           <div><strong>You've given Tastemake enough to start.</strong><span>You can keep browsing or see what it recommends.</span></div>
           <button class="button button-primary" type="button" data-action="show-recs">See my recommendations →</button>
         </div>` : ""}
 
+      ${state.browseSimilar ? "" : `
       <div class="browse-results-head">
         <h2>${esc(genres.find((genre) => genre.id === state.browseGenre)?.label ?? "Browse")}</h2>
         <p>${state.onboarded ? "Tried one? Tap it and say how it landed." : "Real catalog items. React only when something is familiar."}</p>
-      </div>
+      </div>`}
 
       ${state.browseError && !state.browseItems.length ? `
         <div class="browse-empty" role="status">
-          <strong>Couldn't load this category right now.</strong>
-          <span>Try another genre or search directly.</span>
+          <strong>${state.browseSimilar ? "Couldn't find similar ones right now." : "Couldn't load this category right now."}</strong>
+          <span>${state.browseSimilar ? "Try again in a moment, or browse by genre." : "Try another genre or search directly."}</span>
           <button class="button button-secondary" type="button" data-action="open-search">Search instead</button>
         </div>` : ""}
 
       ${state.browseLoading && !state.browseItems.length ? `
-        <div class="browse-loading" role="status"><span class="search-spinner" aria-hidden="true"></span><strong>Finding ${esc(genres.find((genre) => genre.id === state.browseGenre)?.label ?? "")} picks…</strong></div>` : ""}
+        <div class="browse-loading" role="status"><span class="search-spinner" aria-hidden="true"></span><strong>${state.browseSimilar ? `Finding things like ${esc(state.browseSimilar.title)}…` : `Finding ${esc(genres.find((genre) => genre.id === state.browseGenre)?.label ?? "")} picks…`}</strong></div>` : ""}
 
       ${!state.browseLoading && !state.browseError && !state.browseItems.length ? `
         <div class="browse-empty" role="status">
-          <strong>Nothing useful showed up in this batch.</strong>
-          <span>Try another genre or search for a title directly.</span>
+          <strong>${state.browseSimilar ? "Nothing new turned up." : "Nothing useful showed up in this batch."}</strong>
+          <span>${state.browseSimilar ? "You may have rated the close matches already. Try browsing by genre." : "Try another genre or search for a title directly."}</span>
           <button class="button button-secondary" type="button" data-action="open-search">Search instead</button>
         </div>` : ""}
 
@@ -201,8 +220,8 @@ export function renderBrowse() {
         <div class="browse-grid">
           ${state.browseItems.map(browseCard).join("")}
         </div>
-        <div class="browse-more">
+        ${state.browseSimilar ? "" : `<div class="browse-more">
           ${state.browseHasMore ? `<button class="button button-secondary" type="button" data-browse-more ${state.browseLoading ? "disabled" : ""}>${state.browseLoading ? "Loading…" : "Show more"}</button>` : `<span>That's everything in this batch.</span>`}
-        </div>` : ""}
+        </div>`}` : ""}
     </section>`;
 }

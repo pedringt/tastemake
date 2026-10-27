@@ -673,3 +673,27 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   }
   return ranked.slice(0, limit);
 }
+
+// Oct 27: "See similar". The same per-item lookups recommendations use, for one item the person chose,
+// kept to the same type (a book's similar books). Already-reacted items and sequels/series entries of the
+// item itself are left out. Never throws; a provider failure is an empty list.
+const SIMILAR_LIMIT = 12;
+
+export async function similarToItem(item, { env = process.env, fetchImpl = fetch, query: queryImpl, exclude = [], limit = SIMILAR_LIMIT } = {}) {
+  if (!item?.provider || !item?.providerId || !item?.type) return [];
+  let related = [];
+  try {
+    if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
+    else if (item.provider === "openlibrary") related = await openLibraryRelated(item, env, fetchImpl, queryImpl);
+    else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl, queryImpl);
+  } catch {
+    return [];
+  }
+  canonicalizeWriteBehind(related, { env });
+  const key = (candidate) => `${candidate.provider}:${candidate.type ?? ""}:${candidate.providerId}`;
+  const blocked = new Set([item.id, ...exclude]);
+  const sameType = uniq(related).filter((candidate) => candidate.type === item.type && !blocked.has(candidate.id) && key(candidate) !== key(item));
+  return applyNoveltyGuard(sameType, [item]).primary
+    .slice(0, limit)
+    .map((candidate) => ({ ...candidate, relatedTo: item.title, relatedToId: item.id }));
+}
