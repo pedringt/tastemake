@@ -13,7 +13,7 @@ import { state } from "./state.js";
 import { normalizedRefinements } from "./model/refinements.js";
 import { trackReasonChanged, trackReasonsOpened } from "./lib/reason-events.js";
 import { screenFromPath, writeRoute } from "./router.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, isBookmarked } from "./model/taste.js";
 import { libraryItemById, migrateStarterFavorites } from "./model/library.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { favoritesDestination } from "./model/library.js";
@@ -41,8 +41,8 @@ import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, handleMineSubmit, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
-import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackQuality, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite, toggleExpandedFeedback } from "./actions/recommendations.js";
+import { finishSavedTried, keepOnSavedList, saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
+import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
@@ -115,7 +115,7 @@ function render() {
 }
 
 function updateStepper() {
-  const order = ["favorites", "browse", "recommendations", "model", "library"];
+  const order = ["favorites", "recommendations", "browse", "model", "library"];
   const activeIndex = order.indexOf(state.screen);
 
   // #59 item 4: keep the guided first-run path (Favorites -> Recommendations) visually dominant by
@@ -379,6 +379,11 @@ function navigate(screen, { replace = false, scroll = true, libraryView = "saved
   // resurrecting whichever secondary tab happened to be open last time, unless the caller is
   // deliberately opening another view (Change favorites opens Tried > Favorites).
   if (screen === "library" && state.screen !== "library") state.libraryView = libraryView;
+  // Things just rated from Saved settle into Tried once you leave; Browse's "rated this visit" starts over.
+  if (screen !== state.screen) {
+    state.savedJustTried = [];
+    if (screen === "browse") state.browseRatedThisVisit = [];
+  }
   // Leaving the page a request was started from makes its answer irrelevant (#42).
   if (state.aiRequest && screen !== state.aiRequest.screen) cancelRequest(state, "you moved to another page while it was thinking");
   if (screen !== "browse") {
@@ -667,7 +672,10 @@ app.addEventListener("click", async (event) => {
     const itemId = libraryAction.dataset.libraryItem;
     const outcome = libraryAction.dataset.libraryAction;
     const title = state.feedbackByRecommendation[itemId]?.item.title;
+    const fromSaved = isBookmarked(state.feedbackByRecommendation[itemId]);
     if (saveLibraryAction(itemId, outcome)) {
+      // Starring something in Saved marks it loved: keep it there, open to its reasons, like a rating.
+      if (fromSaved && outcome === "favorite") keepOnSavedList(itemId);
       render();
       updateStepper();
       // Favorite/Unfavorite changes the button's data-action, so target its replacement explicitly.
@@ -697,12 +705,30 @@ app.addEventListener("click", async (event) => {
     if (saveBookmarkAction(itemId, outcome)) {
       render();
       updateStepper();
-      // The card usually leaves the list; land on the next card's first action, or on the page if none is left.
-      restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
-      const left = bookmarkedFeedback(state).length;
-      const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "removed from Saved" })[outcome];
-      announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Saved.`);
+      if (outcome === "remove") {
+        // The card leaves the list; land on the next card's first action, or on the page if none is left.
+        restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
+        const left = bookmarkedFeedback(state).length;
+        announce(`${title}: removed from Saved. ${left} ${left === 1 ? "thing" : "things"} left in Saved.`);
+      } else {
+        // The card stays, open to its reasons (Oct 27): land on the first reason chip.
+        restoreFocus(`[data-bookmark-id="${itemId}"] .refinement-chip`, app.querySelector(`[data-saved-done="${itemId}"]`) || app);
+        const what = ({ "tried-loved": "Loved it", "tried-liked": "Liked it", "tried-disliked": "Didn't like it" })[outcome];
+        announce(`${title}: marked ${what}. Pick what worked, if you like, then choose Done.`);
+      }
     }
+    return;
+  }
+
+  const savedDone = event.target.closest("[data-saved-done]");
+  if (savedDone) {
+    const itemId = savedDone.dataset.savedDone;
+    const title = state.feedbackByRecommendation[itemId]?.item.title;
+    finishSavedTried(itemId);
+    render();
+    updateStepper();
+    restoreFocus(".bookmark-action", app.querySelector("[data-library-tab=\"saved\"]") || app);
+    announce(`${title} moved to Tried.`);
     return;
   }
 
@@ -800,7 +826,10 @@ app.addEventListener("click", async (event) => {
         ? `[data-feedback-item="${itemId}"][data-experience-path="not-tried"]`
         : focusSelector);
       announceReaction(itemId, announce);
-      if (["loved", "liked", "disliked"].includes(outcome)) primeProfileInBackground();
+      if (["loved", "liked", "disliked"].includes(outcome)) {
+        if (state.screen === "browse" && !state.browseRatedThisVisit.includes(itemId)) state.browseRatedThisVisit.push(itemId);
+        primeProfileInBackground();
+      }
     }
     return;
   }
@@ -844,20 +873,6 @@ app.addEventListener("click", async (event) => {
       renderPreservingCardPosition(itemId, focusSelector);
       announce("Series experience updated. Future recommendations will avoid treating covered installments as new discoveries.");
     }
-    return;
-  }
-
-  const quality = event.target.closest("[data-feedback-quality][data-feedback-item]");
-  if (quality) {
-    const itemId = quality.dataset.feedbackItem;
-    if (saveFeedbackQuality(itemId, quality.dataset.feedbackQuality)) renderPreservingCardPosition(itemId, focusSelector);
-    return;
-  }
-
-  const feedbackToggle = event.target.closest("[data-toggle-feedback]");
-  if (feedbackToggle) {
-    toggleExpandedFeedback(feedbackToggle.dataset.toggleFeedback);
-    renderPreservingCardPosition(feedbackToggle.dataset.toggleFeedback, focusSelector);
     return;
   }
 
@@ -977,6 +992,7 @@ app.addEventListener("click", async (event) => {
   const libraryTab = event.target.closest("[data-library-tab]");
   if (libraryTab) {
     state.libraryView = libraryTab.dataset.libraryTab === "tried" ? "tried" : "saved";
+    state.savedJustTried = [];
     render();
     updateStepper();
     restoreFocus(`[data-library-tab="${state.libraryView}"]`);
@@ -1104,7 +1120,7 @@ window.addEventListener("popstate", () => {
 // fetchCatalogItemDetail caches per item, so re-opening a card after a re-render refills it without
 // another request. libraryItemById finds reacted-to items too, not only added/search ones.
 // #250: anonymous count of people opening the optional reasons section (never what they pick).
-const reasonSurface = (el) => (el.closest("[data-rec-id]") ? "recommendations" : state.screen === "library" ? "library" : "other");
+const reasonSurface = (el) => (el.closest("[data-browse-card]") ? "browse" : el.closest("[data-rec-id]") ? "recommendations" : state.screen === "library" ? "library" : "other");
 app.addEventListener("toggle", (event) => {
   const details = event.target;
   if (!details?.matches?.(".experience-refinement[open]")) return;

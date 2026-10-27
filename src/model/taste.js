@@ -29,12 +29,6 @@ export function recommendationDelta(feedback) {
   return score + (detailAdjustments[feedback.detail] || 0);
 }
 
-// Notes about the recommendation itself, not about taste. "Surprised me" is recorded (it is only
-// offered after the user says they tried and liked something) but does not change ranking yet.
-export function recommendationQualityDelta(feedback) {
-  return feedback?.quality === "too-obvious" ? -0.5 : 0;
-}
-
 // The user said they tried it and liked it: the only time "Surprised me" makes sense.
 // Canonical predicates live in evidence.js (#40); these names stay for existing call sites.
 export const isPositiveExperience = isExperiencedPositive;

@@ -8,6 +8,8 @@ import { esc } from "../lib/html.js";
 import { blurbOf } from "../catalog/synopsis.mjs";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { starIcon } from "../components/star.js";
+import { renderExperienceRefinement } from "../components/refinement.js";
+import { isExperienced } from "../model/evidence.js";
 
 function favoriteToggle(itemId) {
   const isFavorite = state.onboarded ? state.libraryFavorites.has(itemId) : state.selectedFavorites.has(itemId);
@@ -69,6 +71,7 @@ function feedbackPanel(item, feedback) {
                ${outcomeButton(item.id, "not-interested", "Not interested", feedback?.detail === "not-interested")}`}
         </div>
       </div>
+      ${path === "tried" && isExperienced(feedback) ? renderExperienceRefinement(item.id, item, feedback, { compact: true, open: true }) : ""}
     </div>`;
 }
 
@@ -120,18 +123,28 @@ export function renderBrowse() {
   const genres = browseGenresFor(state.browseDomain);
   const ready = browseReadyForRecommendations(state);
   const count = state.onboarded ? state.libraryFavorites.size : state.selectedFavorites.size;
+  const rated = state.browseRatedThisVisit?.length ?? 0;
 
   return `
     <section class="browse-screen">
       <div class="browse-hero">
         <div>
           <p class="kicker">Browse</p>
+          ${state.onboarded ? `
+          <h1>Rate what <span class="marker-word">you know.</span></h1>
+          <p class="lede">Every rating sharpens your recommendations. Say what worked, too, and Tastemake learns why.</p>` : `
           <h1>Need a little <span class="marker-word">inspiration?</span></h1>
-          <p class="lede">Browse things you might recognize, then react when something is familiar.</p>
+          <p class="lede">Browse things you might recognize, then react when something is familiar.</p>`}
         </div>
         <div class="browse-progress" aria-live="polite">
-          <strong>${state.onboarded ? `${count} favorites` : `${count} of 4 favorites`}</strong>
-          <span>${state.onboarded ? "Your Favorites are the strongest signals in your taste profile." : (ready ? "Enough to start personalizing." : "Love something here? Add it to Favorites.")}</span>
+          ${state.onboarded ? `
+          <strong>${rated} rated this visit</strong>
+          ${rated
+            ? `<span>Your next set of recommendations uses these.</span>
+          <button class="button button-quiet browse-progress-link" type="button" data-action="show-recs">See recommendations →</button>`
+            : `<span>Rate only what you've actually watched, read or played.</span>`}` : `
+          <strong>${count} of 4 favorites</strong>
+          <span>${ready ? "Enough to start personalizing." : "Love something here? Add it to Favorites."}</span>`}
         </div>
       </div>
 
@@ -164,7 +177,7 @@ export function renderBrowse() {
 
       <div class="browse-results-head">
         <h2>${esc(genres.find((genre) => genre.id === state.browseGenre)?.label ?? "Browse")}</h2>
-        <p>Real catalog items. React only when something is familiar.</p>
+        <p>${state.onboarded ? "Tried one? Tap it and say how it landed." : "Real catalog items. React only when something is familiar."}</p>
       </div>
 
       ${state.browseError && !state.browseItems.length ? `

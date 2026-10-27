@@ -1,5 +1,6 @@
 import { state } from "../state.js";
-import { bookmarkedFeedback } from "../model/taste.js";
+import { isBookmarked } from "../model/taste.js";
+import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { dislikedItems, libraryItems } from "../model/library.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
 import { renderStickerField } from "../components/stickers.js";
@@ -143,7 +144,6 @@ function savedCard(feedback) {
         <span class="library-compact-copy">
           <span class="library-compact-info">${esc(info)}</span>
           <strong>${esc(item.title)}</strong>
-          <span class="library-compact-status">Saved</span>
           ${resolutionLabel(item) ? `<span class="library-compact-resolution">${esc(resolutionLabel(item))}</span>` : ""}
         </span>
         <span class="library-compact-open" aria-hidden="true">+</span>
@@ -162,10 +162,10 @@ function savedCard(feedback) {
             title="Add to Favorites"
             aria-pressed="false"
           >${starIcon(false)}</button>
-          <span>Favorite marks this Tried · Loved automatically.</span>
+          <span>Starring it also marks it as loved.</span>
         </div>
         <details class="library-reaction-edit library-saved-tried">
-          <summary>Tried it</summary>
+          <summary>Tried it? How was it?</summary>
           <div class="library-reaction-options" role="group" aria-label="How did ${esc(item.title)} land?">
             ${action("tried-loved", "Loved it")}
             ${action("tried-liked", "Liked it")}
@@ -179,17 +179,49 @@ function savedCard(feedback) {
     </details>`;
 }
 
+// Just rated from Saved: the rating, "What worked for you?" open, and Done to move it to Tried.
+function savedTriedCard(feedback) {
+  const { item } = feedback;
+  const rated = isStrongPositive(feedback) ? "Loved it" : isExperiencedNegative(feedback) ? "Didn't like it" : "Liked it";
+  const info = [displayLabel(item), item.year].filter(Boolean).join(" · ");
+  return `
+    <details class="library-card library-card-compact library-saved-just-tried ${item.artwork ? "has-artwork" : ""}" data-bookmark-id="${item.id}" open>
+      <summary class="library-compact-summary">
+        ${renderArtwork(item, "library-compact-artwork")}
+        <span class="library-compact-copy">
+          <span class="library-compact-info">${esc(info)}</span>
+          <strong>${esc(item.title)}</strong>
+          <span class="library-compact-status">${rated}</span>
+        </span>
+        <span class="library-compact-open" aria-hidden="true">+</span>
+      </summary>
+      <div class="library-compact-detail">
+        ${renderExperienceRefinement(item.id, item, feedback, { open: true })}
+        <div class="bookmark-actions">
+          <button class="button button-secondary" type="button" data-saved-done="${item.id}">Done, move to Tried</button>
+        </div>
+      </div>
+    </details>`;
+}
+
+// Saved things, plus anything just rated here (in its same place in the list) until it's Done.
+function savedEntries() {
+  const kept = new Set(state.savedJustTried ?? []);
+  return Object.values(state.feedbackByRecommendation)
+    .filter((feedback) => isBookmarked(feedback) || kept.has(feedback.item.id));
+}
+
 function renderSavedView() {
-  const saved = bookmarkedFeedback(state).filter((feedback) => itemMatchesDomain(feedback.item, state.libraryFilter));
+  const saved = savedEntries().filter((feedback) => itemMatchesDomain(feedback.item, state.libraryFilter));
 
   return `
     <div class="library-view" data-library-view-panel="saved">
-      <p class="library-view-lede">Things you might want to watch, read, or play next. Saving something here does not change your Taste Profile — only what you actually try does.</p>
+      <p class="library-view-lede">Things to watch, read or play next. Saving doesn't change your taste profile; rating it once you've tried it does.</p>
       <h2 class="visually-hidden">Saved to try</h2>
       <div class="library-grid">
         ${saved.length
-          ? capped(saved, "saved", savedCard)
-          : `<div class="filter-empty bookmark-empty">Nothing saved yet. From Recommendations, react "Not tried" on something and choose "Save to Saved" to come back to it here.</div>`}
+          ? capped(saved, "saved", (feedback) => (isBookmarked(feedback) ? savedCard(feedback) : savedTriedCard(feedback)))
+          : `<div class="filter-empty bookmark-empty">Nothing saved yet. On a recommendation, tap "Not tried", then "Save".</div>`}
       </div>
     </div>`;
 }
@@ -375,7 +407,7 @@ function libraryTab(id, label, count) {
 
 export function renderLibrary() {
   const view = state.libraryView === "tried" ? "tried" : "saved";
-  const savedCount = bookmarkedFeedback(state).length;
+  const savedCount = savedEntries().filter(isBookmarked).length;
   const triedBuckets = libraryItems(state);
   const triedCount = triedBuckets.favorites.length + triedBuckets.library.length + dislikedItems(state).length;
 
