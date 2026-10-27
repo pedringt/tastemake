@@ -6,6 +6,10 @@ export async function run() {
   const results=[];
   const check=(name,ok,detail="")=>results.push({name,ok:Boolean(ok),detail:String(detail)});
   const sleep=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
+  // Oct 27: waits for a condition instead of a fixed time. The why popover hides with a .12s visibility
+  // transition, and a fixed 120 ms wait raced it under load (computed visibility stays "visible" until the
+  // transition ends). Returns as soon as the condition holds, or after `ms` with the last result.
+  const until=async (fn,ms=1000)=>{const end=Date.now()+ms; while(!fn()&&Date.now()<end) await sleep(20); return fn();};
   const $=(s)=>document.querySelector(s);
   const $$=(s)=>[...document.querySelectorAll(s)];
   const act=async(s,wait=120)=>{const el=$(s);if(!el) throw new Error(`missing ${s}`);el.focus();el.click();await sleep(wait);};
@@ -278,16 +282,19 @@ export async function run() {
     await act('.editorial-rec .why-trigger',120);
     // Oct 23 smoke test: the second click unpinned it, but focus (and the pointer) kept it on screen over the reaction buttons.
     const shown=()=>getComputedStyle(whyCard.querySelector(".why-popover")).visibility==="visible";
+    await until(()=>!shown());
     check("a second click hides it even though the link still has focus",document.activeElement===whyCard.querySelector(".why-trigger")&&!shown(),getComputedStyle(whyCard.querySelector(".why-popover")).visibility);
     check("a preview that is not pinned never takes clicks",getComputedStyle(whyCard.querySelector(".why-popover")).pointerEvents==="none");
     // Headless pages are not the focused window, so focus events are sent by hand (a real browser sends them).
     const trigger=whyCard.querySelector(".why-trigger");
     trigger.blur(); trigger.dispatchEvent(new FocusEvent("focusout",{bubbles:true,relatedTarget:null})); await sleep(30);
-    trigger.focus(); trigger.dispatchEvent(new FocusEvent("focusin",{bubbles:true,relatedTarget:null})); await sleep(150);
+    trigger.focus(); trigger.dispatchEvent(new FocusEvent("focusin",{bubbles:true,relatedTarget:null}));
     const wrap=whyCard.querySelector(".editorial-why");
+    await until(()=>wrap.matches(".editorial-why:not(.is-dismissed):focus-within"));
     check("focusing the link again allows the preview",wrap.matches(".editorial-why:not(.is-dismissed):focus-within"),wrap.className);
     state.recommendationFeedbackItemId=null;   // an open feedback panel takes Escape first; this check is about the popover
-    document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true})); await sleep(150);
+    document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+    await until(()=>wrap.classList.contains("is-dismissed"));
     check("Escape hides a focused preview and keeps focus on the link",wrap.classList.contains("is-dismissed")&&!wrap.matches(".editorial-why:not(.is-dismissed):focus-within")&&document.activeElement===trigger,wrap.className);
     whyCard.querySelector(".why-trigger").blur();
   } else check("a recommendation card exists for the why popover check",false);
