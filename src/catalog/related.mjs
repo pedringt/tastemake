@@ -334,7 +334,11 @@ async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
   if (!querySubjects.length) return [];
 
   const storePromise = relatedCanonicalItems(item, querySubjects, { env, query: queryImpl });
-  const rows = (await Promise.all(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs)))).flat();
+  // Oct 27: about 1 in 12 live subject searches ran past the mixed-mode timeout, and one throw used to sink
+  // the whole Promise.all, dropping the other subjects and the store rows. Each subject now fails alone.
+  // The throw still happens inside load(), so a failed search is never cached.
+  const settled = await Promise.allSettled(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs)));
+  const rows = settled.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
 
   // Keyed by the raw Open Library work key (the real identity), so a live result and a
   // store-canonicalized result for the same book collapse into one entry either way.
