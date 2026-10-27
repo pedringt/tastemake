@@ -62,6 +62,11 @@ export function bridgeLabelsOf(item) {
 
 // The shelves to search for `targetDomain` ("read", "movies", "tv" or "screen"), each with the labels it
 // stands for. Never the item's own medium. Empty when nothing on the item has a shelf there.
+// A broad label on its own isn't a vibe (#314): mystery, thriller, comedy, romance and historical need a
+// second shared label; sci-fi, fantasy and horror count by themselves. Shared with bridge-candidates.mjs.
+export const BROAD_LABELS = new Set(["mystery", "thriller", "comedy", "romance", "historical"]);
+export const meaningfulShare = (shared) => shared.length >= 2 || shared.some((label) => !BROAD_LABELS.has(label));
+
 export function bridgeQueriesFor(item, targetDomain) {
   const domains = BRIDGE_TARGETS[targetDomain];
   if (!domains || !item?.type) return [];
@@ -101,7 +106,10 @@ export function bridgeTargetFor(item, areas = {}) {
   let target = null;
   if (["movie", "tv", "game"].includes(item.type)) target = on("read") ? "read" : null;
   else if (item.type === "book") target = on("movies") && on("tv") ? "screen" : on("movies") ? "movies" : on("tv") ? "tv" : null;
-  return target && bridgeQueriesFor(item, target).length ? target : null;
+  // Oct 27 smoke test: Severance maps only to mystery (TV's "Sci-Fi & Fantasy" isn't mapped), so its button
+  // could never find anything under the broad-label rule. Offer it only when a result could qualify.
+  const reachable = [...new Set(target ? bridgeQueriesFor(item, target).flatMap((query) => query.labels) : [])];
+  return target && meaningfulShare(reachable) ? target : null;
 }
 
 const TARGET_NOUN = { read: "Books", movies: "Movies", tv: "Shows", screen: "Movies and shows" };

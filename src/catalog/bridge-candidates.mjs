@@ -4,7 +4,7 @@
 // item (so the book of the film is left out). No model call. Never throws; a failure is an empty list.
 
 import { browseCatalog } from "./browse.mjs";
-import { bridgeQueriesFor, domainOfItem, sharedBridgeLabels } from "./bridges.mjs";
+import { bridgeQueriesFor, domainOfItem, meaningfulShare, sharedBridgeLabels } from "./bridges.mjs";
 import { applyNoveltyGuard, isFranchiseContinuation } from "./novelty.mjs";
 import { bookAuthors, bookSeriesPosition, isBook, isLaterSeriesEntry } from "./book-series.mjs";
 import { withBookSeriesEvidence } from "./book-series-editions.mjs";
@@ -22,10 +22,9 @@ const BRIDGE_LIMIT = 12;
 // - one result per author and per franchise;
 // - later series books are looked up the way recommendations do (Open Library editions, then Wikidata),
 //   since their titles rarely say "Book 2".
-const BROAD_LABELS = new Set(["mystery", "thriller", "comedy", "romance", "historical"]);
 const SERIES_CHECK = 16;   // books checked for a series position, in ranked order (same budget idea as related.mjs)
 
-export const meaningfulShare = (shared) => shared.length >= 2 || shared.some((label) => !BROAD_LABELS.has(label));
+export { meaningfulShare };
 
 // Fails open: a failed or slow lookup leaves the book as it was.
 async function dropLaterSeriesBooks(items, { env, fetchImpl }) {
@@ -68,7 +67,8 @@ function interleave(rows) {
 
 export async function bridgeCandidates(item, targetDomain, { env = process.env, fetchImpl = fetch, browse = browseCatalog, exclude = [], limit = BRIDGE_LIMIT } = {}) {
   const queries = bridgeQueriesFor(item, targetDomain);
-  if (!queries.length) return [];
+  // Nothing could qualify (only one broad label maps, e.g. Severance's mystery): skip the provider calls.
+  if (!queries.length || !meaningfulShare([...new Set(queries.flatMap((query) => query.labels))])) return [];
   const settled = await Promise.allSettled(queries.map((query) => browse({ domain: query.domain, genreId: query.genreId, page: 1, env, fetchImpl })));
   const rows = settled.map((result, index) => (result.status === "fulfilled" ? result.value?.items ?? [] : [])
     .map((candidate) => ({ candidate, shelf: queries[index] })));
