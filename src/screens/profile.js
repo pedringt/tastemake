@@ -11,6 +11,7 @@ import { evidenceRecords } from "../model/evidence.js";
 import { renderTasteMap } from "./tastemap.js";
 import { AI_PAUSED_EXPLAINER } from "../ai/ai-status.js";
 import { levelChangeConsequence } from "../model/history.js";
+import { exampleLinkHtml } from "../example-profile.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -384,6 +385,7 @@ export function renderProfile() {
           <strong>No generated patterns yet.</strong>
           <p>Tastemake needs more ratings from things you have actually tried before it can infer patterns responsibly. Favorites seed the profile; your reactions keep teaching it.</p>
           <button class="button button-primary" type="button" data-action="browse">Rate more things</button>
+          ${exampleLinkHtml("Want to see one with lots of data?")}
         </div>`}
 
       ${liveProfile && profileView === "list" ? learningPanel(primaryHypotheses) : ""}

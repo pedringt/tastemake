@@ -157,7 +157,8 @@ document.documentElement.dataset.look = state.look;
 
 export function resetState() {
   const look = state.look;
-  clearPersistedState();
+  // Oct 27: "Start over" inside Paige's Example Profile clears the example in memory, never the visitor's saved profile.
+  if (!state.viewingExample) clearPersistedState();
   Object.assign(state, fresh(), { look });
 }
 
