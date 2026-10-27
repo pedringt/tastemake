@@ -701,6 +701,103 @@
       ]
     },
     {
+      "id": "user-said-also-true",
+      "error": null,
+      "scores": [
+        {
+          "kind": "quality",
+          "name": "all proposals valid",
+          "pass": true,
+          "detail": "0 hypotheses kept, 0 rejected; 5 picks kept, 0 rejected"
+        },
+        {
+          "kind": "rule",
+          "name": "every citation is real, experienced evidence",
+          "pass": true,
+          "detail": "checked every ref against the evidence records"
+        },
+        {
+          "kind": "rule",
+          "name": "intent never used as taste",
+          "pass": true,
+          "detail": "none tried to"
+        },
+        {
+          "kind": "quality",
+          "name": "calibrated (no overconfidence to correct)",
+          "pass": true,
+          "detail": "none needed lowering"
+        },
+        {
+          "kind": "rule",
+          "name": "cross-domain no further than \"tentative\"",
+          "pass": true,
+          "detail": "ok"
+        },
+        {
+          "kind": "quality",
+          "name": "explanations are not repetitive",
+          "pass": true,
+          "detail": "max phrase overlap between two reasons: 11%"
+        },
+        {
+          "kind": "quality",
+          "name": "grounding coverage",
+          "pass": null,
+          "detail": "0 hypothesis(es) could cite this user's own evidence; fallback used"
+        }
+      ],
+      "hypotheses": [],
+      "rejected": [],
+      "picks": [
+        {
+          "itemId": "fargo",
+          "title": "Fargo",
+          "kind": "pick",
+          "why": "Fargo is a related pick worth testing against things you've liked.",
+          "cites": [
+            "ev:lotr"
+          ]
+        },
+        {
+          "itemId": "handmaiden",
+          "title": "The Handmaiden",
+          "kind": "pick",
+          "why": "The Handmaiden is a nearby fit based on things you've liked.",
+          "cites": [
+            "ev:lotr"
+          ]
+        },
+        {
+          "itemId": "golden-idol",
+          "title": "The Case of the Golden Idol",
+          "kind": "pick",
+          "why": "Tastemake is testing The Case of the Golden Idol against your positive taste evidence.",
+          "cites": [
+            "ev:lotr"
+          ]
+        },
+        {
+          "itemId": "vita-nostra",
+          "title": "Vita Nostra",
+          "kind": "pick",
+          "why": "Vita Nostra is a more exploratory pick that still connects back to things you've liked.",
+          "cites": [
+            "ev:lotr"
+          ]
+        },
+        {
+          "itemId": "lighthouse",
+          "title": "The Lighthouse",
+          "kind": "curveball",
+          "why": "The Lighthouse is a cautious test outside your strongest patterns.",
+          "cites": [
+            "ev:lotr"
+          ]
+        }
+      ]
+    },
+    {
       "id": "user-said-not-me",
       "error": null,
       "scores": [
