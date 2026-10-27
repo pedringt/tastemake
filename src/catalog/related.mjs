@@ -152,6 +152,8 @@ function externalEvidenceItems(state) {
       return {
         ...item,
         anchorStrength,
+        // Oct 27: a rating with reasons is a clearer signal, so it gets picked to start searches a bit more.
+        hasReasons: (state.feedbackByRecommendation?.[item.id]?.refinements ?? []).length > 0,
         seriesExperience: state.feedbackByRecommendation?.[item.id]?.seriesExperience ?? null
       };
     })
@@ -434,14 +436,6 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
 // applies (this only changes ORDER within a domain, never which domains are represented). Scoped
 // down per #135's own caveat -- a short-timeout, no-op-on-any-failure lookup, not a rearchitecture
 // of anchor selection. A missing/unconfigured/slow store, or any error, leaves input order intact.
-function shuffled(items) {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
 
 // Real bug (2026-09-28): with a real evidence pool much bigger than the 6-anchor cap (73 items in
 // one real report), this used to sort deterministically by metadata completeness -- and completeness
@@ -454,10 +448,37 @@ function shuffled(items) {
 // stable sort keeps items tied on completeness in their shuffled relative order, so ties rotate
 // between rounds instead of being pinned), and gives genuine rotation across the whole evidence pool
 // when completeness data isn't available, which real logs show is common.
-function preferRicherAnchors(items) {
+// Oct 27 (whole-profile recommendations): the shuffle-then-sort-by-strength order meant a Liked item only
+// became an anchor when its type had fewer than two Loved ones, so Liked items almost never started a
+// search. Now the order is a weighted draw: Loved (3) is three times as likely as Liked (1) to come early,
+// reasons add one, and every positive rating has a real chance each round.
+function preferRicherAnchors(items, random = Math.random) {
   // Select anchors without a database round trip. The old path queried metadata for the entire
   // evidence history before it even knew which <=6 anchors would be used.
-  return shuffled(items).sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
+  return weightedOrder(items, (item) => (item.anchorStrength ?? 0) + (item.hasReasons ? 1 : 0), random);
+}
+
+// Weighted random order without replacement (Efraimidis-Spirakis): each item draws u^(1/weight).
+export function weightedOrder(items, weightOf, random = Math.random) {
+  return items
+    .map((item) => ({ item, key: Math.pow(random(), 1 / Math.max(weightOf(item), 0.001)) }))
+    .sort((a, b) => b.key - a.key)
+    .map(({ item }) => item);
+}
+
+// Oct 27: Surprise Me comes from the edges of someone's taste: things they Liked rather than Loved. When
+// the surprise slot is on and no Liked item was drawn into the first wave of anchors, one is moved in.
+export function withEdgeAnchor(selected, all, { firstWave = 4 } = {}) {
+  const isEdge = (item) => item.anchorStrength === 1;
+  if (selected.slice(0, firstWave).some(isEdge)) return selected;
+  const chosenIds = new Set(selected.map((item) => item.id));
+  const domains = new Set(selected.map(primaryDomain));
+  const edge = all.find((item) => isEdge(item) && !chosenIds.has(item.id) && domains.has(primaryDomain(item)))
+    ?? selected.find(isEdge);
+  if (!edge) return selected;
+  const rest = selected.filter((item) => item.id !== edge.id);
+  const at = Math.min(firstWave - 1, rest.length);
+  return [...rest.slice(0, at), edge, ...rest.slice(at)];
 }
 
 async function hydrateSelectedAnchorMetadata(items, { env, query }) {
@@ -497,6 +518,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     ? selectAllAnchors(allEvidence)
     : allEvidence.filter((item) => item.domains?.includes(mode)).slice(0, 6);
   if (!evidenceItems.length) return [];
+  if (state.curveball !== false) evidenceItems = withEdgeAnchor(evidenceItems, allEvidence.filter((item) => modeAllowed(state, item)));
   // Preserve series/franchise suppression, but only query the tiny selected-anchor set and cap
   // the optional lookup at 100ms instead of blocking on the user's entire evidence history.
   evidenceItems = await hydrateSelectedAnchorMetadata(evidenceItems, { env, query: queryImpl });

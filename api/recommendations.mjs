@@ -14,6 +14,7 @@ import { evidenceRecords } from "../src/model/evidence.js";
 import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
 import { contentThemesFor } from "../src/model/refinements.js";
 import { excludedBy } from "../src/model/exclusions.js";
+import { chooseCandidates, closestRatings } from "../src/ai/taste-score.js";
 
 const MAX_BODY_BYTES = 160_000;
 const DEFAULT_VISITOR_LIMIT = 6;
@@ -70,11 +71,24 @@ function promptEvidencePriority(record) {
 }
 
 // #120: the full product history remains in state and in the validator context. The model does not need
-// every historical row on every ranking call. Curate a small experienced-evidence working set by the
-// domains represented in the current candidate pool, keeping strong anchors and counterexamples.
+// every historical row on every ranking call, only a small working set.
+//
+// Oct 27 (whole-profile recommendations): the working set is chosen per candidate. Each offered candidate
+// brings the rated items most like it (Liked ones included), so whatever the model cites is the closest
+// real reason, and over rounds the whole history gets its turn instead of the same oldest favorites. Then
+// one dislike per type as contrast (the one most like this round's candidates), then the strongest
+// remaining positives, rotated between rounds, until the cap.
+// Oct 27: the six offered are the best fits for everything the person has rated (src/ai/taste-score.js),
+// not the first six retrieval returned. With a surprise slot, it goes to a candidate found from a Liked item.
+// Exported so the stress eval offers exactly what production does.
+export function offeredCandidates(ctx, count = 6) {
+  return chooseCandidates(ctx.candidates, ctx.evidence, { count, mode: ctx.recommendationFilter, curveball: ctx.curveball });
+}
+
 export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
   const all = (ctx.evidence ?? []).filter((record) => record?.class === "experienced");
-  const candidateDomains = [...new Set((ctx.candidates ?? []).flatMap((item) => item.domains ?? []))];
+  const candidates = ctx.candidates ?? [];
+  const candidateDomains = [...new Set(candidates.flatMap((item) => item.domains ?? []))];
   const relevant = candidateDomains.length
     ? all.filter((record) => (record.domains ?? []).some((domain) => candidateDomains.includes(domain)))
     : all;
@@ -87,32 +101,44 @@ export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
     seen.add(record.ref);
     selected.push(record);
   };
-  const ranked = (records) => records
-    .map((record, index) => ({ record, index }))
-    // #250 PR 2: among equals, items the person gave reasons for go first, so reasons reach the model
-    // without adding rows (the per-area counts stay 4 liked + 1 disliked).
-    .sort((a, b) => promptEvidencePriority(b.record) - promptEvidencePriority(a.record) || b.record.weight - a.record.weight || hasReasons(b.record) - hasReasons(a.record) || a.index - b.index)
-    .map(({ record }) => record);
+  const rotation = Number(ctx.evidenceRotation ?? 0);
   const rotate = (records, offset = 0) => {
     if (!records.length) return records;
     const at = Math.abs(offset) % records.length;
     return records.slice(at).concat(records.slice(0, at));
   };
-  const rotation = Number(ctx.evidenceRotation ?? 0);
+  const ranked = (records) => records
+    .map((record, index) => ({ record, index }))
+    // #250 PR 2: among equals, items the person gave reasons for go first.
+    .sort((a, b) => promptEvidencePriority(b.record) - promptEvidencePriority(a.record) || b.record.weight - a.record.weight || hasReasons(b.record) - hasReasons(a.record) || b.index - a.index)
+    .map(({ record }) => record);
+  const cache = new Map();
 
-  // Positive evidence should do most of the explanatory work. Keep one negative counterexample per
-  // represented domain, and rotate which one is shown as the user moves through recommendation rounds
-  // so one memorable dislike does not become a permanent center of gravity.
-  for (const domain of candidateDomains) {
-    const rows = pool.filter((record) => (record.domains ?? []).includes(domain));
-    ranked(rows.filter((record) => record.polarity > 0)).slice(0, 4).forEach(add);
-    const negatives = rotate(ranked(rows.filter((record) => record.polarity < 0)), rotation);
-    add(negatives[0]);
+  // 1. For each candidate: the item it was found from, then its closest liked/loved ratings.
+  for (const candidate of candidates) {
+    const anchor = pool.find((record) => record.itemId === candidate.relatedToId && record.polarity > 0);
+    add(anchor);
+    const room = anchor ? 1 : 2;
+    closestRatings(candidate, pool, { polarity: 1, limit: room + 1, cache })
+      .map(({ record }) => record)
+      .filter((record) => !seen.has(record.ref))
+      .slice(0, room)
+      .forEach(add);
   }
 
-  // Fill remaining room with positives first. Negatives stay useful as contrast, but are not used
-  // simply to fill prompt capacity.
-  ranked(pool.filter((record) => record.polarity > 0)).forEach(add);
+  // 2. One dislike per type, as contrast: the one most like this round's candidates of that type.
+  for (const domain of candidateDomains) {
+    const negatives = pool.filter((record) => record.polarity < 0 && (record.domains ?? []).includes(domain));
+    if (!negatives.length) continue;
+    const near = candidates
+      .filter((item) => (item.domains ?? []).includes(domain))
+      .flatMap((item) => closestRatings(item, negatives, { polarity: -1, limit: 1, cache }))
+      .sort((a, b) => b.similarity - a.similarity)[0]?.record;
+    add(near ?? rotate(ranked(negatives), rotation)[0]);
+  }
+
+  // 3. Fill with positives, strongest first but rotated between rounds so the same few don't always win.
+  rotate(ranked(pool.filter((record) => record.polarity > 0)), rotation * 3).forEach(add);
   return selected.slice(0, limit);
 }
 
@@ -129,7 +155,8 @@ function pickPromptPayload(ctx) {
         about: typeof about === "string" ? about.slice(0, 220) : about,
         year,
         genres: (genres ?? []).slice(0, 8),
-        ...(themes.length ? { themes } : {})
+        ...(themes.length ? { themes } : {}),
+        ...(item.edge ? { edge: true } : {})
       };
     }),
     curveball: ctx.curveball,
@@ -170,7 +197,7 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     "User-facing explanations must say why the pick may fit the person, not how retrieval found it. Never mention providers, catalog branches/paths/neighbors/signals, metadata, similarity scores, embeddings, retrieval provenance, or raw overlap counts. A disliked item may only appear as explicit contrast, never as the positive reason a pick fits.",
     "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. Use them as item-local context, not as standalone evidence or a global preference unless multiple independent experienced items support that broader pattern.",
     "A refinement may name a direction (\"Pacing: too slow\", \"Pacing: slow burn paid off\"): keep the direction, since opposite directions are opposite signals. A candidate's themes mean the theme is present, not that it dominates the book; one item's reason about a theme (\"Romance took over the story\") must not rule out every candidate with that theme.",
-    "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; never cite intent-only evidence as support; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; explain why the pick may fit in specific plain English, in one sentence of 14 words or fewer; internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; if curveball is true you may choose at most one exploratory pick by putting only its itemId in curveballItemId, otherwise use null; if curveball is false curveballItemId must be null; do not write the word curveball in why.",
+    "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; never cite intent-only evidence as support; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; explain why the pick may fit in specific plain English, in one sentence of 14 words or fewer; internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; if curveball is true you may choose at most one exploratory pick by putting only its itemId in curveballItemId, otherwise use null; if curveball is false curveballItemId must be null; a candidate with edge:true was found from something the user liked but did not love, so when you choose an exploratory pick prefer it and ground its why in a liked item; do not write the word curveball in why.",
     "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
   ].join("\n\n");
 }
@@ -319,7 +346,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   const ctx = buildContext(state, retrieved);
   logStage("buildContext", Date.now() - started);
 
-  const candidates = ctx.candidates.slice(0, 6);
+  const candidates = offeredCandidates(ctx);
   if (!candidates.length) {
     // Real bug (2026-09-29): retrieveCatalogCandidates narrows anchor selection to only evidence
     // already tagged with the active domain filter (related.mjs's `evidenceItems` filter) before it

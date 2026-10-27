@@ -154,7 +154,7 @@ function proposal(refs) {
   const book = (id, title, genres) => ({ id, title, type: "book", domains: ["read"], provider: "openlibrary", providerId: id.toUpperCase(), genres });
   const loved = book("ol-circe", "Circe", ["Mythology", "Retellings"]);
   const adult = book("ol-neon", "Neon Gods", ["Romance", "Mythology", "Smut", "Retellings"]);
-  const plainPick = book("ol-mythos", "Mythos", ["Mythology"]);
+  const plainPick = book("ol-mythos", "Mythos", ["Mythology", "Greek"]);
   const s = emptyState();
   react(s, loved, "loved");
   const ctx = { ...buildContext(s, [adult, plainPick]), curveball: true };
@@ -171,8 +171,10 @@ function proposal(refs) {
   react(tried, book("ol-tried-adult", "Tried Adult", ["Erotica", "Romance"]), "liked");
   eq("once the user has tried that kind of book, the curveball is allowed", validatePicks({ picks: [pick(adult, "curveball")] }, { ...buildContext(tried, [adult]), curveball: true }).accepted.length, 1);
 
-  // The no-AI fallback: the 6th candidate is the curveball slot.
-  const pool = [1, 2, 3, 4, 5].map((n) => book(`ol-c${n}`, `Candidate ${n}`, ["Mythology"]));
+  // The no-AI fallback: the 6th offered candidate is the curveball slot. Oct 27: the six are now chosen by
+  // taste, so the pool is built to put the adult-tagged book 6th (five closer matches to Circe ahead of it,
+  // one weaker match behind) and the titles are distinct (one per franchise).
+  const pool = ["Stone Blind", "Elektra", "A Thousand Ships", "Pandora's Jar", "Lore Olympus"].map((title, n) => book(`ol-c${n + 1}`, title, ["Mythology", "Retellings"]));
   const out = await produceRecommendations({ rawState: { selectedFavorites: [], feedbackByRecommendation: { [loved.id]: s.feedbackByRecommendation[loved.id] }, curveball: true }, env: {}, retrieve: async () => [...pool, adult, plainPick] });
   const curveballPick = out.picks.find((p) => p.surprise);
   check("the fallback skips an adult-tagged curveball for the next eligible candidate", curveballPick?.id === plainPick.id && !out.picks.some((p) => p.id === adult.id), out.picks.map((p) => `${p.id}${p.surprise ? "*" : ""}`).join());
