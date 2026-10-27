@@ -6,6 +6,7 @@ import { CONTEXT, FIT, WEIGHT, activeStatements } from "../model/statements.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { EXCLUDABLE_GENRES } from "../model/exclusions.js";
+import { exampleLinkHtml } from "../example-profile.js";
 
 // My Tastemake (#8, phase 1): what you've told Tastemake, which areas it may use, how picks are put together,
 // and a way to start over. It is the deeper management layer behind Library (Saved and Tried) and the Taste Profile.
@@ -284,6 +285,7 @@ export function renderMine() {
             <input class="visually-hidden" type="file" name="tastemake-backup" aria-label="Choose a Tastemake backup file" accept="application/json,.json" data-mine-restore-file />
           </div>
           <p class="mine-data-note">The readable HTML copy includes Saved, Tried, Favorites and your Taste Profile. The JSON backup can restore Tastemake after you reset it for testing.</p>
+          ${exampleLinkHtml()}
         </div>
         <div class="mine-data-counts" aria-label="Evidence summary">
           <span><strong>${tasteCount}</strong> ${tasteCount === 1 ? "rating" : "ratings"} shaping your taste</span>

@@ -8,7 +8,7 @@
 // non-framework guide uses a plain `<script defer src="/_vercel/insights/script.js">` tag instead,
 // which needs no module resolution. #100 does exactly that, in src/lib/vercel-insights.js (its own
 // module in index.html, so it can never stop this one from running).
-import { exampleBannerHtml, isViewingExample, loadExampleProfile } from "./example-profile.js";
+import { exampleBannerHtml, exampleRequestedAtBoot, forgetViewingExample, isViewingExample, loadExampleProfile } from "./example-profile.js";
 import { state } from "./state.js";
 import { normalizedRefinements } from "./model/refinements.js";
 import { trackReasonChanged, trackReasonsOpened } from "./lib/reason-events.js";
@@ -87,6 +87,7 @@ function canAccess(screen) {
 const candidatePrefetcher = createCandidatePrefetcher({ getState: () => state });
 
 // Paige's Example Profile: loaded on request, or from /?example=paige (linked from the portfolio case study).
+// Oct 27: loadExampleProfile also sets the sessionStorage flag, so a refresh comes back here.
 async function openExampleProfile() {
   try {
     await loadExampleProfile();
@@ -96,6 +97,7 @@ async function openExampleProfile() {
     announce("Showing Paige's Example Profile. Nothing you change is saved.");
     window.scrollTo(0, 0);
   } catch {
+    forgetViewingExample();   // Oct 27: a failed load shouldn't follow the visitor into every refresh
     announce("The example profile could not load. Please try again.");
   }
 }
@@ -1073,7 +1075,8 @@ app.addEventListener("click", async (event) => {
   if (!action) return;
 
   if (action === "view-example") { void openExampleProfile(); return; }
-  if (action === "exit-example") { window.location.assign("/"); return; }
+  // "Start my own" is this button. Oct 27: drop the flag first so the reload boots the visitor's own profile.
+  if (action === "exit-example") { forgetViewingExample(); window.location.assign("/"); return; }
   if (action === "open-search") document.querySelector("#open-search")?.click();
   if (action === "browse") navigate("browse");
   if (action === "edit-setup") {
@@ -1230,7 +1233,8 @@ initSearch({
 // Direct links still open their requested screen when accessible. #117: a returning user hitting
 // "/" (or an unrecognized path) lands in the ongoing product, not back through first-run setup.
 // Read before writeRoute below replaces the address (it drops the query string).
-const wantsExampleProfile = new URLSearchParams(window.location.search).get("example") === "paige";
+// Oct 27: the sessionStorage flag counts too, so a refresh while viewing stays in the example.
+const wantsExampleProfile = exampleRequestedAtBoot(window.location.search);
 const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
 state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "setup");
 if (state.screen === "library") state.libraryView = "saved";
@@ -1239,7 +1243,11 @@ markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();
 updateStepper();
-maybeRefreshProfile();
+// Oct 27: booting into the example skips the visitor's own profile refresh (a model call) and custom item
+// lookups. Their results would land after the example replaced the in-memory state.
+if (!wantsExampleProfile) {
+  maybeRefreshProfile();
+  void resolveExistingCustomItems();
+}
 maybeLoadBrowse();
-void resolveExistingCustomItems();
 if (wantsExampleProfile) void openExampleProfile();
