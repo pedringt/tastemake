@@ -1,3 +1,4 @@
+import { EXAMPLE_LOCKED_MESSAGE, isViewingExample } from "../example-profile.js";
 import { state } from "../state.js";
 import { activeRecommendations, bookmarkedFeedback, isBookmarked, isPositiveExperience } from "../model/taste.js";
 import { blindSpotFor, isBlindSpotCandidate } from "../model/blindspots.js";
@@ -7,17 +8,9 @@ import { pathForFeedback, storedReactionForOutcome } from "../model/reaction-flo
 import { reactionLabel } from "../screens/recommendations.js";
 import { requestRecommendations } from "../ai/live-client.js";
 import { cancelRequest, finishRequest, isCurrent, staleReason, startRequest } from "../ai/requests.js";
+import { noteAiAnswer } from "../ai/ai-status.js";
 import { cancelRecommendationTiming, markRecommendationStart, measureRecommendationShown } from "../lib/timing.js";
 import { plural } from "../lib/format.js";
-
-// #52: the discovery-quality note defaults to open once answered, closed otherwise (see qualityExpanded
-// in screens/recommendations.js); an explicit toggle always overrides that default, in either direction —
-// a display preference, never taste evidence.
-export function toggleExpandedFeedback(itemId) {
-  const feedback = state.feedbackByRecommendation[itemId];
-  const current = state.expandedFeedback[itemId] ?? Boolean(feedback?.quality);
-  state.expandedFeedback[itemId] = !current;
-}
 
 export function saveQuickFeedback(itemId, rating) {
   const item = activeRecommendations(state).find((rec) => rec.id === itemId)
@@ -30,8 +23,6 @@ export function saveQuickFeedback(itemId, rating) {
     rating,
     detail: null,
     refinements: [],
-    // "Surprised me" only makes sense after Loved/Liked it before, which a fresh rating clears.
-    quality: existing?.quality === "surprised-me" ? null : existing?.quality || null,
     seriesExperience: rating === "not-tried" ? null : existing?.seriesExperience ?? null
   };
   // QA sweep real bug: unlike src/actions/library.js's saveLibraryAction and src/model/search.js's
@@ -85,7 +76,6 @@ export function setRecommendationFavorite(itemId, makeFavorite) {
     rating: "more",
     detail: "loved-before",
     refinements: existing?.refinements ?? [],
-    quality: existing?.quality ?? null,
     seriesExperience: existing?.seriesExperience ?? null,
     wasBookmarked: Boolean(existing?.wasBookmarked || isBookmarked(existing))
   };
@@ -112,14 +102,12 @@ export function saveExperienceOutcome(itemId, outcome) {
     rating,
     detail,
     refinements: existing?.refinements ?? [],
-    quality: existing?.quality ?? null,
     seriesExperience: existing?.seriesExperience ?? null,
     wasBookmarked: Boolean(existing?.wasBookmarked || isBookmarked(existing))
   };
 
   const feedback = state.feedbackByRecommendation[itemId];
   clearInvalidRefinements(feedback, previousPolarity);
-  if (feedback.quality === "surprised-me" && !isPositiveExperience(feedback)) feedback.quality = null;
   if (!isPositiveExperience(feedback) && !isExperiencedNegative(feedback)) feedback.seriesExperience = null;
   if (!isStrongPositive(feedback)) state.libraryFavorites.delete(itemId);
 
@@ -134,7 +122,6 @@ export function saveFeedbackDetail(itemId, detail) {
   const previousPolarity = refinablePolarity(existing);
   existing.detail = existing.detail === detail ? null : detail;
   clearInvalidRefinements(existing, previousPolarity);
-  if (existing.quality === "surprised-me" && !isPositiveExperience(existing)) existing.quality = null;
   if (!isPositiveExperience(existing) && !isExperiencedNegative(existing)) existing.seriesExperience = null;
   // Same Favorite<->reaction invariant as saveQuickFeedback above -- the detail chip (e.g. "Loved it
   // before" -> "Liked it before") can move a reaction away from strong-positive just as much as the
@@ -155,14 +142,6 @@ export function saveSeriesExperience(itemId, value) {
   const allowed = new Set(["loved-most", "liked-most", "mixed", "disliked-most", "unseen-rest"]);
   if (!allowed.has(value)) return false;
   existing.seriesExperience = existing.seriesExperience === value ? null : value;
-  return true;
-}
-
-export function saveFeedbackQuality(itemId, quality) {
-  const existing = state.feedbackByRecommendation[itemId];
-  if (!existing) return false;
-
-  existing.quality = existing.quality === quality ? null : quality;
   return true;
 }
 
@@ -204,6 +183,7 @@ function scheduleLoadingStages(request, { render }) {
 const NO_WARM_UP = Object.freeze({ warmed: false, wait: Promise.resolve() });
 
 async function runRecommendationRequest({ render, updateStepper, announce, navigate, initial = false, prefetch = null }) {
+  if (isViewingExample()) { announce?.(EXAMPLE_LOCKED_MESSAGE); return; }
   // #120: claim a matching candidate warm-up (src/ai/prefetch.js) before navigate(), because reaching
   // Recommendations migrates the starter favorites out of selectedFavorites, which is the warm-up key.
   const warmUp = initial && prefetch ? prefetch.claim(state) : NO_WARM_UP;
@@ -251,6 +231,7 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
     const picks = result.picks ?? [];
     const source = result.source ?? "catalog";
     const exhausted = Boolean(result.meta?.exhausted) || picks.length === 0;
+    noteAiAnswer(state, { budgetPaused: Boolean(result.meta?.budgetPaused), usedModel: source === "model" });
     // Real bug (2026-09-29): the exhausted case always showed this one generic sentence, ignoring
     // result.reason entirely -- so a domain-filter dead end (e.g. filtering to TV with zero TV
     // evidence, api/recommendations.mjs) looked identical to genuine exhaustion, with no path forward

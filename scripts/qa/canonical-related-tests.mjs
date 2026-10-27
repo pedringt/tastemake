@@ -122,6 +122,37 @@ function fakeQuery(rows) {
 }
 
 {
+  // Oct 27 smoke test: a fan book already in the store came back as a pick. Store books get the same
+  // companion filter as live Open Library rows.
+  const fanbookRow = {
+    canonical_title: "Ascendance of a Bookworm: Fanbook 3",
+    year: "2022",
+    factual: { author: "Miya Kazuki", subjects: ["Epic fantasy fiction", "Light novels"] },
+    provider: "openlibrary:book",
+    provider_id: "OL777W"
+  };
+  const state = { customItems: { [wayOfKings.id]: wayOfKings }, selectedFavorites: [wayOfKings.id] };
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ docs: [] }) });
+  const candidates = await retrieveCatalogCandidates(state, { env: {}, fetchImpl, query: fakeQuery([stormlightRow, fanbookRow]) });
+  check("a fan book from the store never reaches the pool", !candidates.some((c) => c.providerId === "OL777W"), candidates.map((c) => c.title).join(" | "));
+  check("...while a real store book still does", candidates.some((c) => c.providerId === "OL999W"));
+}
+
+{
+  // Oct 27 PM review: a Google Books favorite (search's fallback copy) started no book searches at all.
+  const google = { id: "googlebooks-book-xyz", provider: "googlebooks", providerId: "xyz", title: "The Way of Kings", by: "Brandon Sanderson", type: "book", domains: ["read"], genres: ["Fiction"] };
+  const state = { customItems: { [google.id]: google }, selectedFavorites: [google.id] };
+  const fetchImpl = async (url) => {
+    const u = String(url);
+    if (u.includes("search.json?title=")) return { ok: true, json: async () => ({ docs: [{ key: "/works/OL262758W", title: "The Way of Kings", author_name: ["Brandon Sanderson"], subject: ["Epic fantasy fiction", "Magic"] }] }) };
+    return { ok: true, json: async () => ({ docs: [{ key: "/works/OL555W", title: "Mistborn", author_name: ["Brandon Sanderson"], subject: ["Epic fantasy fiction", "Magic"] }] }) };
+  };
+  const candidates = await retrieveCatalogCandidates(state, { env: {}, fetchImpl, query: fakeQuery([stormlightRow]) });
+  check("a Google Books favorite now leads to related books", candidates.some((c) => c.title === "Mistborn") && candidates.some((c) => c.providerId === "OL999W"), candidates.map((c) => c.title).join(" | "));
+  check("...found from that favorite", candidates.filter((c) => c.type === "book").every((c) => c.relatedToId === google.id));
+}
+
+{
   // Live fetch returns the *same* book the store also has -- must appear exactly once.
   const state = {
     customItems: { [wayOfKings.id]: wayOfKings },
@@ -138,6 +169,32 @@ function fakeQuery(rows) {
   });
   const matches = candidates.filter((c) => c.providerId === "OL999W");
   check("a candidate present in both live and store results appears exactly once", matches.length === 1, `got ${matches.length}`);
+}
+
+{
+  // Oct 27: one slow subject search (fetchWithTimeout throws) used to reject the whole Promise.all and
+  // drop every other result for the book. Each subject now fails on its own.
+  const state = { customItems: { [wayOfKings.id]: wayOfKings }, selectedFavorites: [wayOfKings.id] };
+  const subjectsSearched = [];
+  const fetchImpl = async (url) => {
+    const subject = decodeURIComponent(String(url)).match(/subject:"([^"]+)"/)?.[1];
+    subjectsSearched.push(subject);
+    if (subject === "Magic") throw new Error("timed out");
+    return { ok: true, json: async () => ({ docs: [{ key: "/works/OL555W", title: "Mistborn", author_name: ["Brandon Sanderson"], subject: ["Epic fantasy fiction", "Magic"] }] }) };
+  };
+  const candidates = await retrieveCatalogCandidates(state, { env: {}, fetchImpl, query: fakeQuery([stormlightRow]) });
+  check("fixture searches two subjects, one of which throws", subjectsSearched.includes("Magic") && subjectsSearched.includes("Epic fantasy fiction"), subjectsSearched.join(" | "));
+  check("one subject search throwing keeps the other subject's books", candidates.some((c) => c.title === "Mistborn"), candidates.map((c) => c.title).join(" | "));
+  check("...and the store's books", candidates.some((c) => c.providerId === "OL999W"), candidates.map((c) => c.title).join(" | "));
+}
+
+{
+  // Oct 27: every live subject search failing still leaves the store's books.
+  const state = { customItems: { [wayOfKings.id]: wayOfKings }, selectedFavorites: [wayOfKings.id] };
+  const fetchImpl = async () => { throw new Error("timed out"); };
+  const candidates = await retrieveCatalogCandidates(state, { env: {}, fetchImpl, query: fakeQuery([stormlightRow, unrelatedRow]) });
+  check("all subject searches throwing still returns the store's books", candidates.some((c) => c.providerId === "OL999W"), candidates.map((c) => c.title).join(" | "));
+  check("...still graded, so an unrelated store row stays out", !candidates.some((c) => c.providerId === "OL111W"));
 }
 
 // ---- canonical read latency: bounded longer read + provider parallelism ------------------------

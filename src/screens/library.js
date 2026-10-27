@@ -1,5 +1,6 @@
 import { state } from "../state.js";
-import { bookmarkedFeedback } from "../model/taste.js";
+import { isBookmarked } from "../model/taste.js";
+import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { dislikedItems, libraryItems } from "../model/library.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
 import { renderStickerField } from "../components/stickers.js";
@@ -8,8 +9,10 @@ import { renderTastebreakPanel } from "../components/tastebreak.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
 import { assessSynopsis, blurbOf } from "../catalog/synopsis.mjs";
 import { renderArtwork } from "../components/artwork.js";
+import { starIcon } from "../components/star.js";
 
 // #94: Library has one simple mental model — Recommendations is discovery, Library is your stuff.
 // Saved = things you want to watch/read/play later (not yet tried; never taste evidence on its own).
@@ -62,11 +65,43 @@ export function renderDetailMeta(item, detail = {}) {
     if (detail.publisher) lines.push(["Publisher", detail.publisher]);
     if (detail.platforms) lines.push(["Platforms", detail.platforms.join(", ")]);
   }
-  if (!lines.length) return "";
+  const where = renderWhereToGet(item, detail);
+  if (!lines.length) return where;
   return `
     <dl class="library-detail-meta">
       ${lines.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join("")}
-    </dl>`;
+    </dl>${where}`;
+}
+
+// #10: where to get it, kept below the facts and never used to choose recommendations. Movies and TV
+// use TMDb's watch-provider data, which JustWatch supplies and must be credited. Books get a library
+// and an Open Library link; games already list their platforms above.
+const WATCH_LABELS = [["stream", "Stream"], ["free", "Free"], ["ads", "With ads"], ["rent", "Rent"], ["buy", "Buy"]];
+export function renderWhereToGet(item, detail = {}) {
+  if (item.type === "movie" || item.type === "tv") {
+    const where = detail.whereToWatch;
+    if (!where) return "";
+    const rows = WATCH_LABELS.filter(([key]) => (where[key] ?? []).length);
+    const more = where.link ? ` <a href="${esc(where.link)}" target="_blank" rel="noopener">All options</a>` : "";
+    return `
+    <div class="where-to-get">
+      <h4>Where to watch <span>(${esc(where.region)})</span></h4>
+      ${rows.length
+        ? `<dl>${rows.map(([key, label]) => `<div><dt>${label}</dt><dd>${esc(where[key].join(", "))}</dd></div>`).join("")}</dl>`
+        : `<p>Not available to stream, rent or buy here right now.</p>`}
+      <p class="where-credit">Availability from JustWatch, via TMDb.${more}</p>
+    </div>`;
+  }
+  if (item.type === "book" && item.title) {
+    const title = [item.title, String(item.by ?? "").split(",")[0]].filter(Boolean).join(" ");
+    const openLibrary = item.provider === "openlibrary" && item.providerId ? `https://openlibrary.org/works/${encodeURIComponent(item.providerId)}` : null;
+    return `
+    <div class="where-to-get">
+      <h4>Where to read</h4>
+      <p><a href="https://search.worldcat.org/search?q=${encodeURIComponent(title)}" target="_blank" rel="noopener">Find it at a library</a>${openLibrary ? ` · <a href="${esc(openLibrary)}" target="_blank" rel="noopener">Borrow or see editions on Open Library</a>` : ""}</p>
+    </div>`;
+  }
+  return "";
 }
 
 // Open Library search gives books no synopsis, so a book's `about` is a placeholder ("First published
@@ -100,6 +135,7 @@ function savedCard(feedback) {
   const action = (name, label, className = "button button-secondary") => `
     <button class="${className} bookmark-action" type="button" data-bookmark-item="${item.id}" data-bookmark-action="${name}">${label}</button>`;
   const info = [displayLabel(item), item.year].filter(Boolean).join(" · ");
+  const why = sanitizeRecommendationCopy(item.reason);
 
   return `
     <details class="library-card library-card-compact ${item.artwork ? "has-artwork" : ""}" data-bookmark-id="${item.id}">
@@ -108,7 +144,6 @@ function savedCard(feedback) {
         <span class="library-compact-copy">
           <span class="library-compact-info">${esc(info)}</span>
           <strong>${esc(item.title)}</strong>
-          <span class="library-compact-status">Saved</span>
           ${resolutionLabel(item) ? `<span class="library-compact-resolution">${esc(resolutionLabel(item))}</span>` : ""}
         </span>
         <span class="library-compact-open" aria-hidden="true">+</span>
@@ -116,7 +151,7 @@ function savedCard(feedback) {
       <div class="library-compact-detail">
         <div class="library-detail-meta-slot" data-detail-slot="${item.id}">${renderDetailMeta(item)}</div>
         <p class="library-blurb">${esc(blurbOf(item))}</p>
-        ${item.reason ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${esc(item.reason)}</p>` : ""}
+        ${why ? `<p class="bookmark-why"><strong>Why it was suggested:</strong> ${esc(why)}</p>` : ""}
         <div class="library-favorite-row">
           <button
             class="rec-favorite-star library-action"
@@ -126,11 +161,11 @@ function savedCard(feedback) {
             aria-label="Add to Favorites"
             title="Add to Favorites"
             aria-pressed="false"
-          ><span aria-hidden="true">☆</span></button>
-          <span>Favorite marks this Tried · Loved automatically.</span>
+          >${starIcon(false)}</button>
+          <span>Starring it also marks it as loved.</span>
         </div>
         <details class="library-reaction-edit library-saved-tried">
-          <summary>Tried it</summary>
+          <summary>Tried it? How was it?</summary>
           <div class="library-reaction-options" role="group" aria-label="How did ${esc(item.title)} land?">
             ${action("tried-loved", "Loved it")}
             ${action("tried-liked", "Liked it")}
@@ -144,17 +179,49 @@ function savedCard(feedback) {
     </details>`;
 }
 
+// Just rated from Saved: the rating, "What worked for you?" open, and Done to move it to Tried.
+function savedTriedCard(feedback) {
+  const { item } = feedback;
+  const rated = isStrongPositive(feedback) ? "Loved it" : isExperiencedNegative(feedback) ? "Didn't like it" : "Liked it";
+  const info = [displayLabel(item), item.year].filter(Boolean).join(" · ");
+  return `
+    <details class="library-card library-card-compact library-saved-just-tried ${item.artwork ? "has-artwork" : ""}" data-bookmark-id="${item.id}" open>
+      <summary class="library-compact-summary">
+        ${renderArtwork(item, "library-compact-artwork")}
+        <span class="library-compact-copy">
+          <span class="library-compact-info">${esc(info)}</span>
+          <strong>${esc(item.title)}</strong>
+          <span class="library-compact-status">${rated}</span>
+        </span>
+        <span class="library-compact-open" aria-hidden="true">+</span>
+      </summary>
+      <div class="library-compact-detail">
+        ${renderExperienceRefinement(item.id, item, feedback, { open: true })}
+        <div class="bookmark-actions">
+          <button class="button button-secondary" type="button" data-saved-done="${item.id}">Done, move to Tried</button>
+        </div>
+      </div>
+    </details>`;
+}
+
+// Saved things, plus anything just rated here (in its same place in the list) until it's Done.
+function savedEntries() {
+  const kept = new Set(state.savedJustTried ?? []);
+  return Object.values(state.feedbackByRecommendation)
+    .filter((feedback) => isBookmarked(feedback) || kept.has(feedback.item.id));
+}
+
 function renderSavedView() {
-  const saved = bookmarkedFeedback(state).filter((feedback) => itemMatchesDomain(feedback.item, state.libraryFilter));
+  const saved = savedEntries().filter((feedback) => itemMatchesDomain(feedback.item, state.libraryFilter));
 
   return `
     <div class="library-view" data-library-view-panel="saved">
-      <p class="library-view-lede">Things you might want to watch, read, or play next. Saving something here does not change your Taste Profile — only what you actually try does.</p>
+      <p class="library-view-lede">Things to watch, read or play next. Saving doesn't change your taste profile; rating it once you've tried it does.</p>
       <h2 class="visually-hidden">Saved to try</h2>
       <div class="library-grid">
         ${saved.length
-          ? saved.map(savedCard).join("")
-          : `<div class="filter-empty bookmark-empty">Nothing saved yet. From Recommendations, react "Not tried" on something and choose "Save to Saved" to come back to it here.</div>`}
+          ? capped(saved, "saved", (feedback) => (isBookmarked(feedback) ? savedCard(feedback) : savedTriedCard(feedback)))
+          : `<div class="filter-empty bookmark-empty">Nothing saved yet. On a recommendation, tap "Not tried", then "Save".</div>`}
       </div>
     </div>`;
 }
@@ -165,6 +232,11 @@ function reactionButton(itemId, action, label, pressed) {
   return `
     <button class="button button-secondary library-action" type="button" data-library-item="${itemId}" data-library-action="${action}" aria-pressed="${pressed}">${label}</button>`;
 }
+
+// Oct 27: "See similar" from something liked: same type for now (similar books for a book).
+const SIMILAR_NOUN = { movie: "movies", tv: "shows", book: "books", game: "games" };
+const canSeeSimilar = (item) => Boolean(item?.provider && item?.providerId && SIMILAR_NOUN[item.type]);
+const similarNoun = (item) => SIMILAR_NOUN[item.type] ?? "";
 
 function triedCard(entry) {
   const { item, id, source } = entry;
@@ -194,9 +266,10 @@ function triedCard(entry) {
           aria-label="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
           title="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
           aria-pressed="${entry.isFavorite}"
-        ><span aria-hidden="true">${entry.isFavorite ? "★" : "☆"}</span></button>
-        <span>${entry.isFavorite ? "Favorite" : "Favorite marks this Tried · Loved."}</span>
-      </div>`
+        >${starIcon(entry.isFavorite)}</button>
+        <span>${entry.isFavorite ? "Favorite" : "Starring it also marks it as loved."}</span>
+      </div>
+      ${canSeeSimilar(item) ? `<button class="button button-quiet library-see-similar" type="button" data-see-similar="${id}">See similar ${esc(similarNoun(item))} →</button>` : ""}`
     : `
       <div class="library-starter-actions">
         <button class="button button-quiet" type="button" data-starter-replace="${id}">Replace</button>
@@ -225,7 +298,18 @@ function triedCard(entry) {
     </details>`;
 }
 
-function section(title, note, entries, emptyText) {
+// #29 growth check (Oct 23): at 500 items Tried was one ~12,500px list. Long sections show their first
+// LIBRARY_SHOW_LIMIT cards and a "Show all" button; which sections are open is per visit, never saved.
+export const LIBRARY_SHOW_LIMIT = 30;
+function capped(entries, key, render) {
+  const open = state.libraryExpanded?.has(key);
+  const shown = open ? entries : entries.slice(0, LIBRARY_SHOW_LIMIT);
+  const more = entries.length - shown.length;
+  return `${shown.map(render).join("")}${more > 0 ? `
+        <div class="library-show-all"><button class="button button-secondary" type="button" data-library-show-all="${key}">Show all ${entries.length}</button><span>Showing ${shown.length} of ${entries.length}.</span></div>` : ""}`;
+}
+
+function section(title, note, entries, emptyText, key = title.toLowerCase()) {
   return `
     <section class="library-section" aria-label="${title}">
       <div class="library-section-head">
@@ -233,7 +317,7 @@ function section(title, note, entries, emptyText) {
         <p>${note}</p>
       </div>
       <div class="library-grid">
-        ${entries.length ? entries.map(triedCard).join("") : `<div class="filter-empty library-empty">${emptyText}</div>`}
+        ${entries.length ? capped(entries, `tried-${key}`, triedCard) : `<div class="filter-empty library-empty">${emptyText}</div>`}
       </div>
     </section>`;
 }
@@ -250,7 +334,7 @@ function dislikedBlock(items) {
             <div class="library-disliked-row">
               <span>${esc(item.title)} <em>${esc(displayLabel(item))}</em></span>
               <span class="library-restore" role="group" aria-label="Correct ${esc(item.title)}">
-                <button class="rec-favorite-star library-action" type="button" data-library-item="${id}" data-library-action="favorite" aria-label="Add to Favorites" title="Add to Favorites" aria-pressed="false"><span aria-hidden="true">☆</span></button>
+                <button class="rec-favorite-star library-action" type="button" data-library-item="${id}" data-library-action="favorite" aria-label="Add to Favorites" title="Add to Favorites" aria-pressed="false">${starIcon(false)}</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="liked">Actually, I liked it</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>
               </span>
@@ -329,7 +413,7 @@ function libraryTab(id, label, count) {
 
 export function renderLibrary() {
   const view = state.libraryView === "tried" ? "tried" : "saved";
-  const savedCount = bookmarkedFeedback(state).length;
+  const savedCount = savedEntries().filter(isBookmarked).length;
   const triedBuckets = libraryItems(state);
   const triedCount = triedBuckets.favorites.length + triedBuckets.library.length + dislikedItems(state).length;
 
@@ -360,11 +444,12 @@ export function renderLibrary() {
         ${renderDomainFilter({ selected: state.libraryFilter, scope: "library", label: "Filter your library by type" })}
       </div>
 
+      <!-- #29: only the open tab is rendered; the other panel stays in place (empty) for its tab's aria-controls. -->
       <div id="library-panel-saved" role="tabpanel" aria-labelledby="library-tab-saved" ${view === "saved" ? "" : "hidden"}>
-        ${renderSavedView()}
+        ${view === "saved" ? renderSavedView() : ""}
       </div>
       <div id="library-panel-tried" role="tabpanel" aria-labelledby="library-tab-tried" ${view === "tried" ? "" : "hidden"}>
-        ${renderTriedView()}
+        ${view === "tried" ? renderTriedView() : ""}
       </div>
 
       <div class="recommendation-footer page-actions">

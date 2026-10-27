@@ -277,7 +277,32 @@
 /* After setup: the row opens the reaction sheet; its own star adds a Favorite in one click. */
 .search-result-row { display:flex; align-items:center; gap:8px; }
 .search-result-row .search-result { flex:1 1 auto; min-width:0; }
-.search-row-star { flex:none; }
+/* Oct 24: after setup a title click opens details, so the add action is a labeled button, not a bare star. */
+.search-row-star {
+  flex:none;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  min-height:36px;   /* WCAG 2.2 target size */
+  padding:5px 11px;
+  border:1.5px solid var(--line);
+  border-radius:999px;
+  background:rgba(255,255,255,.72);
+  color:var(--navy);
+  font:inherit;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.search-row-star .star-icon { width:15px; height:15px; }
+.search-row-star:hover { border-color:var(--navy); background:var(--tint-warm,#fff9e6); }
+.search-row-star.is-favorite { border-color:var(--accent-text,var(--pink)); background:var(--pink-soft); color:var(--accent-text,var(--pink)); }
+.search-row-star:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:2px; }
 @media (max-width:620px) {
   .search-result-favorite { grid-template-columns:46px minmax(0,1fr) auto; }
 }
+
+/* Search speed (Oct 24): movies/TV/games show first; this line stays until books arrive. */
+.search-books-pending { display:flex; align-items:center; gap:8px; margin:0 0 8px; color:var(--muted); font-size:12px; }
+.search-books-pending .search-spinner { width:12px; height:12px; }
+.search-books-pending.is-failed { color:var(--accent-text,var(--pink)); }

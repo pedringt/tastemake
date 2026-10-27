@@ -1,7 +1,11 @@
 import { browseGenreById } from "./browse-genres.js";
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
+import { isBookCompanion } from "./book-companions.mjs";
+import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 
 export const BROWSE_PAGE_SIZE = 12;
+const BOOK_LOOKAHEAD = 8;
+export const BOOK_BROWSE_TIMEOUT_MS = 15_000;
 
 async function resolveTmdbKeywordId(keyword, headers, fetchImpl) {
   const response = await fetchImpl(`https://api.themoviedb.org/3/search/keyword?query=${encodeURIComponent(keyword)}&page=1`, { headers });
@@ -14,7 +18,9 @@ async function resolveTmdbKeywordId(keyword, headers, fetchImpl) {
 async function browseTmdb(genre, page, env, fetchImpl, mediaType) {
   if (!env.TASTEMAKE_TMDB_TOKEN) return { items: [], configured: false };
   const headers = { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" };
-  const common = `sort_by=popularity.desc&include_adult=false&language=en-US&page=${page}`;
+  // Oct 27 PM review: "Rate what you know" opened on 2026 releases, because popularity.desc is what's
+  // trending this week. Most-voted titles are ones people have actually seen (games already sort this way).
+  const common = `sort_by=vote_count.desc&include_adult=false&language=en-US&page=${page}`;
   let filter = "";
   if (genre.provider.kind === "keyword") {
     const keywordId = await resolveTmdbKeywordId(genre.provider.value, headers, fetchImpl);
@@ -35,16 +41,23 @@ const browseMovies = (genre, page, env, fetchImpl) => browseTmdb(genre, page, en
 const browseTv = (genre, page, env, fetchImpl) => browseTmdb(genre, page, env, fetchImpl, "tv");
 
 async function browseRead(genre, page, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,editions,editions.title,editions.language";
+  const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,editions,editions.title,editions.language";
+  // Oct 23 review: junk (study guides etc.) was dropped after cutting to 12, so such a page came up short.
+  // Each page asks for a few extra and fills to 12 after filtering. Pages still start at a fixed offset,
+  // so nothing is ever skipped; an extra that page N+1 also returns is dropped by the client's
+  // mergeUniqueBrowseItems.
   const offset = (page - 1) * BROWSE_PAGE_SIZE;
-  const url = `https://openlibrary.org/search.json?subject=${encodeURIComponent(genre.provider.value)}&limit=${BROWSE_PAGE_SIZE}&offset=${offset}&lang=en&fields=${fields}`;
-  const response = await fetchImpl(url, {
+  const url = `https://openlibrary.org/search.json?subject=${encodeURIComponent(genre.provider.value)}&limit=${BROWSE_PAGE_SIZE + BOOK_LOOKAHEAD}&offset=${offset}&lang=en&fields=${fields}`;
+  // Oct 24: this had no time limit, and one page hung 60 s until the function was cut off.
+  const response = await fetchWithTimeout(fetchImpl, url, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
-  });
+  }, BOOK_BROWSE_TIMEOUT_MS);
   if (!response.ok) throw new Error("openlibrary browse unavailable");
   const docs = (await response.json()).docs ?? [];
   return {
-    items: docs.slice(0, BROWSE_PAGE_SIZE).map(openLibraryItem),
+    // Older books' years are corrected after the page cache (api/browse.mjs), so a slow Wikidata answer
+    // never gets cached into a page for a day.
+    items: docs.filter((row) => !isBookCompanion(row)).slice(0, BROWSE_PAGE_SIZE).map(openLibraryItem),
     configured: true,
     hasMore: docs.length >= BROWSE_PAGE_SIZE
   };

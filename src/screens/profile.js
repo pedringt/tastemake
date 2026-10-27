@@ -9,6 +9,9 @@ import { esc } from "../lib/html.js";
 import { libraryItems } from "../model/library.js";
 import { evidenceRecords } from "../model/evidence.js";
 import { renderTasteMap } from "./tastemap.js";
+import { AI_PAUSED_EXPLAINER } from "../ai/ai-status.js";
+import { levelChangeConsequence } from "../model/history.js";
+import { exampleLinkHtml } from "../example-profile.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -223,9 +226,7 @@ function learningPanel(patterns = []) {
     let consequence = "";
     if (previous.level && current.level && previous.level !== current.level) {
       changed = `${previous.level} → ${current.level}.`;
-      consequence = String(current.level).toLowerCase() === "strong"
-        ? "This pattern can carry more weight in future recommendations."
-        : "Tastemake will lean on this pattern more cautiously.";
+      consequence = levelChangeConsequence(previous.level, current.level);
     } else if (String(previous.claim ?? "") !== String(current.claim ?? "")) {
       changed = "The pattern became more specific.";
       consequence = "Future picks will use the narrower interpretation instead of the older broad one.";
@@ -389,11 +390,17 @@ export function renderProfile() {
               </div>
             </div>` : ""}
           `
-      ) : `
+      ) : state.aiPaused ? `
+        <div class="profile-empty" role="status">
+          <strong>Patterns are waiting on AI.</strong>
+          <p>Patterns are built by AI. ${AI_PAUSED_EXPLAINER} Your favorites and ratings are saved, and your patterns will appear when it’s back.</p>
+          <button class="button button-primary" type="button" data-action="browse">Keep rating</button>
+        </div>` : `
         <div class="profile-empty" role="status">
           <strong>No generated patterns yet.</strong>
           <p>Tastemake needs more ratings from things you have actually tried before it can infer patterns responsibly. Favorites seed the profile; your reactions keep teaching it.</p>
           <button class="button button-primary" type="button" data-action="browse">Rate more things</button>
+          ${exampleLinkHtml("Want to see one with lots of data?")}
         </div>`}
 
       ${liveProfile && profileView === "list" ? learningPanel(primaryHypotheses) : ""}

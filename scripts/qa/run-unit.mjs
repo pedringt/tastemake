@@ -32,9 +32,15 @@ const SUITES = [
   "library-search-tests.mjs",
   "persistence-tests.mjs",
   "export-tests.mjs",
+  "example-profile-tests.mjs",
   "refinement-tests.mjs",
   "statements-tests.mjs",
+  "new-releases-tests.mjs",
+  "exclusions-tests.mjs",
   "browse-tests.mjs",
+  "similar-tests.mjs",
+  "taste-score-tests.mjs",
+  "pm-review-tests.mjs",
   "metadata-tests.mjs",
   "canonical-store-tests.mjs",
   "canonical-related-tests.mjs",
@@ -46,7 +52,8 @@ const SUITES = [
   "search-ranking-tests.mjs",
   "insights-tests.mjs",
   "latency-tests.mjs",
-  "stress-eval-tests.mjs"
+  "stress-eval-tests.mjs",
+  "security-headers-tests.mjs"
 ];
 
 // A new *-tests.mjs file that is not listed above would otherwise never run.

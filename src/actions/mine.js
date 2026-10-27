@@ -3,6 +3,7 @@ import { applySearchAction } from "../model/search.js";
 import { clearStatement } from "../model/statements.js";
 import { removeBlindSpot } from "../model/blindspots.js";
 import { AREAS } from "../model/taste.js";
+import { EXCLUDABLE_GENRES, addExclusion, makeExclusion, removeExclusion } from "../model/exclusions.js";
 import { backupFileName, buildBackup, buildHtmlExport, htmlFileName } from "../model/export.js";
 
 // ---- My Tastemake (#8) ----
@@ -23,6 +24,28 @@ function downloadText(filename, type, text) {
 export function openMine(navigate) {
   if (state.screen !== "mine") state.mineReturn = state.screen;
   navigate("mine");
+}
+
+function mineNeverFocusAfter(rowEl) {
+  const next = rowEl?.nextElementSibling ?? rowEl?.previousElementSibling;
+  return next?.dataset.mineNeverRow ? `[data-mine-never-remove="${next.dataset.mineNeverRow}"]` : null;
+}
+
+// #48: adding a creator by name from My Tastemake.
+export function handleMineSubmit(event, { render, restoreFocus, announce }) {
+  const form = event.target.closest("[data-mine-never-form]");
+  if (!form) return;
+  event.preventDefault();
+  const input = form.querySelector("input[name=creator]");
+  const exclusion = makeExclusion("creator", input?.value ?? "");
+  if (!exclusion) {
+    announce("Type at least three letters of a name.");
+    return;
+  }
+  addExclusion(state, exclusion);
+  render();
+  restoreFocus("#mine-never-creator");
+  announce(`Tastemake won’t recommend anything by ${exclusion.label} in new sets.`);
 }
 
 export function mineRemoveFocusAfter(rowEl) {
@@ -109,6 +132,18 @@ export function handleMineClick(event, { render, updateStepper, restoreFocus, an
     return;
   }
 
+  if (button.dataset.mineNeverRemove) {
+    const id = button.dataset.mineNeverRemove;
+    const label = (state.exclusions ?? []).find((e) => e.id === id)?.label ?? "That";
+    const selector = mineNeverFocusAfter(button.closest(".mine-never-row"));
+    if (removeExclusion(state, id)) {
+      render();
+      restoreFocus(selector, document.querySelector("#mine-never-creator"));
+      announce(`${label} can be recommended again in new sets.`);
+    }
+    return;
+  }
+
   if (button.dataset.action === "mine-back") {
     navigate(canAccess(state.mineReturn) ? state.mineReturn : "favorites");
   }
@@ -147,6 +182,17 @@ export async function handleMineChange(event, { render, restoreFocus, announce, 
     render();
     restoreFocus(`[data-mine-area="${id}"]`);
     announce(`${label} is ${state.areas[id] ? "on" : "off"} for new sets.`);
+    return;
+  }
+  const never = event.target.closest("[data-mine-never-genre]");
+  if (never) {
+    const id = never.dataset.mineNeverGenre;
+    const label = EXCLUDABLE_GENRES.find((g) => g.id === id)?.label ?? id;
+    if (never.checked) addExclusion(state, makeExclusion("genre", id));
+    else removeExclusion(state, `genre:${id}`);
+    render();
+    restoreFocus(`[data-mine-never-genre="${id}"]`);
+    announce(never.checked ? `${label} won’t be recommended in new sets.` : `${label} can be recommended again.`);
     return;
   }
   if (event.target.closest("[data-mine-curveball]")) {

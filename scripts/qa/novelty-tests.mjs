@@ -282,8 +282,10 @@ check("only one Hunger Games book makes a batch, and it is book 1", batch.primar
 // #255: a later entry in a series is not a fresh recommendation, even with no evidence in that series.
 check("series_position from search is kept", olBook("OL893461W").providerMeta.seriesPosition === 2);
 check("a title suffix gives a position", bookSeriesFromRow({ title: "The Well of Ascension (Mistborn, Book 2)" }).seriesPosition === 2);
+check("a mid-title marker gives a position (Twelve Kingdoms, Book Three: …)", bookSeriesFromRow({ title: "The Twelve Kingdoms, Book Three: Sea of Wind, Shore of the Labyrinth" }).seriesPosition === 3);
+check("'The Book of Three' is not read as a position", bookSeriesFromRow({ title: "The Book of Three" }).seriesPosition === null);
 check("only whole positive positions count", bookSeriesFromRow({ series_position: ["0.5"] }).seriesPosition === null);
-for (const [value, want] of [["The Mistborn Saga #3", 3], ["Mistborn -- bk. 3", 3], ["The Kingkiller Chronicle, Day 2", 2], ["The Stormlight Archive, 2", 2], ["Book Two", 2], ["Penguin Classics", null], ["Choice -- 251", null]]) {
+for (const [value, want] of [["The Mistborn Saga #3", 3], ["Mistborn -- bk. 3", 3], ["The Kingkiller Chronicle, Day 2", 2], ["The Stormlight Archive, 2", 2], ["Wheel of Time (6)", 6], ["Book Two", 2], ["Penguin Classics", null], ["Choice -- 251", null]]) {
   check(`position from "${value}"`, seriesPositionFromValue(value) === want, seriesPositionFromValue(value));
 }
 check("editions that agree give a position (The Hero of Ages -> 3)", seriesPositionFromEditions(olFixture.editions.OL5738154W.entries) === 3);

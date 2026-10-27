@@ -42,8 +42,12 @@ index = open(root + "/index.html").read()
 import os, re
 look = os.environ.get("LOOK", "editorial")
 index = re.sub(r'<html lang="en" data-look="[a-z]*"', '<html lang="en" data-look="%s"' % look, index)
+# The Chrome profile is reused across runs (see CHROME_PROFILE below), so its localStorage would carry the
+# last run's app state into this one: a run that reached Recommendations left onboarded=true, and the next
+# flow run's search showed returning-user rows instead of one-click Favorites. Start every page empty.
+CLEAN = '<script>try{localStorage.clear();sessionStorage.clear()}catch(e){}</script>'
 def page(name, body):
-    open(f"{h}/{name}", "w").write(index.replace("</body>", body + "\n</body>"))
+    open(f"{h}/{name}", "w").write(index.replace("<head>", "<head>\n    " + CLEAN, 1).replace("</body>", body + "\n</body>"))
 def runner(module, call, delay):
     return ('<script type="module">setTimeout(async()=>{let r;try{const m=await import("/scripts/qa/' + module + '");r=await m.' + call +
             '}catch(e){r={error:String(e&&e.stack||e)}}const p=document.createElement("pre");p.id="out";p.textContent=JSON.stringify(r);document.body.appendChild(p)},' + str(delay) + ');</script>')
@@ -60,7 +64,14 @@ let tries=0;const t=setInterval(()=>{tries++;try{const o=f.contentDocument.getEl
 </script></body></html>""")
 PY
 
-(cd "$ROOT" && exec python3 -m http.server "$PORT" >/dev/null 2>&1) &
+# no-store: the reused profile otherwise keeps Chrome's HTTP cache too, and a run can execute last
+# run's copy of a module (an edited test or source file silently not taking effect).
+(cd "$ROOT" && exec python3 -c 'import http.server as s
+class H(s.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+s.test(HandlerClass=H, port=int(__import__("sys").argv[1]))' "$PORT" >/dev/null 2>&1) &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null' EXIT
 sleep 1

@@ -8,8 +8,9 @@ import { createSuite } from "./lib/assert.mjs";
 
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
-const { detailDescription, formatRuntime, renderDetailMeta } = await import("../../src/screens/library.js");
-const { fetchItemDetail, googleBooksSeriesDetail, tvYearsRun } = await import("../../src/catalog/providers.mjs");
+const { detailDescription, formatRuntime, renderDetailMeta, renderWhereToGet } = await import("../../src/screens/library.js");
+const { compactWatchProviders, fetchAndPersistItemDetail, fetchItemDetail, watchServiceName, googleBooksSeriesDetail, tvYearsRun, watchForRegion } = await import("../../src/catalog/providers.mjs");
+const { viewerRegion } = await import("../../src/catalog/client.js");
 
 const { check, finish } = createSuite("metadata tests");
 
@@ -176,6 +177,51 @@ check("tv with no first air date has no run years", tvYearsRun({ last_air_date: 
     { env: {}, fetchImpl: async () => { calledWithoutKey = true; throw new Error("should not call"); } }
   );
   check("Google Books fallback is a no-op without an API key", JSON.stringify(noKey) === "{}" && !calledWithoutKey);
+}
+
+// ---- #10: where to watch / read --------------------------------------------------------------------------
+{
+  // The shape TMDb's watch/providers returns (results by country).
+  const results = {
+    US: { link: "https://www.themoviedb.org/movie/329865-arrival/watch?locale=US", flatrate: [{ provider_name: "Paramount Plus" }, { provider_name: "Paramount Plus" }], rent: [{ provider_name: "Apple TV" }, { provider_name: "Amazon Video" }], buy: [{ provider_name: "Apple TV" }] },
+    GB: { link: "https://www.themoviedb.org/movie/329865-arrival/watch?locale=GB", free: [{ provider_name: "BBC iPlayer" }] },
+    "??": { flatrate: [{ provider_name: "x" }] },
+    FR: { link: "https://evil.example/", rent: [{ provider_name: "Canal VOD" }] }
+  };
+  const watch = compactWatchProviders(results);
+  check("names per kind, duplicates dropped", watch.US.stream.join() === "Paramount+" && watch.US.rent.join() === "Apple TV,Amazon Video");
+  check("bad country codes are skipped", !("??" in watch));
+  // Oct 23, Arrival in the US as TMDb listed it: one service per plan and per resold channel.
+  const arrival = compactWatchProviders({ US: { flatrate: ["Paramount Plus Premium", "Paramount Plus Essential", "Peacock Premium", "Paramount+ Amazon Channel", "Paramount+ Roku Premium Channel", "Peacock Premium Plus", "Netflix Standard with Ads", "Crave Amazon Channel"].map((provider_name) => ({ provider_name })) } });
+  check("plans and resold channels collapse to the service, keeping order", arrival.US.stream.join() === "Paramount+,Peacock,Netflix,Crave", arrival.US.stream.join());
+  check("real distinctions stay", ["Now TV Cinema", "YouTube TV", "Apple TV Store", "Fandango At Home"].every((n) => watchServiceName(n) === n));
+  check("a name that is only a plan word is left alone", watchServiceName("Premium") === "Premium" && watchServiceName("MGM Plus Roku Premium Channel") === "MGM+");
+  check("only TMDb's own links are kept", watch.FR.link === null && watch.US.link.startsWith("https://www.themoviedb.org/"));
+  check("one country is picked for the viewer", watchForRegion(watch, "gb").free.join() === "BBC iPlayer" && watchForRegion(watch, "gb").region === "GB");
+  check("a country with no listing says so", watchForRegion(watch, "DE").none === true);
+  check("no data at all stays empty", compactWatchProviders(undefined) === null && watchForRegion(null, "US") === null);
+
+  check("region from the browser language", viewerRegion(["en-GB"]) === "GB" && viewerRegion(["fr-ca", "en"]) === "CA");
+  check("region falls back to US", viewerRegion(["en"]) === "US" && viewerRegion([]) === "US");
+
+  const html = renderWhereToGet({ type: "movie" }, { whereToWatch: watchForRegion(watch, "US") });
+  check("Where to watch lists stream, rent and buy", /Stream<\/dt><dd>Paramount\+/.test(html) && /Rent<\/dt><dd>Apple TV, Amazon Video/.test(html) && /Buy/.test(html));
+  check("JustWatch is credited with a link to all options", /Availability from JustWatch/.test(html) && /href="https:\/\/www\.themoviedb\.org\/movie\/329865/.test(html));
+  check("nothing available reads plainly", /Not available to stream, rent or buy here/.test(renderWhereToGet({ type: "tv" }, { whereToWatch: watchForRegion(watch, "DE") })));
+  check("no watch data yet, no block", renderWhereToGet({ type: "movie" }, {}) === "");
+  const book = renderWhereToGet({ type: "book", title: "Piranesi", by: "Susanna Clarke", provider: "openlibrary", providerId: "OL20893680W" });
+  check("books get a library search and Open Library", /worldcat\.org\/search\?q=Piranesi%20Susanna%20Clarke/.test(book) && /openlibrary\.org\/works\/OL20893680W/.test(book));
+  check("games get no extra block (platforms are listed already)", renderWhereToGet({ type: "game", title: "Outer Wilds" }) === "");
+
+  // The TMDb detail call brings watch providers along, and they are served but never stored as facts.
+  let asked = "";
+  const fetchImpl = async (url) => { asked = String(url); return { ok: true, json: async () => ({ runtime: 116, credits: { crew: [{ job: "Director", name: "Denis Villeneuve" }], cast: [] }, "watch/providers": { results } }) }; };
+  const written = [];
+  const query = async (text, params) => { written.push({ text, params }); return /^\s*select/i.test(text) ? [{ item_id: 7, factual: {} }] : []; };
+  const detail = await fetchAndPersistItemDetail({ provider: "tmdb", providerId: "329865", type: "movie" }, { env: { TASTEMAKE_TMDB_TOKEN: "t" }, fetchImpl, query });
+  check("one TMDb call asks for credits and watch providers together", /append_to_response=credits,watch\/providers/.test(asked), asked);
+  check("the detail carries watch data for the endpoint", detail.watch?.US?.stream?.[0] === "Paramount+");
+  check("watch data is never written to the catalog store", written.length > 0 && !written.some((w) => JSON.stringify(w.params ?? []).includes("Paramount")), JSON.stringify(written.map((w) => w.params)).slice(0, 200));
 }
 
 finish();

@@ -122,10 +122,14 @@ function isNearDuplicateTitle(candidate, evidenceItem) {
 function isNumberedContinuation(candidate, evidenceItem) {
   const hasMarker = SEQUEL_MARKER.test(candidate.title) || SEQUEL_MARKER.test(evidenceItem.title);
   if (!hasMarker) return false;
-  const wa = significantWords(candidate.title);
-  const wb = significantWords(evidenceItem.title);
+  // A shared number alone isn't a franchise: "Witch Hat Atelier, Vol. 1" doesn't continue "Frieren, Vol. 1" (Oct 27).
+  const named = (title) => significantWords(title).filter((word) => !NUMBER_WORD.test(word));
+  const wa = named(candidate.title);
+  const wb = named(evidenceItem.title);
   return wa.length > 0 && wb.length > 0 && wa.some((word) => wb.includes(word));
 }
+
+const NUMBER_WORD = /^(?:\d+|ii|iii|iv|v|vi|vii|viii|ix|x)$/;
 
 function sharesFranchiseName(candidate, evidenceItem, minWords = 2) {
   const prefixA = titleSeriesPrefix(candidate.title);

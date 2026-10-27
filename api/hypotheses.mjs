@@ -176,8 +176,16 @@ export default async function handler(req, res) {
   // same as the sibling endpoint.
   const contentLength = Number(req.headers?.["content-length"] || 0);
   if (contentLength > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
+  // Invalid JSON is the caller's mistake, not the AI being down: a 400, not a 200 "unavailable" (Oct 24).
+  // On Vercel, reading req.body itself throws when the JSON is invalid.
+  let body;
   try {
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body ?? {};
+    const raw = req.body;
+    body = typeof raw === "string" ? JSON.parse(raw) : raw ?? {};
+  } catch {
+    return res.status(400).json({ error: "invalid request" });
+  }
+  try {
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
     if (!body.state || typeof body.state !== "object") return res.status(400).json({ error: "state is required" });
     const started = Date.now();

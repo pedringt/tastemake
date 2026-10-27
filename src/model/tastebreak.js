@@ -12,8 +12,20 @@ import { recordRevision } from "./history.js";
 // revision (#37) so it is visible and traceable, but does not (yet) change ranking or confidence — see
 // "Later possibilities" in #19 for where that could go once this is proven useful.
 
+// The patterns a Tastebreak asks about. Oct 20 (#19): v1 only used the pattern a pick was testing
+// (`ai.tests`), which the picks schema stopped returning in #246, so Tastebreak could never appear. It now
+// also offers every active Taste Profile pattern that cites this item as support or counter-evidence. A
+// pattern the user said is "not me" is left out.
+export function tastebreakPatterns(item, state) {
+  const ref = `ev:${item?.id}`;
+  const rejected = new Set((state.patternStatements ?? []).filter((s) => s.says === "not-me").map((s) => s.hypothesisId));
+  const citing = (state.modelHypotheses ?? []).filter((p) => !rejected.has(p.id) && [...(p.supports ?? []), ...(p.counters ?? [])].includes(ref));
+  const seen = new Set();
+  return [...patternsFor(item, state), ...citing].filter((p) => !seen.has(p.id) && seen.add(p.id));
+}
+
 export function isTastebreakCandidate(feedback, state) {
-  return Boolean(feedback) && isExperienced(feedback) && patternsFor(feedback.item, state).length > 0;
+  return Boolean(feedback) && isExperienced(feedback) && tastebreakPatterns(feedback.item, state).length > 0;
 }
 
 export function tastebreakFor(state, itemId) {

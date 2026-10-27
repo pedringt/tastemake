@@ -136,7 +136,7 @@
   .reaction-stamp { display:inline-block; margin-top:8px; }
   .reaction-rail { grid-template-columns:1fr; }
   .rating-button { min-height:44px; }
-  .surprise-burst { width:68px; height:68px; font-size:15px; }
+  .surprise-burst { width:68px; height:68px; font-size:8.5px; }
   .why-popover { width:min(300px,calc(100vw - 34px)); }
   .quality-note-row { display:block; }
   .quality-note-help { display:block; margin-top:7px; }
@@ -217,6 +217,41 @@
   .skeleton-body { padding:12px; gap:7px; }
   .skeleton-actions span { height:36px; }
   .rec-interaction { min-height:78px; padding-top:8px; }
+
+  /* Oct 27 PM review: at 375px the first pick's Tried it / Not tried sat about 1,190px down, under a
+     full-height hero, a progress card, a stacked filter band and the Browse link. The masthead becomes one
+     short row (title beside a small progress pill), the filter label sits inline, the art is shorter and
+     the two reaction buttons sit side by side, so the first pick's buttons land on the first screen. */
+  .recommendations-masthead { grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; margin:0 0 10px; }
+  .recommendations-masthead .kicker { margin-bottom:4px; }
+  .recommendations-masthead h1 { font-size:clamp(26px,8vw,32px); line-height:1.02; margin:0; }
+  .recommendations-masthead .lede { display:none; }
+  .rec-progress-card { padding:8px 10px; transform:none; }
+  .rec-progress-card::before,.rec-progress-card .progress-note { display:none; }
+  .rec-progress-top { gap:5px; }
+  .rec-progress-top strong { font-size:22px; }
+  .rec-progress-top span { font-size:10px; letter-spacing:.06em; }
+  .rec-progress-card .progress-track { width:72px; gap:3px; margin:6px 0 0; }
+  .rec-progress-card .progress-segment { height:5px; }
+  /* The chips keep the full row so all five fit. The group is still named ("Generate recommendations by
+     type") for screen readers, so the visible "Show me" label can go. */
+  .recommendation-filter-band { padding:8px 10px; margin:0 0 10px; }
+  .recommendation-filter-band .filter-band-label { display:none; }
+  .recommendation-filter-band .filter-context { display:none; }
+  .recommendation-browse-link { display:none; }   /* Browse is in the top nav on phones */
+  .editorial-art { aspect-ratio:16 / 6; }
+  /* The shorter art keeps its decorative shapes in the top half, clear of the title along the bottom. */
+  .art-shape-a { width:110px; height:110px; border-width:18px; top:-62px; }
+  .art-shape-b { height:34px; top:8px; }
+  .art-layout-2 .art-shape-a { width:70px; height:70px; top:-34px; }
+  .art-layout-4 .art-shape-b { width:64px; height:64px; top:-26px; }
+  .reaction-rail { grid-template-columns:1fr 1fr; }
+  .rec-interaction { min-height:0; }
+  .reaction-question { display:none; }   /* "Tried it" / "Not tried" say it on their own */
+
+  /* Taste Profile: the hero alone filled the first screen (a 237px title plus a 110px stamp below it). */
+  .profile-title-block h1 { font-size:clamp(28px,8.5vw,34px); line-height:1.08; }
+  .profile-stamp { display:none; }
 }
 
 

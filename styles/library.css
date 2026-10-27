@@ -387,3 +387,20 @@
   padding-top:8px;
   border-top:1px solid var(--line);
 }
+
+/* #10: where to get it, quieter than the facts above it. */
+.where-to-get { margin:10px 0 12px; padding-top:8px; border-top:1px dotted var(--line); font-size:12px; line-height:1.45; }
+.where-to-get h4 { margin:0 0 4px; color:var(--navy); font-size:12px; }
+.where-to-get h4 span { color:var(--muted); font-weight:400; }
+.where-to-get dl { display:grid; gap:2px; margin:0; }
+.where-to-get dl > div { display:flex; gap:6px; flex-wrap:wrap; }
+.where-to-get dt { margin:0; font-weight:700; color:var(--navy); flex-shrink:0; }
+.where-to-get dd { margin:0; }
+.where-to-get p { margin:0; }
+.where-to-get a { color:var(--note-ink,#5749bf); font-weight:700; }
+.where-to-get .where-credit { margin-top:4px; color:var(--muted); font-size:11px; }
+
+/* #29: long sections stop at 30 with a "Show all" button. */
+.library-show-all { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:4px 0; color:var(--muted); font-size:13px; }
+.library-show-all .button { width:auto; flex:0 0 auto; }
+.library-see-similar { margin-top:8px; padding-left:0; }

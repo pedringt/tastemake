@@ -22,6 +22,8 @@ function fresh() {
     blindSpots: {},
     // What the user said about a pattern (user-confirmed; outranks inference; not taste evidence). See statements.js.
     patternStatements: [],
+    // #48: "never recommend" boundaries. Not taste evidence (src/model/exclusions.js).
+    exclusions: [],
     blindSpotDrafts: {},
     blindSpotDismissed: new Set(),
     // Tastebreak (#19 v1): confirmed/rejected patterns and a free-text note per item, wizard drafts in
@@ -43,6 +45,7 @@ function fresh() {
     aiStatus: "idle",
     aiSource: null,
     aiMessage: null,
+    aiPaused: false,
     // Taste Profile view (#21): the list, or the map with an optional selected pattern / evidence pick.
     profileView: "list",
     mapPattern: null,
@@ -72,10 +75,14 @@ function fresh() {
     // evidence, and — like the rest of state — lives only in memory; there is no persisted schema
     // to migrate, so there is nothing that can duplicate or lose data across a reload.
     libraryView: "saved",
-    // #52: per-item explicit open/closed override for the discovery-quality note, keyed by item id.
-    // Purely a display preference, not evidence. Without an override it defaults to open once there is
-    // already an answer in it (see qualityExpanded in screens/recommendations.js) and closed otherwise,
-    // but an explicit click always wins over that default in either direction.
+    // Oct 27: things just rated from Saved stay on that list, with "What worked for you?" open, until Done
+    // or leaving Library. In memory only; never saved, never evidence.
+    savedJustTried: [],
+    // Oct 27: things rated on Browse since arriving there, for its "rated this visit" count. In memory only.
+    browseRatedThisVisit: [],
+    // Oct 27: Browse showing "More like <item>" instead of a genre: { id, title, type }. In memory only.
+    browseSimilar: null,
+    // Unused since the "This pick was" line was removed (Oct 27); kept so saved data loads unchanged.
     expandedFeedback: {},
     // My Tastemake (#8): settings, not taste. Areas are "show me / don't show me this kind of thing" and say
     // nothing about what the user likes; the curveball setting only changes how new sets are put together.
@@ -123,6 +130,7 @@ export const state = {
   ...initial,
   ...persisted,
   patternStatements: normalizePersistedPatternStatements(persisted.patternStatements ?? initial.patternStatements),
+  exclusions: Array.isArray(persisted.exclusions) ? persisted.exclusions : initial.exclusions,
   selectedFavorites: persisted.selectedFavorites instanceof Set ? persisted.selectedFavorites : initial.selectedFavorites,
   libraryFavorites: persisted.libraryFavorites instanceof Set ? persisted.libraryFavorites : initial.libraryFavorites,
   blindSpotDismissed: persisted.blindSpotDismissed instanceof Set ? persisted.blindSpotDismissed : initial.blindSpotDismissed,
@@ -131,6 +139,7 @@ export const state = {
   aiStatus: "idle",
   aiSource: null,
   aiMessage: null,
+    aiPaused: false,
   hypothesisAiStatus: "idle",
   hypothesisAiMessage: null,
   recommendationMediumFilter: "all",
@@ -148,7 +157,8 @@ document.documentElement.dataset.look = state.look;
 
 export function resetState() {
   const look = state.look;
-  clearPersistedState();
+  // Oct 27: "Start over" inside Paige's Example Profile clears the example in memory, never the visitor's saved profile.
+  if (!state.viewingExample) clearPersistedState();
   Object.assign(state, fresh(), { look });
 }
 
@@ -159,6 +169,7 @@ export function restoreStateFromBackupText(text) {
   Object.assign(state, fresh(), restored, {
     look,
     patternStatements: normalizePersistedPatternStatements(restored.patternStatements ?? []),
+    exclusions: Array.isArray(restored.exclusions) ? restored.exclusions : [],
     selectedFavorites: restored.selectedFavorites instanceof Set ? restored.selectedFavorites : new Set(restored.selectedFavorites ?? []),
     libraryFavorites: restored.libraryFavorites instanceof Set ? restored.libraryFavorites : new Set(restored.libraryFavorites ?? []),
     blindSpotDismissed: restored.blindSpotDismissed instanceof Set ? restored.blindSpotDismissed : new Set(restored.blindSpotDismissed ?? []),
@@ -167,6 +178,7 @@ export function restoreStateFromBackupText(text) {
     aiStatus: "idle",
     aiSource: null,
     aiMessage: null,
+    aiPaused: false,
     hypothesisAiStatus: "idle",
     hypothesisAiMessage: null,
     recommendationMediumFilter: "all",

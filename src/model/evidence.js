@@ -100,7 +100,6 @@ export function evidenceRecords(state) {
       source: sourceOf(feedback),
       wasSaved: Boolean(feedback.wasBookmarked),
       refinements: refinementRecords(feedback),
-      note: feedback.quality ?? null   // discovery notes (Too predictable / Surprised me): never taste
       });
     });
   return [...starters, ...reactions];

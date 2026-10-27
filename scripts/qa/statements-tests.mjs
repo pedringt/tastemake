@@ -1,6 +1,8 @@
 import { activeStatements, alsoAppliesToFor, setStatement, toggleAlsoApplies, toggleDomainExclusion } from "../../src/model/statements.js";
 import { evidenceFingerprint } from "../../src/ai/requests.js";
 import { createSuite } from "./lib/assert.mjs";
+import { levelChangeConsequence } from "../../src/model/history.js";
+import { isTastebreakCandidate, startTastebreak, tastebreakPatterns } from "../../src/model/tastebreak.js";
 
 const { check, eq, finish } = createSuite("statements tests");
 
@@ -71,6 +73,33 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   eq("changing the answer away from 'Yes' clears it", alsoAppliesToFor(state, books.id).length, 0);
   setStatement(state, books.id, "says", "partial");
   eq("a statement left with nothing is removed", activeStatements(state).length, 0);
+}
+
+// ---- #19: Tastebreak is offered for items a Taste Profile pattern cites (Oct 20) -------------------
+{
+  const book = { id: "ol-hero", title: "The Hero of Ages", type: "book", domains: ["read"] };
+  const loved = { item: book, rating: "more", detail: "loved-before" };
+  const citing = { id: "ai-world", title: "Rich world-building", claim: "Richly built worlds carry the enjoyment.", supports: ["ev:ol-hero"], counters: [] };
+  const other = { id: "ai-other", title: "Other", claim: "Something else entirely.", supports: ["ev:ol-other"], counters: [] };
+  const state = { modelHypotheses: [citing, other], patternStatements: [], hypothesisHistory: [], feedbackByRecommendation: { [book.id]: loved }, tastebreaks: {}, tastebreakDrafts: {} };
+
+  eq("a pick with no ai.tests is offered Tastebreak when a pattern cites it", isTastebreakCandidate(loved, state), true);
+  eq("only the citing pattern is asked about", tastebreakPatterns(book, state).map((p) => p.id).join(), "ai-world");
+  check("starting one works", typeof startTastebreak(state, book.id) === "string" && state.tastebreakDrafts[book.id]);
+  eq("a counter-citing pattern counts too (a dislike's 'why it didn't land')", tastebreakPatterns(book, { ...state, modelHypotheses: [{ ...citing, supports: [], counters: ["ev:ol-hero"] }] }).length, 1);
+  eq("a pattern the user said is 'not me' is left out", isTastebreakCandidate(loved, { ...state, patternStatements: [{ hypothesisId: "ai-world", says: "not-me" }] }), false);
+  eq("an untried item is never offered", isTastebreakCandidate({ item: book, rating: "not-tried", detail: "bookmarked" }, state), false);
+  eq("no citing pattern, no Tastebreak", isTastebreakCandidate(loved, { ...state, modelHypotheses: [other] }), false);
+}
+
+// Oct 23 smoke test: "emerging → supported" was explained as "lean on this pattern more cautiously".
+{
+  check("up a level reads as more confidence", /a little more/.test(levelChangeConsequence("emerging", "supported")), levelChangeConsequence("emerging", "supported"));
+  check("up to Strong reads as more weight", /more weight/.test(levelChangeConsequence("supported", "strong")));
+  check("down from Strong reads as more cautious", /more cautiously/.test(levelChangeConsequence("strong", "supported")));
+  check("down to Emerging reads as an open question again", /open question/.test(levelChangeConsequence("supported", "emerging")));
+  check("capitalized levels work too", /a little more/.test(levelChangeConsequence("Emerging", "Supported")));
+  eq("no change, no sentence", levelChangeConsequence("supported", "supported"), "");
 }
 
 finish();
