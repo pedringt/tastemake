@@ -58,3 +58,5 @@
 .setup-example-link:focus-visible { outline:2px solid var(--ink); outline-offset:3px; border-radius:4px; }
 /* Oct 27: the same quiet link after setup, on My Tastemake and the empty Taste Profile. */
 .example-link-line, .profile-empty .example-link-line { margin:12px 0 0; color:var(--muted); }
+/* It's a button (not an inline link), so it needs the 24px minimum target (WCAG 2.5.8). */
+.example-link-line .setup-example-link { display:inline-block; min-height:24px; padding-block:2px; }
