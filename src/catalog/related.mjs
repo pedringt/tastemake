@@ -1,5 +1,8 @@
 import { enrichCanonicalItemWriteBehind, igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
+import { bridgeCandidates } from "./bridge-candidates.mjs";
+import { bridgeQueriesFor } from "./bridges.mjs";
+import { browseCatalog } from "./browse.mjs";
 import { withBookSeriesEvidence } from "./book-series-editions.mjs";
 import { bookSeriesPosition, isBook, isLaterSeriesEntry } from "./book-series.mjs";
 import { wikidataSeriesPositions } from "./wikidata-series.mjs";
@@ -8,6 +11,10 @@ import { correctOldBookYears } from "./wikidata-years.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
+import { bookGenreFamilies } from "./book-genres.mjs";
+
+// Oct 27: bookGenreFamilies moved to book-genres.mjs so the browser can use it (bridges.mjs); re-exported here.
+export { bookGenreFamilies };
 
 // Deliberately NOT imported from model/evidence.js: this module sits in a real circular import
 // chain (taste.js -> evidence.js -> starters.js -> search.js -> taste.js), and adding related.mjs
@@ -213,32 +220,6 @@ function normalizeBookSubject(value) {
 // fiction" and "Adult books for young adults"; querying them returned Emily of New Moon and Dear Enemy,
 // which share only "Orphans" plus "Juvenile fiction" / "Children's fiction".
 const AUDIENCE_OR_FORMAT_SUBJECT = /^(?:juvenile(?: audience| fiction| literature)?|children'?s (?:fiction|literature|books|stories)|child and youth fiction|adult books for young adults|young adult (?:fiction|literature)|teen fiction|large (?:type|print) books?|colou?ring books?|activity books?|picture books?|series|form:.*|series:.*|serie:.*|franchise:.*|nyt:.*|fiction,? general|[a-z]+ literature|.*\(fictitious character\).*|.*fictitious character.*)$/i;
-
-// Genre families a subject points to. A book's family set is what "the same kind of book" means for
-// retrieval: a candidate must share one with the book it came from (when that book has any).
-const BOOK_GENRE_FAMILIES = [
-  ["fantasy", /\b(?:fantasy|fantastic|magic|magicians?|wizards?|witch(?:es|craft)?|dragons?|elves|fairies|fairy tales?|mytholog(?:y|ical)|myths?|sword and sorcery|romantasy)\b/i],
-  ["science fiction", /\b(?:science fiction|sci-?fi|space opera|dystopi(?:a|an|as)|cyberpunk|time travel|robots?|extraterrestrial|interplanetary|aliens?)\b/i],
-  ["horror", /\b(?:horror|ghosts?|ghost stories|vampires?|haunted|gothic|supernatural|monsters?|zombies?|demons?|exorcism)\b/i],
-  ["mystery", /\b(?:mystery|mysteries|detective|whodunit|private investigators?)\b/i],
-  ["thriller", /\b(?:thrillers?|suspense|espionage|spy stories)\b/i],
-  ["crime", /\b(?:crime|murder|criminals?|heists?|swindlers?|gangsters?)\b/i],
-  ["romance", /\b(?:romance|romantic|love stories)\b/i],
-  ["historical", /\b(?:historical|history)\b/i],
-  ["literary", /\bliterary\b/i],
-  ["humor", /\b(?:humou?r|humorous|comedy|satire)\b/i],
-  ["adventure", /\b(?:adventure|quests?|voyages)\b/i],
-  ["war", /\b(?:war stories|military|soldiers?)\b/i]
-];
-
-export function bookGenreFamilies(subjects = []) {
-  const families = new Set();
-  for (const subject of subjects) {
-    const value = String(subject ?? "").replace(/^genre\s*:\s*/i, "");
-    for (const [family, re] of BOOK_GENRE_FAMILIES) if (re.test(value)) families.add(family);
-  }
-  return families;
-}
 
 export function meaningfulBookSubjects(values = []) {
   return values
@@ -547,6 +528,50 @@ async function hydrateSelectedAnchorMetadata(items, { env, query }) {
   });
 }
 
+// #252 part 2 (Oct 27): bridge candidates, a cross-medium test for the Surprise Me slot. Only with Surprise Me
+// on and the filter on All, when someone has Loved things in one medium and few or no ratings in another:
+// one Loved item is taken across through the shared Browse shelves (src/catalog/bridges.mjs), and at most
+// MAX_BRIDGE_CANDIDATES results are added, marked `bridge` and found from that item. Taste never moves
+// across media silently: the pick is labeled as a test (chooseCandidates offers at most one).
+export const MAX_BRIDGE_CANDIDATES = 2;
+const FEW_ANCHORS = 2;          // a medium with at most this many positive ratings can take a bridge
+const LOVED_TO_BRIDGE = 2;      // the source medium needs at least this many Loved items
+const BRIDGE_PAIRS = { movies: ["read"], tv: ["read"], play: ["read"], read: ["movies", "tv"] };
+
+export function chooseBridge(state, allEvidence) {
+  if (state.curveball === false || (state.recommendationFilter ?? "all") !== "all") return null;
+  const positives = new Map(MIXED_DOMAINS.map((domain) => [domain, 0]));
+  const loved = new Map(MIXED_DOMAINS.map((domain) => [domain, 0]));
+  for (const item of allEvidence) {
+    const domain = primaryDomain(item);
+    if (!positives.has(domain)) continue;
+    positives.set(domain, positives.get(domain) + 1);
+    if (item.anchorStrength >= 3) loved.set(domain, loved.get(domain) + 1);
+  }
+  // Fewest ratings first; ties keep the MIXED_DOMAINS order.
+  const targets = MIXED_DOMAINS
+    .filter((domain) => state.areas?.[domain] !== false && positives.get(domain) <= FEW_ANCHORS)
+    .sort((a, b) => positives.get(a) - positives.get(b));
+  for (const targetDomain of targets) {
+    const source = allEvidence.find((item) => {
+      const from = primaryDomain(item);
+      return item.anchorStrength >= 3 && loved.get(from) >= LOVED_TO_BRIDGE && BRIDGE_PAIRS[from]?.includes(targetDomain) && bridgeQueriesFor(item, targetDomain).length > 0;
+    });
+    if (source) return { source, targetDomain };
+  }
+  return null;
+}
+
+// The same shelves Browse shows, cached the same way as api/similar.mjs's (a failed or empty shelf is never kept).
+const cachedBridgeShelf = (args) => cachedValue(`bridge-shelf:v1:${args.domain}:${args.genreId}`, async () => {
+  const result = await browseCatalog(args);
+  if (result.degraded || !(result.items ?? []).length) throw Object.assign(new Error("not cacheable"), { partial: result });
+  return result;
+}, { ttl: args.domain === "read" ? 24 * 60 * 60 : 900, tags: ["browse-catalog"] }).catch((error) => {
+  if (error?.partial) return error.partial;
+  throw error;
+});
+
 const FINAL_SERIES_CHECK = 8;
 const YEAR_WAIT_MS = 400;
 
@@ -558,6 +583,12 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     : allEvidence.filter((item) => item.domains?.includes(mode)).slice(0, 6);
   if (!evidenceItems.length) return [];
   if (state.curveball !== false) evidenceItems = withEdgeAnchor(evidenceItems, allEvidence.filter((item) => modeAllowed(state, item)));
+  // #252 part 2: started now so it runs alongside the first wave.
+  const bridge = chooseBridge(state, allEvidence);
+  const bridgeStarted = Date.now();
+  const bridgePromise = bridge
+    ? bridgeCandidates(bridge.source, bridge.targetDomain, { env, fetchImpl, browse: fetchImpl === fetch ? cachedBridgeShelf : browseCatalog, limit: 12 }).catch(() => [])
+    : Promise.resolve([]);
   // Preserve series/franchise suppression, but only query the tiny selected-anchor set and cap
   // the optional lookup at 100ms instead of blocking on the user's entire evidence history.
   evidenceItems = await hydrateSelectedAnchorMetadata(evidenceItems, { env, query: queryImpl });
@@ -721,6 +752,12 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   };
   for (const [index, item] of checkedTop.entries()) checkedTop[index] = finalItem(item);
   const ranked = [...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK).map(finalItem)].filter((item) => !isLaterSeriesEntry(item)).slice(0, Math.max(limit, 10));
+  // #252 part 2: the bridge candidates pass the same exclusions as everything else, plus the novelty guard
+  // against all of the person's evidence (so the book of another film they loved stays out).
+  const bridged = bridge ? applyNoveltyGuard((await bridgePromise).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && !ranked.some((other) => other.id === item.id)), allEvidence).primary.slice(0, MAX_BRIDGE_CANDIDATES) : [];
+  if (bridge) console.info("[tastemake-related]", JSON.stringify({ bridge: true, from: primaryDomain(bridge.source), to: bridge.targetDomain, ms: Date.now() - bridgeStarted, results: bridged.length }));
+  const withBridges = (list) => (bridged.length ? [...list.slice(0, Math.max(0, limit - bridged.length)), ...bridged.map((item) => ({ ...item, bridge: item.bridge ?? true }))] : list);
+
   const style = state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced");
   if (style === "adventurous" && state.curveball !== false && ranked.length > 6) {
     // Balanced keeps the normal top-ranked set. Adventurous preserves the five strongest fits
@@ -730,9 +767,9 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
       const deepIndex = Math.min(adventurous.length - 1, 9);
       [adventurous[5], adventurous[deepIndex]] = [adventurous[deepIndex], adventurous[5]];
     }
-    return adventurous;
+    return withBridges(adventurous);
   }
-  return ranked.slice(0, limit);
+  return withBridges(ranked.slice(0, limit));
 }
 
 // Oct 27: "See similar". The same per-item lookups recommendations use, for one item the person chose,

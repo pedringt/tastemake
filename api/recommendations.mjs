@@ -115,8 +115,9 @@ export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
   const cache = new Map();
 
   // 1. For each candidate: the item it was found from, then its closest liked/loved ratings.
+  // #252 part 2: a bridge candidate's source is in another medium, so it is looked for in all the evidence.
   for (const candidate of candidates) {
-    const anchor = pool.find((record) => record.itemId === candidate.relatedToId && record.polarity > 0);
+    const anchor = (candidate.bridge ? all : pool).find((record) => record.itemId === candidate.relatedToId && record.polarity > 0);
     add(anchor);
     const room = anchor ? 1 : 2;
     closestRatings(candidate, pool, { polarity: 1, limit: room + 1, cache })
@@ -156,7 +157,8 @@ function pickPromptPayload(ctx) {
         year,
         genres: (genres ?? []).slice(0, 8),
         ...(themes.length ? { themes } : {}),
-        ...(item.edge ? { edge: true } : {})
+        ...(item.edge ? { edge: true } : {}),
+        ...(item.bridge && item.relatedToId ? { bridge: true, bridgeFrom: `ev:${item.relatedToId}` } : {})
       };
     }),
     curveball: ctx.curveball,
@@ -165,7 +167,10 @@ function pickPromptPayload(ctx) {
   };
 }
 
-function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
+// #252 part 2 (Oct 27): only sent when a bridge candidate is offered, so every other prompt is unchanged.
+export const BRIDGE_RULE = "A candidate with bridge:true is a cross-medium test: it was found from the bridgeFrom item in another medium, to test whether that taste carries over. Choose at most one, preferably as your exploratory pick; its why must name the bridgeFrom item, cite it, and say it is a test, for example 'A book test: the quiet dread of Arrival, on the page.'";
+
+function pickPromptInstructions(count, { recommendationFilter = "all", bridge = false } = {}) {
   return [
     "You are the recommendation interpreter inside Tastemake.",
     "The product, not you, decides what is evidence, which candidates are eligible, and what state may change.",
@@ -198,12 +203,15 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. Use them as item-local context, not as standalone evidence or a global preference unless multiple independent experienced items support that broader pattern.",
     "A refinement may name a direction (\"Pacing: too slow\", \"Pacing: slow burn paid off\"): keep the direction, since opposite directions are opposite signals. A candidate's themes mean the theme is present, not that it dominates the book; one item's reason about a theme (\"Romance took over the story\") must not rule out every candidate with that theme.",
     "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; never cite intent-only evidence as support; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; explain why the pick may fit in specific plain English, in one sentence of 14 words or fewer counting the title, naming at least one cited item by the shortest form of its title people would recognize ('Everything' for Everything Everywhere All at Once); don't start the why with the pick's own title, since the card already shows it (start with what it shares, e.g. 'Quiet alien dread like Arrival.'); internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; if curveball is true you may choose at most one exploratory pick by putting only its itemId in curveballItemId, otherwise use null; if curveball is false curveballItemId must be null; a candidate with edge:true was found from something the user liked but did not love, so when you choose an exploratory pick prefer it and ground its why in a liked item; do not write the word curveball in why.",
+    ...(bridge ? [BRIDGE_RULE] : []),
     "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
   ].join("\n\n");
 }
 
+const offersBridge = (ctx) => (ctx.candidates ?? []).some((item) => item.bridge && item.relatedToId);
+
 export function buildPickPrompt(ctx, count) {
-  return [pickPromptInstructions(count, { recommendationFilter: ctx.recommendationFilter }), `CONTEXT\n${JSON.stringify(pickPromptPayload(ctx))}`].join("\n\n");
+  return [pickPromptInstructions(count, { recommendationFilter: ctx.recommendationFilter, bridge: offersBridge(ctx) }), `CONTEXT\n${JSON.stringify(pickPromptPayload(ctx))}`].join("\n\n");
 }
 
 // The model answers in a compact shape (no per-pick kind/tests). Fill them in before validation;
@@ -250,6 +258,16 @@ function anchorFor(item, state) {
 // #257: the fallback's curveball slot follows the same rule as the model's (src/catalog/adult-content.mjs):
 // an explicitly adult-tagged item only when the user has tried that kind of thing. Otherwise the next
 // eligible candidate takes the slot, or the set has no curveball.
+// #252 part 2: a bridge candidate in the fallback says it's a test and names only the genres both share.
+const BRIDGE_KIND = { book: "book", movie: "film", tv: "show", game: "game" };
+const genreList = (words) => (words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
+export function bridgeFallbackReason(item) {
+  const words = (item.bridge?.sharedGenres ?? []).slice(0, 2).map((label) => (label === "historical" ? "historical fiction" : label));
+  const kind = BRIDGE_KIND[item.type] ?? "cross-media";
+  if (!item.relatedTo || !words.length) return `A ${kind} test, found from something you loved.`;
+  return `A ${kind} test: shares ${genreList(words)} with ${item.relatedTo}.`;
+}
+
 function catalogPicks(candidates, state, evidence = [], pool = candidates) {
   const chosen = candidates.slice(0, 6);
   let curveballAllowed = state.curveball !== false && chosen.length >= 6;
@@ -260,7 +278,7 @@ function catalogPicks(candidates, state, evidence = [], pool = candidates) {
   }
   return chosen.map((item, index) => {
     const curveball = curveballAllowed && index === chosen.length - 1;
-    const basis = fallbackReason(item, anchorFor(item, state), { index, curveball });
+    const basis = item.bridge ? bridgeFallbackReason(item) : fallbackReason(item, anchorFor(item, state), { index, curveball });
     return {
       ...item,
       rank: curveball ? null : index + 1,
@@ -293,7 +311,7 @@ function logStage(stage, ms, extra = {}) {
 // These component sizes plus framingChars equal promptChars.
 function promptSizeBreakdown(ctx, count, prompt) {
   const payload = pickPromptPayload(ctx);
-  const fixedChars = pickPromptInstructions(count, { recommendationFilter: ctx.recommendationFilter }).length;
+  const fixedChars = pickPromptInstructions(count, { recommendationFilter: ctx.recommendationFilter, bridge: offersBridge(ctx) }).length;
   const evidenceChars = JSON.stringify(payload.evidence).length;
   const candidateChars = JSON.stringify(payload.candidates).length;
   const statementsChars = JSON.stringify(payload.statements).length;
