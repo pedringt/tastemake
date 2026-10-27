@@ -7,7 +7,7 @@ import { isBookCompanion } from "./book-companions.mjs";
 import { correctOldBookYears } from "./wikidata-years.mjs";
 import { fallbackSummary, sanitizeAbout } from "./synopsis.mjs";
 import { waitUntil } from "@vercel/functions";
-import { dropOffTopicBooks, rankSearchResults, searchRelevance } from "./search-ranking.mjs";
+import { dropOffTopicBooks, pruneSearchResults, rankSearchResults, searchRelevance } from "./search-ranking.mjs";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
@@ -649,7 +649,8 @@ export async function searchCatalog(query, { domain = "all", skipBooks = false, 
   // result set globally so obvious/canonical matches rise to the top regardless of
   // whether they came from TMDb, Open Library, or IGDB. Provider diversity still
   // emerges naturally farther down instead of being forced ahead of stronger matches.
-  const combined = rankSearchResults(uniq(buckets.flat()), q);
+  // Oct 27: then weak tie-in listings are dropped and book editions of one work merged (search-ranking.mjs).
+  const combined = pruneSearchResults(rankSearchResults(uniq(buckets.flat()), q), q);
 
   const configured = settled.filter(([, , , isConfigured]) => isConfigured);
   const degraded = configured.length === 0 || configured.every(([, , , , available]) => !available);
