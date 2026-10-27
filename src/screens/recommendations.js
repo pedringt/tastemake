@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { renderDomainFilter } from "../components/domain-filter.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundRatedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas } from "../model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, currentRoundComplete, currentRoundReactedCount, hypothesisMatches, isBookmarked, isPositiveExperience, outOfPicks, picksHiddenByAreas, previousRoundReacted } from "../model/taste.js";
 import { isDeclined, isExperienced, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
@@ -12,6 +12,11 @@ import { readableRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { basisSentence, recommendationBasis } from "../model/loading-basis.js";
+import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE } from "../ai/ai-status.js";
+import { renderArtwork } from "../components/artwork.js";
+import { releaseLabel } from "../ai/new-releases.js";
+import { exclusionOptions } from "../model/exclusions.js";
+import { starIcon } from "../components/star.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -112,39 +117,12 @@ function experienceChoices(itemId, feedback) {
         ${outcomeButton(itemId, "save", "Save", isBookmarked(feedback))}
         ${outcomeButton(itemId, "not-interested", "Not interested", isDeclined(feedback))}
       </div>
-      <span class="quality-note-help">Save it for later, or skip it.</span>
     </div>`;
 }
 
 // #52/#53: the primary question is now whether the user has actually experienced the item.
 // Only the concrete second-step answer becomes stored feedback. This keeps intent separate from
 // taste evidence while making the first interaction understandable without algorithm vocabulary.
-
-// Discovery quality is about whether the pick was a good use of a recommendation slot, never about
-// whether it fits the user's taste — kept visually and conceptually apart from More/Less/detail chips so
-// the two don't read as competing negative reactions (#53).
-// "This pick was: Too obvious · A great discovery" -- feedback about the pick, never about taste (#53).
-// Design pass (Oct 20): one small inline line, not a second "More feedback" section that read like more of
-// "What worked for you?".
-function qualityLine(itemId, feedback) {
-  const choice = (value, label) => `<button
-          class="detail-chip quality-chip quality-line-chip"
-          type="button"
-          data-feedback-item="${itemId}"
-          data-feedback-quality="${value}"
-          aria-pressed="${feedback.quality === value}"
-        >${label}</button>`;
-  return `
-    <div class="quality-line" role="group" aria-label="How was this pick? Optional. This is about the pick, not your taste.">
-      <span class="quality-line-label" aria-hidden="true">This pick was</span>
-      ${choice("too-obvious", "Too obvious")}
-      ${choice("surprised-me", "A great discovery")}
-    </div>`;
-}
-
-function hasQualityNote(feedback) {
-  return isPositiveExperience(feedback);
-}
 
 function seriesExperienceFeedback(item, feedback) {
   if (!hasSeriesSignal(item) || (!isPositiveExperience(feedback) && !isExperiencedNegative(feedback))) return "";
@@ -184,7 +162,7 @@ function favoriteToggle(itemId) {
       aria-label="${label}"
       title="${label}"
       aria-pressed="${isFavorite}"
-    ><span aria-hidden="true">${isFavorite ? "★" : "☆"}</span></button>`;
+    >${starIcon(isFavorite)}</button>`;
 }
 
 function mediaArt(item, index) {
@@ -224,10 +202,47 @@ function testedPattern(item) {
 
 function whyKicker(item, pattern) {
   const isCurveball = item.surprise || item.ai?.kind === "curveball";
-  if (isCurveball) return "Exploratory pick";
+  if (isCurveball) return "Surprise Me";
   if (!pattern) return "Why this one";
   const level = String(pattern.strength ?? "Emerging");
   return level === "Emerging" ? "A first test" : "Testing a pattern";
+}
+
+// Oct 27 PM review: every reason should point at something the person rated. The model is told to name
+// it, and the card also shows what each pick was grounded in (the items the pick cites, or the rated item
+// retrieval found it from) whenever the reason text doesn't already name one.
+const RATING_WORDS = { "loved-before": "Loved", "liked-before": "Liked" };
+
+export function groundingFor(item) {
+  const ids = [...new Set([
+    ...(item.ai?.cites ?? []).map((ref) => String(ref).replace(/^ev:/, "")),
+    ...(item.relatedToId ? [item.relatedToId] : [])
+  ])];
+  return ids.map((id) => {
+    const feedback = state.feedbackByRecommendation[id];
+    const title = feedback?.item?.title ?? state.customItems?.[id]?.title ?? (id === item.relatedToId ? item.relatedTo : null);
+    if (!title) return null;
+    const favorite = state.selectedFavorites?.has?.(id) || state.libraryFavorites?.has?.(id);
+    return { id, title, label: favorite ? "Favorite" : RATING_WORDS[feedback?.detail] ?? null, foundFrom: id === item.relatedToId };
+  }).filter(Boolean).slice(0, 3);
+}
+
+const groundingText = (sources) => sources.map((source) => `${source.title}${source.label ? ` (${source.label.toLowerCase()})` : ""}`).join(", ");
+
+export function reasonNamesSource(reason, sources) {
+  const text = String(reason ?? "").toLowerCase();
+  // A short form counts: "Everything's playful energy" names Everything Everywhere All at Once.
+  return sources.some((source) => {
+    const title = source.title.toLowerCase();
+    const short = title.split(/[:(\-–—]/)[0].trim().split(/\s+/).filter((word) => !["the", "a", "an"].includes(word))[0];
+    return text.includes(title) || (short && short.length >= 4 && new RegExp(`\\b${short.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(text));
+  });
+}
+
+function groundingLine(item) {
+  const sources = groundingFor(item);
+  if (!sources.length || reasonNamesSource(readableRecommendationCopy(item.reason, item), sources)) return "";
+  return `<p class="editorial-grounding">Based on ${esc(groundingText(sources))}</p>`;
 }
 
 function whyContent(item) {
@@ -236,19 +251,28 @@ function whyContent(item) {
   const kicker = whyKicker(item, pattern);
   const label = pattern ? `${kicker}: ${esc(pattern.title)}` : kicker;
   const rationale = readableRecommendationCopy(item.reason, item);
+  const sources = groundingFor(item);
+  const foundFrom = sources.find((source) => source.foundFrom);
+  const closest = sources.filter((source) => !source.foundFrom);
 
   let uncertainty = "";
   const level = String(pattern?.strength ?? "Emerging");
-  if (isCurveball) uncertainty = "This deliberately stretches beyond your strongest patterns, so a miss is useful information rather than a failure.";
+  if (isCurveball) uncertainty = foundFrom?.label === "Liked"
+    ? `It comes from something you liked but didn't love, so it tests the edges of your taste. A miss is useful information.`
+    : "This deliberately stretches beyond your strongest patterns, so a miss is useful information rather than a failure.";
   else if (!pattern) uncertainty = "Tastemake does not have a stable named pattern behind this yet, so this is still an early test.";
   else if (pattern.status === "conditional") uncertainty = "This pattern has only held in some contexts, so this pick may expose where the boundary is.";
   else if (level === "Emerging") uncertainty = "This pattern is still early. One reaction could make Tastemake narrow it, strengthen it, or drop it.";
   else if (level === "Strong") uncertainty = "The pattern is strong, but Tastemake may still be wrong about which details of it matter most to you.";
   else uncertainty = "This is supported, but your reaction can still make Tastemake refine what the pattern actually means.";
 
+  // The card already shows the reason; repeat it here only when the card had to cut it short.
+  const truncated = truncateCopy(rationale, RATIONALE_MAX_CHARS) !== rationale;
   return `
     <span class="why-kicker">${label}</span>
-    <p><strong>Why this might work:</strong> ${esc(rationale)}</p>
+    ${truncated ? `<p><strong>Why this might work:</strong> ${esc(rationale)}</p>` : ""}
+    ${foundFrom ? `<p><strong>Found from:</strong> ${esc(groundingText([foundFrom]))}, through the catalog's related titles.</p>` : ""}
+    ${closest.length ? `<p><strong>Closest things you rated:</strong> ${esc(groundingText(closest))}</p>` : ""}
     ${pattern ? `<p><strong>Pattern being tested:</strong> ${esc(pattern.claim)}</p>` : ""}
     <p class="why-caveat"><strong>What could miss:</strong> ${esc(uncertainty)}</p>`;
 }
@@ -257,7 +281,6 @@ function feedbackPopover(item, saved) {
   const path = experiencePath(item.id, saved);
   if (state.recommendationFeedbackItemId !== item.id || !path) return "";
 
-  const showQuality = hasQualityNote(saved);
 
   return `
     <div class="rec-feedback-popover" role="dialog" aria-modal="false" aria-label="Feedback for ${esc(item.title)}">
@@ -271,9 +294,23 @@ function feedbackPopover(item, saved) {
       ${experienceChoices(item.id, saved)}
       ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
       ${saved ? seriesExperienceFeedback(item, saved) : ""}
-      ${showQuality ? qualityLine(item.id, saved) : ""}
       ${saved ? renderBlindSpotPanel(item.id) : ""}
     </div>`;
+}
+
+// #48: a hard boundary, offered quietly under the reasons. Not a reaction: nothing about the pick is
+// recorded, and the menu only lists what Tastemake actually knows about this item.
+function excludeMenu(item) {
+  const options = exclusionOptions(item);
+  if (!options.length) return "";
+  return `
+        <details class="exclude-menu">
+          <summary>Don’t recommend…</summary>
+          <div class="exclude-options" role="group" aria-label="Never recommend">
+            ${options.map((option) => `<button type="button" class="exclude-option" data-exclude-item="${esc(item.id)}" data-exclude-kind="${option.kind}" data-exclude-key="${esc(option.key)}">${esc(option.label)}</button>`).join("")}
+            <p class="exclude-note">Not a dislike. It just won’t be suggested. Undo it anytime in My Tastemake (the person icon at the top).</p>
+          </div>
+        </details>`;
 }
 
 function cardSizeClass() {
@@ -287,7 +324,7 @@ function recommendationCard(item, index, total) {
 
   return `
     <article class="editorial-rec ${layoutClass} ${saved ? "is-rated" : ""} ${state.recommendationFeedbackItemId === item.id ? "has-feedback-open" : ""}" data-rec-id="${item.id}">
-      ${item.surprise ? `<span class="surprise-burst" aria-hidden="true">GO<br />WEIRD</span>` : ""}
+      ${item.surprise ? `<span class="surprise-burst" aria-hidden="true">SURPRISE<br />ME</span>` : ""}
 
       ${mediaArt(item, index)}
 
@@ -307,6 +344,7 @@ function recommendationCard(item, index, total) {
         </div>
 
         <p class="editorial-rationale">${esc(truncateCopy(readableRecommendationCopy(item.reason, item), RATIONALE_MAX_CHARS))}</p>
+        ${groundingLine(item)}
         <p class="editorial-about">${esc(truncateCopy(safeAbout(item), ABOUT_MAX_CHARS))}</p>
 
         <div class="editorial-why">
@@ -320,6 +358,7 @@ function recommendationCard(item, index, total) {
             ${whyContent(item)}
           </div>
         </div>
+        ${saved ? "" : excludeMenu(item)}
 
         <div class="rec-interaction">
           ${saved ? `
@@ -416,6 +455,11 @@ function renderAiStatus() {
   }
   if (!state.aiMessage) return "";
   if (state.aiSource === "model") return "";
+  if (state.aiSource === "catalog" && state.aiPaused) return `
+    <aside class="ai-paused-notice" role="status">
+      <strong>${AI_PAUSED_HEADLINE}</strong>
+      <p>${AI_PAUSED_EXPLAINER} These picks come straight from the catalog, matched to your favorites. Your ratings still count, and they’ll shape AI picks when it’s back.</p>
+    </aside>`;
   if (state.aiSource === "catalog") return `<p class="ai-inline-status">Using catalog matches for this set.</p>`;
   return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> Tastemake could not build a trustworthy set.</p>`;
 }
@@ -488,11 +532,40 @@ function renderNextSteps() {
     </div>`;
 }
 
+// #6: a small strip of this week's releases that match the person's own experienced taste (no AI). Hidden
+// while loading and when nothing matches, so it never shows an empty frame.
+export function renderNewThisWeek() {
+  const items = state.newReleases?.items ?? [];
+  if (state.aiStatus === "loading" || state.newReleases?.status !== "ready" || !items.length) return "";
+  return `
+      <section class="new-this-week" aria-labelledby="new-this-week-title">
+        <div class="new-this-week-head">
+          <h2 id="new-this-week-title">New this week for you</h2>
+          <p>Just out or coming in the next week, matched to things you've loved. Saving one doesn't change your Taste Profile.</p>
+        </div>
+        <ul class="new-this-week-list">
+          ${items.map((item) => `
+            <li class="new-release" data-new-release="${esc(item.id)}">
+              ${renderArtwork(item, "new-release-artwork")}
+              <div class="new-release-copy">
+                <span class="new-release-meta">${esc(displayLabel(item))} · ${esc(releaseLabel(item.releaseDate))}</span>
+                <strong>${esc(item.title)}</strong>
+                <span class="new-release-why">${esc(item.reason ?? "")}</span>
+                <span class="new-release-actions">
+                  <button class="button button-secondary" type="button" data-new-release-item="${esc(item.id)}" data-new-release-action="bookmark" aria-label="Save ${esc(item.title)}">Save</button>
+                  <button class="button button-quiet" type="button" data-new-release-item="${esc(item.id)}" data-new-release-action="not-interested" aria-label="Not interested in ${esc(item.title)}">Not interested</button>
+                </span>
+              </div>
+            </li>`).join("")}
+        </ul>
+      </section>`;
+}
+
 export function renderRecommendations() {
   const items = activeRecommendations(state);
-  const rated = currentRoundRatedCount(state);
-  const roundTwo = state.recommendationSets.length > 1;
-  const segments = items.map((_, index) => `<span class="progress-segment ${index < rated ? "is-filled" : ""}"></span>`).join("");
+  const reacted = currentRoundReactedCount(state);
+  const roundTwo = state.recommendationSets.length > 1 && previousRoundReacted(state);
+  const segments = items.map((_, index) => `<span class="progress-segment ${index < reacted ? "is-filled" : ""}"></span>`).join("");
 
   return `
     <section class="recommendations-screen">
@@ -503,13 +576,13 @@ export function renderRecommendations() {
           <h1>${roundTwo ? "Okay, that changed things." : "Things worth your time."}</h1>
           <p class="lede">${roundTwo
             ? "A new set shaped by your recent reactions."
-            : "Movies, shows, books, games, and the occasional curveball. Try the ones that interest you and react naturally."}</p>
+            : "Movies, shows, books, games, and one Surprise Me pick. Try the ones that interest you and react naturally."}</p>
         </div>
 
         <div class="rec-progress-card">
           <div class="rec-progress-top">
-            <strong>${rated}/${items.length}</strong>
-            <span>rated</span>
+            <strong>${reacted}/${items.length}</strong>
+            <span>reacted to</span>
           </div>
           <div class="progress-track" aria-hidden="true">${segments}</div>
           <div class="progress-note">${currentRoundComplete(state) ? (outOfPicks(state) ? "caught up" : "new set unlocked") : "react as you go"}</div>
@@ -521,10 +594,10 @@ export function renderRecommendations() {
         ${renderDomainFilter({ selected: state.recommendationFilter, scope: "recommendations", label: "Generate recommendations by type" })}
         <span class="filter-context">Choose the kind of recommendation set you want next.</span>
       </div>
-      <!-- #117: Browse's post-onboarding home is here, as an alternate discovery mode, not a permanent
-           top-level nav item. Looking around is still never taste evidence on its own. -->
+      <!-- Oct 27: Browse is back in the nav as the place to rate things; this link points there for that.
+           Looking around is still never taste evidence on its own, only ratings are. -->
       <p class="recommendation-browse-link">
-        <button class="button button-quiet" type="button" data-action="browse">Browse by genre instead &rarr;</button>
+        <button class="button button-quiet" type="button" data-action="browse">Rate more in Browse &rarr;</button>
       </p>
       ${renderAiStatus()}
       ${renderFirstInsightNudge()}
@@ -536,6 +609,8 @@ export function renderRecommendations() {
       </div>
 
       ${renderKeepDiscoveringBar()}
+
+      <div data-new-this-week-slot>${renderNewThisWeek()}</div>
 
       ${state.aiStatus === "loading" ? "" : `
       <div class="recommendation-footer page-actions">

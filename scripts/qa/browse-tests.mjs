@@ -37,6 +37,8 @@ const moviesFetch = async (url) => {
   const u = String(url);
   if (u.includes("/discover/movie")) {
     check("Movies Sci-fi uses the movie genre id", u.includes("with_genres=878"), u);
+    // Oct 27 PM review: "Rate what you know" opened on this week's releases. Most-voted first.
+    check("Movies Browse lists the most-voted titles, not what is trending this week", u.includes("sort_by=vote_count.desc") && !u.includes("popularity.desc"), u);
     return { ok: true, json: async () => ({ results: Array.from({ length: 12 }, (_, i) => ({ id: i + 1, title: `Movie ${i + 1}`, release_date: "2020-01-01", genre_ids: [878] })) }) };
   }
   throw new Error(`unexpected movies URL: ${u}`);
@@ -119,6 +121,30 @@ const readFetch = async (url) => {
 const read = await browseCatalog({ domain: "read", genreId: "fantasy", page: 2, env, fetchImpl: readFetch });
 eq("Read Browse returns books", read.items[0]?.type, "book");
 check("Read Browse reports more when the provider fills a page", read.hasMore);
+
+// Oct 23 review: junk was dropped after cutting to 12, so a page with study guides came up short.
+{
+  const junkAt = new Set([2, 5, 7, 14]);
+  const stream = Array.from({ length: 60 }, (_, i) => junkAt.has(i)
+    ? { key: `/works/OLJ${i}W`, title: `Study Guide -- Book ${i}`, author_name: ["SuperSummary"] }
+    : { key: `/works/OLV${i}W`, title: `Valid Book ${i}`, author_name: ["Author"], first_publish_year: 2000 });
+  const asked = [];
+  const pagedFetch = async (url) => {
+    const u = new URL(String(url));
+    asked.push(u);
+    const offset = Number(u.searchParams.get("offset")), limit = Number(u.searchParams.get("limit"));
+    return { ok: true, json: async () => ({ docs: stream.slice(offset, offset + limit) }) };
+  };
+  const page1 = await browseCatalog({ domain: "read", genreId: "fantasy", page: 1, env, fetchImpl: pagedFetch });
+  const page2 = await browseCatalog({ domain: "read", genreId: "fantasy", page: 2, env, fetchImpl: pagedFetch });
+  eq("a page with junk still fills to 12 books", page1.items.length, 12);
+  check("no junk is shown", ![...page1.items, ...page2.items].some((item) => /Study Guide/.test(item.title)));
+  check("pages keep their fixed starting point (asks for a few extra)", asked[0].searchParams.get("offset") === "0" && asked[1].searchParams.get("offset") === "12" && asked[0].searchParams.get("limit") === "20");
+  const merged = mergeUniqueBrowseItems(page1.items, page2.items);
+  eq("two pages together repeat nothing", new Set(merged.map((item) => item.id)).size, merged.length);
+  const expected = stream.slice(0, 24).filter((_, i) => !junkAt.has(i)).map((row) => row.title);
+  check("and skip nothing", expected.every((title) => merged.some((item) => item.title === title)), expected.filter((t) => !merged.some((item) => item.title === t)).join(", "));
+}
 
 const igdbGenres = [
   { id: 31, name: "Adventure" }, { id: 12, name: "Role-playing (RPG)" }, { id: 9, name: "Puzzle" },
@@ -266,4 +292,76 @@ const onboarded = makeState();
 onboarded.onboarded = true;
 check("onboarded Browse stays recommendation-ready after starter migration", browseReadyForRecommendations(onboarded));
 
+// ---- Oct 24 review: book pages cached a day, older years corrected after the cache --------------------------
+{
+  const { default: handler } = await import("../../api/browse.mjs");
+  const realFetch = globalThis.fetch;
+  let olCalls = 0, wikidataDelay = 800;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes("openlibrary.org")) { olCalls += 1; return { ok: true, json: async () => ({ docs: [{ key: "/works/OLGATSBYW", title: "The Great Gatsby Test", author_name: ["F. Scott Fitzgerald"], first_publish_year: 1920 }] }) }; }
+    if (u.includes("query.wikidata.org")) { await new Promise((r) => setTimeout(r, wikidataDelay)); return { ok: true, json: async () => ({ results: { bindings: [{ olid: { value: "OLGATSBYW" }, year: { value: "1925" } }] } }) }; }
+    throw new Error(`unexpected ${u}`);
+  };
+  const call = async () => {
+    const res = { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status() { return this; }, json(b) { this.body = b; return this; } };
+    await handler({ method: "GET", query: { domain: "read", genre: "fantasy", page: "9" }, headers: {} }, res);
+    return res.body;
+  };
+  try {
+    const t0 = Date.now();
+    const first = await call();
+    check("a slow Wikidata answer doesn't hold up the page", Date.now() - t0 < 750 && first.items[0]?.year === "1920", `${Date.now() - t0} ms, ${first.items[0]?.year}`);
+    await new Promise((r) => setTimeout(r, 900));
+    const second = await call();
+    eq("the next visit gets the corrected year (the slow answer was never cached into the page)", second.items[0]?.year, "1925");
+    eq("while the page itself came from the cache", olCalls, 1);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+// ---- Oct 24 regression: v6 cached Open Library failures for a day (Horror and Romance page 2 stayed empty) ----
+{
+  const { default: handler, uncacheable } = await import("../../api/browse.mjs");
+  const { BOOK_BROWSE_TIMEOUT_MS } = await import("../../src/catalog/browse.mjs");
+  const realFetch = globalThis.fetch;
+  let olCalls = 0, mode = "fail", sawSignal = false;
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    if (u.includes("openlibrary.org")) {
+      olCalls += 1;
+      sawSignal = sawSignal || Boolean(init.signal);
+      if (mode === "fail") throw new Error("timeout");
+      if (mode === "empty") return { ok: true, json: async () => ({ docs: [] }) };
+      return { ok: true, json: async () => ({ docs: [{ key: "/works/OLOKW", title: "A Real Book", author_name: ["A"], first_publish_year: 2010 }] }) };
+    }
+    if (u.includes("query.wikidata.org")) return { ok: true, json: async () => ({ results: { bindings: [] } }) };
+    throw new Error(`unexpected ${u}`);
+  };
+  const call = async () => {
+    const res = { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status() { return this; }, json(b) { this.body = b; return this; } };
+    await handler({ method: "GET", query: { domain: "read", genre: "horror", page: "7" }, headers: {} }, res);
+    return res;
+  };
+  try {
+    const failed = await call();
+    check("a failed book page is answered empty, not cached by the browser", failed.body.items.length === 0 && failed.headers["cache-control"] === "no-store", failed.headers["cache-control"]);
+    mode = "empty";
+    const empty = await call();
+    eq("the next visit asks Open Library again (the failure was not cached)", olCalls, 2);
+    check("an empty book page isn't cached either", empty.headers["cache-control"] === "no-store");
+    mode = "ok";
+    const good = await call();
+    check("once Open Library answers, the page has its books", good.body.items.some((i) => i.title === "A Real Book") && olCalls === 3);
+    await call();
+    eq("and a good page is cached again (no fourth Open Library call)", olCalls, 3);
+    check("the Open Library call has a time limit", sawSignal && BOOK_BROWSE_TIMEOUT_MS === 15_000);
+    check("movie pages with results stay cacheable", !uncacheable("movies", { items: [{}], degraded: false }) && uncacheable("movies", { items: [], degraded: true }));
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 finish();
+

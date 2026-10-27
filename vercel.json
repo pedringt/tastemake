@@ -13,7 +13,10 @@
       "maxDuration": 60
     },
     "api/catalog.mjs": {
-      "maxDuration": 20
+      "maxDuration": 30
+    },
+    "api/similar.mjs": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
@@ -56,6 +59,33 @@
     {
       "source": "/my-tastemake",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; script-src 'self' 'sha256-v6A1BqBhCV71VX0EgwNei3fDfZj9TJ4B8vdl/lEZ43I='; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org https://images.igdb.com https://covers.openlibrary.org https://archive.org https://*.us.archive.org https://books.google.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+        }
+      ]
     }
   ],
   "fluid": true

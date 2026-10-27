@@ -8,17 +8,19 @@
 // non-framework guide uses a plain `<script defer src="/_vercel/insights/script.js">` tag instead,
 // which needs no module resolution. #100 does exactly that, in src/lib/vercel-insights.js (its own
 // module in index.html, so it can never stop this one from running).
+import { exampleBannerHtml, exampleRequestedAtBoot, forgetViewingExample, isViewingExample, loadExampleProfile } from "./example-profile.js";
 import { state } from "./state.js";
 import { normalizedRefinements } from "./model/refinements.js";
 import { trackReasonChanged, trackReasonsOpened } from "./lib/reason-events.js";
 import { screenFromPath, writeRoute } from "./router.js";
-import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering } from "./model/taste.js";
+import { activeRecommendations, bookmarkedFeedback, canKeepDiscovering, isBookmarked } from "./model/taste.js";
 import { libraryItemById, migrateStarterFavorites } from "./model/library.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { favoritesDestination } from "./model/library.js";
 import { renderBrowse } from "./screens/browse.js";
 import { renderProfile } from "./screens/profile.js";
-import { renderRecommendations } from "./screens/recommendations.js";
+import { renderNewThisWeek, renderRecommendations } from "./screens/recommendations.js";
+import { actOnNewRelease, maybeLoadNewReleases } from "./ai/new-releases.js";
 import { detailDescription, renderDetailMeta, renderLibrary } from "./screens/library.js";
 import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/client.js";
 import { lookContinueLabel, renderLook } from "./screens/look.js";
@@ -29,6 +31,7 @@ import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
 import { fetchBrowsePage } from "./catalog/browse-client.js";
+import { fetchSimilar } from "./catalog/similar-client.js";
 import { mergeUniqueBrowseItems } from "./model/browse.js";
 import { applyResolvedCatalogItem, applySearchAction, markCustomResolution } from "./model/search.js";
 import { isExperienced, isStrongPositive } from "./model/evidence.js";
@@ -37,13 +40,15 @@ import { AI_LOADING, cancelRequest } from "./ai/requests.js";
 import { createCandidatePrefetcher } from "./ai/prefetch.js";
 import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
-import { handleMineChange, handleMineClick, openMine } from "./actions/mine.js";
+import { handleMineChange, handleMineClick, handleMineSubmit, openMine } from "./actions/mine.js";
 import { saveBlindAction } from "./actions/blindspot.js";
-import { saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackQuality, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite, toggleExpandedFeedback } from "./actions/recommendations.js";
+import { finishSavedTried, keepOnSavedList, saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
+import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
+import { syncAiBadge } from "./ai/ai-status.js";
+import { addExclusion, dropExcludedFromActiveSet, makeExclusion } from "./model/exclusions.js";
 
 // app.js is orchestration only: routing between screens, rendering, focus/announce plumbing, and
 // dispatching DOM events to the action modules in ./actions/ and ./model/ (#39). Product rules and
@@ -81,14 +86,39 @@ function canAccess(screen) {
 // user is still on Favorites/Setup (see src/ai/prefetch.js). Retrieval only, never a model call.
 const candidatePrefetcher = createCandidatePrefetcher({ getState: () => state });
 
+// Paige's Example Profile: loaded on request, or from /?example=paige (linked from the portfolio case study).
+// Oct 27: loadExampleProfile also sets the sessionStorage flag, so a refresh comes back here.
+async function openExampleProfile() {
+  try {
+    await loadExampleProfile();
+    writeRoute(state.screen, { replace: false });
+    render();
+    updateStepper();
+    announce("Showing Paige's Example Profile. Nothing you change is saved.");
+    window.scrollTo(0, 0);
+  } catch {
+    forgetViewingExample();   // Oct 27: a failed load shouldn't follow the visitor into every refresh
+    announce("The example profile could not load. Please try again.");
+  }
+}
+
 function render() {
   persistState(state);
-  app.innerHTML = views[state.screen]();
+  syncAiBadge(state);
+  app.innerHTML = exampleBannerHtml() + views[state.screen]();
   candidatePrefetcher.schedule(state);
+  // #6: fetched once per visit, after the first set exists (not for the example profile); only its own
+  // slot is redrawn when it arrives.
+  if (state.screen === "recommendations" && state.onboarded && !isViewingExample() && activeRecommendations(state).length) {
+    maybeLoadNewReleases(state, () => {
+      const slot = app.querySelector("[data-new-this-week-slot]");
+      if (slot) slot.innerHTML = renderNewThisWeek();
+    });
+  }
 }
 
 function updateStepper() {
-  const order = ["favorites", "browse", "recommendations", "model", "library"];
+  const order = ["favorites", "recommendations", "browse", "model", "library"];
   const activeIndex = order.indexOf(state.screen);
 
   // #59 item 4: keep the guided first-run path (Favorites -> Recommendations) visually dominant by
@@ -161,6 +191,10 @@ const mineCtx = { render, updateStepper, restoreFocus, announce, navigate: (scre
 app.addEventListener("click", (event) => {
   if (state.screen !== "mine") return;
   handleMineClick(event, mineCtx);
+});
+
+app.addEventListener("submit", (event) => {
+  if (state.screen === "mine") handleMineSubmit(event, mineCtx);
 });
 
 app.addEventListener("change", (event) => {
@@ -309,6 +343,42 @@ async function loadBrowse({ reset = false, focusSelector = null } = {}) {
   }
 }
 
+// Oct 27: "See similar" shows its results on Browse, so they get the same rating buttons and reasons.
+let similarController = null;
+
+async function openSimilar(itemId) {
+  const item = state.customItems?.[itemId] ?? state.feedbackByRecommendation[itemId]?.item;
+  if (!item) return;
+  similarController?.abort();
+  browseController?.abort();
+  browseController = null;
+  const controller = new AbortController();
+  similarController = controller;
+  Object.assign(state, {
+    browseSimilar: { id: item.id, title: item.title, type: item.type },
+    browseItems: [], browsePage: 0, browseHasMore: false, browseError: false, browseLoading: true
+  });
+  navigate("browse");
+  restoreFocus(".browse-similar-head h2", app);
+  announce(`Finding things like ${item.title}.`);
+  const exclude = [...new Set([...Object.keys(state.feedbackByRecommendation), ...state.libraryFavorites, ...state.selectedFavorites])];
+  try {
+    const items = await fetchSimilar(item, exclude, { signal: controller.signal });
+    if (controller.signal.aborted || state.browseSimilar?.id !== item.id) return;
+    state.browseItems = items;
+    state.browseError = false;
+  } catch (error) {
+    if (error?.name === "AbortError" || state.browseSimilar?.id !== item.id) return;
+    state.browseError = true;
+  }
+  if (similarController === controller) similarController = null;
+  state.browseLoading = false;
+  if (state.screen !== "browse") return;
+  render();
+  updateStepper();
+  announce(state.browseItems.length ? `${state.browseItems.length} like ${item.title}.` : `Nothing new turned up like ${item.title}.`);
+}
+
 function maybeLoadBrowse() {
   if (state.screen === "browse" && !state.browseItems.length && !state.browseLoading) void loadBrowse();
 }
@@ -334,17 +404,40 @@ async function resolveExistingCustomItems() {
 }
 
 function navigate(screen, { replace = false, scroll = true, libraryView = "saved" } = {}) {
+  // Oct 24: after onboarding, Favorites live in Library (selectedFavorites is emptied by the migration), so
+  // the four-slot first-run screen always looked empty. Every route to it (finishing setup, the look
+  // picker, old links) goes to Library > Tried > Favorites instead, as page loads already did (#103).
+  if (screen === "favorites" && state.onboarded) {
+    const destination = favoritesDestination(state);
+    if (destination.libraryReactionFilter) state.libraryReactionFilter = destination.libraryReactionFilter;
+    screen = destination.screen;
+    libraryView = destination.libraryView ?? libraryView;
+  }
   if (!canAccess(screen)) return;
   // Saved is the Library's actionable home. Re-entering Library starts there rather than
   // resurrecting whichever secondary tab happened to be open last time, unless the caller is
   // deliberately opening another view (Change favorites opens Tried > Favorites).
   if (screen === "library" && state.screen !== "library") state.libraryView = libraryView;
+  // Things just rated from Saved settle into Tried once you leave; Browse's "rated this visit" starts over.
+  if (screen !== state.screen) {
+    state.savedJustTried = [];
+    if (screen === "browse") state.browseRatedThisVisit = [];
+  }
   // Leaving the page a request was started from makes its answer irrelevant (#42).
   if (state.aiRequest && screen !== state.aiRequest.screen) cancelRequest(state, "you moved to another page while it was thinking");
   if (screen !== "browse") {
     browseController?.abort();
     browseController = null;
+    similarController?.abort();
+    similarController = null;
     state.browseLoading = false;
+    // Leaving Browse ends a "More like…" view; coming back shows genres again.
+    if (state.browseSimilar) {
+      state.browseSimilar = null;
+      state.browseItems = [];
+      state.browsePage = 0;
+      state.browseHasMore = true;
+    }
   }
 
   markOnboarded(screen);
@@ -426,8 +519,19 @@ function toggleWhyPopover(trigger) {
   const shouldPin = !wrapper.classList.contains("is-pinned");
   closeWhyPopovers(wrapper);
   wrapper.classList.toggle("is-pinned", shouldPin);
+  // Closing must hide it now, even though the pointer and focus are still on the trigger.
+  wrapper.classList.toggle("is-dismissed", !shouldPin);
   trigger.setAttribute("aria-expanded", String(shouldPin));
 }
+
+// A dismissed popover may preview again once the pointer leaves it, or focus comes back from elsewhere.
+app.addEventListener("mouseleave", (event) => {
+  if (event.target.classList?.contains("editorial-why")) event.target.classList.remove("is-dismissed");
+}, true);
+app.addEventListener("focusin", (event) => {
+  const wrapper = event.target.closest?.(".editorial-why");
+  if (wrapper && !wrapper.contains(event.relatedTarget)) wrapper.classList.remove("is-dismissed");
+});
 
 let recommendationSwipe = null;
 
@@ -616,7 +720,10 @@ app.addEventListener("click", async (event) => {
     const itemId = libraryAction.dataset.libraryItem;
     const outcome = libraryAction.dataset.libraryAction;
     const title = state.feedbackByRecommendation[itemId]?.item.title;
+    const fromSaved = isBookmarked(state.feedbackByRecommendation[itemId]);
     if (saveLibraryAction(itemId, outcome)) {
+      // Starring something in Saved marks it loved: keep it there, open to its reasons, like a rating.
+      if (fromSaved && outcome === "favorite") keepOnSavedList(itemId);
       render();
       updateStepper();
       // Favorite/Unfavorite changes the button's data-action, so target its replacement explicitly.
@@ -646,12 +753,30 @@ app.addEventListener("click", async (event) => {
     if (saveBookmarkAction(itemId, outcome)) {
       render();
       updateStepper();
-      // The card usually leaves the list; land on the next card's first action, or on the page if none is left.
-      restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
-      const left = bookmarkedFeedback(state).length;
-      const what = ({ "tried-loved": "marked Loved it before", "tried-liked": "marked Liked it before", "tried-disliked": "marked Tried it and disliked it", remove: "removed from Saved" })[outcome];
-      announce(`${title}: ${what}. ${left} ${left === 1 ? "thing" : "things"} left in Saved.`);
+      if (outcome === "remove") {
+        // The card leaves the list; land on the next card's first action, or on the page if none is left.
+        restoreFocus(focusSelector, app.querySelector(".bookmark-action") || app);
+        const left = bookmarkedFeedback(state).length;
+        announce(`${title}: removed from Saved. ${left} ${left === 1 ? "thing" : "things"} left in Saved.`);
+      } else {
+        // The card stays, open to its reasons (Oct 27): land on the first reason chip.
+        restoreFocus(`[data-bookmark-id="${itemId}"] .refinement-chip`, app.querySelector(`[data-saved-done="${itemId}"]`) || app);
+        const what = ({ "tried-loved": "Loved it", "tried-liked": "Liked it", "tried-disliked": "Didn't like it" })[outcome];
+        announce(`${title}: marked ${what}. Pick what worked, if you like, then choose Done.`);
+      }
     }
+    return;
+  }
+
+  const savedDone = event.target.closest("[data-saved-done]");
+  if (savedDone) {
+    const itemId = savedDone.dataset.savedDone;
+    const title = state.feedbackByRecommendation[itemId]?.item.title;
+    finishSavedTried(itemId);
+    render();
+    updateStepper();
+    restoreFocus(".bookmark-action", app.querySelector("[data-library-tab=\"saved\"]") || app);
+    announce(`${title} moved to Tried.`);
     return;
   }
 
@@ -665,6 +790,8 @@ app.addEventListener("click", async (event) => {
       ?? "Item";
     if (setRecommendationFavorite(itemId, makeFavorite)) {
       state.recommendationFeedbackItemId = null;
+      // Starring after setup rates it Loved, so Browse counts it like any other rating (Oct 27).
+      if (makeFavorite && state.onboarded && state.screen === "browse" && !state.browseRatedThisVisit.includes(itemId)) state.browseRatedThisVisit.push(itemId);
       renderPreservingCardPosition(itemId, `[data-rec-favorite="${itemId}"]`);
       announce(makeFavorite
         ? (state.onboarded
@@ -674,6 +801,34 @@ app.addEventListener("click", async (event) => {
           ? `${title} removed from Favorites. Your Loved reaction stays.`
           : `${title} removed from Favorites. ${state.selectedFavorites.size} of 4 selected.`));
       if (makeFavorite && state.onboarded) primeProfileInBackground();
+    }
+    return;
+  }
+
+  const newRelease = event.target.closest("[data-new-release-action]");
+  if (newRelease) {
+    const said = actOnNewRelease(state, newRelease.dataset.newReleaseItem, newRelease.dataset.newReleaseAction);
+    if (said) {
+      persistState(state);
+      const slot = app.querySelector("[data-new-this-week-slot]");
+      if (slot) slot.innerHTML = renderNewThisWeek();
+      restoreFocus(".new-release button", app);   // next release, or the page when none are left
+      announce(said);
+    }
+    return;
+  }
+
+  const exclude = event.target.closest("[data-exclude-kind]");
+  if (exclude) {
+    const item = activeRecommendations(state).find((rec) => rec.id === exclude.dataset.excludeItem);
+    const exclusion = item ? makeExclusion(exclude.dataset.excludeKind, exclude.dataset.excludeKey, item) : null;
+    if (exclusion && addExclusion(state, exclusion)) {
+      const index = activeRecommendations(state).findIndex((rec) => rec.id === item.id);
+      const removed = dropExcludedFromActiveSet(state, exclusion);
+      render();
+      const cards = [...app.querySelectorAll(".editorial-rec")];
+      restoreFocus(null, cards[Math.min(index, cards.length - 1)]?.querySelector("button") || app.querySelector('[data-action="keep-discovering"]') || app);
+      announce(`Tastemake won’t recommend ${exclusion.kind === "genre" ? exclusion.label.toLowerCase() : exclusion.kind === "creator" ? `anything by ${exclusion.label}` : `the ${exclusion.label}`}. ${removed === 1 ? "1 pick" : `${removed} picks`} removed from this set. Undo it anytime in My Tastemake.`);
     }
     return;
   }
@@ -714,6 +869,9 @@ app.addEventListener("click", async (event) => {
     const itemId = experienceOutcome.dataset.feedbackItem;
     const outcome = experienceOutcome.dataset.experienceOutcome;
     if (saveExperienceOutcome(itemId, outcome)) {
+      const rated = ["loved", "liked", "disliked"].includes(outcome);
+      // Counted before the render, so Browse's "rated this visit" shows it straight away (Oct 27).
+      if (rated && state.screen === "browse" && !state.browseRatedThisVisit.includes(itemId)) state.browseRatedThisVisit.push(itemId);
       // Untried intent has no deeper taste questions, so finish the small editor after Save/Not interested.
       // Tried reactions keep it open so optional refinement/series/discovery feedback is available.
       if (outcome === "save" || outcome === "not-interested") state.recommendationFeedbackItemId = null;
@@ -721,7 +879,7 @@ app.addEventListener("click", async (event) => {
         ? `[data-feedback-item="${itemId}"][data-experience-path="not-tried"]`
         : focusSelector);
       announceReaction(itemId, announce);
-      if (["loved", "liked", "disliked"].includes(outcome)) primeProfileInBackground();
+      if (rated) primeProfileInBackground();
     }
     return;
   }
@@ -768,20 +926,6 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
-  const quality = event.target.closest("[data-feedback-quality][data-feedback-item]");
-  if (quality) {
-    const itemId = quality.dataset.feedbackItem;
-    if (saveFeedbackQuality(itemId, quality.dataset.feedbackQuality)) renderPreservingCardPosition(itemId, focusSelector);
-    return;
-  }
-
-  const feedbackToggle = event.target.closest("[data-toggle-feedback]");
-  if (feedbackToggle) {
-    toggleExpandedFeedback(feedbackToggle.dataset.toggleFeedback);
-    renderPreservingCardPosition(feedbackToggle.dataset.toggleFeedback, focusSelector);
-    return;
-  }
-
   const starterRemove = event.target.closest("[data-starter-remove]");
   if (starterRemove) {
     const id = starterRemove.dataset.starterRemove;
@@ -802,6 +946,7 @@ app.addEventListener("click", async (event) => {
 
   const browseDomain = event.target.closest("[data-browse-domain]");
   if (browseDomain) {
+    state.browseSimilar = null;
     state.browseDomain = browseDomain.dataset.browseDomain;
     state.browseGenre = firstBrowseGenre(state.browseDomain);
     state.browseItems = [];
@@ -814,11 +959,31 @@ app.addEventListener("click", async (event) => {
 
   const browseGenre = event.target.closest("[data-browse-genre]");
   if (browseGenre) {
+    state.browseSimilar = null;
     state.browseGenre = browseGenre.dataset.browseGenre;
     state.browseItems = [];
     state.browsePage = 0;
     state.browseHasMore = true;
     state.browseError = false;
+    void loadBrowse({ focusSelector: `[data-browse-genre="${state.browseGenre}"]` });
+    return;
+  }
+
+  const seeSimilar = event.target.closest("[data-see-similar]");
+  if (seeSimilar) {
+    void openSimilar(seeSimilar.dataset.seeSimilar);
+    return;
+  }
+
+  const similarClose = event.target.closest("[data-browse-similar-close]");
+  if (similarClose) {
+    similarController?.abort();
+    state.browseSimilar = null;
+    state.browseItems = [];
+    state.browsePage = 0;
+    state.browseHasMore = true;
+    state.browseError = false;
+    state.browseLoading = false;
     void loadBrowse({ focusSelector: `[data-browse-genre="${state.browseGenre}"]` });
     return;
   }
@@ -880,9 +1045,25 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const showAll = event.target.closest("[data-library-show-all]");
+  if (showAll) {
+    const key = showAll.dataset.libraryShowAll;
+    const grids = [...app.querySelectorAll(".library-grid")];
+    const gridIndex = grids.indexOf(showAll.closest(".library-grid"));
+    const firstHidden = grids[gridIndex]?.querySelectorAll(":scope > .library-card").length ?? 0;
+    (state.libraryExpanded ??= new Set()).add(key);
+    render();
+    // Land on the first card that was just revealed, so keyboard users continue where the list was cut.
+    const revealed = app.querySelectorAll(".library-grid")[gridIndex]?.querySelectorAll(":scope > .library-card")[firstHidden]?.querySelector("summary");
+    restoreFocus(null, revealed ?? app);
+    announce("Showing all of them.");
+    return;
+  }
+
   const libraryTab = event.target.closest("[data-library-tab]");
   if (libraryTab) {
     state.libraryView = libraryTab.dataset.libraryTab === "tried" ? "tried" : "saved";
+    state.savedJustTried = [];
     render();
     updateStepper();
     restoreFocus(`[data-library-tab="${state.libraryView}"]`);
@@ -893,6 +1074,9 @@ app.addEventListener("click", async (event) => {
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
 
+  if (action === "view-example") { void openExampleProfile(); return; }
+  // "Start my own" is this button. Oct 27: drop the flag first so the reload boots the visitor's own profile.
+  if (action === "exit-example") { forgetViewingExample(); window.location.assign("/"); return; }
   if (action === "open-search") document.querySelector("#open-search")?.click();
   if (action === "browse") navigate("browse");
   if (action === "edit-setup") {
@@ -967,9 +1151,11 @@ document.addEventListener("keydown", (event) => {
     renderPreservingCardPosition(itemId, `[data-feedback-item="${itemId}"][data-experience-path]`);
     return;
   }
-  const trigger = document.querySelector(".editorial-why.is-pinned .why-trigger");
+  const open = document.querySelector(".editorial-why.is-pinned") ?? document.activeElement?.closest?.(".editorial-why");
+  const trigger = open?.querySelector(".why-trigger");
   if (!trigger) return;
   closeWhyPopovers();
+  open.classList.add("is-dismissed");
   trigger.focus({ preventScroll: true });
 });
 
@@ -1006,7 +1192,7 @@ window.addEventListener("popstate", () => {
 // fetchCatalogItemDetail caches per item, so re-opening a card after a re-render refills it without
 // another request. libraryItemById finds reacted-to items too, not only added/search ones.
 // #250: anonymous count of people opening the optional reasons section (never what they pick).
-const reasonSurface = (el) => (el.closest("[data-rec-id]") ? "recommendations" : state.screen === "library" ? "library" : "other");
+const reasonSurface = (el) => (el.closest("[data-browse-card]") ? "browse" : el.closest("[data-rec-id]") ? "recommendations" : state.screen === "library" ? "library" : "other");
 app.addEventListener("toggle", (event) => {
   const details = event.target;
   if (!details?.matches?.(".experience-refinement[open]")) return;
@@ -1046,6 +1232,9 @@ initSearch({
 // Look stays available as an optional preference instead of competing with the taste-learning path.
 // Direct links still open their requested screen when accessible. #117: a returning user hitting
 // "/" (or an unrecognized path) lands in the ongoing product, not back through first-run setup.
+// Read before writeRoute below replaces the address (it drops the query string).
+// Oct 27: the sessionStorage flag counts too, so a refresh while viewing stays in the example.
+const wantsExampleProfile = exampleRequestedAtBoot(window.location.search);
 const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
 state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "setup");
 if (state.screen === "library") state.libraryView = "saved";
@@ -1054,6 +1243,11 @@ markOnboarded(state.screen);
 writeRoute(state.screen, { replace: true });
 render();
 updateStepper();
-maybeRefreshProfile();
+// Oct 27: booting into the example skips the visitor's own profile refresh (a model call) and custom item
+// lookups. Their results would land after the example replaced the in-memory state.
+if (!wantsExampleProfile) {
+  maybeRefreshProfile();
+  void resolveExistingCustomItems();
+}
 maybeLoadBrowse();
-void resolveExistingCustomItems();
+if (wantsExampleProfile) void openExampleProfile();

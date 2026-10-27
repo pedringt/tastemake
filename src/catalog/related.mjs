@@ -1,6 +1,10 @@
 import { enrichCanonicalItemWriteBehind, igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { applyNoveltyGuard } from "./novelty.mjs";
 import { withBookSeriesEvidence } from "./book-series-editions.mjs";
+import { bookSeriesPosition, isBook, isLaterSeriesEntry } from "./book-series.mjs";
+import { wikidataSeriesPositions } from "./wikidata-series.mjs";
+import { isBookCompanion } from "./book-companions.mjs";
+import { correctOldBookYears } from "./wikidata-years.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
@@ -148,6 +152,8 @@ function externalEvidenceItems(state) {
       return {
         ...item,
         anchorStrength,
+        // Oct 27: a rating with reasons is a clearer signal, so it gets picked to start searches a bit more.
+        hasReasons: (state.feedbackByRecommendation?.[item.id]?.refinements ?? []).length > 0,
         seriesExperience: state.feedbackByRecommendation?.[item.id]?.seriesExperience ?? null
       };
     })
@@ -234,7 +240,7 @@ export function bookGenreFamilies(subjects = []) {
   return families;
 }
 
-function meaningfulBookSubjects(values = []) {
+export function meaningfulBookSubjects(values = []) {
   return values
     .map((value) => String(value ?? "").trim())
     .filter((value) => value && value.length >= 3 && !GENERIC_BOOK_SUBJECT.test(value) && !AUDIENCE_OR_FORMAT_SUBJECT.test(value))
@@ -267,13 +273,13 @@ function openLibraryCandidateIsRelated(sourceSubjects, candidateSubjects) {
 }
 
 async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,series_position,editions,editions.title,editions.language";
+  const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,series_name,series_position,editions,editions.title,editions.language";
   const load = async () => {
     const response = await fetchWithTimeout(fetchImpl, `https://openlibrary.org/search.json?q=${encodeURIComponent(`subject:"${subject}"`)}&limit=12&lang=en&fields=${fields}`, {
       headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
     }, timeoutMs);
     if (!response.ok) return [];
-    return (await response.json()).docs ?? [];
+    return ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row));
   };
   if (fetchImpl !== fetch) return load();
   return cachedValue(`related:v4:openlibrary:${String(subject).toLowerCase()}`, load, { ttl: 900, tags: ["related-catalog"] });
@@ -286,7 +292,39 @@ async function openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs) {
 // once the post-#130 overlap gate ran (#131). Results across queries are merged/deduped by Open
 // Library work key, then ranked by overlap strength (see openLibraryOverlapStrength above) so the
 // combined pool stays large without readmitting the Atomic-Habits-style false positive #130 fixed.
+// Oct 27 PM review: a book picked from Google Books (search's fallback while Open Library is slow) never
+// led anywhere. Google gives one broad category ("Fiction") and Tastemake keeps no copy of Google data, so
+// the same book is looked up on Open Library by title and author, and its subjects are used instead.
+const normalizeBookTitle = (title) => String(title ?? "").toLowerCase().split(/[:(]/)[0].replace(/[^a-z0-9]+/g, " ").trim();
+const authorWords = (names) => new Set([].concat(names ?? []).join(" ").toLowerCase().split(/[^a-z]+/).filter((word) => word.length >= 3));
+
+export async function openLibraryWorkFor(item, env, fetchImpl, timeoutMs) {
+  const title = normalizeBookTitle(item?.title);
+  if (!title) return null;
+  const author = String(item.by ?? "").split(",")[0].trim();
+  const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,series_name,series_position,editions,editions.title,editions.language";
+  const load = async () => {
+    const url = `https://openlibrary.org/search.json?title=${encodeURIComponent(item.title)}${author ? `&author=${encodeURIComponent(author)}` : ""}&limit=5&lang=en&fields=${fields}`;
+    const response = await fetchWithTimeout(fetchImpl, url, {
+      headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
+    }, timeoutMs);
+    if (!response.ok) return null;
+    const wanted = authorWords(item.by?.split(","));
+    const row = ((await response.json()).docs ?? []).find((doc) => normalizeBookTitle(doc.title) === title
+      && !isBookCompanion(doc)
+      && (!wanted.size || [...authorWords(doc.author_name)].some((word) => wanted.has(word))));
+    return row ? openLibraryItem(row) : null;
+  };
+  if (fetchImpl !== fetch) return load();
+  return cachedValue(`related:v1:openlibrary-work:${title}:${author.toLowerCase()}`, load, { ttl: 24 * 60 * 60, tags: ["related-catalog"] });
+}
+
 async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
+  if (item.provider === "googlebooks") {
+    const work = await openLibraryWorkFor(item, env, fetchImpl, timeoutMs);
+    if (!work) return [];
+    return (await openLibraryRelated(work, env, fetchImpl, queryImpl, timeoutMs)).filter((candidate) => candidate.providerId !== work.providerId);
+  }
   if (item.provider !== "openlibrary") return [];
   const sourceSubjects = meaningfulBookSubjects(item.genres ?? []);
   // Query genre subjects first ("American fantasy fiction" before "orphans"), keeping Open Library's order
@@ -296,7 +334,11 @@ async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
   if (!querySubjects.length) return [];
 
   const storePromise = relatedCanonicalItems(item, querySubjects, { env, query: queryImpl });
-  const rows = (await Promise.all(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs)))).flat();
+  // Oct 27: about 1 in 12 live subject searches ran past the mixed-mode timeout, and one throw used to sink
+  // the whole Promise.all, dropping the other subjects and the store rows. Each subject now fails alone.
+  // The throw still happens inside load(), so a failed search is never cached.
+  const settled = await Promise.allSettled(querySubjects.map((subject) => openLibrarySubjectSearch(subject, env, fetchImpl, timeoutMs)));
+  const rows = settled.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
 
   // Keyed by the raw Open Library work key (the real identity), so a live result and a
   // store-canonicalized result for the same book collapse into one entry either way.
@@ -317,6 +359,9 @@ async function openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs) {
   for (const storeItem of storeItems) {
     const key = String(storeItem.providerId ?? "");
     if (!key || byKey.has(key)) continue;
+    // Oct 27 smoke test: store books skipped the companion filter live rows get, so "Ascendance of a
+    // Bookworm: Fanbook 3" came back through here.
+    if (isBookCompanion({ title: storeItem.title, author_name: String(storeItem.by ?? "").split(",").map((a) => a.trim()).filter(Boolean) })) continue;
     const strength = openLibraryOverlapStrength(sourceSubjects, storeItem.subject ?? []);
     if (!strength) continue;
     byKey.set(key, { storeItem, strength });
@@ -403,7 +448,7 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
         authorization: `Bearer ${token}`,
         "content-type": "text/plain"
       },
-      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id; where ${igdbGenreWhereClause(genreIds)}${excludeClause}; sort total_rating_count desc; limit 12;`
+      body: `fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.name,collection.id,franchises.id; where ${igdbGenreWhereClause(genreIds)}${excludeClause}; sort total_rating_count desc; limit 12;`
     });
     if (!response.ok) return [];
     return (await response.json()).map(igdbItem).filter((row) => row.providerId !== item.providerId);
@@ -430,14 +475,6 @@ async function igdbRelated(item, env, fetchImpl, queryImpl) {
 // applies (this only changes ORDER within a domain, never which domains are represented). Scoped
 // down per #135's own caveat -- a short-timeout, no-op-on-any-failure lookup, not a rearchitecture
 // of anchor selection. A missing/unconfigured/slow store, or any error, leaves input order intact.
-function shuffled(items) {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
 
 // Real bug (2026-09-28): with a real evidence pool much bigger than the 6-anchor cap (73 items in
 // one real report), this used to sort deterministically by metadata completeness -- and completeness
@@ -450,10 +487,37 @@ function shuffled(items) {
 // stable sort keeps items tied on completeness in their shuffled relative order, so ties rotate
 // between rounds instead of being pinned), and gives genuine rotation across the whole evidence pool
 // when completeness data isn't available, which real logs show is common.
-function preferRicherAnchors(items) {
+// Oct 27 (whole-profile recommendations): the shuffle-then-sort-by-strength order meant a Liked item only
+// became an anchor when its type had fewer than two Loved ones, so Liked items almost never started a
+// search. Now the order is a weighted draw: Loved (3) is three times as likely as Liked (1) to come early,
+// reasons add one, and every positive rating has a real chance each round.
+function preferRicherAnchors(items, random = Math.random) {
   // Select anchors without a database round trip. The old path queried metadata for the entire
   // evidence history before it even knew which <=6 anchors would be used.
-  return shuffled(items).sort((a, b) => (b.anchorStrength ?? 0) - (a.anchorStrength ?? 0));
+  return weightedOrder(items, (item) => (item.anchorStrength ?? 0) + (item.hasReasons ? 1 : 0), random);
+}
+
+// Weighted random order without replacement (Efraimidis-Spirakis): each item draws u^(1/weight).
+export function weightedOrder(items, weightOf, random = Math.random) {
+  return items
+    .map((item) => ({ item, key: Math.pow(random(), 1 / Math.max(weightOf(item), 0.001)) }))
+    .sort((a, b) => b.key - a.key)
+    .map(({ item }) => item);
+}
+
+// Oct 27: Surprise Me comes from the edges of someone's taste: things they Liked rather than Loved. When
+// the surprise slot is on and no Liked item was drawn into the first wave of anchors, one is moved in.
+export function withEdgeAnchor(selected, all, { firstWave = 4 } = {}) {
+  const isEdge = (item) => item.anchorStrength === 1;
+  if (selected.slice(0, firstWave).some(isEdge)) return selected;
+  const chosenIds = new Set(selected.map((item) => item.id));
+  const domains = new Set(selected.map(primaryDomain));
+  const edge = all.find((item) => isEdge(item) && !chosenIds.has(item.id) && domains.has(primaryDomain(item)))
+    ?? selected.find(isEdge);
+  if (!edge) return selected;
+  const rest = selected.filter((item) => item.id !== edge.id);
+  const at = Math.min(firstWave - 1, rest.length);
+  return [...rest.slice(0, at), edge, ...rest.slice(at)];
 }
 
 async function hydrateSelectedAnchorMetadata(items, { env, query }) {
@@ -483,6 +547,9 @@ async function hydrateSelectedAnchorMetadata(items, { env, query }) {
   });
 }
 
+const FINAL_SERIES_CHECK = 8;
+const YEAR_WAIT_MS = 400;
+
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
   const mode = state.recommendationFilter ?? "all";
   const allEvidence = preferRicherAnchors(externalEvidenceItems(state));
@@ -490,6 +557,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     ? selectAllAnchors(allEvidence)
     : allEvidence.filter((item) => item.domains?.includes(mode)).slice(0, 6);
   if (!evidenceItems.length) return [];
+  if (state.curveball !== false) evidenceItems = withEdgeAnchor(evidenceItems, allEvidence.filter((item) => modeAllowed(state, item)));
   // Preserve series/franchise suppression, but only query the tiny selected-anchor set and cap
   // the optional lookup at 100ms instead of blocking on the user's entire evidence history.
   evidenceItems = await hydrateSelectedAnchorMetadata(evidenceItems, { env, query: queryImpl });
@@ -512,7 +580,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     try {
       let related = [];
       if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
-      else if (item.provider === "openlibrary") {
+      else if (item.provider === "openlibrary" || item.provider === "googlebooks") {
         const timeoutMs = mode === "all" ? Number(env.TASTEMAKE_OPENLIBRARY_MIXED_TIMEOUT_MS || 1750) : undefined;
         related = await openLibraryRelated(item, env, fetchImpl, queryImpl, timeoutMs);
       }
@@ -625,7 +693,34 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   // candidates to either the deterministic baseline (src/ai/baseline.js) or the live-AI ranking
   // path (api/recommendations.mjs), both of which call retrieveCatalogCandidates. Suppressed
   // sequels/remakes are dropped from the primary pool; whatever else was retrieved fills their slot.
-  const ranked = balanceDomains(guarded.primary, state.recommendationFilter ?? "all");
+  // #255 follow-up: the series-position lookups above run in pool order and stop at their budget, so a
+  // later book in a series near the top of the FINAL order could go unchecked (Lord of Chaos, Wheel of Time
+  // #6, Oct 20). The books most likely to be offered get their own small budget here, and any that turn out
+  // to be later entries are dropped; the next eligible candidate takes the slot.
+  const balanced = balanceDomains(guarded.primary, state.recommendationFilter ?? "all");
+  const top = balanced.slice(0, FINAL_SERIES_CHECK);
+  const checkedTop = (await withBookSeriesEvidence(top, [], {
+    env, fetchImpl, memo: bookSeriesMemo, maxLookups: 0, maxPositionLookups: (bookSeriesMemo.positionLookups ?? 0) + FINAL_SERIES_CHECK
+  })).candidates;
+  // Oct 20: Open Library has no position at all for some later entries (King of the Murgos, Malloreon #2).
+  // Wikidata fills in only where Open Library gave nothing; it never overrides an Open Library position.
+  // Oct 24 review: this and the year check below ran one after the other (up to 1.5 s + 1.2 s). They now run
+  // at the same time, and the year check (display only) waits at most YEAR_WAIT_MS; its lookup finishes in
+  // the background and is cached for next time.
+  const unknown = checkedTop.filter((item) => isBook(item) && bookSeriesPosition(item) == null);
+  const pool = [...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK)].slice(0, Math.max(limit, 10) + FINAL_SERIES_CHECK);
+  const [wikidata, withYears] = await Promise.all([
+    unknown.length ? wikidataSeriesPositions(unknown, { env, fetchImpl }) : new Map(),
+    correctOldBookYears(pool, { env, fetchImpl, waitMs: YEAR_WAIT_MS })
+  ]);
+  const corrected = new Map(withYears.filter((item, index) => item !== pool[index]).map((item) => [item.id, item]));
+  const finalItem = (item) => {
+    const position = wikidata.get(item.id);
+    const base = corrected.has(item.id) ? { ...item, year: corrected.get(item.id).year, about: corrected.get(item.id).about } : item;
+    return position ? { ...base, providerMeta: { ...(base.providerMeta ?? {}), seriesPosition: position } } : base;
+  };
+  for (const [index, item] of checkedTop.entries()) checkedTop[index] = finalItem(item);
+  const ranked = [...checkedTop, ...balanced.slice(FINAL_SERIES_CHECK).map(finalItem)].filter((item) => !isLaterSeriesEntry(item)).slice(0, Math.max(limit, 10));
   const style = state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced");
   if (style === "adventurous" && state.curveball !== false && ranked.length > 6) {
     // Balanced keeps the normal top-ranked set. Adventurous preserves the five strongest fits
@@ -638,4 +733,29 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     return adventurous;
   }
   return ranked.slice(0, limit);
+}
+
+// Oct 27: "See similar". The same per-item lookups recommendations use, for one item the person chose,
+// kept to the same type (a book's similar books). Already-reacted items and sequels/series entries of the
+// item itself are left out. Never throws; a provider failure is an empty list.
+const SIMILAR_LIMIT = 12;
+
+export async function similarToItem(item, { env = process.env, fetchImpl = fetch, query: queryImpl, exclude = [], limit = SIMILAR_LIMIT } = {}) {
+  if (!item?.provider || !item?.providerId || !item?.type) return [];
+  let related = [];
+  try {
+    if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
+    else if (item.provider === "openlibrary" || item.provider === "googlebooks") related = await openLibraryRelated(item, env, fetchImpl, queryImpl);
+    else if (item.provider === "igdb") related = await igdbRelated(item, env, fetchImpl, queryImpl);
+  } catch {
+    return [];
+  }
+  canonicalizeWriteBehind(related, { env });
+  const key = (candidate) => `${candidate.provider}:${candidate.type ?? ""}:${candidate.providerId}`;
+  const blocked = new Set([item.id, ...exclude]);
+  // Later volumes (Frieren vol. 12) are left out, as they are from recommendations.
+  const sameType = uniq(related).filter((candidate) => candidate.type === item.type && !blocked.has(candidate.id) && key(candidate) !== key(item) && !isLaterSeriesEntry(candidate));
+  return applyNoveltyGuard(sameType, [item]).primary
+    .slice(0, limit)
+    .map((candidate) => ({ ...candidate, relatedTo: item.title, relatedToId: item.id }));
 }

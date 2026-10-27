@@ -6,6 +6,10 @@ export async function run() {
   const results=[];
   const check=(name,ok,detail="")=>results.push({name,ok:Boolean(ok),detail:String(detail)});
   const sleep=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
+  // Oct 27: waits for a condition instead of a fixed time. The why popover hides with a .12s visibility
+  // transition, and a fixed 120 ms wait raced it under load (computed visibility stays "visible" until the
+  // transition ends). Returns as soon as the condition holds, or after `ms` with the last result.
+  const until=async (fn,ms=1000)=>{const end=Date.now()+ms; while(!fn()&&Date.now()<end) await sleep(20); return fn();};
   const $=(s)=>document.querySelector(s);
   const $$=(s)=>[...document.querySelectorAll(s)];
   const act=async(s,wait=120)=>{const el=$(s);if(!el) throw new Error(`missing ${s}`);el.focus();el.click();await sleep(wait);};
@@ -26,10 +30,12 @@ export async function run() {
   const recSet=(offset)=>Array.from({length:5},(_,i)=>({
     id:`tmdb-movie-${offset+i}`,provider:"tmdb",providerId:String(offset+i),
     title:`Catalog Pick ${offset+i}`,type:"movie",domains:["movies"],about:`Real catalog recommendation ${i+1}.`,
-    artwork:null,rank:i===4?null:i+1,fit:i===4?"Exploratory fit":"Catalog match",prediction:"Worth testing",
+    artwork:null,genres:i===1?["27"]:[],rank:i===4?null:i+1,fit:i===4?"Exploratory fit":"Catalog match",prediction:"Worth testing",
     surprise:i===4,reason:"Related to a favorite from the real catalog. Live AI did not rank this fallback set.",ai:null
   }));
-  let recCalls=0;
+  let recCalls=0, newReleaseCalls=0;
+  // "off": catalog fallback (the default); "paused": the AI budget is used up (#263); "model": live AI answered.
+  let aiMode="off";
   // #120: candidate warm-ups (src/ai/prefetch.js) are counted apart from real recommendation requests.
   let warmCalls=0, warmBodies=[];
   // The first real request is held open until the test releases it, so the loading state can be checked.
@@ -40,6 +46,17 @@ export async function run() {
     const url=new URL(String(input),location.href);
     if(url.pathname==="/api/catalog"){
       const q=(url.searchParams.get("q")||"").toLowerCase();
+      // Search speed (Oct 24): the book half answers late, the rest at once.
+      if(q==="failbooks"){
+        const fast=[{id:"tmdb-movie-891",provider:"tmdb",providerId:"891",title:"Failbooks The Movie",type:"movie",domains:["movies"],about:"A film.",artwork:null}];
+        return {ok:true,status:200,json:async()=>({items:fast,providers:{tmdb:{configured:true,available:true,error:null},openlibrary:{configured:true,available:false,error:"timeout"}},degraded:false})};
+      }
+      if(q==="slowbooks"){
+        const fast=[{id:"tmdb-movie-881",provider:"tmdb",providerId:"881",title:"Slowbooks The Movie",type:"movie",domains:["movies"],about:"A film.",artwork:null}];
+        if(url.searchParams.get("skip")==="read") return {ok:true,status:200,json:async()=>({items:fast,providers:{},degraded:false})};
+        await new Promise(r=>setTimeout(r,500));
+        return {ok:true,status:200,json:async()=>({items:[...fast,{id:"openlibrary-book-882",provider:"openlibrary",providerId:"882",title:"Slowbooks The Novel",type:"book",domains:["read"],about:"A book.",artwork:null}],providers:{},degraded:false})};
+      }
       const domain=url.searchParams.get("domain")||"all";
       let items=q==="test"?mixed:favs.filter(x=>x.title.toLowerCase().includes(q));
       if(domain!=="all") items=items.filter(x=>x.domains.includes(domain));
@@ -54,9 +71,16 @@ export async function run() {
       const call=recCalls++;
       if(call===0) await firstGate;
       const picks=recSet(call ? 710 : 700);
+      if(aiMode==="paused") return {ok:true,status:200,json:async()=>({source:"catalog",reason:"AI features are paused for now.",picks,meta:{paidCallMade:false,budgetPaused:true,catalogCandidates:picks.length}})};
+      if(aiMode==="model") return {ok:true,status:200,json:async()=>({source:"model",reason:null,picks,meta:{paidCallMade:false,catalogCandidates:picks.length}})};
       return {ok:true,status:200,json:async()=>({source:"catalog",reason:"live AI off in browser QA",picks,meta:{paidCallMade:false,catalogCandidates:picks.length}})};
     }
+    if(url.pathname==="/api/new-releases"){
+      newReleaseCalls++;
+      return {ok:true,status:200,json:async()=>({items:[{id:"tmdb-movie-990",provider:"tmdb",providerId:"990",title:"Signal From Vega",type:"movie",domains:["movies"],about:"Astronomers hear something.",artwork:"data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="780" height="1170"><rect width="780" height="1170" fill="#345"/></svg>'),genres:["878"],releaseDate:"2026-10-24",reason:"Shares sci-fi with Moon Garden."}]})};
+    }
     if(url.pathname==="/api/hypotheses"){
+      if(aiMode==="paused") return {ok:true,status:200,json:async()=>({source:"unavailable",reason:"AI features are paused for now.",hypotheses:[],meta:{budgetPaused:true,paidCallMade:false}})};
       const firstFav=[...state.selectedFavorites][0];
       const experienced=Object.values(state.feedbackByRecommendation).find(f=>f.detail==="loved-before"||f.detail==="liked-before");
       const evidence=[`ev:${firstFav}`,...(experienced?[`ev:${experienced.item.id}`]:[])];
@@ -219,10 +243,23 @@ export async function run() {
   check("row star adds a Favorite in one click",state.libraryFavorites.has("igdb-game-603"));
   check("row star marks it Tried · Loved",state.feedbackByRecommendation["igdb-game-603"]?.detail==="loved-before");
   check("row star shows pressed and keeps focus",$('[data-search-row-favorite="igdb-game-603"]')?.getAttribute("aria-pressed")==="true"&&document.activeElement===$('[data-search-row-favorite="igdb-game-603"]'));
+  // Oct 24: after setup the add action is a labeled button, and stars are drawn shapes, not text characters.
+  check("the row's Favorite button says so",/Favorited/.test($('[data-search-row-favorite="igdb-game-603"]')?.textContent||"")&&/Favorite/.test($('[data-search-row-favorite="tmdb-movie-601"]')?.textContent||""));
+  check("stars are SVG shapes, never ☆/★ text",Boolean($('[data-search-row-favorite] svg.star-icon'))&&!/[☆★]/.test(document.body.textContent));
   await act('[data-search-pick="tmdb-movie-601"]');
   check("clicking a result row opens its sheet without recording anything",Boolean($("#search-sheet-title"))&&!state.feedbackByRecommendation["tmdb-movie-601"]);
   $("#search-dialog")?.close();
   await sleep(120);
+
+  // Oct 24: an onboarded user who finishes setup lands on their Favorites in Library, never on the empty
+  // four-slot first-run screen (their Favorites live in Library after onboarding).
+  history.pushState({}, "", "/setup");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  await sleep(150);
+  state.setupReturn="favorites";
+  if($('[data-action="setup-done"]')) await act('[data-action="setup-done"]',200);
+  check("finishing setup after onboarding opens Favorites in Library",state.screen==="library"&&state.libraryView==="tried"&&state.libraryReactionFilter==="favorites",`${state.screen}/${state.libraryView}/${state.libraryReactionFilter}`);
+  check("not the empty first-run screen",!$(".starter-placeholder")&&!/0 of 4/.test(document.body.textContent));
 
   // Look picker reflects the two replacement concepts and retained skins.
   document.querySelector("[data-open-look]")?.click();
@@ -232,6 +269,113 @@ export async function run() {
   check("look picker keeps Bold Graphic",/Bold graphic/i.test(lookText));
   check("Studio Cutouts was replaced",/Soft circuit/i.test(lookText)&&!/Studio cutouts/i.test(lookText));
   check("Night Ledger was replaced",/Electric night/i.test(lookText)&&!/Night ledger/i.test(lookText));
+
+  // Oct 20 smoke test: "More about why" opened upward over the pick's title and reason.
+  await act('[data-step-jump="recommendations"]',200);
+  const whyCard=$(".editorial-rec");
+  if(whyCard){
+    await act('.editorial-rec .why-trigger',200);
+    const pop=whyCard.querySelector(".why-popover").getBoundingClientRect();
+    const covers=[whyCard.querySelector("h3"),whyCard.querySelector(".editorial-rationale")].map(el=>el.getBoundingClientRect()).some(r=>r.bottom>pop.top&&r.top<pop.bottom);
+    check("the why popover opens without covering the pick's title or reason",whyCard.querySelector(".editorial-why").classList.contains("is-pinned")&&!covers,`${Math.round(pop.top)}`);
+    check("its card is lifted above the next row while it is open",getComputedStyle(whyCard).zIndex==="40",getComputedStyle(whyCard).zIndex);
+    await act('.editorial-rec .why-trigger',120);
+    // Oct 23 smoke test: the second click unpinned it, but focus (and the pointer) kept it on screen over the reaction buttons.
+    const shown=()=>getComputedStyle(whyCard.querySelector(".why-popover")).visibility==="visible";
+    await until(()=>!shown());
+    check("a second click hides it even though the link still has focus",document.activeElement===whyCard.querySelector(".why-trigger")&&!shown(),getComputedStyle(whyCard.querySelector(".why-popover")).visibility);
+    check("a preview that is not pinned never takes clicks",getComputedStyle(whyCard.querySelector(".why-popover")).pointerEvents==="none");
+    // Headless pages are not the focused window, so focus events are sent by hand (a real browser sends them).
+    const trigger=whyCard.querySelector(".why-trigger");
+    trigger.blur(); trigger.dispatchEvent(new FocusEvent("focusout",{bubbles:true,relatedTarget:null})); await sleep(30);
+    trigger.focus(); trigger.dispatchEvent(new FocusEvent("focusin",{bubbles:true,relatedTarget:null}));
+    const wrap=whyCard.querySelector(".editorial-why");
+    await until(()=>wrap.matches(".editorial-why:not(.is-dismissed):focus-within"));
+    check("focusing the link again allows the preview",wrap.matches(".editorial-why:not(.is-dismissed):focus-within"),wrap.className);
+    state.recommendationFeedbackItemId=null;   // an open feedback panel takes Escape first; this check is about the popover
+    document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+    await until(()=>wrap.classList.contains("is-dismissed"));
+    check("Escape hides a focused preview and keeps focus on the link",wrap.classList.contains("is-dismissed")&&!wrap.matches(".editorial-why:not(.is-dismissed):focus-within")&&document.activeElement===trigger,wrap.className);
+    whyCard.querySelector(".why-trigger").blur();
+  } else check("a recommendation card exists for the why popover check",false);
+
+  // Search speed (Oct 24): movies/TV/games show first, books join when they arrive.
+  await act("#open-search");
+  await type("#search-input","slowbooks",330);
+  check("fast results show before books arrive",Boolean($('[data-search-pick="tmdb-movie-881"]'))&&!$('[data-search-pick="openlibrary-book-882"]'),$("#search-view")?.textContent.slice(0,160));
+  check("with a note that books are still coming",/Still finding books/.test($("#search-view")?.textContent||""));
+  await sleep(600);
+  check("books join the list when they arrive",Boolean($('[data-search-pick="openlibrary-book-882"]'))&&Boolean($('[data-search-pick="tmdb-movie-881"]')));
+  check("and the note goes away",!/Still finding books/.test($("#search-view")?.textContent||""));
+  await type("#search-input","failbooks",500);
+  check("when books fail, the other results stay and a note says so",Boolean($('[data-search-pick="tmdb-movie-891"]'))&&/Books are slow to load right now/.test($("#search-view")?.textContent||""),$("#search-view")?.textContent.slice(0,200));
+  $("#search-dialog")?.close();
+  await sleep(120);
+
+  // #6: New this week for you, under the set; fetched once per visit.
+  await act('[data-step-jump="recommendations"]',250);
+  {
+    // Oct 24: the poster rendered at its full size inside the 56x84 box, showing only a corner.
+    const box=$('.new-this-week [data-new-release="tmdb-movie-990"] .new-release-artwork'), img=box?.querySelector("img");
+    if(img && !img.complete) await new Promise(r=>{img.onload=r; img.onerror=r; setTimeout(r,500);});
+    const b=box?.getBoundingClientRect(), i=img?.getBoundingClientRect();
+    check("the release poster fills its box instead of overflowing it",Boolean(img)&&Math.round(i.width)===Math.round(b.width)&&Math.round(i.height)<=Math.round(b.height)+1,img?`${Math.round(i.width)}x${Math.round(i.height)} in ${Math.round(b.width)}x${Math.round(b.height)}`:"no img");
+  }
+  check("the new-this-week strip shows under the set",Boolean($('.new-this-week [data-new-release="tmdb-movie-990"]'))&&/Shares sci-fi with Moon Garden/.test($(".new-this-week")?.textContent||""),$(".new-this-week")?.textContent?.slice(0,120));
+  await act('[data-step-jump="library"]',150);
+  await act('[data-step-jump="recommendations"]',200);
+  check("it is fetched once per visit, not on every render",newReleaseCalls===1,newReleaseCalls);
+  await act('[data-new-release-item="tmdb-movie-990"][data-new-release-action="bookmark"]',150);
+  check("Save puts the release in Saved",state.feedbackByRecommendation["tmdb-movie-990"]?.detail==="bookmarked");
+  check("and the strip hides once it's empty",!$(".new-this-week"));
+  // #48: "Don't recommend…" is a boundary, not a reaction.
+  await act('[data-step-jump="recommendations"]',200);
+  const horrorCard=[...document.querySelectorAll(".editorial-rec")].find(card=>card.querySelector('[data-exclude-key="horror"]'));
+  check("a horror pick offers 'All horror'",Boolean(horrorCard));
+  if(horrorCard){
+    const horrorId=horrorCard.dataset.recId;
+    const before=Object.keys(state.feedbackByRecommendation).length;
+    horrorCard.querySelector(".exclude-menu > summary").click();
+    await sleep(60);
+    await act(`.editorial-rec[data-rec-id="${horrorId}"] [data-exclude-key="horror"]`,200);
+    check("the card leaves the set right away",!document.querySelector(`.editorial-rec[data-rec-id="${horrorId}"]`)&&!state.recommendationSets.at(-1).some(x=>x.id===horrorId));
+    check("the block is saved",state.exclusions.some(e=>e.id==="genre:horror"));
+    check("nothing is recorded about the pick",Object.keys(state.feedbackByRecommendation).length===before&&!state.feedbackByRecommendation[horrorId]);
+    check("focus stays on the page, not lost",document.activeElement&&document.activeElement!==document.body);
+    document.querySelector("[data-open-mine]")?.click();
+    await sleep(250);
+    check("My Tastemake shows Horror as blocked",$('[data-mine-never-genre="horror"]')?.checked===true,state.screen);
+    const box=$('[data-mine-never-genre="horror"]');
+    if(box){ box.click(); await sleep(200); }
+    check("unchecking it allows horror again",!state.exclusions.some(e=>e.id==="genre:horror"));
+    const input=$("#mine-never-creator");
+    if(input){ input.value="Stephen King"; $("[data-mine-never-form]").requestSubmit(); await sleep(200); }
+    check("a creator can be added by name",state.exclusions.some(e=>e.id==="creator:stephen king")&&Boolean($('[data-mine-never-remove="creator:stephen king"]')));
+    await act('[data-mine-never-remove="creator:stephen king"]',200);
+    check("and removed again",!state.exclusions.length);
+  }
+
+  // No-AI mode (Oct 20 smoke test): when the AI budget is used up, every surface says so calmly.
+  const badge=()=>$(".prototype-label");
+  check("header says Live AI before any pause",badge()?.textContent.trim()==="Live AI"&&!badge()?.classList.contains("is-paused"),badge()?.textContent);
+  aiMode="paused";
+  await act('[data-step-jump="recommendations"]',200);
+  await act('[data-action="keep-discovering"]',700);
+  check("paused: Recommendations explains the pause",/AI picks are paused/.test($(".ai-paused-notice")?.textContent||"")&&/personal AI budget/.test($(".ai-paused-notice")?.textContent||""),$(".ai-paused-notice")?.textContent);
+  check("paused: the notice says the picks are still real catalog matches",/straight from the catalog/.test($(".ai-paused-notice")?.textContent||""));
+  check("paused: the generic catalog line is replaced, not repeated",!$(".ai-inline-status"));
+  check("paused: header badge reads AI paused",badge()?.textContent.trim()==="AI paused"&&badge()?.classList.contains("is-paused")&&/personal AI budget/.test(badge()?.title||""),badge()?.textContent);
+  check("paused: the pause is never saved with the user's data",!/aiPaused/.test(localStorage.getItem("tastemake:test-state:v1")||""));
+  state.modelHypotheses=[];
+  await act('[data-step-jump="model"]',300);
+  if($('[data-action="retry-profile"]')) await act('[data-action="retry-profile"]',400);
+  const empty=$(".profile-empty")?.textContent||"";
+  check("paused: empty Profile blames the pause, not missing ratings",/waiting on AI/.test(empty)&&!/needs more ratings/.test(empty),empty.trim().slice(0,160));
+  check("paused: Profile status line stays short",/AI is paused/.test($(".profile-ai-status")?.textContent||"")&&!/portfolio project/.test($(".profile-ai-status")?.textContent||""),$(".profile-ai-status")?.textContent);
+  aiMode="model";
+  await act('[data-step-jump="recommendations"]',200);
+  await act('[data-action="keep-discovering"]',700);
+  check("a live-AI answer clears the pause",badge()?.textContent.trim()==="Live AI"&&!$(".ai-paused-notice"),badge()?.textContent);
 
   const failed=results.filter(r=>!r.ok);
   return {passed:results.length-failed.length,failed:failed.length,total:results.length,results:failed.length?failed:undefined};

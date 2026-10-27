@@ -4,6 +4,7 @@ import { displayLabel, domainFilterOptions, itemMeta } from "../data/domains.js"
 import { esc } from "../lib/html.js";
 import { resolveCustomCatalogItem, searchExternalCatalog } from "../catalog/client.js";
 import { renderArtwork } from "./artwork.js";
+import { starIcon } from "./star.js";
 
 // Search dialog (#13). It lives outside #app, so re-rendering a screen never closes it.
 // Nothing here changes state except an explicit button: applySearchAction, or toggleStarterFavorite.
@@ -28,7 +29,7 @@ export function initSearch({ onChange, announce, goTo }) {
   const opener = document.querySelector("#open-search");
   if (!dialog || !input || !view || !opener || typeof dialog.showModal !== "function") return;
 
-  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" };
+  const ui = { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "", booksLoading: false, booksFailed: false };
   let catalogTimer = null;
   let catalogController = null;
   let catalogSeq = 0;
@@ -117,12 +118,16 @@ export function initSearch({ onChange, announce, goTo }) {
       const resultMain = (item) => `${renderArtwork(item, "search-artwork")}<span class="search-result-main"><b>${esc(item.title)}</b><span>${esc(itemMeta(item))}</span>${hints.has(item.id) ? `<small class="search-result-hint">${esc(hints.get(item.id))}</small>` : ""}</span>`;
       list = `<p class="search-hint search-results-hint">${picking
           ? (state.starterReplaceId ? "Click a result to swap it into your Favorites." : "Click a result to add it to your Favorites. Click again to remove it.")
-          : "☆ adds something to Favorites (marked Tried · Loved). Open a result to react any other way."}</p>
+          : "“Favorite” adds something to your Favorites (marked Tried · Loved). Click a title to react any other way."}</p>
+        ${ui.booksLoading ? `<p class="search-books-pending" role="status" aria-live="polite"><span class="search-spinner" aria-hidden="true"></span> Still finding books…</p>` : ""}
+        ${ui.booksFailed ? `<p class="search-books-pending is-failed" role="status">Books are slow to load right now. Try the search again in a moment.</p>` : ""}
         <ul class="search-results" aria-label="Results">
           ${hits.map((item) => picking ? favoriteResult(item, resultMain(item)) : lookupResult(item, resultMain(item))).join("")}
         </ul>`;
     } else {
-      list = `<p class="search-hint" role="status">Nothing matches “${esc(query)}”. Try a different spelling, or add it yourself below.</p>`;
+      list = ui.booksFailed
+        ? `<p class="search-hint" role="status">No movies, shows or games match “${esc(query)}”, and books are slow to load right now. Try the search again in a moment.</p>`
+        : `<p class="search-hint" role="status">Nothing matches “${esc(query)}”. Try a different spelling, or add it yourself below.</p>`;
     }
 
     const addLabel = readyToSearch && !ui.catalogLoading && !hits.length
@@ -150,12 +155,12 @@ export function initSearch({ onChange, announce, goTo }) {
     const star = state.selectedFavorites.has(item.id) ? "" : `
               <button
                 type="button"
-                class="rec-favorite-star search-row-star ${favorite ? "is-favorite" : ""}"
+                class="search-row-star ${favorite ? "is-favorite" : ""}"
                 data-search-row-favorite="${item.id}"
                 aria-pressed="${favorite}"
                 aria-label="${favorite ? `Remove ${esc(item.title)} from Favorites` : `Add ${esc(item.title)} to Favorites`}"
                 title="${favorite ? "Remove from Favorites" : "Add to Favorites"}"
-              ><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>`;
+              >${starIcon(favorite)}<span>${favorite ? "Favorited" : "Favorite"}</span></button>`;
     return `
             <li class="search-result-row">
               <button type="button" class="search-result" data-search-pick="${item.id}">
@@ -239,7 +244,7 @@ export function initSearch({ onChange, announce, goTo }) {
           aria-label="${favorite ? "Remove from Favorites" : "Add to Favorites"}"
           title="${favorite ? "Remove from Favorites" : "Add to Favorites"}"
           aria-pressed="${favorite}"
-        ><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>
+        >${starIcon(favorite)}</button>
         <span>Favorites are automatically marked Tried · Loved.</span>
       </div>
 
@@ -312,7 +317,7 @@ export function initSearch({ onChange, announce, goTo }) {
   }
 
   function open() {
-    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "" });
+    Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "", booksLoading: false, booksFailed: false });
     input.value = "";
     syncFilters();
     render();
@@ -335,22 +340,54 @@ export function initSearch({ onChange, announce, goTo }) {
     const seq = ++catalogSeq;
     ui.catalogLoading = true;
     ui.catalogError = "";
+    ui.booksLoading = false;
+    ui.booksFailed = false;
     render();
+    // Search speed (Oct 24): for "All", movies/TV/games are asked for separately and shown as soon as they
+    // arrive (well under a second); the full, globally ranked list replaces them once books are in.
+    const signal = catalogController.signal;
+    let showedFast = false;
+    if (ui.filter === "all") {
+      searchExternalCatalog(query, "all", { signal, skipBooks: true }).then((fast) => {
+        if (seq !== catalogSeq || !ui.catalogLoading || !fast.items.length) return;
+        showedFast = true;
+        ui.external = fast.items;
+        ui.catalogLoading = false;
+        ui.booksLoading = true;
+        if (ui.mode === "results") renderKeepingFocus();
+      }).catch(() => {});
+    }
     try {
-      const payload = await searchExternalCatalog(query, ui.filter, { signal: catalogController.signal });
+      const payload = await searchExternalCatalog(query, ui.filter, { signal });
       if (seq !== catalogSeq) return;
       ui.external = payload.items;
       ui.catalogError = payload.degraded ? "unavailable" : "";
+      ui.booksFailed = Boolean(payload.booksFailed) && !payload.degraded;
     } catch (error) {
       if (error?.name === "AbortError" || seq !== catalogSeq) return;
-      ui.external = [];
-      ui.catalogError = "unavailable";
+      // Books failed after the fast results showed: keep those rather than blanking the list.
+      if (!showedFast) {
+        ui.external = [];
+        ui.catalogError = "unavailable";
+      } else {
+        ui.booksFailed = true;
+      }
     } finally {
       if (seq === catalogSeq) {
         ui.catalogLoading = false;
-        if (ui.mode === "results") render();
+        ui.booksLoading = false;
+        if (ui.mode === "results") renderKeepingFocus();
       }
     }
+  }
+
+  // Swapping in the full list must not throw away a keyboard user's place: refocus the same result.
+  function renderKeepingFocus() {
+    const active = document.activeElement;
+    const id = view.contains(active) ? (active.dataset.searchPick || active.dataset.searchFavorite || active.dataset.searchRowFavorite) : null;
+    const attr = active?.dataset.searchPick ? "data-search-pick" : active?.dataset.searchFavorite ? "data-search-favorite" : "data-search-row-favorite";
+    render();
+    if (id) view.querySelector(`[${attr}="${CSS.escape(id)}"]`)?.focus();
   }
 
   function queueExternal() {

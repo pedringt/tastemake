@@ -502,9 +502,11 @@
 .look-preview[data-look="collage"] .pv-deco-b { display:block; right:7%; top:10%; width:12%; aspect-ratio:1; border-radius:50%; background:#ff6b7f; clip-path:none; }
 .look-preview[data-look="collage"] .pv-deco-c { display:none; }
 
-/* Electric Night: deep indigo shell with bright floating panels. */
+/* Electric Night: deep indigo shell with bright floating panels.
+   Oct 27 contrast pass: primary buttons were 4.11:1 (white on #7367ff), --accent-text 4.55:1, and
+   --line / quiet-button / card borders 1.7-2.3:1. Now 5.51, 5.01 and 3.1-3.4:1 (borders meet 3:1). */
 :root[data-look="analog"], .look-preview[data-look="analog"] {
-  --bg:#111225; --paper:#f4f2ff; --navy:#19192d; --ink:#22213a; --muted:#5c5a73; --line:#bdb9d8;
+  --bg:#111225; --paper:#f4f2ff; --navy:#19192d; --ink:#22213a; --muted:#5c5a73; --line:#8a87ad;
   --pink:#ff668f; --pink-soft:#ffdce7; --cyan:#55dce0; --cyan-soft:#d8f6f6; --lime:#b9ef70;
   --violet:#7367ff; --violet-soft:#e1dfff; --coral:#ff836a; --yellow:#f5dd67;
   --display:"Space Grotesk",ui-rounded,system-ui,sans-serif;
@@ -514,7 +516,7 @@
   --shadow-ink:rgb(2 3 14 / .34); --ink-rgb:25 25 45; --accent-rgb:255 102 143;
   --text2:#46445f; --note-ink:#4f46c7; --tint-lime:#e6f8ce; --tint-warm:#eeeaff; --tint-cool:#dcf6f7;
   --tint-hover:#e9e7fb; --tint-pink:#ffe0e8; --tint-red:#ffdcd7; --tint-lilac:#e5e2ff; --on-lime:#314e16;
-  --accent-text:#c93564; --faint:#5c5a73; --on-pink:#8f2446; --warn:#a33c4d;
+  --accent-text:#bf2f60; --faint:#5c5a73; --on-pink:#8f2446; --warn:#a33c4d;
   --tone-1:#f9dce6; --tone-2:#d7f1f2; --tone-3:#e0ddff; --tone-4:#e2f3c5; --tone-5:#f8e7bf; --tone-6:#dbdff3; --tone-7:#f6d9d3; --tone-8:#d9ebe2;
   --pv-surface:#15172c; --pv-card:#f4f2ff; --pv-border:1px; --pv-radius:10px;
 }
@@ -546,7 +548,7 @@
 }
 :root[data-look="analog"] :is(.sticker-field,.favorite-tape,.bookmark-tape,.library-tape) { display:none; }
 :root[data-look="analog"] :is(.editorial-rec,.bookmark-card,.library-card,.starter-card,.starter-placeholder,.favorite-tile,.rec-progress-card,.refresh-banner,.setup-card,.profile-map-aside) {
-  border:1px solid #aaa6c8;
+  border:1px solid #8f8bb4;
   border-radius:12px;
   background:#fff;
   box-shadow:0 6px 18px rgb(25 25 45 / .10);
@@ -554,7 +556,8 @@
   transform:none;
 }
 :root[data-look="analog"] :is(.button,.domain-filter-button,.setup-field input,.setup-choice span,.setup-style > span) { border-radius:8px; box-shadow:none; }
-:root[data-look="analog"] .button-primary { background:#7367ff; border-color:#19192d; color:#fff; }
+:root[data-look="analog"] .button-primary { background:#5a4ff0; border-color:#19192d; color:#fff; }
+:root[data-look="analog"] .button-quiet { border-color:#8a87ad; }
 :root[data-look="analog"] .kicker { color:#b52f59; letter-spacing:.14em; }
 :root[data-look="analog"] .marker-word::after { height:.13em; background:#55dce0; opacity:.72; transform:none; }
 :root[data-look="analog"] :is(h1,h2,h3,.brand-word) { letter-spacing:-.035em; }

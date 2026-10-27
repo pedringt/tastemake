@@ -29,12 +29,6 @@ export function recommendationDelta(feedback) {
   return score + (detailAdjustments[feedback.detail] || 0);
 }
 
-// Notes about the recommendation itself, not about taste. "Surprised me" is recorded (it is only
-// offered after the user says they tried and liked something) but does not change ranking yet.
-export function recommendationQualityDelta(feedback) {
-  return feedback?.quality === "too-obvious" ? -0.5 : 0;
-}
-
 // The user said they tried it and liked it: the only time "Surprised me" makes sense.
 // Canonical predicates live in evidence.js (#40); these names stay for existing call sites.
 export const isPositiveExperience = isExperiencedPositive;
@@ -125,13 +119,22 @@ export function activeRecommendations(state) {
   return sets.length ? sets[sets.length - 1] : [];
 }
 
-export function currentRoundRatedCount(state) {
+// Picks in the current set the person has reacted to in any way: a rating, Save, or Not interested.
+// Oct 23 smoke test: the counter said "rated", so a Save read as a rating; it is shown as "reacted to".
+export function currentRoundReactedCount(state) {
   return activeRecommendations(state).filter((item) => state.feedbackByRecommendation[item.id]).length;
+}
+
+// True when the person reacted to at least one pick in the set before the current one, so a new set
+// really was shaped by their reactions (Oct 20: "Okay, that changed things" showed with none).
+export function previousRoundReacted(state) {
+  const previous = state.recommendationSets[state.recommendationSets.length - 2] ?? [];
+  return previous.some((item) => state.feedbackByRecommendation[item.id]);
 }
 
 export function currentRoundComplete(state) {
   const active = activeRecommendations(state);
-  return active.length > 0 && currentRoundRatedCount(state) === active.length;
+  return active.length > 0 && currentRoundReactedCount(state) === active.length;
 }
 
 // A user should not have to react to anything before asking for another set (product decision,

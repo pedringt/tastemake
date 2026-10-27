@@ -74,6 +74,7 @@ export function renderSetup() {
           <p class="kicker">${editing ? "Settings" : "Quick setup"}</p>
           <h1>${editing ? "Your Tastemake setup." : "What should Tastemake call you?"}</h1>
           <p class="lede">${editing ? "Adjust what Tastemake recommends and how adventurous it gets." : "Then jump straight into a few things you love."}</p>
+          ${editing ? "" : `<p class="setup-example">Want to see it with a lot of data first? <button class="setup-example-link" type="button" data-action="view-example">See Paige's Example Profile →</button></p>`}
         </div>
       </header>
 

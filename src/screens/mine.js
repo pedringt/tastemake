@@ -5,6 +5,8 @@ import { reasonLabel } from "../model/blindspots.js";
 import { CONTEXT, FIT, WEIGHT, activeStatements } from "../model/statements.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { EXCLUDABLE_GENRES } from "../model/exclusions.js";
+import { exampleLinkHtml } from "../example-profile.js";
 
 // My Tastemake (#8, phase 1): what you've told Tastemake, which areas it may use, how picks are put together,
 // and a way to start over. It is the deeper management layer behind Library (Saved and Tried) and the Taste Profile.
@@ -165,7 +167,7 @@ function setupBlock() {
         <div><dt>Discovery style</dt><dd>${esc(style)}</dd></div>
       </dl>
       <button class="button button-quiet mine-setup-edit" type="button" data-action="edit-setup">Edit setup</button>
-      <p class="mine-blurb">These are product settings, not taste evidence.</p>
+      <p class="mine-blurb">These are product settings. They don’t change your Taste Profile.</p>
     </section>`;
 }
 
@@ -190,14 +192,53 @@ function areasBlock() {
     </section>`;
 }
 
+// #48: hard boundaries. Kept apart from taste on purpose: nothing here is evidence or a dislike.
+function neverBlock() {
+  const exclusions = state.exclusions ?? [];
+  const blockedGenres = new Set(exclusions.filter((e) => e.kind === "genre").map((e) => e.key));
+  const others = exclusions.filter((e) => e.kind !== "genre");
+  const kindLabel = { creator: "Creator", series: "Series" };
+  return `
+    <section class="mine-block mine-never" aria-labelledby="mine-never">
+      <h2 id="mine-never">Never recommend</h2>
+      <p class="mine-blurb">Hard limits for new sets. Not a dislike, and they don’t change your Taste Profile. Search still finds everything.</p>
+      <fieldset class="mine-never-genres">
+        <legend>Kinds of thing</legend>
+        <div class="mine-never-chips">
+          ${EXCLUDABLE_GENRES.map((genre) => `
+            <label class="mine-never-chip ${blockedGenres.has(genre.id) ? "is-on" : ""}">
+              <input type="checkbox" data-mine-never-genre="${genre.id}" ${blockedGenres.has(genre.id) ? "checked" : ""} />
+              <span>${esc(genre.label)}</span>
+            </label>`).join("")}
+        </div>
+        <p class="mine-never-note">TV shows have no Horror or Romance label in the catalog, so those two cover movies, books and games.</p>
+      </fieldset>
+      <form class="mine-never-add" data-mine-never-form>
+        <label for="mine-never-creator">A creator</label>
+        <div class="mine-never-add-row">
+          <input id="mine-never-creator" name="creator" type="text" autocomplete="off" placeholder="e.g. Stephen King" maxlength="80" />
+          <button class="button button-secondary" type="submit">Add</button>
+        </div>
+        <p class="mine-never-note">Matches book authors, and a director, showrunner or studio once Tastemake knows it. To rule out a series, use “Don’t recommend…” on a pick.</p>
+      </form>
+      ${others.length ? `<ul class="mine-never-list" aria-label="Creators and series you ruled out">
+        ${others.map((e) => `
+          <li class="mine-never-row" data-mine-never-row="${esc(e.id)}">
+            <span><small>${kindLabel[e.kind] ?? "Rule"}</small>${esc(e.label)}</span>
+            <button class="button button-quiet mine-action" type="button" data-mine-never-remove="${esc(e.id)}" aria-label="Allow ${esc(e.label)} again">Remove</button>
+          </li>`).join("")}
+      </ul>` : ""}
+    </section>`;
+}
+
 function picksBlock() {
   return `
     <section class="mine-block" aria-labelledby="mine-picks">
       <h2 id="mine-picks">How new sets are put together</h2>
       <label class="mine-toggle mine-toggle-wide ${state.curveball ? "is-on" : ""}">
         <input type="checkbox" data-mine-curveball ${state.curveball ? "checked" : ""} />
-        <span class="mine-toggle-name">Include a curveball</span>
-        <span class="mine-toggle-about">One less-obvious pick (Surprise Me) in each new set. Off means the five best fits. This changes how a set is chosen, not what Tastemake thinks you like.</span>
+        <span class="mine-toggle-name">Include a Surprise Me pick</span>
+        <span class="mine-toggle-about">One less-obvious pick in each new set, often found from something you liked but didn’t love. Off means the five best fits. This changes how a set is chosen, not what Tastemake thinks you like.</span>
       </label>
     </section>`;
 }
@@ -230,6 +271,8 @@ export function renderMine() {
         ${picksBlock()}
       </div>
 
+      ${neverBlock()}
+
       <section class="mine-data-summary" aria-labelledby="mine-data-summary-title">
         <div>
           <p class="mine-eyebrow">Your data</p>
@@ -242,17 +285,18 @@ export function renderMine() {
             <input class="visually-hidden" type="file" name="tastemake-backup" aria-label="Choose a Tastemake backup file" accept="application/json,.json" data-mine-restore-file />
           </div>
           <p class="mine-data-note">The readable HTML copy includes Saved, Tried, Favorites and your Taste Profile. The JSON backup can restore Tastemake after you reset it for testing.</p>
+          ${exampleLinkHtml()}
         </div>
         <div class="mine-data-counts" aria-label="Evidence summary">
-          <span><strong>${tasteCount}</strong> taste evidence</span>
-          <span><strong>${steerCount}</strong> intent signals</span>
-          <span><strong>${told.blindSpots.length}</strong> blind spots</span>
+          <span><strong>${tasteCount}</strong> ${tasteCount === 1 ? "rating" : "ratings"} shaping your taste</span>
+          <span><strong>${steerCount}</strong> ${steerCount === 1 ? "save or skip" : "saves and skips"}</span>
+          <span><strong>${told.blindSpots.length}</strong> ${told.blindSpots.length === 1 ? "blind spot" : "blind spots"} you noted</span>
         </div>
       </section>
 
       <details class="mine-evidence-manager">
         <summary>
-          <span><strong>Manage evidence & corrections</strong><small>Open this only when you want to change something you've told Tastemake.</small></span>
+          <span><strong>Manage ratings & corrections</strong><small>Open this only when you want to change something you've told Tastemake.</small></span>
           <span class="mine-count">${told.total}</span>
         </summary>
         <div class="mine-evidence-manager-body">

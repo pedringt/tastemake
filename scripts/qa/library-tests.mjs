@@ -239,4 +239,132 @@ check("correcting it away from Loved clears its Favorite flag (no Disliked/Liked
   check("an unknown id is null", libraryItemById(s, "nope") === null);
 }
 
+// ---- #29 growth check: long sections stop at 30; only the open tab renders --------------------------------
+{
+  const { renderLibrary, LIBRARY_SHOW_LIMIT } = await import("../../src/screens/library.js");
+  const state = fresh();
+  state.onboarded = true;
+  const item = (i, type = "movie") => ({ id: `tmdb-${type}-${5000 + i}`, provider: "tmdb", providerId: String(5000 + i), title: `Long List ${i}`, type, domains: [type === "tv" ? "tv" : "movies"] });
+  for (let i = 0; i < 45; i++) state.feedbackByRecommendation[item(i).id] = { item: item(i), rating: "more", detail: "liked-before" };
+  for (let i = 100; i < 135; i++) state.feedbackByRecommendation[item(i, "tv").id] = { item: item(i, "tv"), rating: "not-tried", detail: "bookmarked" };
+  const count = (html, attr) => (html.match(new RegExp(`${attr}="`, "g")) ?? []).length;
+
+  state.libraryView = "tried";
+  let html = renderLibrary();
+  eq("Tried shows the first 30 of 45", count(html, "data-library-id"), LIBRARY_SHOW_LIMIT);
+  check("with a Show all button that says how many", /data-library-show-all="tried-tried">Show all 45/.test(html) && /Showing 30 of 45/.test(html));
+  eq("the closed Saved tab is not rendered", count(html, "data-bookmark-id"), 0);
+  check("but its panel stays for the tab's aria-controls", /id="library-panel-saved"[^>]*hidden/.test(html));
+
+  state.libraryExpanded = new Set(["tried-tried"]);
+  html = renderLibrary();
+  eq("Show all opens the whole section", count(html, "data-library-id"), 45);
+  check("and the button goes away", !/data-library-show-all="tried-tried"/.test(html));
+
+  state.libraryView = "saved";
+  html = renderLibrary();
+  eq("Saved is capped the same way", count(html, "data-bookmark-id"), LIBRARY_SHOW_LIMIT);
+  check("with its own Show all", /data-library-show-all="saved">Show all 35/.test(html));
+  eq("the closed Tried tab is not rendered", count(html, "data-library-id"), 0);
+
+  state.libraryExpanded = new Set();
+  for (const id of Object.keys(state.feedbackByRecommendation).slice(10)) delete state.feedbackByRecommendation[id];
+  state.libraryView = "tried";
+  check("a short section has no button", !/data-library-show-all/.test(renderLibrary()));
+  const persisted = (await import("node:fs")).readFileSync(new URL("../../src/persistence.js", import.meta.url), "utf8");
+  check("the open state is never saved", /const FIELDS = \[/.test(persisted) && !persisted.includes("libraryExpanded"));
+}
+
+// ---- Oct 27: rating in Saved asks what worked before the item moves to Tried; Saved wording ----------------
+{
+  const { renderLibrary } = await import("../../src/screens/library.js");
+  const { finishSavedTried } = await import("../../src/actions/library.js");
+  const state = fresh();
+  state.onboarded = true;
+  state.libraryView = "saved";
+  const book = { id: "openlibrary-book-OLSAVEDW", provider: "openlibrary", providerId: "OLSAVEDW", title: "Saved Then Read", type: "book", domains: ["read"], genres: ["Fantasy"] };
+  const other = { id: "tmdb-movie-7001", provider: "tmdb", providerId: "7001", title: "Still Saved", type: "movie", domains: ["movies"] };
+  state.feedbackByRecommendation[book.id] = { item: book, rating: "not-tried", detail: "bookmarked" };
+  state.feedbackByRecommendation[other.id] = { item: other, rating: "not-tried", detail: "bookmarked" };
+
+  let html = renderLibrary();
+  check("Saved cards no longer repeat a \"Saved\" label", !/library-compact-status">Saved</.test(html));
+  check("the star's note is plain", html.includes("Starring it also marks it as loved.") && !html.includes("Tried · Loved automatically"));
+  check("the tried section asks how it was", html.includes("Tried it? How was it?"));
+  check("the intro is the short one", html.includes("Saving doesn't change your taste profile; rating it once you've tried it does."));
+
+  check("rating it from Saved works", saveBookmarkAction(book.id, "tried-loved"));
+  check("it counts as tried and loved", isStrongPositive(state.feedbackByRecommendation[book.id]) && !isBookmarked(state.feedbackByRecommendation[book.id]));
+  html = renderLibrary();
+  check("but it stays on the Saved list", html.includes(`data-bookmark-id="${book.id}"`), html.slice(0, 200));
+  check("with \"What worked for you?\" already open", /<details class="experience-refinement[^"]*" open data-refinement-item="openlibrary-book-OLSAVEDW"/.test(html));
+  check("its rating shown and a Done button", html.includes('library-compact-status">Loved it<') && html.includes(`data-saved-done="${book.id}"`));
+  check("it keeps its place in the list (first, as before)", html.indexOf(book.id) < html.indexOf(other.id));
+  check("the Saved count no longer includes it", /Saved <span class="library-tab-count">1</.test(html));
+
+  finishSavedTried(book.id);
+  html = renderLibrary();
+  check("Done moves it off Saved", !html.includes(`data-bookmark-id="${book.id}"`));
+  state.libraryView = "tried";
+  check("and it is in Tried", renderLibrary().includes(`data-library-id="${book.id}"`));
+
+  state.libraryView = "saved";
+  delete state.feedbackByRecommendation[other.id];
+  html = renderLibrary();
+  check("the empty Saved list names the real buttons", html.includes('On a recommendation, tap "Not tried", then "Save".') && !html.includes("Save to Saved"));
+
+  const disliked = { ...other, id: "tmdb-movie-7002", providerId: "7002", title: "Saved Then Disliked" };
+  state.feedbackByRecommendation[disliked.id] = { item: disliked, rating: "not-tried", detail: "bookmarked" };
+  saveBookmarkAction(disliked.id, "tried-disliked");
+  html = renderLibrary();
+  check("a dislike from Saved asks what didn't work", html.includes("Didn't like it") && html.includes("What didn’t work for you?"));
+}
+
+// ---- Oct 27: the "This pick was: Too obvious / A great discovery" line is gone everywhere ------------------
+{
+  const fs = await import("node:fs");
+  const read = (path) => fs.readFileSync(new URL(path, import.meta.url), "utf8");
+  const sources = ["../../src/screens/recommendations.js", "../../src/screens/library.js", "../../src/app.js", "../../src/actions/recommendations.js", "../../src/model/taste.js", "../../styles/refinement.css"].map(read).join("\n");
+  check("no pick-quality line, handler or styles remain", !/A great discovery|Too obvious|data-feedback-quality|saveFeedbackQuality|quality-line|recommendationQualityDelta/.test(sources));
+  check("Recommendations drops the extra save hint", !read("../../src/screens/recommendations.js").includes("Save it for later, or skip it."));
+}
+
+// ---- Oct 27: Browse is the place to rate; it stays in the nav after setup ----------------------------------
+{
+  const fs = await import("node:fs");
+  const html = fs.readFileSync(new URL("../../index.html", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../../styles/base.css", import.meta.url), "utf8");
+  const order = [...html.matchAll(/data-step-jump="([a-z]+)"/g)].map((m) => m[1]);
+  eq("nav order puts Browse right after Recommendations", order.join(","), "favorites,recommendations,browse,model,library");
+  // Oct 27: Library used to be faded as a "secondary" link (#81); all four nav links now look the same.
+  check("every nav link is a plain step, none styled secondary", [...html.matchAll(/<a class="([^"]+)"[^>]*data-step-jump=/g)].every((m) => m[1] === "step") && !/step-secondary/.test(html + css));
+  check("Browse is not hidden after setup (Favorites still is)", !/:not\(\.is-onboarding\) \.step\[data-step-jump="browse"\]/.test(css) && /:not\(\.is-onboarding\) \.step\[data-step-jump="favorites"\] \{ display:none; \}/.test(css));
+
+  const { renderBrowse } = await import("../../src/screens/browse.js");
+  const state = fresh();
+  state.onboarded = true;
+  const film = { id: "tmdb-movie-8001", provider: "tmdb", providerId: "8001", title: "Browse Film", type: "movie", domains: ["movies"], genres: ["Drama"] };
+  state.browseItems = [film];
+  let out = renderBrowse();
+  check("after setup, Browse says it's for rating", out.includes("Rate what") && out.includes("Every rating sharpens your recommendations") && !out.includes("inspiration"));
+  check("and starts at 0 rated this visit, with no link yet", out.includes("0 rated this visit") && !out.includes("See recommendations →"));
+
+  state.feedbackByRecommendation[film.id] = { item: film, rating: "more", detail: "loved-before", refinements: [] };
+  state.recommendationExperienceChoice[film.id] = "tried";
+  state.recommendationFeedbackItemId = film.id;
+  state.browseRatedThisVisit = [film.id];
+  out = renderBrowse();
+  check("after a rating it counts it and links to recommendations", out.includes("1 rated this visit") && out.includes('data-action="show-recs">See recommendations →'));
+  check("and asks what worked, already open", /<details class="experience-refinement is-compact" open data-refinement-item="tmdb-movie-8001"/.test(out));
+
+  // Oct 27 smoke test: the count lagged one render because it was updated after the re-render.
+  const app = fs.readFileSync(new URL("../../src/app.js", import.meta.url), "utf8");
+  const handler = app.slice(app.indexOf('closest("[data-experience-outcome][data-feedback-item]")'));
+  check("a Browse rating is counted before the screen re-renders", handler.indexOf("browseRatedThisVisit.push") > 0 && handler.indexOf("browseRatedThisVisit.push") < handler.indexOf("renderPreservingCardPosition"));
+
+  const before = fresh();
+  before.browseItems = [film];
+  check("before setup, Browse keeps its favorites framing", renderBrowse().includes("inspiration") && renderBrowse().includes("of 4 favorites"));
+}
+
 finish();

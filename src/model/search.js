@@ -1,4 +1,4 @@
-import { isBookmarked, isPositiveExperience } from "./taste.js";
+import { isBookmarked } from "./taste.js";
 import { isDeclined, isExperiencedNegative, isExperiencedPositive, isStrongPositive } from "./evidence.js";
 import { addableTypes, displayLabel, itemMeta } from "../data/domains.js";
 import { safeAbout } from "../catalog/synopsis.mjs";
@@ -266,7 +266,6 @@ export function applySearchAction(state, item, action, { source = "search" } = {
         rating: "more",
         detail: "loved-before",
         refinements: existing?.refinements ?? [],
-        quality: existing?.quality ?? null,
         seriesExperience: existing?.seriesExperience ?? null,
         wasBookmarked: Boolean(existing?.wasBookmarked || (existing && isBookmarked(existing))),
         source
@@ -287,12 +286,10 @@ export function applySearchAction(state, item, action, { source = "search" } = {
     item,
     rating: outcome.rating,
     detail: outcome.detail,
-    quality: existing?.quality ?? null,
     source
   };
   if (existing?.wasBookmarked || (existing && isBookmarked(existing) && action !== "bookmark")) entry.wasBookmarked = true;
   // "Surprised me" only makes sense after Loved / Liked it before.
-  if (entry.quality === "surprised-me" && !isPositiveExperience(entry)) entry.quality = null;
   if (action !== "loved") state.libraryFavorites.delete(item.id);
   state.feedbackByRecommendation[item.id] = entry;
   return `${item.title}: ${outcome.said}.`;

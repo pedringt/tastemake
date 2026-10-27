@@ -120,6 +120,8 @@ export function serializeAiState(state) {
     // zero-behavior-change, zero-information-loss cut -- unlike feedbackByRecommendation/customItems,
     // there is no real data here the server needs at all.
     patternStatements: state.patternStatements ?? [],
+    // #48: only what matching needs (no timestamps).
+    exclusions: (state.exclusions ?? []).map(({ id, kind, key, label, ref }) => ({ id, kind, key, label, ...(ref ? { ref } : {}) })),
     areas: state.areas ?? {},
     curveball: state.curveball !== false,
     recommendationStyle: state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced"),

@@ -112,14 +112,10 @@ button { color: inherit; }
 .app-shell.is-onboarding .search-open:hover,
 .app-shell.is-onboarding .me-open:hover,
 .app-shell.is-onboarding .look-open:hover { opacity:.85; }
-/* #117: once setup is done, Favorites and Browse are no longer permanent top-level destinations —
-   Favorites lives on in Library, Browse lives on from Recommendations ("Browse by genre"). Still
-   directly reachable by URL/Library/Recommendations; only the persistent nav entry is hidden. */
-.app-shell:not(.is-onboarding) .step[data-step-jump="favorites"],
-.app-shell:not(.is-onboarding) .step[data-step-jump="browse"] { display:none; }
+/* #117: once setup is done, Favorites is no longer a top-level destination; it lives on in Library.
+   Oct 27: Browse stays, since it's where you rate things to build your profile. */
+.app-shell:not(.is-onboarding) .step[data-step-jump="favorites"] { display:none; }
 .step span { font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--faint,#6670a6); }
-.step-secondary { opacity:.68; font-weight:600; }
-.step-secondary:hover,.step-secondary.is-active { opacity:1; }
 .page-actions { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; }
 .page-actions .action-group { flex:0 1 auto; }
 .page-actions-left,.page-actions-right { display:flex; gap:10px; flex-wrap:wrap; }
@@ -160,6 +156,7 @@ button { color: inherit; }
   letter-spacing:.06em;
   text-transform:uppercase;
 }
+.prototype-label.is-paused { border-style:dashed; }
 .topbar-note { color:var(--note-ink,#3950b7); font-size:18px; line-height:.95; max-width:95px; transform:rotate(calc(2deg * var(--tilt))); }
 
 .kicker {
@@ -388,3 +385,8 @@ button:focus-visible,a:focus-visible,.why-trigger:focus-visible { outline:3px so
   border:2px solid #fff;
   box-shadow:0 2px 3px rgb(var(--ink-rgb,17 26 75) / .25);
 }
+
+/* Paige's Example Profile banner (Oct 21): sits above every screen while the example is loaded. */
+.example-banner { display:flex; align-items:center; justify-content:space-between; gap:12px 20px; flex-wrap:wrap; margin:0 0 20px; padding:14px 18px; border:2px solid var(--ink); border-radius:14px; background:var(--paper); color:var(--ink); }
+.example-banner p { margin:0; max-width:70ch; line-height:1.5; }
+.example-banner .button { flex:none; }

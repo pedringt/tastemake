@@ -3,9 +3,11 @@ import { canonicalizeWriteBehind, mergeCanonicalFacts } from "./canonical-store.
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { buildItemId } from "./item-id.mjs";
 import { bookSeriesFromRow } from "./book-series.mjs";
+import { isBookCompanion } from "./book-companions.mjs";
+import { correctOldBookYears } from "./wikidata-years.mjs";
 import { fallbackSummary, sanitizeAbout } from "./synopsis.mjs";
 import { waitUntil } from "@vercel/functions";
-import { rankSearchResults, searchRelevance } from "./search-ranking.mjs";
+import { dropOffTopicBooks, pruneSearchResults, rankSearchResults, searchRelevance } from "./search-ranking.mjs";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w780";
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const IGDB_GAMES = "https://api.igdb.com/v4/games";
@@ -94,7 +96,20 @@ function openLibraryAuthors(names = []) {
   return clean((names.length > 2 ? names.slice(0, 1) : names).join(", "), 120);
 }
 
+// Open Library's first_publish_year is the earliest date on any edition, so one mis-dated record wins.
+// Oct 23 smoke test: The Blade Itself, The Lies of Locke Lamora and The Alloy of Law all read 2001, from
+// one Gollancz reprint each imported with a 2001 date (the real years are 2006, 2006, 2011). When the
+// earliest year stands alone, 4+ years before every other edition of a modern book, the next year is used.
+// Older books are left alone: a long gap before the first reprint is normal for them.
+export function firstPublishedYear(row = {}) {
+  const first = Number(row.first_publish_year) || null;
+  const years = [...new Set([].concat(row.publish_year ?? []).map(Number).filter((y) => y > 0))].sort((a, b) => a - b);
+  if (!first || years.length < 3 || years[0] !== first || first < 1980) return first;
+  return years[1] - years[0] >= 4 ? years[1] : first;
+}
+
 function openLibraryItem(row) {
+  const firstYear = firstPublishedYear(row);
   const key = String(row.key ?? "").replace("/works/", "");
   const englishTitle = englishEditionTitle(row);
   const item = {
@@ -106,8 +121,8 @@ function openLibraryItem(row) {
     type: "book",
     domains: ["read"],
     by: openLibraryAuthors(row.author_name ?? []),
-    about: row.first_publish_year ? `First published ${row.first_publish_year}.` : "Book from Open Library.",
-    year: row.first_publish_year ? String(row.first_publish_year) : null,
+    about: firstYear ? `First published ${firstYear}.` : "Book from Open Library.",
+    year: firstYear ? String(firstYear) : null,
     artwork: row.cover_i ? `https://covers.openlibrary.org/b/id/${row.cover_i}-L.jpg?default=false` : null,
     genres: (row.subject ?? []).slice(0, 12).map((x) => clean(x, 60)),
     // #142: Open Library's own series metadata (series_key), when the record has it, lets the
@@ -126,13 +141,101 @@ function openLibraryItem(row) {
   return { ...item, ...sanitizeAbout(item) };
 }
 
+// Book search results are cached for a day: Open Library is slow (2-10 s, Oct 24) and its catalog barely
+// changes. Only the provider result is cached; older books' years are corrected on every search, waiting
+// at most SEARCH_YEAR_WAIT_MS (the Wikidata lookup keeps going and fills its own cache for next time).
+const BOOK_SEARCH_TTL_SECONDS = 24 * 60 * 60;
+const SEARCH_YEAR_WAIT_MS = 500;
+// Oct 24: Open Library answered in 9-17 s, past the old 8 s limit, so every book search failed. Books
+// load behind the movie/TV/game results now, so waiting longer costs little (api/catalog.mjs has 30 s).
+export const BOOK_SEARCH_TIMEOUT_MS = 20_000;
+
 async function searchOpenLibrary(query, env, fetchImpl) {
-  const fields = "key,title,author_name,first_publish_year,cover_i,subject,series_key,series_name,series_position,isbn,edition_count,editions,editions.title,editions.language";
-  const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=8&lang=en&fields=${fields}`, {
+  const load = () => searchOpenLibraryUncached(query, env, fetchImpl);
+  const items = fetchImpl === fetch
+    ? await cachedValue(`openlibrary-search:v3:${String(query).toLowerCase()}`, load, { ttl: BOOK_SEARCH_TTL_SECONDS, tags: ["catalog-search"] })
+    : await load();
+  return correctOldBookYears(items, { env, fetchImpl, waitMs: SEARCH_YEAR_WAIT_MS });
+}
+
+async function searchOpenLibraryUncached(query, env, fetchImpl) {
+  const fields = "key,title,author_name,first_publish_year,publish_year,cover_i,subject,series_key,series_name,series_position,isbn,edition_count,editions,editions.title,editions.language";
+  // Asks for a few extra so dropping study guides and the like (book-companions.mjs) still leaves 8.
+  const response = await fetchWithTimeout(fetchImpl, `${OL_SEARCH}?q=${encodeURIComponent(query)}&limit=12&lang=en&fields=${fields}`, {
     headers: { "user-agent": env.TASTEMAKE_CATALOG_USER_AGENT || "TastemakePrototype/1.0 (https://tastemake.vercel.app)" }
-  });
+  }, BOOK_SEARCH_TIMEOUT_MS);
   if (!response.ok) throw new Error(`openlibrary ${response.status}`);
-  return ((await response.json()).docs ?? []).slice(0, 8).map(openLibraryItem);
+  const rows = ((await response.json()).docs ?? []).filter((row) => !isBookCompanion(row, query));
+  return dropOffTopicBooks(rows, query, { title: (row) => row.title, authors: (row) => row.author_name, series: (row) => row.series_name }).slice(0, 8).map(openLibraryItem);
+}
+
+// ---- Book search fallback (Oct 24) ----------------------------------------------------------------
+// Open Library took 2-17 s this week. When it hasn't answered after GOOGLE_FALLBACK_AFTER_MS (or fails),
+// and TASTEMAKE_GOOGLE_BOOKS_API_KEY is set, Google Books is searched too and the first good answer
+// fills the book results. Open Library keeps running in the background and fills its day cache, so the
+// next search uses it. Google's terms forbid caching beyond its cache headers or keeping permanent
+// copies, so Google results are never cached by Tastemake or written to the catalog store (see
+// searchCatalog and api/catalog.mjs).
+const GOOGLE_FALLBACK_AFTER_MS = 4000;
+const GOOGLE_SEARCH_TIMEOUT_MS = 6000;
+
+export function googleBookItem(volume) {
+  const info = volume?.volumeInfo ?? {};
+  const year = /^\d{4}/.exec(String(info.publishedDate ?? ""))?.[0] ?? null;
+  const cover = info.imageLinks?.thumbnail ?? info.imageLinks?.smallThumbnail ?? null;
+  const item = {
+    id: buildItemId("googlebooks", "book", volume.id),
+    provider: "googlebooks",
+    providerId: String(volume.id),
+    title: clean(info.title, 120),
+    type: "book",
+    domains: ["read"],
+    by: (info.authors ?? []).slice(0, 3).map((a) => clean(a, 60)).join(", ") || undefined,
+    about: info.description ? clean(info.description) : year ? `First published ${year}.` : "Book from Google Books.",
+    year,
+    artwork: cover ? String(cover).replace(/^http:/, "https:") : null,
+    genres: (info.categories ?? []).slice(0, 8).map((c) => clean(c, 60)),
+    providerMeta: {},
+    sourceUrl: typeof info.infoLink === "string" ? info.infoLink.replace(/^http:/, "https:") : null,
+    _searchPopularity: Number(info.ratingsCount) || 0
+  };
+  return { ...item, ...sanitizeAbout(item) };
+}
+
+async function searchGoogleBooks(query, env, fetchImpl) {
+  const key = env.TASTEMAKE_GOOGLE_BOOKS_API_KEY;
+  if (!key) return [];
+  const response = await fetchWithTimeout(fetchImpl, `${GOOGLE_BOOKS}/volumes?q=${encodeURIComponent(query)}&maxResults=12&printType=books&langRestrict=en&key=${encodeURIComponent(key)}`, {}, GOOGLE_SEARCH_TIMEOUT_MS);
+  if (!response.ok) throw new Error(`googlebooks ${response.status}`);
+  const volumes = ((await response.json()).items ?? [])
+    .filter((volume) => volume?.id && volume.volumeInfo?.title && !isBookCompanion({ title: volume.volumeInfo.title, author_name: volume.volumeInfo.authors ?? [] }, query));
+  return dropOffTopicBooks(volumes, query, { title: (volume) => volume.volumeInfo.title, authors: (volume) => volume.volumeInfo.authors })
+    .slice(0, 8)
+    .map(googleBookItem);
+}
+
+// { rows, source } from whichever book source answers usefully first. Throws when both fail.
+export async function searchBooks(query, env = process.env, fetchImpl = fetch, { fallbackAfterMs = GOOGLE_FALLBACK_AFTER_MS } = {}) {
+  const openLibrary = searchOpenLibrary(query, env, fetchImpl);
+  if (!env.TASTEMAKE_GOOGLE_BOOKS_API_KEY) return { rows: await openLibrary, source: "openlibrary" };
+  openLibrary.catch(() => {});
+  try { waitUntil(openLibrary); } catch { /* local/off-platform tests have no request context */ }
+  return new Promise((resolve, reject) => {
+    let done = false, googleStarted = false, googleOut = false, openLibraryOut = false;
+    const finish = (value) => { if (!done) { done = true; clearTimeout(timer); resolve(value); } };
+    const failIfBothOut = () => { if (!done && googleOut && openLibraryOut) { done = true; reject(new Error("books unavailable")); } };
+    const startGoogle = () => {
+      if (googleStarted) return;
+      googleStarted = true;
+      searchGoogleBooks(query, env, fetchImpl)
+        .then((rows) => { if (rows.length) finish({ rows, source: "googlebooks" }); else { googleOut = true; failIfBothOut(); } })
+        .catch(() => { googleOut = true; failIfBothOut(); });
+    };
+    const timer = setTimeout(startGoogle, fallbackAfterMs);
+    openLibrary
+      .then((rows) => finish({ rows, source: "openlibrary" }))
+      .catch(() => { openLibraryOut = true; clearTimeout(timer); startGoogle(); failIfBothOut(); });
+  });
 }
 
 async function igdbToken(env, fetchImpl) {
@@ -164,6 +267,8 @@ function igdbItem(row) {
     // shares a collection id) so the shared novelty guard can suppress sequels without title guessing.
     providerMeta: {
       genreIds: (row.genres ?? []).map((x) => x.id),
+      // #48: IGDB keeps Horror, Romance, Warfare and Kids as themes, not genres.
+      themes: (row.themes ?? []).map((x) => clean(x.name, 40)).filter(Boolean),
       collectionId: row.collection?.id ?? null,
       franchiseId: (row.franchises ?? [])[0]?.id ?? row.franchise?.id ?? null
     },
@@ -184,7 +289,7 @@ async function searchIgdb(query, env, fetchImpl) {
       authorization: `Bearer ${token}`,
       "content-type": "text/plain"
     },
-    body: `search "${String(query).replace(/"/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,collection.id,franchises.id,total_rating_count; limit 20;`
+    body: `search "${String(query).replace(/["\\]/g, "")}"; fields name,summary,first_release_date,url,cover.image_id,genres.id,genres.name,themes.name,collection.id,franchises.id,total_rating_count; limit 20;`
   });
   if (!response.ok) throw new Error(`igdb ${response.status}`);
   const rows = await response.json();
@@ -208,19 +313,21 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
   const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
   const kind = type === "tv" ? "tv" : "movie";
   const response = await fetchWithTimeout(fetchImpl,
-    `https://api.themoviedb.org/3/${kind}/${encodeURIComponent(providerId)}?append_to_response=credits&language=en-US`,
+    `https://api.themoviedb.org/3/${kind}/${encodeURIComponent(providerId)}?append_to_response=credits,watch/providers&language=en-US`,
     { headers }
   );
   if (!response.ok) throw new Error(`tmdb detail ${response.status}`);
   const row = await response.json();
   const credits = row.credits ?? {};
   const cast = namesOf(credits.cast, 6);
+  const watch = compactWatchProviders(row["watch/providers"]?.results);
   if (kind === "movie") {
     const director = namesOf((credits.crew ?? []).filter((person) => person.job === "Director"), 2);
     return {
       director: director.length ? director.join(", ") : null,
       cast: cast.length ? cast : null,
-      runtime: row.runtime || null
+      runtime: row.runtime || null,
+      watch
     };
   }
   // TV: showrunner/creator comes from `created_by`, not the crew list. Not every series has one on record.
@@ -228,8 +335,53 @@ async function tmdbDetail(providerId, type, env, fetchImpl) {
   return {
     creator: creator.length ? creator.join(", ") : null,
     cast: cast.length ? cast : null,
-    yearsRun: tvYearsRun(row)
+    yearsRun: tvYearsRun(row),
+    watch
   };
+}
+
+// #10: where a movie or show can be watched, per country, from TMDb's watch-provider data (supplied by
+// JustWatch, which must be credited wherever it is shown). Names only, a few per kind. Never stored
+// in the canonical catalog (not a factual field there); the detail endpoint returns one country.
+const WATCH_KINDS = { flatrate: "stream", free: "free", ads: "ads", rent: "rent", buy: "buy" };
+
+// Oct 23: TMDb lists every plan and resold channel of a service separately ("Paramount Plus Premium",
+// "Paramount Plus Essential", "Paramount+ Amazon Channel", "Paramount+ Roku Premium Channel"), so one
+// service filled the list. Plans and channels collapse to the service; the "All options" link keeps the detail.
+const CHANNEL_SUFFIX = /\s+(?:amazon|roku premium|roku|apple tv|youtube)\s+channel$/i;
+const PLAN_SUFFIX = /\s+(?:(?:standard|basic|premium)\s+)?with\s+ads$|\s+(?:premium\s+plus|premium|essential|basic|standard)$/i;
+export function watchServiceName(name) {
+  let text = String(name ?? "").replace(/\s+/g, " ").trim();
+  for (const pattern of [CHANNEL_SUFFIX, PLAN_SUFFIX]) {
+    const shorter = text.replace(pattern, "").trim();
+    if (shorter) text = shorter;
+  }
+  return text.replace(/\s+Plus$/i, "+").replace(/\s+Plus\b/i, "+");
+}
+export function compactWatchProviders(results) {
+  if (!results || typeof results !== "object") return null;
+  const out = {};
+  for (const [country, entry] of Object.entries(results)) {
+    if (!/^[A-Z]{2}$/.test(country) || !entry) continue;
+    const kinds = {};
+    for (const [from, to] of Object.entries(WATCH_KINDS)) {
+      const seen = new Set();
+      const names = (entry[from] ?? [])
+        .map((p) => watchServiceName(clean(p.provider_name, 40)))
+        .filter((n) => n && !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase()))
+        .slice(0, 6);
+      if (names.length) kinds[to] = names;
+    }
+    out[country] = { link: typeof entry.link === "string" && entry.link.startsWith("https://www.themoviedb.org/") ? entry.link : null, ...kinds };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// The one country a viewer asked for, or null. "XX" from a browser language like "en-GB".
+export function watchForRegion(watch, region) {
+  const code = String(region ?? "").toUpperCase();
+  if (!watch || !/^[A-Z]{2}$/.test(code)) return null;
+  return watch[code] ? { region: code, ...watch[code] } : { region: code, none: true };
 }
 
 // A series still in production has a last_air_date (its latest episode), not an end year, so it
@@ -395,14 +547,33 @@ export async function fetchItemDetail(item, { env = process.env, fetchImpl = fet
 // #135: provider-backed lazy enrichment. Detail fetching is cached separately from the canonical
 // write, so a transient DB failure can retry on the next encounter without re-fetching the provider.
 // This never blocks recommendation generation when called through enrichCanonicalItemWriteBehind.
+// True when a detail has at least one real fact. fetchItemDetail answers {} when the provider failed.
+export const hasDetailFacts = (detail) => {
+  const { watch, ...facts } = detail ?? {};
+  return Object.values(facts).some((value) => value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length));
+};
+
 export async function fetchAndPersistItemDetail(item, { env = process.env, fetchImpl = fetch, query } = {}) {
   if (!item?.provider || !item?.providerId || !item?.type) return {};
-  const cacheKey = `canonical-enrichment:v2:${item.provider}:${item.type}:${item.providerId}`;
-  const detail = fetchImpl !== fetch
-    ? await fetchItemDetail(item, { env, fetchImpl })
-    : await cachedValue(cacheKey, () => fetchItemDetail(item, { env, fetchImpl }), { ttl: 86400, tags: ["canonical-enrichment"] });
-  if (detail && Object.values(detail).some((value) => value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length))) {
-    await mergeCanonicalFacts(item, detail, { env, query, source: item.provider });
+  // Oct 24: a failed or empty answer was kept a day (Piranesi showed no description). It is never cached now:
+  // cachedValue doesn't store a producer failure, so the empty answer travels on the error.
+  const cacheKey = `canonical-enrichment:v5:${item.provider}:${item.type}:${item.providerId}`;
+  const produce = async () => {
+    const result = await fetchItemDetail(item, { env, fetchImpl });
+    if (!hasDetailFacts(result)) throw Object.assign(new Error("not cacheable"), { partial: result ?? {} });
+    return result;
+  };
+  let detail;
+  try {
+    detail = fetchImpl !== fetch ? await produce() : await cachedValue(cacheKey, produce, { ttl: 86400, tags: ["canonical-enrichment"] });
+  } catch (error) {
+    if (!error?.partial) throw error;
+    detail = error.partial;
+  }
+  // #10: watch providers change often and differ by country; they are served, never stored as facts.
+  const { watch, ...facts } = detail ?? {};
+  if (hasDetailFacts(facts)) {
+    await mergeCanonicalFacts(item, facts, { env, query, source: item.provider });
   }
   return detail ?? {};
 }
@@ -445,13 +616,18 @@ export function enrichCanonicalItemWriteBehind(item, options = {}) {
   try { waitUntil(task); } catch { /* local/off-platform tests have no request context */ }
 }
 
-export async function searchCatalog(query, { domain = "all", env = process.env, fetchImpl = fetch } = {}) {
+export async function searchCatalog(query, { domain = "all", skipBooks = false, env = process.env, fetchImpl = fetch } = {}) {
   const q = clean(query, 100);
   if (q.length < 2) return { items: [], providers: {}, degraded: false };
 
   const specs = [];
   if (domainAllows(domain, "movies") || domainAllows(domain, "tv")) specs.push(["tmdb", Boolean(env.TASTEMAKE_TMDB_TOKEN), () => searchTmdb(q, env, fetchImpl, domain)]);
-  if (domainAllows(domain, "read")) specs.push(["openlibrary", true, () => searchOpenLibrary(q, env, fetchImpl)]);
+  let bookSource = null;
+  if (domainAllows(domain, "read") && !skipBooks) specs.push(["openlibrary", true, async () => {
+    const { rows, source } = await searchBooks(q, env, fetchImpl);
+    bookSource = source;
+    return rows;
+  }]);
   if (domainAllows(domain, "play")) specs.push(["igdb", Boolean(env.IGDB_CLIENT_ID && env.IGDB_CLIENT_SECRET), () => searchIgdb(q, env, fetchImpl)]);
 
   const settled = await Promise.all(specs.map(async ([name, configured, run]) => {
@@ -466,12 +642,15 @@ export async function searchCatalog(query, { domain = "all", env = process.env, 
     providers[name] = { available, configured, error };
     if (available) buckets.push(rows);
   }
+  // Books came from the Google fallback: callers must not cache this response (api/catalog.mjs).
+  if (bookSource === "googlebooks") providers.googlebooks = { available: true, configured: true, error: null, fallback: true };
 
   // "All" is a relevance-ranked search, not a provider carousel. Rank the combined
   // result set globally so obvious/canonical matches rise to the top regardless of
   // whether they came from TMDb, Open Library, or IGDB. Provider diversity still
   // emerges naturally farther down instead of being forced ahead of stronger matches.
-  const combined = rankSearchResults(uniq(buckets.flat()), q);
+  // Oct 27: then weak tie-in listings are dropped and book editions of one work merged (search-ranking.mjs).
+  const combined = pruneSearchResults(rankSearchResults(uniq(buckets.flat()), q), q);
 
   const configured = settled.filter(([, , , isConfigured]) => isConfigured);
   const degraded = configured.length === 0 || configured.every(([, , , , available]) => !available);
@@ -483,7 +662,7 @@ export async function searchCatalog(query, { domain = "all", env = process.env, 
   // real provider items search already fetched. This is write-behind only (nothing here is
   // awaited), so it can never add latency or throw into the search response, and it is a no-op
   // when TASTEMAKE_DATABASE_URL isn't configured (e.g. this sandbox, or a preview env without it).
-  canonicalizeWriteBehind(results, { env });
+  canonicalizeWriteBehind(results.filter((item) => item.provider !== "googlebooks"), { env });   // never keep Google copies
 
   return { items: results, providers, degraded };
 }

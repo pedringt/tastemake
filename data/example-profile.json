@@ -1,0 +1,5270 @@
+{
+ "product": "Tastemake",
+ "format": "tastemake-backup",
+ "version": 1,
+ "generatedAt": "2026-10-21T19:55:59.749Z",
+ "state": {
+  "selectedFavorites": [],
+  "feedbackByRecommendation": {
+   "tmdb-tv-270476": {
+    "item": {
+     "id": "tmdb-tv-270476",
+     "provider": "tmdb",
+     "providerId": "270476",
+     "title": "Widow's Bay",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "The mayor of a New England town resolves to turn it into the next tourist hot spot, despite local warnings that it's cursed.",
+     "year": "2026",
+     "artwork": "https://image.tmdb.org/t/p/w780/5lcxWLVAEICkFpuAiV1aMy7ZZj3.jpg",
+     "genres": [
+      "18",
+      "35",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       18,
+       35,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/270476"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-movie-1423191": {
+    "item": {
+     "id": "tmdb-movie-1423191",
+     "provider": "tmdb",
+     "providerId": "1423191",
+     "title": "Resident Evil",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Medical courier Bryan unwittingly finds himself fighting for survival as one fateful, horrifying night collapses around him in chaos.",
+     "year": "2026",
+     "artwork": "https://image.tmdb.org/t/p/w780/i7UyjfPio0VFHB9rBUZSFyhOoM8.jpg",
+     "genres": [
+      "27",
+      "878",
+      "12"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       27,
+       878,
+       12
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/1423191"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "openlibrary-book-OL18020194W": {
+    "item": {
+     "id": "openlibrary-book-OL18020194W",
+     "provider": "openlibrary",
+     "providerId": "OL18020194W",
+     "title": "It Ends With Us",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Colleen Hoover",
+     "about": "First published 2012.",
+     "year": "2012",
+     "artwork": "https://covers.openlibrary.org/b/id/10473609-L.jpg?default=false",
+     "genres": [
+      "Fiction, Romance, Contemporary, Life change events",
+      "Triangles (Interpersonal relations)",
+      "Man-woman relationships",
+      "Neurosurgeons",
+      "First loves",
+      "Businesswomen",
+      "Fiction",
+      "Contemporary Women",
+      "New York Times bestseller",
+      "Fiction, romance, contemporary",
+      "Man-woman relationships, fiction",
+      "Fiction, women"
+     ],
+     "providerMeta": {
+      "seriesKey": "OL330996L",
+      "seriesKeys": [
+       "OL330996L"
+      ],
+      "seriesNames": [
+       "it ends with us"
+      ],
+      "seriesPosition": 1,
+      "isbns": [
+       "9781982143657",
+       "9791168123014",
+       "1471156265",
+       "9781471156267",
+       "9788820072940",
+       "9781797107455",
+       "9781668055960",
+       "9783423432832",
+       "8408258362",
+       "9785041633554",
+       "9898800984",
+       "9789898800985",
+       "9788408258360",
+       "9781471158254",
+       "1797107453",
+       "9207488921645",
+       "9788501113498",
+       "9401910553",
+       "9781501110375",
+       "9789401910552",
+       "1982143657",
+       "6070788141",
+       "987654321",
+       "9783423740302"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL18020194W"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-tv-111803": {
+    "item": {
+     "id": "tmdb-tv-111803",
+     "provider": "tmdb",
+     "providerId": "111803",
+     "title": "The White Lotus",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Follow the exploits of various guests and employees at an exclusive tropical resort over the span of a week as with each passing day, a darker complexity emerges in these picture-perfect travelers, the hotel’s cheerful employees and the idyllic locale itself.",
+     "year": "2021",
+     "artwork": "https://image.tmdb.org/t/p/w780/gbSaK9v1CbcYH1ISgbM7XObD2dW.jpg",
+     "genres": [
+      "35",
+      "18",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35,
+       18,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/111803"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "quality": null,
+    "source": "search"
+   },
+   "igdb-game-19562": {
+    "item": {
+     "id": "igdb-game-19562",
+     "provider": "igdb",
+     "providerId": "19562",
+     "title": "Resident Evil 7: Biohazard",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Resident Evil 7: Biohazard is the first game of the Resident Evil series to switch from 3rd-person to fully 1st-person perspective. A complete refresh of gameplay systems simultaneously propels the survival horror experience to another level. It is as much horror as it is surviva",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/cobtwh.jpg",
+     "genres": [
+      "Shooter",
+      "Puzzle",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       9,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": 29
+     },
+     "sourceUrl": "https://www.igdb.com/games/resident-evil-7-biohazard"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "atmosphere-style",
+     "exploration"
+    ]
+   },
+   "openlibrary-book-OL18012166W": {
+    "item": {
+     "id": "openlibrary-book-OL18012166W",
+     "provider": "openlibrary",
+     "providerId": "OL18012166W",
+     "title": "Circe",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Madeline Miller",
+     "about": "First published 2018.",
+     "year": "2018",
+     "artwork": "https://covers.openlibrary.org/b/id/8739376-L.jpg?default=false",
+     "genres": [
+      "Fantasy",
+      "Mythology",
+      "Historical Fiction",
+      "Retellings",
+      "Gods",
+      "Fiction",
+      "Paranormal fiction",
+      "Fiction, fantasy, historical",
+      "nyt:combined-print-and-e-book-fiction=2018-04-29",
+      "New York Times bestseller",
+      "New York Times reviewed",
+      "nyt:audio-fiction=2018-05-13"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "9146235507",
+       "1408890046",
+       "9781526612519",
+       "8411480615",
+       "1526619199",
+       "9781408890066",
+       "9788413621524",
+       "0316556335",
+       "8542215869",
+       "1432855352",
+       "9781489457356",
+       "9049807992",
+       "9781549142383",
+       "1549142380",
+       "152667002X",
+       "1489457356",
+       "9781408890080",
+       "9788381254021",
+       "9789146235507",
+       "1549171763",
+       "9781408890073",
+       "9781526610140",
+       "9781478975311",
+       "0316556327"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL18012166W"
+    },
+    "rating": "more",
+    "detail": "loved-before"
+   },
+   "tmdb-movie-76341": {
+    "item": {
+     "id": "tmdb-movie-76341",
+     "provider": "tmdb",
+     "providerId": "76341",
+     "title": "Mad Max: Fury Road",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "An apocalyptic story set in the furthest reaches of our planet, in a stark desert landscape where humanity is broken, and most everyone is crazed fighting for the necessities of life. Within this world exist two rebels on the run who just might be able to restore order.",
+     "year": "2015",
+     "artwork": "https://image.tmdb.org/t/p/w780/ulcAi4dKpAjHwYGS08vNyx9H6I9.jpg",
+     "genres": [
+      "28",
+      "12",
+      "878"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       28,
+       12,
+       878
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/76341"
+    },
+    "rating": "more",
+    "detail": "loved-before"
+   },
+   "tmdb-tv-4607": {
+    "item": {
+     "id": "tmdb-tv-4607",
+     "provider": "tmdb",
+     "providerId": "4607",
+     "title": "Lost",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Stripped of everything, the survivors of a horrific plane crash must work together to stay alive. But the island holds many secrets.",
+     "year": "2004",
+     "artwork": "https://image.tmdb.org/t/p/w780/og6S0aTZU6YUJAbqxeKjCa3kY1E.jpg",
+     "genres": [
+      "9648",
+      "10759",
+      "18"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9648,
+       10759,
+       18
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/4607"
+    },
+    "rating": "more",
+    "detail": "loved-before"
+   },
+   "openlibrary-book-OL20893680W": {
+    "item": {
+     "id": "openlibrary-book-OL20893680W",
+     "provider": "openlibrary",
+     "providerId": "OL20893680W",
+     "title": "Piranesi",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Susanna Clarke",
+     "about": "First published 2020.",
+     "year": "2020",
+     "artwork": "https://covers.openlibrary.org/b/id/10226290-L.jpg?default=false",
+     "genres": [
+      "form:novel",
+      "genre:fantasy",
+      "English literature",
+      "nyt:combined-print-and-e-book-fiction=2020-10-04",
+      "New York Times bestseller",
+      "Labyrinths",
+      "Fiction",
+      "Curiosities and wonders",
+      "Dwellings",
+      "Dead"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "1635575648",
+       "9781526622440",
+       "9781432895082",
+       "9788418363283",
+       "1526625970",
+       "9781526631008",
+       "1526631008",
+       "9781526622426",
+       "1526681536",
+       "8418363282",
+       "9781635575637",
+       "9783453321984",
+       "163557563X",
+       "1526622602",
+       "9781635575644",
+       "6586015316",
+       "9781526622433",
+       "9781635577808",
+       "9782221250242",
+       "1526622416",
+       "1635576717",
+       "9791259670021",
+       "9786586015317",
+       "1526622432"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL20893680W"
+    },
+    "rating": "more",
+    "detail": "loved-before"
+   },
+   "tmdb-tv-58957": {
+    "item": {
+     "id": "tmdb-tv-58957",
+     "provider": "tmdb",
+     "providerId": "58957",
+     "title": "Nathan for You",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Nathan Fielder uses his business degree and life experiences to help real small businesses turn a profit.",
+     "year": "2013",
+     "artwork": "https://image.tmdb.org/t/p/w780/6tGXlz61c44onUg6EdRkbhjcaPA.jpg",
+     "genres": [
+      "35",
+      "99"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35,
+       99
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/58957"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "humor",
+     "characters"
+    ]
+   },
+   "igdb-game-20": {
+    "item": {
+     "id": "igdb-game-20",
+     "provider": "igdb",
+     "providerId": "20",
+     "title": "BioShock",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "BioShock is a horror-themed first-person shooter set in a steampunk underwater dystopia. The player is urged to turn everything into a weapon: biologically modifying their own body with Plasmids, hacking devices and systems, upgrading their weapons, crafting new ammo variants, an",
+     "year": "2007",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2mli.jpg",
+     "genres": [
+      "Shooter",
+      "Puzzle",
+      "Role-playing (RPG)",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       9,
+       12,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": 1686
+     },
+     "sourceUrl": "https://www.igdb.com/games/bioshock"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "atmosphere-style",
+     "exploration"
+    ]
+   },
+   "tmdb-movie-120": {
+    "item": {
+     "id": "tmdb-movie-120",
+     "provider": "tmdb",
+     "providerId": "120",
+     "title": "The Lord of the Rings: The Fellowship of the Ring",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Young hobbit Frodo Baggins, after inheriting a mysterious ring from his uncle Bilbo, must leave his home in order to keep it from falling into the hands of its evil creator. Along the way, a fellowship is formed to protect the ringbearer and make sure that the ring arrives at its",
+     "year": "2001",
+     "artwork": "https://image.tmdb.org/t/p/w780/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg",
+     "genres": [
+      "12",
+      "14",
+      "28"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       12,
+       14,
+       28
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/120"
+    },
+    "rating": "more",
+    "detail": "loved-before"
+   },
+   "igdb-game-222341": {
+    "item": {
+     "id": "igdb-game-222341",
+     "provider": "igdb",
+     "providerId": "222341",
+     "title": "Silent Hill 2",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Silent Hill 2 Remake is a ground-up reimagining of the 2001 psychological horror game. It follows James Sunderland as he searches for his deceased wife in the fog-shrouded town of Silent Hill. The remake features entirely rebuilt visuals in Unreal Engine 5, over-the-shoulder game",
+     "year": "2024",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coavaf.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": 554
+     },
+     "sourceUrl": "https://www.igdb.com/games/silent-hill-2--1"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   },
+   "igdb-game-222342": {
+    "item": {
+     "id": "igdb-game-222342",
+     "provider": "igdb",
+     "providerId": "222342",
+     "title": "Silent Hill: Townfall",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Silent Hill: Townfall is a full-length, self-contained psychological horror set against the cold, isolated backdrop of Scotland, 1996. Players can explore St. Amelia, where fog-soaked streets, abandoned communities, and forgotten corners tell their story through atmosphere and hi",
+     "year": "2026",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coc5sw.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": 554
+     },
+     "sourceUrl": "https://www.igdb.com/games/silent-hill-townfall"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   },
+   "tmdb-tv-88728": {
+    "item": {
+     "id": "tmdb-tv-88728",
+     "provider": "tmdb",
+     "providerId": "88728",
+     "title": "I Think You Should Leave with Tim Robinson",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "There is no such thing as an ordinary interaction in this offbeat sketch comedy series that features a deep roster of guest stars.",
+     "year": "2019",
+     "artwork": "https://image.tmdb.org/t/p/w780/26fMaTPRczCrTUOQ5svA1Db7l4h.jpg",
+     "genres": [
+      "35"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/88728"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search",
+    "refinements": [
+     "humor"
+    ]
+   },
+   "igdb-game-19686": {
+    "item": {
+     "id": "igdb-game-19686",
+     "provider": "igdb",
+     "providerId": "19686",
+     "title": "Resident Evil 2",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Resident Evil 2 is a remake of 1998's Resident Evil 2. The game was not developed with the intent of improving the original, but rather a reimagining of the original story with redesigned maps, characters and story elements. Gameplay mechanics are more similar to Resident Evil 7:",
+     "year": "2019",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1ir3.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": 29
+     },
+     "sourceUrl": "https://www.igdb.com/games/resident-evil-2--1"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "igdb-game-132181": {
+    "item": {
+     "id": "igdb-game-132181",
+     "provider": "igdb",
+     "providerId": "132181",
+     "title": "Resident Evil 4",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Resident Evil 4 is a remake of the 2005 original Resident Evil 4 reimagined for 2023 to bring state-of-the-art survival horror. Resident Evil 4 preserves the essence of the original game, while introducing modernized gameplay, a reimagined storyline, and vividly detailed graphics",
+     "year": "2023",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co6bo0.jpg",
+     "genres": [
+      "Shooter",
+      "Puzzle",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       9,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": 29
+     },
+     "sourceUrl": "https://www.igdb.com/games/resident-evil-4--1"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "igdb-game-185246": {
+    "item": {
+     "id": "igdb-game-185246",
+     "provider": "igdb",
+     "providerId": "185246",
+     "title": "Alan Wake II",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Alan Wake 2 marks Remedy Entertainment’s first foray into the survival horror genre. Ritualistic murders in a small town. A writer trapped in a nightmare. An FBI agent looking for answers. Two realities. Two hero characters. One horror story that wants them dead.",
+     "year": "2023",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co6jar.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/alan-wake-ii"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "igdb-game-159119": {
+    "item": {
+     "id": "igdb-game-159119",
+     "provider": "igdb",
+     "providerId": "159119",
+     "title": "Dead Space",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "The sci-fi survival-horror classic Dead Space returns, completely rebuilt from the ground up to offer a deeper, more immersive experience. This remake brings jaw-dropping visual fidelity, suspenseful atmospheric audio, and improvements to gameplay while staying faithful to the or",
+     "year": "2023",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/cobkv5.jpg",
+     "genres": [
+      "Shooter",
+      "Role-playing (RPG)",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       12,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": 1386
+     },
+     "sourceUrl": "https://www.igdb.com/games/dead-space--1"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "igdb-game-111": {
+    "item": {
+     "id": "igdb-game-111",
+     "provider": "igdb",
+     "providerId": "111",
+     "title": "Amnesia: The Dark Descent",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Amnesia: The Dark Descent is a survival horror video game by Frictional Games. The game features a protagonist named Daniel exploring a dark and foreboding castle, while trying to maintain his sanity by avoiding monsters and other terrifying obstructions. The game was critically ",
+     "year": "2010",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1qq5.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9,
+       31,
+       32
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/amnesia-the-dark-descent"
+    },
+    "rating": "not-tried",
+    "detail": "bookmarked",
+    "quality": null,
+    "source": "search"
+   },
+   "igdb-game-9727": {
+    "item": {
+     "id": "igdb-game-9727",
+     "provider": "igdb",
+     "providerId": "9727",
+     "title": "Soma",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "SOMA is a sci-fi horror game from Frictional Games, the creators of Amnesia: The Dark Descent. It is an unsettling story about identity, consciousness, and what it means to be human. Enter the world of SOMA and face horrors buried deep beneath the ocean waves. Delve through locke",
+     "year": "2015",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2a20.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9,
+       31,
+       32
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/soma"
+    },
+    "rating": "not-tried",
+    "detail": "bookmarked",
+    "quality": null,
+    "source": "search"
+   },
+   "igdb-game-103244": {
+    "item": {
+     "id": "igdb-game-103244",
+     "provider": "igdb",
+     "providerId": "103244",
+     "title": "Signalis",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Signalis is a classic survival horror experience with a unique aesthetic, full of melancholic mystery. Investigate a dark secret, solve puzzles, fight off nightmarish creatures and navigate dystopian, surreal retrotech worlds as Elster, a technician Replika searching for her lost",
+     "year": "2022",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co62ig.jpg",
+     "genres": [
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       31,
+       32
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/signalis"
+    },
+    "rating": "not-tried",
+    "detail": "bookmarked",
+    "quality": null,
+    "source": "search"
+   },
+   "igdb-game-11737": {
+    "item": {
+     "id": "igdb-game-11737",
+     "provider": "igdb",
+     "providerId": "11737",
+     "title": "Outer Wilds",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Outer Wilds is a critically-acclaimed and award-winning open world mystery about a solar system trapped in an endless time loop. The newest member of the space program in a small village on the planet Timber Hearth, the player navigates a space shuttle and travels across their so",
+     "year": "2019",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co65ac.jpg",
+     "genres": [
+      "Puzzle",
+      "Simulator",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9,
+       13,
+       31,
+       32
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/outer-wilds"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "quality": null,
+    "source": "search"
+   },
+   "igdb-game-5601": {
+    "item": {
+     "id": "igdb-game-5601",
+     "provider": "igdb",
+     "providerId": "5601",
+     "title": "The Witness",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "The Witness is a single-player game in an open world with dozens of locations to explore and over 500 puzzles. This game respects you as an intelligent player and it treats your time as precious. There's no filler; each of those puzzles brings its own new idea into the mix. So, t",
+     "year": "2016",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co3hih.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9,
+       31,
+       32
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/the-witness"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "igdb-game-72": {
+    "item": {
+     "id": "igdb-game-72",
+     "provider": "igdb",
+     "providerId": "72",
+     "title": "Portal 2",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Sequel to the acclaimed Portal (2007), Portal 2 pits the protagonist of the original game, Chell, and her new robot friend, Wheatley, against more puzzles conceived by GLaDOS, an A.I. with the sole purpose of testing the Portal Gun's mechanics and taking revenge on Chell for the ",
+     "year": "2011",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1rs4.jpg",
+     "genres": [
+      "Platform",
+      "Puzzle",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       8,
+       9,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": 1724
+     },
+     "sourceUrl": "https://www.igdb.com/games/portal-2"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "igdb-game-9643": {
+    "item": {
+     "id": "igdb-game-9643",
+     "provider": "igdb",
+     "providerId": "9643",
+     "title": "Return of the Obra Dinn",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "In this 1-bit first-person mystery game, a merchant ship called the Obra Dinn has appeared at a London harbor, years after being declared lost at sea. As an insurance adjuster, the player must examine the ship for clues.",
+     "year": "2018",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co27j9.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9,
+       31,
+       32
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/return-of-the-obra-dinn"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "igdb-game-538": {
+    "item": {
+     "id": "igdb-game-538",
+     "provider": "igdb",
+     "providerId": "538",
+     "title": "BioShock Infinite",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "BioShock Infinite is the third game in the BioShock series. It is not a direct sequel/prequel to any of the previous BioShock games but takes place in an entirely different setting, although it shares similar features, gameplay and concepts with the previous games. BioShock Infin",
+     "year": "2013",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2n12.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": 1686
+     },
+     "sourceUrl": "https://www.igdb.com/games/bioshock-infinite"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "igdb-game-103329": {
+    "item": {
+     "id": "igdb-game-103329",
+     "provider": "igdb",
+     "providerId": "103329",
+     "title": "Control",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Control is a third-person action-adventure game set in the Federal Bureau of Control, a secretive U.S. government agency that studies paranormal phenomena. Players control Jesse Faden, who arrives at the Bureau's headquarters, the Oldest House, to find it invaded by a hostile for",
+     "year": "2019",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2evj.jpg",
+     "genres": [
+      "Shooter",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/control"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "igdb-game-7342": {
+    "item": {
+     "id": "igdb-game-7342",
+     "provider": "igdb",
+     "providerId": "7342",
+     "title": "Inside",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Inside is a puzzle-platformer developed by Playdead, presented in a 2.5D side-scrolling format with a dark, predominantly monochromatic visual style. The player controls an unnamed boy navigating a dystopian environment, solving environmental puzzles, avoiding hostile guards and ",
+     "year": "2016",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2fca.jpg",
+     "genres": [
+      "Platform",
+      "Puzzle",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       8,
+       9,
+       31,
+       32
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/inside"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "igdb-game-19531": {
+    "item": {
+     "id": "igdb-game-19531",
+     "provider": "igdb",
+     "providerId": "19531",
+     "title": "Prey",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "In Prey, you awaken aboard Talos I, a space station orbiting the moon in the year 2032. You are the key subject of an experiment meant to alter humanity forever – but things have gone terribly wrong. The space station has been overrun by hostile aliens and you are now being hunte",
+     "year": "2017",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co9aoh.jpg",
+     "genres": [
+      "Shooter",
+      "Puzzle",
+      "Role-playing (RPG)",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       9,
+       12,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/prey--1"
+    },
+    "rating": "not-tried",
+    "detail": "bookmarked",
+    "quality": null,
+    "source": "search"
+   },
+   "openlibrary-book-OL16509148W": {
+    "item": {
+     "id": "openlibrary-book-OL16509148W",
+     "provider": "openlibrary",
+     "providerId": "OL16509148W",
+     "title": "The Song of Achilles",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Madeline Miller",
+     "about": "First published 2011.",
+     "year": "2011",
+     "artwork": "https://covers.openlibrary.org/b/id/7098465-L.jpg?default=false",
+     "genres": [
+      "Trojan War",
+      "Achilles (Greek mythology)",
+      "Male friendship",
+      "Fiction",
+      "Gay love",
+      "Thetis",
+      "Greeks",
+      "History",
+      "Trojan War. fast (OCoLC)fst01157294",
+      "Friendship, fiction",
+      "Fiction, historical",
+      "Fiction, war & military"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "9789041714879",
+       "9146239758",
+       "9781408821985",
+       "8831780980",
+       "9783961610822",
+       "0062060619",
+       "9781408826423",
+       "1445014904",
+       "9781408826133",
+       "9789493081222",
+       "1445014912",
+       "9786555354188",
+       "1627655379",
+       "9788652141760",
+       "9781408842126",
+       "9780062060631",
+       "8564850370",
+       "9788382155242",
+       "9789146238423",
+       "9146238425",
+       "1408891387",
+       "1408816032",
+       "9781526679642",
+       "8483653370"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL16509148W"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "openlibrary-book-OL1282313W": {
+    "item": {
+     "id": "openlibrary-book-OL1282313W",
+     "provider": "openlibrary",
+     "providerId": "OL1282313W",
+     "title": "Ariadne",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Jennifer Saint",
+     "about": "First published 2021.",
+     "year": "2021",
+     "artwork": "https://covers.openlibrary.org/b/id/10917841-L.jpg?default=false",
+     "genres": [
+      "English literature",
+      "History",
+      "Fiction"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "125077358X",
+       "9781250773593",
+       "1472273869",
+       "9781250773579",
+       "1472273907",
+       "9781472273864",
+       "9781472273871",
+       "1250773571",
+       "1250773598",
+       "9781250773586",
+       "9781472273901",
+       "1472273877"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL1282313W"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "quality": null,
+    "source": "search"
+   },
+   "openlibrary-book-OL5703422W": {
+    "item": {
+     "id": "openlibrary-book-OL5703422W",
+     "provider": "openlibrary",
+     "providerId": "OL5703422W",
+     "title": "Jonathan Strange & Mr. Norrell",
+     "originalTitle": "Jonathan Strange and Mr. Norrell",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Susanna Clarke",
+     "about": "First published 2001.",
+     "year": "2001",
+     "artwork": "https://covers.openlibrary.org/b/id/525391-L.jpg?default=false",
+     "genres": [
+      "England, fiction",
+      "Fiction, historical",
+      "Fiction, historical, general",
+      "Literature",
+      "award:hugo_award=2005",
+      "Fantasy fiction",
+      "Fairies",
+      "Fiction",
+      "Hugo Award Winner",
+      "Fantasy",
+      "Magicians",
+      "Teacher-student relationships"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "1472835174",
+       "9789172637894",
+       "9780765356154",
+       "9781635576726",
+       "9781608195350",
+       "1427267200",
+       "9781608190867",
+       "9789050005753",
+       "9789753295598",
+       "9781427227904",
+       "8498387302",
+       "3827005221",
+       "1608190862",
+       "0747578095",
+       "1408803445",
+       "9780747579885",
+       "9571347485",
+       "9781596911536",
+       "1526681552",
+       "9781593977412",
+       "8467219610",
+       "9780747579519",
+       "9781408891469",
+       "9783827005229"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL5703422W"
+    },
+    "rating": "not-tried",
+    "detail": "bookmarked",
+    "quality": null,
+    "source": "search"
+   },
+   "openlibrary-book-OL16086747W": {
+    "item": {
+     "id": "openlibrary-book-OL16086747W",
+     "provider": "openlibrary",
+     "providerId": "OL16086747W",
+     "title": "The Night Circus",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Erin Morgenstern",
+     "about": "First published 2011.",
+     "year": "2011",
+     "artwork": "https://covers.openlibrary.org/b/id/8773134-L.jpg?default=false",
+     "genres": [
+      "New York Times bestseller",
+      "Fiction",
+      "Magicians",
+      "Circus",
+      "Games",
+      "Circus performers",
+      "nyt:hardcover_fiction=2011-12-24",
+      "Psychokinesis",
+      "Magic",
+      "Fate and fatalism",
+      "Roman",
+      "Night"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "8466414576",
+       "9789573329121",
+       "1445859637",
+       "9780307744432",
+       "6586015529",
+       "9780307938923",
+       "9781846555244",
+       "1784871052",
+       "9788416517282",
+       "1445859629",
+       "0099593858",
+       "9780307938909",
+       "354828549X",
+       "9573329123",
+       "881709501X",
+       "0307938921",
+       "9655524116",
+       "0307938905",
+       "9780099581543",
+       "9781616577889",
+       "9780099554790",
+       "184655523X",
+       "9781784872557",
+       "0606264205"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL16086747W"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "openlibrary-book-OL27448W": {
+    "item": {
+     "id": "openlibrary-book-OL27448W",
+     "provider": "openlibrary",
+     "providerId": "OL27448W",
+     "title": "The Lord of the Rings",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "J.R.R. Tolkien",
+     "about": "First published 1954.",
+     "year": "1954",
+     "artwork": "https://covers.openlibrary.org/b/id/14625765-L.jpg?default=false",
+     "genres": [
+      "The Lord of the Rings",
+      "Fiction",
+      "Ficción",
+      "English Fantasy fiction",
+      "Ficción fantástica inglesa",
+      "Fantasy fiction",
+      "Open Library Staff Picks",
+      "Middle Earth (Imaginary place)",
+      "Fiction, fantasy, epic",
+      "Middle earth (imaginary place), fiction",
+      "Baggins, frodo (fictitious character), fiction",
+      "Gandalf (fictitious character), fiction"
+     ],
+     "providerMeta": {
+      "seriesKey": "OL330052L",
+      "seriesKeys": [
+       "OL330052L"
+      ],
+      "seriesNames": [
+       "lord of the rings"
+      ],
+      "seriesPosition": null,
+      "isbns": [
+       "4566023621",
+       "0898452236",
+       "0044406797",
+       "9780061917813",
+       "8020409262",
+       "8845294773",
+       "9785352003121",
+       "9781299884953",
+       "9782267011258",
+       "0618260595",
+       "9780048231499",
+       "9780007322596",
+       "9783608964295",
+       "9788071456063",
+       "9785768402112",
+       "9780261102439",
+       "000788768X",
+       "4566023540",
+       "0395595118",
+       "9789510132081",
+       "9780345339737",
+       "9780395272206",
+       "0395272238",
+       "9783608936667"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL27448W"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "openlibrary-book-OL32195W": {
+    "item": {
+     "id": "openlibrary-book-OL32195W",
+     "provider": "openlibrary",
+     "providerId": "OL32195W",
+     "title": "House of Leaves",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Mark Z. Danielewski",
+     "about": "First published 1998.",
+     "year": "1998",
+     "artwork": "https://covers.openlibrary.org/b/id/6450442-L.jpg?default=false",
+     "genres": [
+      "Holes",
+      "Documentary films",
+      "Manuscripts",
+      "Fiction",
+      "Fiction, suspense",
+      "Fiction, horror",
+      "Fiction, thrillers, suspense",
+      "Suspense",
+      "Labyrinths",
+      "Dwellings",
+      "Horror tales",
+      "Paranormal fiction"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "9781862301115",
+       "9781862301108",
+       "9786555983487",
+       "9780375703768",
+       "1407011936",
+       "9781529943993",
+       "9780385603102",
+       "9781407011936",
+       "9788374806572",
+       "1862301115",
+       "1862301107",
+       "6055159716",
+       "1417709049",
+       "152994399X",
+       "9781417709045",
+       "0375410341",
+       "9780375420528",
+       "2381960643",
+       "6555983485",
+       "9782381960647",
+       "0375420525",
+       "8374806575",
+       "038560310X",
+       "9780375410345"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL32195W"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "openlibrary-book-OL17268007W": {
+    "item": {
+     "id": "openlibrary-book-OL17268007W",
+     "provider": "openlibrary",
+     "providerId": "OL17268007W",
+     "title": "Annihilation",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Jeff VanderMeer",
+     "about": "First published 2014.",
+     "year": "2014",
+     "artwork": "https://covers.openlibrary.org/b/id/8408974-L.jpg?default=false",
+     "genres": [
+      "Nebula Award Winner",
+      "award:nebula_award=novel",
+      "award:nebula_award=2015",
+      "Discoveries in geography",
+      "Fiction",
+      "Scientists",
+      "Science-Fiction",
+      "Suspense fiction",
+      "Paranormal fiction",
+      "Women scientists",
+      "Science fiction",
+      "Fantasy fiction"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "8858418328",
+       "9780374104092",
+       "342651804X",
+       "0374537151",
+       "9780007550692",
+       "9781250824042",
+       "9781482956740",
+       "1482956748",
+       "0007550693",
+       "9789896379438",
+       "0374104093",
+       "0007550707",
+       "1443428396",
+       "0008263345",
+       "3888979684",
+       "9782253183785",
+       "6070721861",
+       "9783888979682",
+       "9780008263348",
+       "9781443453783",
+       "9788580575637",
+       "9788858418321",
+       "8423353338",
+       "9783426518045"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL17268007W"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "openlibrary-book-OL20759125W": {
+    "item": {
+     "id": "openlibrary-book-OL20759125W",
+     "provider": "openlibrary",
+     "providerId": "OL20759125W",
+     "title": "Mexican Gothic",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Silvia Moreno-Garcia",
+     "about": "First published 2020.",
+     "year": "2020",
+     "artwork": "https://covers.openlibrary.org/b/id/10239163-L.jpg?default=false",
+     "genres": [
+      "English literature",
+      "nyt:combined-print-and-e-book-fiction=2020-07-19",
+      "New York Times bestseller",
+      "Fiction, gothic",
+      "Fiction, historical",
+      "Mexico, fiction",
+      "Fiction, historical, general",
+      "nyt:trade-fiction-paperback=2021-07-11",
+      "Haunted houses",
+      "Fiction",
+      "Families",
+      "Family secrets"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "1432885383",
+       "9781529402674",
+       "9781663634269",
+       "9780525620792",
+       "9791028112486",
+       "052562080X",
+       "1529402654",
+       "9788445009819",
+       "9781432892043",
+       "1663634262",
+       "9786070778018",
+       "1529402670",
+       "9781529402681",
+       "1432892045",
+       "0525620796",
+       "8445009818",
+       "0593213874",
+       "6070778014",
+       "9781529402650",
+       "9788445014318",
+       "1529402689",
+       "0525620788",
+       "9780525620785",
+       "9781529427097"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL20759125W"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-tv-95396": {
+    "item": {
+     "id": "tmdb-tv-95396",
+     "provider": "tmdb",
+     "providerId": "95396",
+     "title": "Severance",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.",
+     "year": "2022",
+     "artwork": "https://image.tmdb.org/t/p/w780/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+     "genres": [
+      "18",
+      "9648",
+      "10765"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       18,
+       9648,
+       10765
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/95396"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-tv-54344": {
+    "item": {
+     "id": "tmdb-tv-54344",
+     "provider": "tmdb",
+     "providerId": "54344",
+     "title": "The Leftovers",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "When 2% of the world's population abruptly disappears without explanation, the world struggles to understand just what they're supposed to do about it. This is the story of the people who didn't make the cut.",
+     "year": "2014",
+     "artwork": "https://image.tmdb.org/t/p/w780/NKJdryIFHr245Umq6gXsf7oULW.jpg",
+     "genres": [
+      "10765",
+      "18"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       10765,
+       18
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/54344"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-tv-1920": {
+    "item": {
+     "id": "tmdb-tv-1920",
+     "provider": "tmdb",
+     "providerId": "1920",
+     "title": "Twin Peaks",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "The body of Laura Palmer is washed up on a beach near the small Washington state town of Twin Peaks. FBI Special Agent Dale Cooper is called in to investigate her strange demise only to uncover a web of mystery that ultimately leads him deep into the heart of the surrounding wood",
+     "year": "1990",
+     "artwork": "https://image.tmdb.org/t/p/w780/lA9CNSdo50iQPZ8A2fyVpMvJZAf.jpg",
+     "genres": [
+      "18",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       18,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/1920"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-tv-117488": {
+    "item": {
+     "id": "tmdb-tv-117488",
+     "provider": "tmdb",
+     "providerId": "117488",
+     "title": "Yellowjackets",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "This equal parts survival epic, psychological horror story and coming-of-age drama tells the saga of a team of wildly talented high school girls soccer players who become the (un)lucky survivors of a plane crash deep in the remote northern wilderness. The series chronicles their ",
+     "year": "2021",
+     "artwork": "https://image.tmdb.org/t/p/w780/xRnGrn7Z7SC0KIBodocoU1QgDZF.jpg",
+     "genres": [
+      "18",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       18,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/117488"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-tv-124364": {
+    "item": {
+     "id": "tmdb-tv-124364",
+     "provider": "tmdb",
+     "providerId": "124364",
+     "title": "FROM",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Unravel the mystery of a nightmarish town in middle America that traps all those who enter. As the unwilling residents fight to keep a sense of normalcy and search for a way out, they must also survive the threats of the surrounding forest – including the terrifying creatures tha",
+     "year": "2022",
+     "artwork": "https://image.tmdb.org/t/p/w780/pRtJagIxpfODzzb0T0NAvZSzErC.jpg",
+     "genres": [
+      "9648",
+      "18",
+      "10765"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9648,
+       18,
+       10765
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/124364"
+    },
+    "rating": "not-tried",
+    "detail": "bookmarked",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-tv-70523": {
+    "item": {
+     "id": "tmdb-tv-70523",
+     "provider": "tmdb",
+     "providerId": "70523",
+     "title": "Dark",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "A missing child sets four families on a frantic hunt for answers as they unearth a mind-bending mystery that spans three generations.",
+     "year": "2017",
+     "artwork": "https://image.tmdb.org/t/p/w780/wSXJHO9WHLb0aCwvQrtco7vOmWA.jpg",
+     "genres": [
+      "80",
+      "18",
+      "10765",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       80,
+       18,
+       10765,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/70523"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-tv-97400": {
+    "item": {
+     "id": "tmdb-tv-97400",
+     "provider": "tmdb",
+     "providerId": "97400",
+     "title": "Midnight Mass",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "The arrival of a charismatic young priest brings glorious miracles, ominous mysteries and renewed religious fervor to a dying town desperate to believe.",
+     "year": "2021",
+     "artwork": "https://image.tmdb.org/t/p/w780/iYoMZYVD775MtBYJfv6OGY1FsnL.jpg",
+     "genres": [
+      "9648",
+      "18"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9648,
+       18
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/97400"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-tv-72844": {
+    "item": {
+     "id": "tmdb-tv-72844",
+     "provider": "tmdb",
+     "providerId": "72844",
+     "title": "The Haunting of Hill House",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Flashing between past and present, a fractured family confronts haunting memories of their old home and the terrifying events that drove them from it.",
+     "year": "2018",
+     "artwork": "https://image.tmdb.org/t/p/w780/nWPZb800NCGiDPNGsKCfY0w44Z2.jpg",
+     "genres": [
+      "9648",
+      "18"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9648,
+       18
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/72844"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-tv-204284": {
+    "item": {
+     "id": "tmdb-tv-204284",
+     "provider": "tmdb",
+     "providerId": "204284",
+     "title": "The Rehearsal",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "With a construction crew, a legion of actors, and seemingly unlimited resources, Nathan Fielder allows ordinary people to prepare for life's biggest moments by \"rehearsing\" them in carefully crafted simulations of his own design. When a single misstep could shatter your entire wo",
+     "year": "2022",
+     "artwork": "https://image.tmdb.org/t/p/w780/mIevNYxovnH4sR22qkUmAgS5vdv.jpg",
+     "genres": [
+      "35",
+      "99"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35,
+       99
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/204284"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-tv-110971": {
+    "item": {
+     "id": "tmdb-tv-110971",
+     "provider": "tmdb",
+     "providerId": "110971",
+     "title": "How To with John Wilson",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "In a uniquely hilarious odyssey of self-discovery and cultural observation, documentary filmmaker and self-described \"anxious New Yorker\" John Wilson covertly and obsessively films the lives of his fellow New Yorkers while attempting to give everyday advice on relatable topics. T",
+     "year": "2020",
+     "artwork": "https://image.tmdb.org/t/p/w780/jpHziYpJniprEFDFwMbOHabgnow.jpg",
+     "genres": [
+      "35",
+      "99"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35,
+       99
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/110971"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-tv-62611": {
+    "item": {
+     "id": "tmdb-tv-62611",
+     "provider": "tmdb",
+     "providerId": "62611",
+     "title": "Review",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "A review of a movie, or a restaurant, or a car—or whatever else that typically falls under a critic's domain—is all well and good, and can even be helpful at times. But how can one find out about myriad other experiences that are never tackled in reviews? Enter Forrest MacNeil, a",
+     "year": "2014",
+     "artwork": "https://image.tmdb.org/t/p/w780/igseZf0ClaW0kzqnAIORuXjNxkR.jpg",
+     "genres": [
+      "35"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/62611"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-tv-69866": {
+    "item": {
+     "id": "tmdb-tv-69866",
+     "provider": "tmdb",
+     "providerId": "69866",
+     "title": "Detroiters",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Best friends and fledgling ad men Sam and Tim may not have the money, connections or talent that the big guys do, but they have ambition out the wazoo. Together, they’re out to build a local advertising empire and restore their home city of Detroit to its former glory in this new",
+     "year": "2017",
+     "artwork": "https://image.tmdb.org/t/p/w780/hBxeoEzVola4LyhW3C7FjseFeWm.jpg",
+     "genres": [
+      "35"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/69866"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-tv-2996": {
+    "item": {
+     "id": "tmdb-tv-2996",
+     "provider": "tmdb",
+     "providerId": "2996",
+     "title": "The Office",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Nightmare boss. Tedious colleagues. Pointless tasks. Welcome to Wernham Hogg.",
+     "year": "2001",
+     "artwork": "https://image.tmdb.org/t/p/w780/oX2JKE1RzAONMbYlujHx0hRAJo1.jpg",
+     "genres": [
+      "35"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/2996"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-tv-4546": {
+    "item": {
+     "id": "tmdb-tv-4546",
+     "provider": "tmdb",
+     "providerId": "4546",
+     "title": "Curb Your Enthusiasm",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "The off-kilter, unscripted comic vision of Larry David, who plays himself in a parallel universe in which he can't seem to do anything right, and, by his standards, neither can anyone else.",
+     "year": "2000",
+     "artwork": "https://image.tmdb.org/t/p/w780/pjRRB1NCFJzCb0euvpia4rKDov1.jpg",
+     "genres": [
+      "35"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/4546"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-tv-1229": {
+    "item": {
+     "id": "tmdb-tv-1229",
+     "provider": "tmdb",
+     "providerId": "1229",
+     "title": "Tim and Eric Awesome Show, Great Job!",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Tim and Eric Awesome Show, Great Job! is an American sketch comedy television series, created by and starring Tim Heidecker and Eric Wareheim, which premiered February 11, 2007 on Cartoon Network's Adult Swim comedy block and ran until May 2010. The program features surrealistic ",
+     "year": "2007",
+     "artwork": "https://image.tmdb.org/t/p/w780/1dzPN5M6BbT44CTMaXqqkIdhOWK.jpg",
+     "genres": [
+      "35"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/1229"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-movie-493922": {
+    "item": {
+     "id": "tmdb-movie-493922",
+     "provider": "tmdb",
+     "providerId": "493922",
+     "title": "Hereditary",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Following the death of the Leigh family matriarch, Annie and her children uncover disturbing secrets about their heritage. Their daily lives are not only impacted, but they also become entangled in a chilling fate from which they cannot escape, driving them to the brink of madnes",
+     "year": "2018",
+     "artwork": "https://image.tmdb.org/t/p/w780/4GFPuL14eXi66V96xBWY73Y9PfR.jpg",
+     "genres": [
+      "27",
+      "9648",
+      "53"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       27,
+       9648,
+       53
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/493922"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-movie-310131": {
+    "item": {
+     "id": "tmdb-movie-310131",
+     "provider": "tmdb",
+     "providerId": "310131",
+     "title": "The Witch",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "In 1630, a farmer relocates his family to a remote plot of land on the edge of a forest where strange, unsettling things happen. With suspicion and paranoia mounting, each family member's faith, loyalty and love are tested in shocking ways.",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/zap5hpFCWSvdWSuPGAQyjUv2wAC.jpg",
+     "genres": [
+      "27",
+      "14",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       27,
+       14,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/310131"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-movie-300668": {
+    "item": {
+     "id": "tmdb-movie-300668",
+     "provider": "tmdb",
+     "providerId": "300668",
+     "title": "Annihilation",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "A biologist signs up for a dangerous, secret expedition into a mysterious zone where the laws of nature don't apply.",
+     "year": "2018",
+     "artwork": "https://image.tmdb.org/t/p/w780/4YRplSk6BhH6PRuE9gfyw9byUJ6.jpg",
+     "genres": [
+      "878",
+      "27"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       878,
+       27
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/300668"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "quality": null,
+    "source": "search"
+   },
+   "tmdb-movie-1091": {
+    "item": {
+     "id": "tmdb-movie-1091",
+     "provider": "tmdb",
+     "providerId": "1091",
+     "title": "The Thing",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "A research team in Antarctica is hunted by a shape-shifting alien that assumes the appearance of its victims.",
+     "year": "1982",
+     "artwork": "https://image.tmdb.org/t/p/w780/tzGY49kseSE9QAKk47uuDGwnSCu.jpg",
+     "genres": [
+      "27",
+      "9648",
+      "878"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       27,
+       9648,
+       878
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/1091"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-movie-419430": {
+    "item": {
+     "id": "tmdb-movie-419430",
+     "provider": "tmdb",
+     "providerId": "419430",
+     "title": "Get Out",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Chris and his girlfriend Rose go upstate to visit her parents for the weekend. At first, Chris reads the family's overly accommodating behavior as nervous attempts to deal with their daughter's interracial relationship, but as the weekend progresses, a series of increasingly dist",
+     "year": "2017",
+     "artwork": "https://image.tmdb.org/t/p/w780/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg",
+     "genres": [
+      "9648",
+      "53",
+      "27"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9648,
+       53,
+       27
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/419430"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-movie-693134": {
+    "item": {
+     "id": "tmdb-movie-693134",
+     "provider": "tmdb",
+     "providerId": "693134",
+     "title": "Dune: Part Two",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family. Facing a choice between the love of his life and the fate of the known universe, Paul endeavors to prevent a terrible fu",
+     "year": "2024",
+     "artwork": "https://image.tmdb.org/t/p/w780/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg",
+     "genres": [
+      "878",
+      "12"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       878,
+       12
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/693134"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-movie-786892": {
+    "item": {
+     "id": "tmdb-movie-786892",
+     "provider": "tmdb",
+     "providerId": "786892",
+     "title": "Furiosa: A Mad Max Saga",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "As the world falls, young Furiosa is snatched from the Green Place of Many Mothers into the hands of a great biker horde led by the warlord Dementus. Sweeping through the wasteland, they encounter the citadel presided over by Immortan Joe. The two tyrants wage war for dominance, ",
+     "year": "2024",
+     "artwork": "https://image.tmdb.org/t/p/w780/iADOJ8Zymht2JPMoy3R7xceZprc.jpg",
+     "genres": [
+      "28",
+      "878",
+      "12"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       28,
+       878,
+       12
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/786892"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   },
+   "tmdb-movie-1417": {
+    "item": {
+     "id": "tmdb-movie-1417",
+     "provider": "tmdb",
+     "providerId": "1417",
+     "title": "Pan's Labyrinth",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "In post–civil war Spain, 10-year-old Ofelia moves with her pregnant mother to live under the control of her cruel stepfather. Drawn into a mysterious labyrinth, she meets a faun who reveals that she may be a lost princess from an underground kingdom. To return to her true father,",
+     "year": "2006",
+     "artwork": "https://image.tmdb.org/t/p/w780/7wb2Ldp0oAx1lcZvffq9RfWoI2h.jpg",
+     "genres": [
+      "14",
+      "18",
+      "10752"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       14,
+       18,
+       10752
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/1417"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [],
+    "quality": null,
+    "seriesExperience": null,
+    "wasBookmarked": false,
+    "source": "search"
+   }
+  },
+  "recommendationSets": [
+   [
+    {
+     "id": "tmdb-movie-49051",
+     "provider": "tmdb",
+     "providerId": "49051",
+     "title": "The Hobbit: An Unexpected Journey",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Bilbo Baggins, a hobbit enjoying his quiet life, is swept into an epic quest by Gandalf the Grey and thirteen dwarves who seek to reclaim their mountain home from Smaug, the dragon.",
+     "year": "2012",
+     "artwork": "https://image.tmdb.org/t/p/w780/yHA9Fc37VmpUA5UncTxxo3rTGVA.jpg",
+     "genres": [
+      "12",
+      "14",
+      "28"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       12,
+       14,
+       28
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/49051",
+     "_searchPopularity": 27.895,
+     "relatedTo": "The Lord of the Rings: The Fellowship of the Ring",
+     "relatedToId": "tmdb-movie-120",
+     "rank": 1,
+     "fit": "Promising fit",
+     "prediction": "Worth testing",
+     "surprise": false,
+     "reason": "Its reluctant hero drawn into an epic quest echoes the journey pull of Fellowship.",
+     "ai": {
+      "cites": [
+       "ev:tmdb-movie-120"
+      ],
+      "tests": null,
+      "kind": "pick",
+      "contract": "2026-09-22"
+     }
+    },
+    {
+     "id": "tmdb-movie-411",
+     "provider": "tmdb",
+     "providerId": "411",
+     "title": "The Chronicles of Narnia: The Lion, the Witch and the Wardrobe",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Four kids travel through a wardrobe to the land of Narnia and learn of their destiny to free it with the guidance of a mystical lion.",
+     "year": "2005",
+     "artwork": "https://image.tmdb.org/t/p/w780/iREd0rNCjYdf5Ar0vfaW32yrkm.jpg",
+     "genres": [
+      "12",
+      "10751",
+      "14"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       12,
+       10751,
+       14
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/411",
+     "_searchPopularity": 38.2188,
+     "relatedTo": "The Lord of the Rings: The Fellowship of the Ring",
+     "relatedToId": "tmdb-movie-120",
+     "rank": 2,
+     "fit": "Promising fit",
+     "prediction": "Worth testing",
+     "surprise": false,
+     "reason": "A portal fantasy with kids facing a destiny, close to the wonder of Piranesi.",
+     "ai": {
+      "cites": [
+       "ev:openlibrary-book-OL20893680W"
+      ],
+      "tests": null,
+      "kind": "pick",
+      "contract": "2026-09-22"
+     }
+    },
+    {
+     "id": "igdb-game-25076",
+     "provider": "igdb",
+     "providerId": "25076",
+     "title": "Red Dead Redemption 2",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Red Dead Redemption 2 is the epic tale of outlaw Arthur Morgan and the infamous Van der Linde gang, on the run across America at the dawn of the modern age.",
+     "year": "2018",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1q1f.jpg",
+     "genres": [
+      "Shooter",
+      "Role-playing (RPG)",
+      "Adventure"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5,
+       12,
+       31
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/red-dead-redemption-2",
+     "_searchPopularity": 0,
+     "relatedTo": "BioShock",
+     "relatedToId": "igdb-game-20",
+     "rank": 3,
+     "fit": "Promising fit",
+     "prediction": "Worth testing",
+     "surprise": false,
+     "reason": "Its sprawling open-world outlaw story carries the atmosphere of BioShock's world-building.",
+     "ai": {
+      "cites": [
+       "ev:igdb-game-20"
+      ],
+      "tests": null,
+      "kind": "pick",
+      "contract": "2026-09-22"
+     }
+    },
+    {
+     "id": "openlibrary-book-OL17916664W",
+     "provider": "openlibrary",
+     "providerId": "OL17916664W",
+     "title": "Mythos",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Stephen Fry",
+     "about": "First published 2017.",
+     "year": "2017",
+     "artwork": "https://covers.openlibrary.org/b/id/8238803-L.jpg?default=false",
+     "genres": [
+      "Mythology, greek",
+      "Mythology, classical",
+      "Gods",
+      "Goddesses",
+      "Legends",
+      "Greek Mythology",
+      "Classical Mythology",
+      "Mythology"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [
+       "stephen frys greek myths"
+      ],
+      "seriesPosition": null,
+      "isbns": []
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL17916664W",
+     "_searchPopularity": 0,
+     "relationStrength": "strong",
+     "relatedTo": "Circe",
+     "relatedToId": "openlibrary-book-OL18012166W",
+     "rank": null,
+     "fit": "Exploratory fit",
+     "prediction": "Worth testing",
+     "surprise": true,
+     "reason": "Retold Greek myths give the same mythic reinterpretation that made Circe land.",
+     "ai": {
+      "cites": [
+       "ev:openlibrary-book-OL18012166W"
+      ],
+      "tests": null,
+      "kind": "curveball",
+      "contract": "2026-09-22"
+     }
+    },
+    {
+     "id": "tmdb-tv-283297",
+     "provider": "tmdb",
+     "providerId": "283297",
+     "title": "Sterling Point",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "After discovering she's inherited a remote island in Canada from the estranged grandfather she was never allowed to meet, 17-year-old Annie Jacobson decides to investigate, pulling her into a world of buried secrets, unexpected sisterhood, and the complicated family history she w",
+     "year": "2026",
+     "artwork": "https://image.tmdb.org/t/p/w780/cThLWEGs6BEqY0QZMbU4FAeWwPT.jpg",
+     "genres": [
+      "9648",
+      "18"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9648,
+       18
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/283297",
+     "_searchPopularity": 27.6589,
+     "relatedTo": "Lost",
+     "relatedToId": "tmdb-tv-4607",
+     "rank": 4,
+     "fit": "Promising fit",
+     "prediction": "Worth testing",
+     "surprise": false,
+     "reason": "A remote island mystery full of inherited secrets suits the mood of Lost.",
+     "ai": {
+      "cites": [
+       "ev:tmdb-tv-4607"
+      ],
+      "tests": null,
+      "kind": "pick",
+      "contract": "2026-09-22"
+     }
+    },
+    {
+     "id": "tmdb-tv-270572",
+     "provider": "tmdb",
+     "providerId": "270572",
+     "title": "Lord of the Flies",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "After a plane crash, a group of schoolboys find themselves stranded on a tropical island without adults. Ralph is elected leader and, with the help of the intelligent Piggy, strives to maintain order and civilization. Jack, responsible for the signal fire, becomes increasingly fo",
+     "year": "2026",
+     "artwork": "https://image.tmdb.org/t/p/w780/zD50ejpus5rNidj6CBr4Ml59KOL.jpg",
+     "genres": [
+      "18",
+      "10759"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       18,
+       10759
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/270572",
+     "_searchPopularity": 12.9125,
+     "relatedTo": "Lost",
+     "relatedToId": "tmdb-tv-4607",
+     "rank": 5,
+     "fit": "Promising fit",
+     "prediction": "Worth testing",
+     "surprise": false,
+     "reason": "Stranded characters on an island under pressure, with a sharp social edge.",
+     "ai": {
+      "cites": [
+       "ev:tmdb-tv-4607",
+       "ev:tmdb-tv-270476"
+      ],
+      "tests": null,
+      "kind": "pick",
+      "contract": "2026-09-22"
+     }
+    }
+   ]
+  ],
+  "recommendationExhausted": false,
+  "libraryFavorites": [
+   "igdb-game-19562",
+   "openlibrary-book-OL18012166W",
+   "tmdb-movie-76341",
+   "tmdb-tv-4607",
+   "openlibrary-book-OL20893680W",
+   "tmdb-tv-58957",
+   "igdb-game-20",
+   "tmdb-movie-120",
+   "igdb-game-19686",
+   "igdb-game-132181",
+   "igdb-game-185246",
+   "igdb-game-159119",
+   "igdb-game-72",
+   "igdb-game-9643",
+   "igdb-game-538",
+   "igdb-game-103329",
+   "openlibrary-book-OL16509148W",
+   "openlibrary-book-OL27448W",
+   "openlibrary-book-OL32195W",
+   "tmdb-tv-54344",
+   "tmdb-tv-1920",
+   "tmdb-tv-70523",
+   "tmdb-tv-204284",
+   "tmdb-tv-110971",
+   "tmdb-tv-62611",
+   "tmdb-tv-69866",
+   "tmdb-tv-1229",
+   "tmdb-movie-493922",
+   "tmdb-movie-1091",
+   "tmdb-movie-419430",
+   "tmdb-movie-693134",
+   "tmdb-movie-786892",
+   "tmdb-movie-1417"
+  ],
+  "customItems": {
+   "igdb-game-19562": {
+    "id": "igdb-game-19562",
+    "provider": "igdb",
+    "providerId": "19562",
+    "title": "Resident Evil 7: Biohazard",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Resident Evil 7: Biohazard is the first game of the Resident Evil series to switch from 3rd-person to fully 1st-person perspective. A complete refresh of gameplay systems simultaneously propels the survival horror experience to another level. It is as much horror as it is surviva",
+    "year": "2017",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/cobtwh.jpg",
+    "genres": [
+     "Shooter",
+     "Puzzle",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      5,
+      9,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": 29
+    },
+    "sourceUrl": "https://www.igdb.com/games/resident-evil-7-biohazard"
+   },
+   "openlibrary-book-OL18012166W": {
+    "id": "openlibrary-book-OL18012166W",
+    "provider": "openlibrary",
+    "providerId": "OL18012166W",
+    "title": "Circe",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Madeline Miller",
+    "about": "First published 2018.",
+    "year": "2018",
+    "artwork": "https://covers.openlibrary.org/b/id/8739376-L.jpg?default=false",
+    "genres": [
+     "Fantasy",
+     "Mythology",
+     "Historical Fiction",
+     "Retellings",
+     "Gods",
+     "Fiction",
+     "Paranormal fiction",
+     "Fiction, fantasy, historical",
+     "nyt:combined-print-and-e-book-fiction=2018-04-29",
+     "New York Times bestseller",
+     "New York Times reviewed",
+     "nyt:audio-fiction=2018-05-13"
+    ],
+    "providerMeta": {
+     "seriesKey": null,
+     "seriesKeys": [],
+     "seriesNames": [],
+     "seriesPosition": null,
+     "isbns": [
+      "9146235507",
+      "1408890046",
+      "9781526612519",
+      "8411480615",
+      "1526619199",
+      "9781408890066",
+      "9788413621524",
+      "0316556335",
+      "8542215869",
+      "1432855352",
+      "9781489457356",
+      "9049807992",
+      "9781549142383",
+      "1549142380",
+      "152667002X",
+      "1489457356",
+      "9781408890080",
+      "9788381254021",
+      "9789146235507",
+      "1549171763",
+      "9781408890073",
+      "9781526610140",
+      "9781478975311",
+      "0316556327"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL18012166W"
+   },
+   "tmdb-movie-76341": {
+    "id": "tmdb-movie-76341",
+    "provider": "tmdb",
+    "providerId": "76341",
+    "title": "Mad Max: Fury Road",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "An apocalyptic story set in the furthest reaches of our planet, in a stark desert landscape where humanity is broken, and most everyone is crazed fighting for the necessities of life. Within this world exist two rebels on the run who just might be able to restore order.",
+    "year": "2015",
+    "artwork": "https://image.tmdb.org/t/p/w780/ulcAi4dKpAjHwYGS08vNyx9H6I9.jpg",
+    "genres": [
+     "28",
+     "12",
+     "878"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      28,
+      12,
+      878
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/76341"
+   },
+   "tmdb-tv-4607": {
+    "id": "tmdb-tv-4607",
+    "provider": "tmdb",
+    "providerId": "4607",
+    "title": "Lost",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "Stripped of everything, the survivors of a horrific plane crash must work together to stay alive. But the island holds many secrets.",
+    "year": "2004",
+    "artwork": "https://image.tmdb.org/t/p/w780/og6S0aTZU6YUJAbqxeKjCa3kY1E.jpg",
+    "genres": [
+     "9648",
+     "10759",
+     "18"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9648,
+      10759,
+      18
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/4607"
+   },
+   "openlibrary-book-OL20893680W": {
+    "id": "openlibrary-book-OL20893680W",
+    "provider": "openlibrary",
+    "providerId": "OL20893680W",
+    "title": "Piranesi",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Susanna Clarke",
+    "about": "First published 2020.",
+    "year": "2020",
+    "artwork": "https://covers.openlibrary.org/b/id/10226290-L.jpg?default=false",
+    "genres": [
+     "form:novel",
+     "genre:fantasy",
+     "English literature",
+     "nyt:combined-print-and-e-book-fiction=2020-10-04",
+     "New York Times bestseller",
+     "Labyrinths",
+     "Fiction",
+     "Curiosities and wonders",
+     "Dwellings",
+     "Dead"
+    ],
+    "providerMeta": {
+     "seriesKey": null,
+     "seriesKeys": [],
+     "seriesNames": [],
+     "seriesPosition": null,
+     "isbns": [
+      "1635575648",
+      "9781526622440",
+      "9781432895082",
+      "9788418363283",
+      "1526625970",
+      "9781526631008",
+      "1526631008",
+      "9781526622426",
+      "1526681536",
+      "8418363282",
+      "9781635575637",
+      "9783453321984",
+      "163557563X",
+      "1526622602",
+      "9781635575644",
+      "6586015316",
+      "9781526622433",
+      "9781635577808",
+      "9782221250242",
+      "1526622416",
+      "1635576717",
+      "9791259670021",
+      "9786586015317",
+      "1526622432"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL20893680W"
+   },
+   "tmdb-tv-58957": {
+    "id": "tmdb-tv-58957",
+    "provider": "tmdb",
+    "providerId": "58957",
+    "title": "Nathan for You",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "Nathan Fielder uses his business degree and life experiences to help real small businesses turn a profit.",
+    "year": "2013",
+    "artwork": "https://image.tmdb.org/t/p/w780/6tGXlz61c44onUg6EdRkbhjcaPA.jpg",
+    "genres": [
+     "35",
+     "99"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35,
+      99
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/58957"
+   },
+   "igdb-game-20": {
+    "id": "igdb-game-20",
+    "provider": "igdb",
+    "providerId": "20",
+    "title": "BioShock",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "BioShock is a horror-themed first-person shooter set in a steampunk underwater dystopia. The player is urged to turn everything into a weapon: biologically modifying their own body with Plasmids, hacking devices and systems, upgrading their weapons, crafting new ammo variants, an",
+    "year": "2007",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2mli.jpg",
+    "genres": [
+     "Shooter",
+     "Puzzle",
+     "Role-playing (RPG)",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      5,
+      9,
+      12,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": 1686
+    },
+    "sourceUrl": "https://www.igdb.com/games/bioshock"
+   },
+   "tmdb-movie-120": {
+    "id": "tmdb-movie-120",
+    "provider": "tmdb",
+    "providerId": "120",
+    "title": "The Lord of the Rings: The Fellowship of the Ring",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "Young hobbit Frodo Baggins, after inheriting a mysterious ring from his uncle Bilbo, must leave his home in order to keep it from falling into the hands of its evil creator. Along the way, a fellowship is formed to protect the ringbearer and make sure that the ring arrives at its",
+    "year": "2001",
+    "artwork": "https://image.tmdb.org/t/p/w780/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg",
+    "genres": [
+     "12",
+     "14",
+     "28"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      12,
+      14,
+      28
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/120"
+   },
+   "tmdb-tv-270476": {
+    "id": "tmdb-tv-270476",
+    "provider": "tmdb",
+    "providerId": "270476",
+    "title": "Widow's Bay",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "The mayor of a New England town resolves to turn it into the next tourist hot spot, despite local warnings that it's cursed.",
+    "year": "2026",
+    "artwork": "https://image.tmdb.org/t/p/w780/5lcxWLVAEICkFpuAiV1aMy7ZZj3.jpg",
+    "genres": [
+     "18",
+     "35",
+     "9648"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      18,
+      35,
+      9648
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/270476"
+   },
+   "tmdb-movie-1423191": {
+    "id": "tmdb-movie-1423191",
+    "provider": "tmdb",
+    "providerId": "1423191",
+    "title": "Resident Evil",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "Medical courier Bryan unwittingly finds himself fighting for survival as one fateful, horrifying night collapses around him in chaos.",
+    "year": "2026",
+    "artwork": "https://image.tmdb.org/t/p/w780/i7UyjfPio0VFHB9rBUZSFyhOoM8.jpg",
+    "genres": [
+     "27",
+     "878",
+     "12"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      27,
+      878,
+      12
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/1423191"
+   },
+   "openlibrary-book-OL18020194W": {
+    "id": "openlibrary-book-OL18020194W",
+    "provider": "openlibrary",
+    "providerId": "OL18020194W",
+    "title": "It Ends With Us",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Colleen Hoover",
+    "about": "First published 2012.",
+    "year": "2012",
+    "artwork": "https://covers.openlibrary.org/b/id/10473609-L.jpg?default=false",
+    "genres": [
+     "Fiction, Romance, Contemporary, Life change events",
+     "Triangles (Interpersonal relations)",
+     "Man-woman relationships",
+     "Neurosurgeons",
+     "First loves",
+     "Businesswomen",
+     "Fiction",
+     "Contemporary Women",
+     "New York Times bestseller",
+     "Fiction, romance, contemporary",
+     "Man-woman relationships, fiction",
+     "Fiction, women"
+    ],
+    "providerMeta": {
+     "seriesKey": "OL330996L",
+     "seriesKeys": [
+      "OL330996L"
+     ],
+     "seriesNames": [
+      "it ends with us"
+     ],
+     "seriesPosition": 1,
+     "isbns": [
+      "9781982143657",
+      "9791168123014",
+      "1471156265",
+      "9781471156267",
+      "9788820072940",
+      "9781797107455",
+      "9781668055960",
+      "9783423432832",
+      "8408258362",
+      "9785041633554",
+      "9898800984",
+      "9789898800985",
+      "9788408258360",
+      "9781471158254",
+      "1797107453",
+      "9207488921645",
+      "9788501113498",
+      "9401910553",
+      "9781501110375",
+      "9789401910552",
+      "1982143657",
+      "6070788141",
+      "987654321",
+      "9783423740302"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL18020194W"
+   },
+   "tmdb-tv-111803": {
+    "id": "tmdb-tv-111803",
+    "provider": "tmdb",
+    "providerId": "111803",
+    "title": "The White Lotus",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "Follow the exploits of various guests and employees at an exclusive tropical resort over the span of a week as with each passing day, a darker complexity emerges in these picture-perfect travelers, the hotel’s cheerful employees and the idyllic locale itself.",
+    "year": "2021",
+    "artwork": "https://image.tmdb.org/t/p/w780/gbSaK9v1CbcYH1ISgbM7XObD2dW.jpg",
+    "genres": [
+     "35",
+     "18",
+     "9648"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35,
+      18,
+      9648
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/111803"
+   },
+   "igdb-game-222341": {
+    "id": "igdb-game-222341",
+    "provider": "igdb",
+    "providerId": "222341",
+    "title": "Silent Hill 2",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Silent Hill 2 Remake is a ground-up reimagining of the 2001 psychological horror game. It follows James Sunderland as he searches for his deceased wife in the fog-shrouded town of Silent Hill. The remake features entirely rebuilt visuals in Unreal Engine 5, over-the-shoulder game",
+    "year": "2024",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coavaf.jpg",
+    "genres": [
+     "Puzzle",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": 554
+    },
+    "sourceUrl": "https://www.igdb.com/games/silent-hill-2--1"
+   },
+   "igdb-game-222342": {
+    "id": "igdb-game-222342",
+    "provider": "igdb",
+    "providerId": "222342",
+    "title": "Silent Hill: Townfall",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Silent Hill: Townfall is a full-length, self-contained psychological horror set against the cold, isolated backdrop of Scotland, 1996. Players can explore St. Amelia, where fog-soaked streets, abandoned communities, and forgotten corners tell their story through atmosphere and hi",
+    "year": "2026",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coc5sw.jpg",
+    "genres": [
+     "Puzzle",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": 554
+    },
+    "sourceUrl": "https://www.igdb.com/games/silent-hill-townfall"
+   },
+   "tmdb-tv-88728": {
+    "id": "tmdb-tv-88728",
+    "provider": "tmdb",
+    "providerId": "88728",
+    "title": "I Think You Should Leave with Tim Robinson",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "There is no such thing as an ordinary interaction in this offbeat sketch comedy series that features a deep roster of guest stars.",
+    "year": "2019",
+    "artwork": "https://image.tmdb.org/t/p/w780/26fMaTPRczCrTUOQ5svA1Db7l4h.jpg",
+    "genres": [
+     "35"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/88728"
+   },
+   "igdb-game-19686": {
+    "id": "igdb-game-19686",
+    "provider": "igdb",
+    "providerId": "19686",
+    "title": "Resident Evil 2",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Resident Evil 2 is a remake of 1998's Resident Evil 2. The game was not developed with the intent of improving the original, but rather a reimagining of the original story with redesigned maps, characters and story elements. Gameplay mechanics are more similar to Resident Evil 7:",
+    "year": "2019",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1ir3.jpg",
+    "genres": [
+     "Shooter",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      5,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": 29
+    },
+    "sourceUrl": "https://www.igdb.com/games/resident-evil-2--1"
+   },
+   "igdb-game-132181": {
+    "id": "igdb-game-132181",
+    "provider": "igdb",
+    "providerId": "132181",
+    "title": "Resident Evil 4",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Resident Evil 4 is a remake of the 2005 original Resident Evil 4 reimagined for 2023 to bring state-of-the-art survival horror. Resident Evil 4 preserves the essence of the original game, while introducing modernized gameplay, a reimagined storyline, and vividly detailed graphics",
+    "year": "2023",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co6bo0.jpg",
+    "genres": [
+     "Shooter",
+     "Puzzle",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      5,
+      9,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": 29
+    },
+    "sourceUrl": "https://www.igdb.com/games/resident-evil-4--1"
+   },
+   "igdb-game-185246": {
+    "id": "igdb-game-185246",
+    "provider": "igdb",
+    "providerId": "185246",
+    "title": "Alan Wake II",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Alan Wake 2 marks Remedy Entertainment’s first foray into the survival horror genre. Ritualistic murders in a small town. A writer trapped in a nightmare. An FBI agent looking for answers. Two realities. Two hero characters. One horror story that wants them dead.",
+    "year": "2023",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co6jar.jpg",
+    "genres": [
+     "Shooter",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      5,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/alan-wake-ii"
+   },
+   "igdb-game-159119": {
+    "id": "igdb-game-159119",
+    "provider": "igdb",
+    "providerId": "159119",
+    "title": "Dead Space",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "The sci-fi survival-horror classic Dead Space returns, completely rebuilt from the ground up to offer a deeper, more immersive experience. This remake brings jaw-dropping visual fidelity, suspenseful atmospheric audio, and improvements to gameplay while staying faithful to the or",
+    "year": "2023",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/cobkv5.jpg",
+    "genres": [
+     "Shooter",
+     "Role-playing (RPG)",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      5,
+      12,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": 1386
+    },
+    "sourceUrl": "https://www.igdb.com/games/dead-space--1"
+   },
+   "igdb-game-111": {
+    "id": "igdb-game-111",
+    "provider": "igdb",
+    "providerId": "111",
+    "title": "Amnesia: The Dark Descent",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Amnesia: The Dark Descent is a survival horror video game by Frictional Games. The game features a protagonist named Daniel exploring a dark and foreboding castle, while trying to maintain his sanity by avoiding monsters and other terrifying obstructions. The game was critically ",
+    "year": "2010",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1qq5.jpg",
+    "genres": [
+     "Puzzle",
+     "Adventure",
+     "Indie"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9,
+      31,
+      32
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/amnesia-the-dark-descent"
+   },
+   "igdb-game-9727": {
+    "id": "igdb-game-9727",
+    "provider": "igdb",
+    "providerId": "9727",
+    "title": "Soma",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "SOMA is a sci-fi horror game from Frictional Games, the creators of Amnesia: The Dark Descent. It is an unsettling story about identity, consciousness, and what it means to be human. Enter the world of SOMA and face horrors buried deep beneath the ocean waves. Delve through locke",
+    "year": "2015",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2a20.jpg",
+    "genres": [
+     "Puzzle",
+     "Adventure",
+     "Indie"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9,
+      31,
+      32
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/soma"
+   },
+   "igdb-game-103244": {
+    "id": "igdb-game-103244",
+    "provider": "igdb",
+    "providerId": "103244",
+    "title": "Signalis",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Signalis is a classic survival horror experience with a unique aesthetic, full of melancholic mystery. Investigate a dark secret, solve puzzles, fight off nightmarish creatures and navigate dystopian, surreal retrotech worlds as Elster, a technician Replika searching for her lost",
+    "year": "2022",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co62ig.jpg",
+    "genres": [
+     "Adventure",
+     "Indie"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      31,
+      32
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/signalis"
+   },
+   "igdb-game-11737": {
+    "id": "igdb-game-11737",
+    "provider": "igdb",
+    "providerId": "11737",
+    "title": "Outer Wilds",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Outer Wilds is a critically-acclaimed and award-winning open world mystery about a solar system trapped in an endless time loop. The newest member of the space program in a small village on the planet Timber Hearth, the player navigates a space shuttle and travels across their so",
+    "year": "2019",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co65ac.jpg",
+    "genres": [
+     "Puzzle",
+     "Simulator",
+     "Adventure",
+     "Indie"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9,
+      13,
+      31,
+      32
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/outer-wilds"
+   },
+   "igdb-game-5601": {
+    "id": "igdb-game-5601",
+    "provider": "igdb",
+    "providerId": "5601",
+    "title": "The Witness",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "The Witness is a single-player game in an open world with dozens of locations to explore and over 500 puzzles. This game respects you as an intelligent player and it treats your time as precious. There's no filler; each of those puzzles brings its own new idea into the mix. So, t",
+    "year": "2016",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co3hih.jpg",
+    "genres": [
+     "Puzzle",
+     "Adventure",
+     "Indie"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9,
+      31,
+      32
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/the-witness"
+   },
+   "igdb-game-72": {
+    "id": "igdb-game-72",
+    "provider": "igdb",
+    "providerId": "72",
+    "title": "Portal 2",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Sequel to the acclaimed Portal (2007), Portal 2 pits the protagonist of the original game, Chell, and her new robot friend, Wheatley, against more puzzles conceived by GLaDOS, an A.I. with the sole purpose of testing the Portal Gun's mechanics and taking revenge on Chell for the ",
+    "year": "2011",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1rs4.jpg",
+    "genres": [
+     "Platform",
+     "Puzzle",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      8,
+      9,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": 1724
+    },
+    "sourceUrl": "https://www.igdb.com/games/portal-2"
+   },
+   "igdb-game-9643": {
+    "id": "igdb-game-9643",
+    "provider": "igdb",
+    "providerId": "9643",
+    "title": "Return of the Obra Dinn",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "In this 1-bit first-person mystery game, a merchant ship called the Obra Dinn has appeared at a London harbor, years after being declared lost at sea. As an insurance adjuster, the player must examine the ship for clues.",
+    "year": "2018",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co27j9.jpg",
+    "genres": [
+     "Puzzle",
+     "Adventure",
+     "Indie"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9,
+      31,
+      32
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/return-of-the-obra-dinn"
+   },
+   "igdb-game-538": {
+    "id": "igdb-game-538",
+    "provider": "igdb",
+    "providerId": "538",
+    "title": "BioShock Infinite",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "BioShock Infinite is the third game in the BioShock series. It is not a direct sequel/prequel to any of the previous BioShock games but takes place in an entirely different setting, although it shares similar features, gameplay and concepts with the previous games. BioShock Infin",
+    "year": "2013",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2n12.jpg",
+    "genres": [
+     "Shooter",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      5,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": 1686
+    },
+    "sourceUrl": "https://www.igdb.com/games/bioshock-infinite"
+   },
+   "igdb-game-103329": {
+    "id": "igdb-game-103329",
+    "provider": "igdb",
+    "providerId": "103329",
+    "title": "Control",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Control is a third-person action-adventure game set in the Federal Bureau of Control, a secretive U.S. government agency that studies paranormal phenomena. Players control Jesse Faden, who arrives at the Bureau's headquarters, the Oldest House, to find it invaded by a hostile for",
+    "year": "2019",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2evj.jpg",
+    "genres": [
+     "Shooter",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      5,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/control"
+   },
+   "igdb-game-7342": {
+    "id": "igdb-game-7342",
+    "provider": "igdb",
+    "providerId": "7342",
+    "title": "Inside",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "Inside is a puzzle-platformer developed by Playdead, presented in a 2.5D side-scrolling format with a dark, predominantly monochromatic visual style. The player controls an unnamed boy navigating a dystopian environment, solving environmental puzzles, avoiding hostile guards and ",
+    "year": "2016",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2fca.jpg",
+    "genres": [
+     "Platform",
+     "Puzzle",
+     "Adventure",
+     "Indie"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      8,
+      9,
+      31,
+      32
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/inside"
+   },
+   "igdb-game-19531": {
+    "id": "igdb-game-19531",
+    "provider": "igdb",
+    "providerId": "19531",
+    "title": "Prey",
+    "type": "game",
+    "domains": [
+     "play"
+    ],
+    "about": "In Prey, you awaken aboard Talos I, a space station orbiting the moon in the year 2032. You are the key subject of an experiment meant to alter humanity forever – but things have gone terribly wrong. The space station has been overrun by hostile aliens and you are now being hunte",
+    "year": "2017",
+    "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co9aoh.jpg",
+    "genres": [
+     "Shooter",
+     "Puzzle",
+     "Role-playing (RPG)",
+     "Adventure"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      5,
+      9,
+      12,
+      31
+     ],
+     "collectionId": null,
+     "franchiseId": null
+    },
+    "sourceUrl": "https://www.igdb.com/games/prey--1"
+   },
+   "openlibrary-book-OL16509148W": {
+    "id": "openlibrary-book-OL16509148W",
+    "provider": "openlibrary",
+    "providerId": "OL16509148W",
+    "title": "The Song of Achilles",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Madeline Miller",
+    "about": "First published 2011.",
+    "year": "2011",
+    "artwork": "https://covers.openlibrary.org/b/id/7098465-L.jpg?default=false",
+    "genres": [
+     "Trojan War",
+     "Achilles (Greek mythology)",
+     "Male friendship",
+     "Fiction",
+     "Gay love",
+     "Thetis",
+     "Greeks",
+     "History",
+     "Trojan War. fast (OCoLC)fst01157294",
+     "Friendship, fiction",
+     "Fiction, historical",
+     "Fiction, war & military"
+    ],
+    "providerMeta": {
+     "seriesKey": null,
+     "seriesKeys": [],
+     "seriesNames": [],
+     "seriesPosition": null,
+     "isbns": [
+      "9789041714879",
+      "9146239758",
+      "9781408821985",
+      "8831780980",
+      "9783961610822",
+      "0062060619",
+      "9781408826423",
+      "1445014904",
+      "9781408826133",
+      "9789493081222",
+      "1445014912",
+      "9786555354188",
+      "1627655379",
+      "9788652141760",
+      "9781408842126",
+      "9780062060631",
+      "8564850370",
+      "9788382155242",
+      "9789146238423",
+      "9146238425",
+      "1408891387",
+      "1408816032",
+      "9781526679642",
+      "8483653370"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL16509148W"
+   },
+   "openlibrary-book-OL1282313W": {
+    "id": "openlibrary-book-OL1282313W",
+    "provider": "openlibrary",
+    "providerId": "OL1282313W",
+    "title": "Ariadne",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Jennifer Saint",
+    "about": "First published 2021.",
+    "year": "2021",
+    "artwork": "https://covers.openlibrary.org/b/id/10917841-L.jpg?default=false",
+    "genres": [
+     "English literature",
+     "History",
+     "Fiction"
+    ],
+    "providerMeta": {
+     "seriesKey": null,
+     "seriesKeys": [],
+     "seriesNames": [],
+     "seriesPosition": null,
+     "isbns": [
+      "125077358X",
+      "9781250773593",
+      "1472273869",
+      "9781250773579",
+      "1472273907",
+      "9781472273864",
+      "9781472273871",
+      "1250773571",
+      "1250773598",
+      "9781250773586",
+      "9781472273901",
+      "1472273877"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL1282313W"
+   },
+   "openlibrary-book-OL5703422W": {
+    "id": "openlibrary-book-OL5703422W",
+    "provider": "openlibrary",
+    "providerId": "OL5703422W",
+    "title": "Jonathan Strange & Mr. Norrell",
+    "originalTitle": "Jonathan Strange and Mr. Norrell",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Susanna Clarke",
+    "about": "First published 2001.",
+    "year": "2001",
+    "artwork": "https://covers.openlibrary.org/b/id/525391-L.jpg?default=false",
+    "genres": [
+     "England, fiction",
+     "Fiction, historical",
+     "Fiction, historical, general",
+     "Literature",
+     "award:hugo_award=2005",
+     "Fantasy fiction",
+     "Fairies",
+     "Fiction",
+     "Hugo Award Winner",
+     "Fantasy",
+     "Magicians",
+     "Teacher-student relationships"
+    ],
+    "providerMeta": {
+     "seriesKey": null,
+     "seriesKeys": [],
+     "seriesNames": [],
+     "seriesPosition": null,
+     "isbns": [
+      "1472835174",
+      "9789172637894",
+      "9780765356154",
+      "9781635576726",
+      "9781608195350",
+      "1427267200",
+      "9781608190867",
+      "9789050005753",
+      "9789753295598",
+      "9781427227904",
+      "8498387302",
+      "3827005221",
+      "1608190862",
+      "0747578095",
+      "1408803445",
+      "9780747579885",
+      "9571347485",
+      "9781596911536",
+      "1526681552",
+      "9781593977412",
+      "8467219610",
+      "9780747579519",
+      "9781408891469",
+      "9783827005229"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL5703422W"
+   },
+   "openlibrary-book-OL16086747W": {
+    "id": "openlibrary-book-OL16086747W",
+    "provider": "openlibrary",
+    "providerId": "OL16086747W",
+    "title": "The Night Circus",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Erin Morgenstern",
+    "about": "First published 2011.",
+    "year": "2011",
+    "artwork": "https://covers.openlibrary.org/b/id/8773134-L.jpg?default=false",
+    "genres": [
+     "New York Times bestseller",
+     "Fiction",
+     "Magicians",
+     "Circus",
+     "Games",
+     "Circus performers",
+     "nyt:hardcover_fiction=2011-12-24",
+     "Psychokinesis",
+     "Magic",
+     "Fate and fatalism",
+     "Roman",
+     "Night"
+    ],
+    "providerMeta": {
+     "seriesKey": null,
+     "seriesKeys": [],
+     "seriesNames": [],
+     "seriesPosition": null,
+     "isbns": [
+      "8466414576",
+      "9789573329121",
+      "1445859637",
+      "9780307744432",
+      "6586015529",
+      "9780307938923",
+      "9781846555244",
+      "1784871052",
+      "9788416517282",
+      "1445859629",
+      "0099593858",
+      "9780307938909",
+      "354828549X",
+      "9573329123",
+      "881709501X",
+      "0307938921",
+      "9655524116",
+      "0307938905",
+      "9780099581543",
+      "9781616577889",
+      "9780099554790",
+      "184655523X",
+      "9781784872557",
+      "0606264205"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL16086747W"
+   },
+   "openlibrary-book-OL27448W": {
+    "id": "openlibrary-book-OL27448W",
+    "provider": "openlibrary",
+    "providerId": "OL27448W",
+    "title": "The Lord of the Rings",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "J.R.R. Tolkien",
+    "about": "First published 1954.",
+    "year": "1954",
+    "artwork": "https://covers.openlibrary.org/b/id/14625765-L.jpg?default=false",
+    "genres": [
+     "The Lord of the Rings",
+     "Fiction",
+     "Ficción",
+     "English Fantasy fiction",
+     "Ficción fantástica inglesa",
+     "Fantasy fiction",
+     "Open Library Staff Picks",
+     "Middle Earth (Imaginary place)",
+     "Fiction, fantasy, epic",
+     "Middle earth (imaginary place), fiction",
+     "Baggins, frodo (fictitious character), fiction",
+     "Gandalf (fictitious character), fiction"
+    ],
+    "providerMeta": {
+     "seriesKey": "OL330052L",
+     "seriesKeys": [
+      "OL330052L"
+     ],
+     "seriesNames": [
+      "lord of the rings"
+     ],
+     "seriesPosition": null,
+     "isbns": [
+      "4566023621",
+      "0898452236",
+      "0044406797",
+      "9780061917813",
+      "8020409262",
+      "8845294773",
+      "9785352003121",
+      "9781299884953",
+      "9782267011258",
+      "0618260595",
+      "9780048231499",
+      "9780007322596",
+      "9783608964295",
+      "9788071456063",
+      "9785768402112",
+      "9780261102439",
+      "000788768X",
+      "4566023540",
+      "0395595118",
+      "9789510132081",
+      "9780345339737",
+      "9780395272206",
+      "0395272238",
+      "9783608936667"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL27448W"
+   },
+   "openlibrary-book-OL32195W": {
+    "id": "openlibrary-book-OL32195W",
+    "provider": "openlibrary",
+    "providerId": "OL32195W",
+    "title": "House of Leaves",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Mark Z. Danielewski",
+    "about": "First published 1998.",
+    "year": "1998",
+    "artwork": "https://covers.openlibrary.org/b/id/6450442-L.jpg?default=false",
+    "genres": [
+     "Holes",
+     "Documentary films",
+     "Manuscripts",
+     "Fiction",
+     "Fiction, suspense",
+     "Fiction, horror",
+     "Fiction, thrillers, suspense",
+     "Suspense",
+     "Labyrinths",
+     "Dwellings",
+     "Horror tales",
+     "Paranormal fiction"
+    ],
+    "providerMeta": {
+     "seriesKey": null,
+     "seriesKeys": [],
+     "seriesNames": [],
+     "seriesPosition": null,
+     "isbns": [
+      "9781862301115",
+      "9781862301108",
+      "9786555983487",
+      "9780375703768",
+      "1407011936",
+      "9781529943993",
+      "9780385603102",
+      "9781407011936",
+      "9788374806572",
+      "1862301115",
+      "1862301107",
+      "6055159716",
+      "1417709049",
+      "152994399X",
+      "9781417709045",
+      "0375410341",
+      "9780375420528",
+      "2381960643",
+      "6555983485",
+      "9782381960647",
+      "0375420525",
+      "8374806575",
+      "038560310X",
+      "9780375410345"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL32195W"
+   },
+   "openlibrary-book-OL17268007W": {
+    "id": "openlibrary-book-OL17268007W",
+    "provider": "openlibrary",
+    "providerId": "OL17268007W",
+    "title": "Annihilation",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Jeff VanderMeer",
+    "about": "First published 2014.",
+    "year": "2014",
+    "artwork": "https://covers.openlibrary.org/b/id/8408974-L.jpg?default=false",
+    "genres": [
+     "Nebula Award Winner",
+     "award:nebula_award=novel",
+     "award:nebula_award=2015",
+     "Discoveries in geography",
+     "Fiction",
+     "Scientists",
+     "Science-Fiction",
+     "Suspense fiction",
+     "Paranormal fiction",
+     "Women scientists",
+     "Science fiction",
+     "Fantasy fiction"
+    ],
+    "providerMeta": {
+     "seriesKey": null,
+     "seriesKeys": [],
+     "seriesNames": [],
+     "seriesPosition": null,
+     "isbns": [
+      "8858418328",
+      "9780374104092",
+      "342651804X",
+      "0374537151",
+      "9780007550692",
+      "9781250824042",
+      "9781482956740",
+      "1482956748",
+      "0007550693",
+      "9789896379438",
+      "0374104093",
+      "0007550707",
+      "1443428396",
+      "0008263345",
+      "3888979684",
+      "9782253183785",
+      "6070721861",
+      "9783888979682",
+      "9780008263348",
+      "9781443453783",
+      "9788580575637",
+      "9788858418321",
+      "8423353338",
+      "9783426518045"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL17268007W"
+   },
+   "openlibrary-book-OL20759125W": {
+    "id": "openlibrary-book-OL20759125W",
+    "provider": "openlibrary",
+    "providerId": "OL20759125W",
+    "title": "Mexican Gothic",
+    "type": "book",
+    "domains": [
+     "read"
+    ],
+    "by": "Silvia Moreno-Garcia",
+    "about": "First published 2020.",
+    "year": "2020",
+    "artwork": "https://covers.openlibrary.org/b/id/10239163-L.jpg?default=false",
+    "genres": [
+     "English literature",
+     "nyt:combined-print-and-e-book-fiction=2020-07-19",
+     "New York Times bestseller",
+     "Fiction, gothic",
+     "Fiction, historical",
+     "Mexico, fiction",
+     "Fiction, historical, general",
+     "nyt:trade-fiction-paperback=2021-07-11",
+     "Haunted houses",
+     "Fiction",
+     "Families",
+     "Family secrets"
+    ],
+    "providerMeta": {
+     "seriesKey": null,
+     "seriesKeys": [],
+     "seriesNames": [],
+     "seriesPosition": null,
+     "isbns": [
+      "1432885383",
+      "9781529402674",
+      "9781663634269",
+      "9780525620792",
+      "9791028112486",
+      "052562080X",
+      "1529402654",
+      "9788445009819",
+      "9781432892043",
+      "1663634262",
+      "9786070778018",
+      "1529402670",
+      "9781529402681",
+      "1432892045",
+      "0525620796",
+      "8445009818",
+      "0593213874",
+      "6070778014",
+      "9781529402650",
+      "9788445014318",
+      "1529402689",
+      "0525620788",
+      "9780525620785",
+      "9781529427097"
+     ]
+    },
+    "sourceUrl": "https://openlibrary.org/works/OL20759125W"
+   },
+   "tmdb-tv-95396": {
+    "id": "tmdb-tv-95396",
+    "provider": "tmdb",
+    "providerId": "95396",
+    "title": "Severance",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.",
+    "year": "2022",
+    "artwork": "https://image.tmdb.org/t/p/w780/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+    "genres": [
+     "18",
+     "9648",
+     "10765"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      18,
+      9648,
+      10765
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/95396"
+   },
+   "tmdb-tv-54344": {
+    "id": "tmdb-tv-54344",
+    "provider": "tmdb",
+    "providerId": "54344",
+    "title": "The Leftovers",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "When 2% of the world's population abruptly disappears without explanation, the world struggles to understand just what they're supposed to do about it. This is the story of the people who didn't make the cut.",
+    "year": "2014",
+    "artwork": "https://image.tmdb.org/t/p/w780/NKJdryIFHr245Umq6gXsf7oULW.jpg",
+    "genres": [
+     "10765",
+     "18"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      10765,
+      18
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/54344"
+   },
+   "tmdb-tv-1920": {
+    "id": "tmdb-tv-1920",
+    "provider": "tmdb",
+    "providerId": "1920",
+    "title": "Twin Peaks",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "The body of Laura Palmer is washed up on a beach near the small Washington state town of Twin Peaks. FBI Special Agent Dale Cooper is called in to investigate her strange demise only to uncover a web of mystery that ultimately leads him deep into the heart of the surrounding wood",
+    "year": "1990",
+    "artwork": "https://image.tmdb.org/t/p/w780/lA9CNSdo50iQPZ8A2fyVpMvJZAf.jpg",
+    "genres": [
+     "18",
+     "9648"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      18,
+      9648
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/1920"
+   },
+   "tmdb-tv-117488": {
+    "id": "tmdb-tv-117488",
+    "provider": "tmdb",
+    "providerId": "117488",
+    "title": "Yellowjackets",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "This equal parts survival epic, psychological horror story and coming-of-age drama tells the saga of a team of wildly talented high school girls soccer players who become the (un)lucky survivors of a plane crash deep in the remote northern wilderness. The series chronicles their ",
+    "year": "2021",
+    "artwork": "https://image.tmdb.org/t/p/w780/xRnGrn7Z7SC0KIBodocoU1QgDZF.jpg",
+    "genres": [
+     "18",
+     "9648"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      18,
+      9648
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/117488"
+   },
+   "tmdb-tv-124364": {
+    "id": "tmdb-tv-124364",
+    "provider": "tmdb",
+    "providerId": "124364",
+    "title": "FROM",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "Unravel the mystery of a nightmarish town in middle America that traps all those who enter. As the unwilling residents fight to keep a sense of normalcy and search for a way out, they must also survive the threats of the surrounding forest – including the terrifying creatures tha",
+    "year": "2022",
+    "artwork": "https://image.tmdb.org/t/p/w780/pRtJagIxpfODzzb0T0NAvZSzErC.jpg",
+    "genres": [
+     "9648",
+     "18",
+     "10765"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9648,
+      18,
+      10765
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/124364"
+   },
+   "tmdb-tv-70523": {
+    "id": "tmdb-tv-70523",
+    "provider": "tmdb",
+    "providerId": "70523",
+    "title": "Dark",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "A missing child sets four families on a frantic hunt for answers as they unearth a mind-bending mystery that spans three generations.",
+    "year": "2017",
+    "artwork": "https://image.tmdb.org/t/p/w780/wSXJHO9WHLb0aCwvQrtco7vOmWA.jpg",
+    "genres": [
+     "80",
+     "18",
+     "10765",
+     "9648"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      80,
+      18,
+      10765,
+      9648
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/70523"
+   },
+   "tmdb-tv-97400": {
+    "id": "tmdb-tv-97400",
+    "provider": "tmdb",
+    "providerId": "97400",
+    "title": "Midnight Mass",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "The arrival of a charismatic young priest brings glorious miracles, ominous mysteries and renewed religious fervor to a dying town desperate to believe.",
+    "year": "2021",
+    "artwork": "https://image.tmdb.org/t/p/w780/iYoMZYVD775MtBYJfv6OGY1FsnL.jpg",
+    "genres": [
+     "9648",
+     "18"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9648,
+      18
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/97400"
+   },
+   "tmdb-tv-72844": {
+    "id": "tmdb-tv-72844",
+    "provider": "tmdb",
+    "providerId": "72844",
+    "title": "The Haunting of Hill House",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "Flashing between past and present, a fractured family confronts haunting memories of their old home and the terrifying events that drove them from it.",
+    "year": "2018",
+    "artwork": "https://image.tmdb.org/t/p/w780/nWPZb800NCGiDPNGsKCfY0w44Z2.jpg",
+    "genres": [
+     "9648",
+     "18"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9648,
+      18
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/72844"
+   },
+   "tmdb-tv-204284": {
+    "id": "tmdb-tv-204284",
+    "provider": "tmdb",
+    "providerId": "204284",
+    "title": "The Rehearsal",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "With a construction crew, a legion of actors, and seemingly unlimited resources, Nathan Fielder allows ordinary people to prepare for life's biggest moments by \"rehearsing\" them in carefully crafted simulations of his own design. When a single misstep could shatter your entire wo",
+    "year": "2022",
+    "artwork": "https://image.tmdb.org/t/p/w780/mIevNYxovnH4sR22qkUmAgS5vdv.jpg",
+    "genres": [
+     "35",
+     "99"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35,
+      99
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/204284"
+   },
+   "tmdb-tv-110971": {
+    "id": "tmdb-tv-110971",
+    "provider": "tmdb",
+    "providerId": "110971",
+    "title": "How To with John Wilson",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "In a uniquely hilarious odyssey of self-discovery and cultural observation, documentary filmmaker and self-described \"anxious New Yorker\" John Wilson covertly and obsessively films the lives of his fellow New Yorkers while attempting to give everyday advice on relatable topics. T",
+    "year": "2020",
+    "artwork": "https://image.tmdb.org/t/p/w780/jpHziYpJniprEFDFwMbOHabgnow.jpg",
+    "genres": [
+     "35",
+     "99"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35,
+      99
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/110971"
+   },
+   "tmdb-tv-62611": {
+    "id": "tmdb-tv-62611",
+    "provider": "tmdb",
+    "providerId": "62611",
+    "title": "Review",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "A review of a movie, or a restaurant, or a car—or whatever else that typically falls under a critic's domain—is all well and good, and can even be helpful at times. But how can one find out about myriad other experiences that are never tackled in reviews? Enter Forrest MacNeil, a",
+    "year": "2014",
+    "artwork": "https://image.tmdb.org/t/p/w780/igseZf0ClaW0kzqnAIORuXjNxkR.jpg",
+    "genres": [
+     "35"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/62611"
+   },
+   "tmdb-tv-69866": {
+    "id": "tmdb-tv-69866",
+    "provider": "tmdb",
+    "providerId": "69866",
+    "title": "Detroiters",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "Best friends and fledgling ad men Sam and Tim may not have the money, connections or talent that the big guys do, but they have ambition out the wazoo. Together, they’re out to build a local advertising empire and restore their home city of Detroit to its former glory in this new",
+    "year": "2017",
+    "artwork": "https://image.tmdb.org/t/p/w780/hBxeoEzVola4LyhW3C7FjseFeWm.jpg",
+    "genres": [
+     "35"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/69866"
+   },
+   "tmdb-tv-2996": {
+    "id": "tmdb-tv-2996",
+    "provider": "tmdb",
+    "providerId": "2996",
+    "title": "The Office",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "Nightmare boss. Tedious colleagues. Pointless tasks. Welcome to Wernham Hogg.",
+    "year": "2001",
+    "artwork": "https://image.tmdb.org/t/p/w780/oX2JKE1RzAONMbYlujHx0hRAJo1.jpg",
+    "genres": [
+     "35"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/2996"
+   },
+   "tmdb-tv-4546": {
+    "id": "tmdb-tv-4546",
+    "provider": "tmdb",
+    "providerId": "4546",
+    "title": "Curb Your Enthusiasm",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "The off-kilter, unscripted comic vision of Larry David, who plays himself in a parallel universe in which he can't seem to do anything right, and, by his standards, neither can anyone else.",
+    "year": "2000",
+    "artwork": "https://image.tmdb.org/t/p/w780/pjRRB1NCFJzCb0euvpia4rKDov1.jpg",
+    "genres": [
+     "35"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/4546"
+   },
+   "tmdb-tv-1229": {
+    "id": "tmdb-tv-1229",
+    "provider": "tmdb",
+    "providerId": "1229",
+    "title": "Tim and Eric Awesome Show, Great Job!",
+    "type": "tv",
+    "domains": [
+     "tv"
+    ],
+    "about": "Tim and Eric Awesome Show, Great Job! is an American sketch comedy television series, created by and starring Tim Heidecker and Eric Wareheim, which premiered February 11, 2007 on Cartoon Network's Adult Swim comedy block and ran until May 2010. The program features surrealistic ",
+    "year": "2007",
+    "artwork": "https://image.tmdb.org/t/p/w780/1dzPN5M6BbT44CTMaXqqkIdhOWK.jpg",
+    "genres": [
+     "35"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      35
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/tv/1229"
+   },
+   "tmdb-movie-493922": {
+    "id": "tmdb-movie-493922",
+    "provider": "tmdb",
+    "providerId": "493922",
+    "title": "Hereditary",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "Following the death of the Leigh family matriarch, Annie and her children uncover disturbing secrets about their heritage. Their daily lives are not only impacted, but they also become entangled in a chilling fate from which they cannot escape, driving them to the brink of madnes",
+    "year": "2018",
+    "artwork": "https://image.tmdb.org/t/p/w780/4GFPuL14eXi66V96xBWY73Y9PfR.jpg",
+    "genres": [
+     "27",
+     "9648",
+     "53"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      27,
+      9648,
+      53
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/493922"
+   },
+   "tmdb-movie-310131": {
+    "id": "tmdb-movie-310131",
+    "provider": "tmdb",
+    "providerId": "310131",
+    "title": "The Witch",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "In 1630, a farmer relocates his family to a remote plot of land on the edge of a forest where strange, unsettling things happen. With suspicion and paranoia mounting, each family member's faith, loyalty and love are tested in shocking ways.",
+    "year": "2016",
+    "artwork": "https://image.tmdb.org/t/p/w780/zap5hpFCWSvdWSuPGAQyjUv2wAC.jpg",
+    "genres": [
+     "27",
+     "14",
+     "9648"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      27,
+      14,
+      9648
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/310131"
+   },
+   "tmdb-movie-300668": {
+    "id": "tmdb-movie-300668",
+    "provider": "tmdb",
+    "providerId": "300668",
+    "title": "Annihilation",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "A biologist signs up for a dangerous, secret expedition into a mysterious zone where the laws of nature don't apply.",
+    "year": "2018",
+    "artwork": "https://image.tmdb.org/t/p/w780/4YRplSk6BhH6PRuE9gfyw9byUJ6.jpg",
+    "genres": [
+     "878",
+     "27"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      878,
+      27
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/300668"
+   },
+   "tmdb-movie-1091": {
+    "id": "tmdb-movie-1091",
+    "provider": "tmdb",
+    "providerId": "1091",
+    "title": "The Thing",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "A research team in Antarctica is hunted by a shape-shifting alien that assumes the appearance of its victims.",
+    "year": "1982",
+    "artwork": "https://image.tmdb.org/t/p/w780/tzGY49kseSE9QAKk47uuDGwnSCu.jpg",
+    "genres": [
+     "27",
+     "9648",
+     "878"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      27,
+      9648,
+      878
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/1091"
+   },
+   "tmdb-movie-419430": {
+    "id": "tmdb-movie-419430",
+    "provider": "tmdb",
+    "providerId": "419430",
+    "title": "Get Out",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "Chris and his girlfriend Rose go upstate to visit her parents for the weekend. At first, Chris reads the family's overly accommodating behavior as nervous attempts to deal with their daughter's interracial relationship, but as the weekend progresses, a series of increasingly dist",
+    "year": "2017",
+    "artwork": "https://image.tmdb.org/t/p/w780/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg",
+    "genres": [
+     "9648",
+     "53",
+     "27"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      9648,
+      53,
+      27
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/419430"
+   },
+   "tmdb-movie-693134": {
+    "id": "tmdb-movie-693134",
+    "provider": "tmdb",
+    "providerId": "693134",
+    "title": "Dune: Part Two",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family. Facing a choice between the love of his life and the fate of the known universe, Paul endeavors to prevent a terrible fu",
+    "year": "2024",
+    "artwork": "https://image.tmdb.org/t/p/w780/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg",
+    "genres": [
+     "878",
+     "12"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      878,
+      12
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/693134"
+   },
+   "tmdb-movie-786892": {
+    "id": "tmdb-movie-786892",
+    "provider": "tmdb",
+    "providerId": "786892",
+    "title": "Furiosa: A Mad Max Saga",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "As the world falls, young Furiosa is snatched from the Green Place of Many Mothers into the hands of a great biker horde led by the warlord Dementus. Sweeping through the wasteland, they encounter the citadel presided over by Immortan Joe. The two tyrants wage war for dominance, ",
+    "year": "2024",
+    "artwork": "https://image.tmdb.org/t/p/w780/iADOJ8Zymht2JPMoy3R7xceZprc.jpg",
+    "genres": [
+     "28",
+     "878",
+     "12"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      28,
+      878,
+      12
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/786892"
+   },
+   "tmdb-movie-1417": {
+    "id": "tmdb-movie-1417",
+    "provider": "tmdb",
+    "providerId": "1417",
+    "title": "Pan's Labyrinth",
+    "type": "movie",
+    "domains": [
+     "movies"
+    ],
+    "about": "In post–civil war Spain, 10-year-old Ofelia moves with her pregnant mother to live under the control of her cruel stepfather. Drawn into a mysterious labyrinth, she meets a faun who reveals that she may be a lost princess from an underground kingdom. To return to her true father,",
+    "year": "2006",
+    "artwork": "https://image.tmdb.org/t/p/w780/7wb2Ldp0oAx1lcZvffq9RfWoI2h.jpg",
+    "genres": [
+     "14",
+     "18",
+     "10752"
+    ],
+    "providerMeta": {
+     "genreIds": [
+      14,
+      18,
+      10752
+     ],
+     "collectionId": null
+    },
+    "sourceUrl": "https://www.themoviedb.org/movie/1417"
+   }
+  },
+  "blindSpots": {},
+  "patternStatements": [
+   {
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "label": "Exploration-heavy games with puzzles",
+    "says": "accurate",
+    "weight": "lot",
+    "context": null,
+    "authority": "user-confirmed"
+   },
+   {
+    "hypothesisId": "ai-quirky-character-comedy",
+    "label": "Quirky character-driven comedy",
+    "says": "partial",
+    "weight": null,
+    "context": null,
+    "authority": "user-confirmed"
+   }
+  ],
+  "blindSpotDismissed": [],
+  "tastebreaks": {},
+  "hypothesisHistory": [
+   {
+    "id": "rev-mvic6blb-1",
+    "hypothesisId": "ai-genre-fantasy-mythic-worlds",
+    "claim": "Tends toward fantasy and mythic or uncanny settings, showing up in both books and games.",
+    "supports": [
+     "ev:openlibrary-book-OL18012166W",
+     "ev:openlibrary-book-OL20893680W",
+     "ev:igdb-game-19562",
+     "ev:igdb-game-20"
+    ],
+    "counters": [
+     "ev:openlibrary-book-OL18020194W"
+    ],
+    "domains": [
+     "read",
+     "play"
+    ],
+    "level": "emerging",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T16:38:24.047Z",
+    "supersedes": null
+   },
+   {
+    "id": "rev-mvic6bld-2",
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action.",
+    "supports": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-20"
+    ],
+    "counters": [],
+    "domains": [
+     "play"
+    ],
+    "level": "emerging",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T16:38:24.049Z",
+    "supersedes": null
+   },
+   {
+    "id": "rev-mvic6ble-3",
+    "hypothesisId": "ai-epic-adventure-screen",
+    "claim": "Enjoys large-scale adventure and fantasy films, where the scope of the quest carries the story.",
+    "supports": [
+     "ev:tmdb-movie-76341",
+     "ev:tmdb-movie-120"
+    ],
+    "counters": [],
+    "domains": [
+     "movies"
+    ],
+    "level": "emerging",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T16:38:24.050Z",
+    "supersedes": null
+   },
+   {
+    "id": "rev-mvic6ble-4",
+    "hypothesisId": "ai-uncanny-mystery-tv",
+    "claim": "Responds to TV with mysterious, supernatural hooks and ensemble casts, as with Lost and Widow's Bay.",
+    "supports": [
+     "ev:tmdb-tv-4607",
+     "ev:tmdb-tv-270476"
+    ],
+    "counters": [
+     "ev:tmdb-tv-111803"
+    ],
+    "domains": [
+     "tv"
+    ],
+    "level": "emerging",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T16:38:24.050Z",
+    "supersedes": null
+   },
+   {
+    "id": "rev-mviikf49-1",
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action.",
+    "supports": [],
+    "counters": [],
+    "domains": [],
+    "level": null,
+    "origin": "user-confirmed",
+    "reason": "Exploration-heavy games with puzzles: You said this is accurate.",
+    "createdAt": "2026-10-21T19:37:19.497Z",
+    "supersedes": "rev-mvic6bld-2"
+   },
+   {
+    "id": "rev-mviikf4a-2",
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action.",
+    "supports": [],
+    "counters": [],
+    "domains": [],
+    "level": null,
+    "origin": "user-confirmed",
+    "reason": "Exploration-heavy games with puzzles: Important to your taste.",
+    "createdAt": "2026-10-21T19:37:19.498Z",
+    "supersedes": "rev-mviikf49-1"
+   },
+   {
+    "id": "rev-mviikjjd-1",
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action, with recent Silent Hill entries reinforcing the pattern.",
+    "supports": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-20",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342"
+    ],
+    "counters": [],
+    "domains": [
+     "play"
+    ],
+    "level": "supported",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:37:25.225Z",
+    "supersedes": "rev-mviikf4a-2"
+   },
+   {
+    "id": "rev-mviikjjd-2",
+    "hypothesisId": "ai-atmospheric-horror-games",
+    "claim": "Responds strongly to games where mood and setting carry the experience, including survival horror and psychological horror.",
+    "supports": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342"
+    ],
+    "counters": [],
+    "domains": [
+     "play"
+    ],
+    "level": "supported",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:37:25.225Z",
+    "supersedes": null
+   },
+   {
+    "id": "rev-mviikjjd-3",
+    "hypothesisId": "ai-quirky-character-comedy",
+    "claim": "Gravitates toward deadpan, character-led comedy in TV, with Nathan for You and I Think You Should Leave both landing well.",
+    "supports": [
+     "ev:tmdb-tv-58957",
+     "ev:tmdb-tv-88728"
+    ],
+    "counters": [],
+    "domains": [
+     "tv"
+    ],
+    "level": "emerging",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:37:25.225Z",
+    "supersedes": null
+   },
+   {
+    "id": "rev-mvij4c67-1",
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action, with recent Silent Hill entries and The Witness reinforcing the pattern.",
+    "supports": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-20",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342",
+     "ev:igdb-game-5601",
+     "ev:igdb-game-72"
+    ],
+    "counters": [],
+    "domains": [
+     "play"
+    ],
+    "level": "strong",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:52:48.799Z",
+    "supersedes": "rev-mviikjjd-1"
+   },
+   {
+    "id": "rev-mvij4c6a-2",
+    "hypothesisId": "ai-atmospheric-horror-games",
+    "claim": "Responds strongly to games where mood and setting carry the experience, including survival horror and psychological horror.",
+    "supports": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342",
+     "ev:igdb-game-185246",
+     "ev:igdb-game-103329"
+    ],
+    "counters": [
+     "ev:igdb-game-11737"
+    ],
+    "domains": [
+     "play"
+    ],
+    "level": "strong",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:52:48.802Z",
+    "supersedes": "rev-mviikjjd-2"
+   },
+   {
+    "id": "rev-mvij4c6a-3",
+    "hypothesisId": "ai-genre-fantasy-mythic-worlds",
+    "claim": "Tends toward fantasy and mythic or uncanny settings, showing up in both books and games.",
+    "supports": [
+     "ev:openlibrary-book-OL18012166W",
+     "ev:openlibrary-book-OL20893680W",
+     "ev:openlibrary-book-OL16509148W",
+     "ev:igdb-game-19562",
+     "ev:igdb-game-20",
+     "ev:igdb-game-9643"
+    ],
+    "counters": [
+     "ev:openlibrary-book-OL18020194W"
+    ],
+    "domains": [
+     "read",
+     "play"
+    ],
+    "level": "supported",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:52:48.802Z",
+    "supersedes": "rev-mvic6blb-1"
+   },
+   {
+    "id": "rev-mvij4c6a-4",
+    "hypothesisId": "ai-uncanny-slow-burn-horror-screen",
+    "claim": "Responds to films and TV that build dread through atmosphere and ambiguity rather than jump scares, such as Hereditary, Get Out, Midnight Mass and Haunting of Hill House.",
+    "supports": [
+     "ev:tmdb-movie-493922",
+     "ev:tmdb-movie-419430",
+     "ev:tmdb-tv-97400",
+     "ev:tmdb-tv-72844",
+     "ev:tmdb-tv-1920"
+    ],
+    "counters": [
+     "ev:tmdb-movie-310131"
+    ],
+    "domains": [
+     "movies",
+     "tv"
+    ],
+    "level": "supported",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:52:48.802Z",
+    "supersedes": null
+   },
+   {
+    "id": "rev-mvij4c6a-5",
+    "hypothesisId": "ai-epic-adventure-screen",
+    "claim": "Enjoys large-scale adventure and fantasy films, where the scope of the quest carries the story.",
+    "supports": [
+     "ev:tmdb-movie-76341",
+     "ev:tmdb-movie-120",
+     "ev:tmdb-movie-693134",
+     "ev:tmdb-movie-786892"
+    ],
+    "counters": [],
+    "domains": [
+     "movies"
+    ],
+    "level": "emerging",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:52:48.802Z",
+    "supersedes": "rev-mvic6ble-3"
+   },
+   {
+    "id": "rev-mvij4c6a-6",
+    "hypothesisId": "ai-uncanny-mystery-tv",
+    "claim": "Responds to TV with mysterious, supernatural hooks and ensemble casts, as with Lost, Twin Peaks and Widow's Bay.",
+    "supports": [
+     "ev:tmdb-tv-4607",
+     "ev:tmdb-tv-270476",
+     "ev:tmdb-tv-1920"
+    ],
+    "counters": [
+     "ev:tmdb-tv-111803",
+     "ev:tmdb-tv-95396"
+    ],
+    "domains": [
+     "tv"
+    ],
+    "level": "emerging",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:52:48.802Z",
+    "supersedes": "rev-mvic6ble-4"
+   },
+   {
+    "id": "rev-mvij4c6a-7",
+    "hypothesisId": "ai-quirky-character-comedy",
+    "claim": "Gravitates toward deadpan, character-led comedy in TV, with Nathan for You and I Think You Should Leave both landing well.",
+    "supports": [
+     "ev:tmdb-tv-58957",
+     "ev:tmdb-tv-88728",
+     "ev:tmdb-tv-204284",
+     "ev:tmdb-tv-110971"
+    ],
+    "counters": [],
+    "domains": [
+     "tv"
+    ],
+    "level": "emerging",
+    "origin": "model",
+    "reason": "Live Taste Profile refresh",
+    "createdAt": "2026-10-21T19:52:48.802Z",
+    "supersedes": "rev-mviikjjd-3"
+   },
+   {
+    "id": "rev-mvij8fic-1",
+    "hypothesisId": "ai-quirky-character-comedy",
+    "claim": "Gravitates toward deadpan, character-led comedy in TV, with Nathan for You and I Think You Should Leave both landing well.",
+    "supports": [],
+    "counters": [],
+    "domains": [],
+    "level": null,
+    "origin": "user-confirmed",
+    "reason": "Quirky character-driven comedy: You said this is partly accurate.",
+    "createdAt": "2026-10-21T19:55:59.748Z",
+    "supersedes": "rev-mvij4c6a-7"
+   }
+  ],
+  "modelHypotheses": [
+   {
+    "id": "ai-puzzle-exploration-games",
+    "title": "Exploration-heavy games with puzzles",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action, with recent Silent Hill entries and The Witness reinforcing the pattern.",
+    "evidence": "Resident Evil 7: Biohazard, BioShock, Silent Hill 2, Silent Hill: Townfall, The Witness, Portal 2",
+    "supports": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-20",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342",
+     "ev:igdb-game-5601",
+     "ev:igdb-game-72"
+    ],
+    "counters": [],
+    "domains": [
+     "play"
+    ],
+    "strength": "strong",
+    "status": "strong",
+    "crossDomain": "untested",
+    "context": null,
+    "aiGenerated": true,
+    "provenance": "Based on your reactions so far."
+   },
+   {
+    "id": "ai-atmospheric-horror-games",
+    "title": "Atmosphere-driven horror in games",
+    "claim": "Responds strongly to games where mood and setting carry the experience, including survival horror and psychological horror.",
+    "evidence": "Resident Evil 7: Biohazard, Silent Hill 2, Silent Hill: Townfall, Alan Wake II, Control",
+    "supports": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342",
+     "ev:igdb-game-185246",
+     "ev:igdb-game-103329"
+    ],
+    "counters": [
+     "ev:igdb-game-11737"
+    ],
+    "domains": [
+     "play"
+    ],
+    "strength": "strong",
+    "status": "strong",
+    "crossDomain": "untested",
+    "context": null,
+    "aiGenerated": true,
+    "provenance": "Based on your reactions so far."
+   },
+   {
+    "id": "ai-genre-fantasy-mythic-worlds",
+    "title": "Mythic and fantastical worlds",
+    "claim": "Tends toward fantasy and mythic or uncanny settings, showing up in both books and games.",
+    "evidence": "Circe, Piranesi, The Song of Achilles, Resident Evil 7: Biohazard, BioShock, Return of the Obra Dinn",
+    "supports": [
+     "ev:openlibrary-book-OL18012166W",
+     "ev:openlibrary-book-OL20893680W",
+     "ev:openlibrary-book-OL16509148W",
+     "ev:igdb-game-19562",
+     "ev:igdb-game-20",
+     "ev:igdb-game-9643"
+    ],
+    "counters": [
+     "ev:openlibrary-book-OL18020194W"
+    ],
+    "domains": [
+     "read",
+     "play"
+    ],
+    "strength": "supported",
+    "status": "supported",
+    "crossDomain": "supported",
+    "context": null,
+    "aiGenerated": true,
+    "provenance": "Based on your reactions so far."
+   },
+   {
+    "id": "ai-uncanny-slow-burn-horror-screen",
+    "title": "Uncanny slow-burn horror on screen",
+    "claim": "Responds to films and TV that build dread through atmosphere and ambiguity rather than jump scares, such as Hereditary, Get Out, Midnight Mass and Haunting of Hill House.",
+    "evidence": "Hereditary, Get Out, Midnight Mass, The Haunting of Hill House, Twin Peaks",
+    "supports": [
+     "ev:tmdb-movie-493922",
+     "ev:tmdb-movie-419430",
+     "ev:tmdb-tv-97400",
+     "ev:tmdb-tv-72844",
+     "ev:tmdb-tv-1920"
+    ],
+    "counters": [
+     "ev:tmdb-movie-310131"
+    ],
+    "domains": [
+     "movies",
+     "tv"
+    ],
+    "strength": "supported",
+    "status": "supported",
+    "crossDomain": "supported",
+    "context": null,
+    "aiGenerated": true,
+    "provenance": "Based on your reactions so far."
+   },
+   {
+    "id": "ai-epic-adventure-screen",
+    "title": "Epic adventure on screen",
+    "claim": "Enjoys large-scale adventure and fantasy films, where the scope of the quest carries the story.",
+    "evidence": "Mad Max: Fury Road, The Lord of the Rings: The Fellowship of the Ring, Dune: Part Two, Furiosa: A Mad Max Saga",
+    "supports": [
+     "ev:tmdb-movie-76341",
+     "ev:tmdb-movie-120",
+     "ev:tmdb-movie-693134",
+     "ev:tmdb-movie-786892"
+    ],
+    "counters": [],
+    "domains": [
+     "movies"
+    ],
+    "strength": "emerging",
+    "status": "emerging",
+    "crossDomain": "untested",
+    "context": null,
+    "aiGenerated": true,
+    "provenance": "Based on your reactions so far."
+   },
+   {
+    "id": "ai-uncanny-mystery-tv",
+    "title": "Uncanny mystery on television",
+    "claim": "Responds to TV with mysterious, supernatural hooks and ensemble casts, as with Lost, Twin Peaks and Widow's Bay.",
+    "evidence": "Lost, Widow's Bay, Twin Peaks",
+    "supports": [
+     "ev:tmdb-tv-4607",
+     "ev:tmdb-tv-270476",
+     "ev:tmdb-tv-1920"
+    ],
+    "counters": [
+     "ev:tmdb-tv-111803",
+     "ev:tmdb-tv-95396"
+    ],
+    "domains": [
+     "tv"
+    ],
+    "strength": "emerging",
+    "status": "emerging",
+    "crossDomain": "untested",
+    "context": null,
+    "aiGenerated": true,
+    "provenance": "Based on your reactions so far."
+   },
+   {
+    "id": "ai-quirky-character-comedy",
+    "title": "Quirky character-driven comedy",
+    "claim": "Gravitates toward deadpan, character-led comedy in TV, with Nathan for You and I Think You Should Leave both landing well.",
+    "evidence": "Nathan for You, I Think You Should Leave with Tim Robinson, The Rehearsal, How To with John Wilson",
+    "supports": [
+     "ev:tmdb-tv-58957",
+     "ev:tmdb-tv-88728",
+     "ev:tmdb-tv-204284",
+     "ev:tmdb-tv-110971"
+    ],
+    "counters": [],
+    "domains": [
+     "tv"
+    ],
+    "strength": "emerging",
+    "status": "emerging",
+    "crossDomain": "untested",
+    "context": null,
+    "aiGenerated": true,
+    "provenance": "Based on your reactions so far."
+   }
+  ],
+  "profileView": "list",
+  "mapPattern": null,
+  "mapItem": null,
+  "mapFilter": "all",
+  "favoriteFilter": "all",
+  "recommendationFilter": "all",
+  "libraryFilter": "all",
+  "expandedFeedback": {},
+  "areas": {
+   "movies": true,
+   "tv": true,
+   "read": true,
+   "play": true
+  },
+  "curveball": true,
+  "displayName": "Paige",
+  "setupAreas": [
+   "all"
+  ],
+  "recommendationStyle": "balanced",
+  "setupComplete": true,
+  "setupReturn": "favorites",
+  "onboarded": true,
+  "libraryView": "saved",
+  "look": "editorial"
+ }
+}

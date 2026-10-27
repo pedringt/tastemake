@@ -10,6 +10,10 @@
 //   TASTEMAKE_LIVE_OPEN_LIBRARY=1 node scripts/qa/candidate-quality-tests.mjs
 
 import { bookGenreFamilies, igdbGenreOverlap, igdbGenreWhereClause, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
+import { plainTitle, wikidataSeriesPositions } from "../../src/catalog/wikidata-series.mjs";
+import { isBookCompanion } from "../../src/catalog/book-companions.mjs";
+import { firstPublishedYear, searchCatalog } from "../../src/catalog/providers.mjs";
+import { correctOldBookYears } from "../../src/catalog/wikidata-years.mjs";
 import { createSuite } from "./lib/assert.mjs";
 
 const { check, eq, finish } = createSuite("candidate quality tests");
@@ -437,6 +441,376 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
   check("genre: prefixed subjects count", bookGenreFamilies(["genre:high fantasy"]).has("fantasy"));
   check("orphan and audience subjects carry no genre", bookGenreFamilies(["Orphans", "Juvenile fiction", "Children's fiction"]).size === 0);
   check("magic and dragons point to fantasy", bookGenreFamilies(["Magic"]).has("fantasy") && bookGenreFamilies(["Dragons"]).has("fantasy"));
+}
+
+
+// ---- #255 follow-up: books near the top of the final list get their own series check -----------------
+// Real case (Oct 20): Lord of Chaos (Wheel of Time #6) was offered because the 10 position lookups were
+// spent further up the pool. Here the first ten candidates are later entries too (all looked up and
+// dropped), which pushes an unchecked Lord of Chaos into the top; the final check must catch it.
+{
+  const doc = (id, title, author) => ({ key: `/works/${id}`, title, author_name: [author], subject: ["Fantasy fiction", "Magic"] });
+  const sequelTitles = ["Ashfall", "Brightwater", "Cinder Road", "Duskmere", "Embertide", "Frostgate", "Gloamhollow", "Hollowmark", "Ironvale", "Jadecrest"];
+  const sequels = sequelTitles.map((title, n) => doc(`OL-SEQ${n}W`, title, `Author ${n}`));
+  const lord = doc("OL-LORDW", "Lord of Chaos", "Robert Jordan");
+  const freshTitles = ["Kestrel", "Lanternfall", "Moonwright", "Nettlebrook", "Owlsong", "Pinecrown"];
+  const fresh = freshTitles.map((title, n) => doc(`OL-NEW${n}W`, title, `Writer ${n}`));
+  const lookedUp = [];
+  const fetchImpl = async (url) => {
+    const u = decodeURIComponent(String(url));
+    const work = /works\/(OL-[A-Z0-9]+W)\/editions/.exec(u)?.[1];
+    if (work) {
+      lookedUp.push(work);
+      const series = work.startsWith("OL-SEQ") ? [`The ${work} Cycle, Book 2`, `The ${work} Cycle, Book 2`] : work === "OL-LORDW" ? ["Wheel of Time (6)", "Wheel of Time (6)"] : [];
+      return { ok: true, json: async () => ({ entries: series.map((name) => ({ series: [name] })) }) };
+    }
+    return { ok: true, json: async () => ({ docs: [...sequels, lord, ...fresh] }) };
+  };
+  const related = await retrieveCatalogCandidates(bookState(["Fantasy fiction", "Magic"]), { env, fetchImpl });
+  const titles = related.map((item) => item.title);
+  check("later entries found by the first lookups are dropped", !titles.some((t) => sequelTitles.includes(t)), titles.join(", "));
+  check("a later entry that reached the top unchecked is caught by the final check", !titles.includes("Lord of Chaos") && lookedUp.includes("OL-LORDW"), `${titles.join(", ")} | looked up: ${lookedUp.length}`);
+  check("fresh books fill the set", titles.filter((t) => freshTitles.includes(t)).length >= 5, titles.join(", "));
+}
+
+// ---- Wikidata series order, for books Open Library has no position for ------------------------------
+// Real case (Oct 20): King of the Murgos (The Malloreon #2) was offered; Open Library has no position for it
+// in any edition, and Wikidata has it only by title (no Open Library id link). Krew elfów is the opposite:
+// Open Library says #1, Wikidata says 3 (it counts the story collections), and Open Library must win.
+{
+  const doc = (id, title, author) => ({ key: `/works/${id}`, title, author_name: [author], subject: ["Fantasy fiction", "Magic"] });
+  const murgos = doc("OL-MURGOSW", "King of the Murgos (Malloreon)", "David Eddings");
+  const impostor = doc("OL-OTHERW", "The Hero of Ages", "Someone Else");
+  const krew = doc("OL-KREWW", "Krew elfów", "Andrzej Sapkowski");
+  const byId = doc("OL-IDW", "Shadow Linked", "Linked Author");
+  const freshTitles = ["Kestrel", "Lanternfall", "Moonwright", "Nettlebrook", "Owlsong", "Pinecrown"];
+  const fresh = freshTitles.map((title, n) => doc(`OL-NEW${n}W`, title, `Writer ${n}`));
+  const binding = (fields) => Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, { value: String(v) }]));
+  const run = async ({ wikidataDown = false } = {}) => {
+    const wikidataQueries = [];
+    const fetchImpl = async (url) => {
+      const u = decodeURIComponent(String(url));
+      if (u.startsWith("https://query.wikidata.org/")) {
+        wikidataQueries.push(u);
+        if (wikidataDown) throw new Error("timeout");
+        const rows = u.includes("P648")
+          ? (u.includes('"OL-IDW"') ? [binding({ olid: "OL-IDW", ordinal: 4 })] : []).concat(u.includes('"OL-KREWW"') ? [binding({ olid: "OL-KREWW", ordinal: 3 })] : [])
+          : [binding({ title: "King of the Murgos", authorLabel: "David Eddings", ordinal: 2 }), binding({ title: "The Hero of Ages", authorLabel: "Brandon Sanderson", ordinal: 3 })];
+        return { ok: true, json: async () => ({ results: { bindings: rows } }) };
+      }
+      const work = /works\/(OL-[A-Z0-9]+W)\/editions/.exec(u)?.[1];
+      if (work) {
+        const series = work === "OL-KREWW" ? ["Wiedźmin, 1", "Wiedźmin, 1"] : [];
+        return { ok: true, json: async () => ({ entries: series.map((name) => ({ series: [name] })) }) };
+      }
+      return { ok: true, json: async () => ({ docs: [murgos, impostor, krew, byId, ...fresh] }) };
+    };
+    const related = await retrieveCatalogCandidates(bookState(["Fantasy fiction", "Magic"]), { env, fetchImpl });
+    return { titles: related.map((item) => item.title), wikidataQueries };
+  };
+
+  const { titles, wikidataQueries } = await run();
+  check("a later entry found only by title + author on Wikidata is dropped", !titles.includes("King of the Murgos (Malloreon)"), titles.join(", "));
+  check("a later entry found by Open Library id on Wikidata is dropped", !titles.includes("Shadow Linked"), titles.join(", "));
+  check("a title match with a different author is ignored", titles.includes("The Hero of Ages"), titles.join(", "));
+  check("Open Library's position wins: Krew elfów (#1 there) is kept", titles.includes("Krew elfów"), titles.join(", "));
+  check("Wikidata is never asked about a book Open Library already placed", !wikidataQueries.some((q) => q.includes('"OL-KREWW"')), wikidataQueries.length);
+  check("at most two Wikidata requests per round", wikidataQueries.length > 0 && wikidataQueries.length <= 2, wikidataQueries.length);
+
+  const down = await run({ wikidataDown: true });
+  check("Wikidata down: nothing extra is dropped (fail open)", down.titles.includes("King of the Murgos (Malloreon)") && down.titles.includes("Shadow Linked"), down.titles.join(", "));
+
+  let called = false;
+  const none = await wikidataSeriesPositions([{ id: "tmdb-movie-1", provider: "tmdb", providerId: "1", title: "Dune: Part Two" }], { fetchImpl: async () => { called = true; } });
+  check("non-books never reach Wikidata", !called && none.size === 0);
+  const bad = await wikidataSeriesPositions([{ id: "b", provider: "openlibrary", providerId: "OL-BW", title: "Novella", by: "A B" }], {
+    fetchImpl: async () => ({ ok: true, json: async () => ({ results: { bindings: [binding({ olid: "OL-BW", ordinal: "0.5" })] } }) })
+  });
+  eq("a non-integer ordinal (a 0.5 novella) is not a position", bad.get("b"), null);
+  eq("titles are matched without the series suffix or subtitle", plainTitle("King of the Murgos (Malloreon): Book Two of the Malloreon"), "King of the Murgos");
+}
+
+// ---- Oct 20 smoke test: study guides and government documents are not books to search for or recommend ----
+// Real Open Library rows from a "The Name of the Wind" search; both outranked real books on edition count.
+{
+  const guide = { title: "Study Guide -- The Other Wes Moore by Wes Moore", author_name: ["SuperSummary"] };
+  const bill = { title: "Bill", author_name: ["Canada. Legislature. Legislative Assembly."] };
+  check("a SuperSummary study guide is dropped", isBookCompanion(guide, "The Name of the Wind"));
+  check("a study guide by any publisher is dropped by its title", isBookCompanion({ title: "Summary and Analysis of Circe", author_name: ["Worthy Reads"] }, "Circe"));
+  check("a guide-maker's book is dropped even without guide words in the title", isBookCompanion({ title: "The Night Circus", author_name: ["BookRags"] }, "night circus"));
+  check("a legislature's bill is dropped", isBookCompanion(bill, "The Name of the Wind"));
+  check("a search that asks for a study guide still gets one", !isBookCompanion(guide, "wes moore study guide"));
+  check("real books stay", ![
+    { title: "The Name of the Wind", author_name: ["Patrick Rothfuss", "Marc Simonetti"] },
+    { title: "The Hunger Games", author_name: ["Kate Egan"] },
+    { title: "A Slow Regard of Silent Things", author_name: ["Patrick Rothfuss"] },
+    { title: "Circe", author_name: ["Anne De Courcy"] }
+  ].some((row) => isBookCompanion(row, "anything")));
+}
+
+// ---- Oct 23 smoke test: one mis-dated edition made several books read "First published 2001" ----------
+// Real Open Library rows (first_publish_year and the start of publish_year).
+{
+  const row = (first, years) => ({ first_publish_year: first, publish_year: years });
+  eq("The Blade Itself: a lone 2001 reprint record is ignored", firstPublishedYear(row(2001, [2001, 2006, 2007, 2009])), 2006);
+  eq("The Alloy of Law", firstPublishedYear(row(2001, [2001, 2011, 2012, 2013])), 2011);
+  eq("Dune keeps 1965", firstPublishedYear(row(1965, [1965, 1966, 1967])), 1965);
+  eq("The Hobbit keeps 1937 (older books often waited years for a reprint)", firstPublishedYear(row(1937, [1937, 1938, 1946])), 1937);
+  eq("Piranesi keeps 2020", firstPublishedYear(row(2020, [2020, 2021, 2022])), 2020);
+  eq("too few editions to judge: Open Library's year stands", firstPublishedYear(row(2001, [2001, 2010])), 2001);
+  eq("no year at all", firstPublishedYear({}), null);
+}
+
+// ---- Oct 23 review: search dropped junk after cutting to 8, so a page with junk showed fewer books ------
+{
+  let asked = "";
+  const docs = [
+    { key: "/works/OLG1W", title: "Study Guide -- Something", author_name: ["SuperSummary"] },
+    { key: "/works/OLG2W", title: "Bill", author_name: ["Canada. Legislature. Legislative Assembly."] },
+    { key: "/works/OLG3W", title: "Summary of Something", author_name: ["Instaread"] },
+    ...Array.from({ length: 9 }, (_, n) => ({ key: `/works/OLB${n}W`, title: `Real Book ${n}`, author_name: ["Author"], first_publish_year: 2000 + n }))
+  ];
+  const result = await searchCatalog("real book", { domain: "read", env: {}, fetchImpl: async (url) => { if (/openlibrary/.test(url)) asked = String(url); return { ok: true, json: async () => ({ docs }) }; } });
+  const books = (result.items ?? result).filter((item) => item.provider === "openlibrary");
+  check("search asks Open Library for extra results", /limit=12/.test(asked), asked);
+  eq("three junk results still leave a full 8 real books", books.length, 8);
+}
+
+// ---- Oct 24: older books' years from Wikidata (Open Library says The Great Gatsby is 1920; it's 1925) ------
+{
+  const ol = (id, title, year, about = `First published ${year}.`) => ({ id: `openlibrary-book-${id}`, provider: "openlibrary", providerId: id, type: "book", domains: ["read"], title, year: String(year), about });
+  const asked = [];
+  const wikidata = (rows) => async (url) => { asked.push(decodeURIComponent(String(url))); return { ok: true, json: async () => ({ results: { bindings: rows.map(([olid, year]) => ({ olid: { value: olid }, year: { value: String(year) } })) } }) }; };
+  const items = [ol("OL468431W", "The Great Gatsby", 1920), ol("OL27448W", "The Lord of the Rings", 1954), ol("OL893415W", "Dune", 1965), ol("OL8400950W", "The Blade Itself", 2006), { id: "tmdb-movie-1", provider: "tmdb", title: "A Film", year: "1925" }];
+  const out = await correctOldBookYears(items, { env: {}, fetchImpl: wikidata([["OL468431W", 1925], ["OL27448W", 1954]]) });
+  eq("Gatsby gets Wikidata's year", out[0].year, "1925");
+  eq("...and the placeholder line follows it", out[0].about, "First published 1925.");
+  eq("an agreeing year is unchanged", out[1].year, "1954");
+  eq("no Wikidata date: Open Library's year stays", out[2].year, "1965");
+  check("only pre-1980 Open Library books are asked about, in one request", asked.length === 1 && asked[0].includes('"OL468431W"') && !asked[0].includes("OL8400950W") && !asked[0].includes("tmdb"), asked.join(" | "));
+  check("matched by Open Library id (P648) only, no titles", /wdt:P648/.test(asked[0]) && !/rdfs:label/.test(asked[0]));
+  check("everything else passes through untouched", out[3] === items[3] && out[4] === items[4]);
+  const real = await correctOldBookYears([ol("OL1W", "Old Book", 1950, "A real synopsis.")], { env: {}, fetchImpl: wikidata([["OL1W", 1948]]) });
+  eq("a real synopsis is never replaced", real[0].about, "A real synopsis.");
+  const down = await correctOldBookYears(items.slice(0, 1), { env: {}, fetchImpl: async () => { throw new Error("timeout"); } });
+  eq("Wikidata down: Open Library's year stays", down[0].year, "1920");
+  let called = false;
+  await correctOldBookYears([ol("OL2W", "New Book", 2015)], { env: {}, fetchImpl: async () => { called = true; } });
+  check("no old books, no request", !called);
+  const odd = await correctOldBookYears(items.slice(0, 1), { env: {}, fetchImpl: wikidata([["OL468431W", 3020]]) });
+  eq("an impossible year is ignored", odd[0].year, "1920");
+}
+
+// ---- Oct 24: search speed ---------------------------------------------------------------------------------
+{
+  const asked = [];
+  const fetchImpl = async (url) => { asked.push(String(url)); return { ok: true, json: async () => ({ results: [], docs: [] }) }; };
+  await searchCatalog("dune", { domain: "all", skipBooks: true, env: { TASTEMAKE_TMDB_TOKEN: "t" }, fetchImpl });
+  check("the fast half of an All search never asks Open Library", asked.length > 0 && !asked.some((u) => u.includes("openlibrary.org")), asked.join(" | "));
+  asked.length = 0;
+  await searchCatalog("dune", { domain: "all", env: { TASTEMAKE_TMDB_TOKEN: "t" }, fetchImpl });
+  check("the full search still does", asked.some((u) => u.includes("openlibrary.org")));
+
+  const old = [{ id: "openlibrary-book-OLG", provider: "openlibrary", providerId: "OLG", type: "book", title: "Gatsby", year: "1920", about: "First published 1920." }];
+  let finished = false;
+  const slowWikidata = async () => { await new Promise((r) => setTimeout(r, 400)); finished = true; return { ok: true, json: async () => ({ results: { bindings: [{ olid: { value: "OLG" }, year: { value: "1925" } }] } }) }; };
+  const t0 = Date.now();
+  const capped = await correctOldBookYears(old, { env: {}, fetchImpl: slowWikidata, waitMs: 100 });
+  check("search stops waiting for Wikidata after its cap", Date.now() - t0 < 300 && capped[0].year === "1920", `${Date.now() - t0} ms, ${capped[0].year}`);
+  await new Promise((r) => setTimeout(r, 450));
+  check("...while the lookup itself carries on (to fill the cache)", finished);
+  const uncapped = await correctOldBookYears(old, { env: {}, fetchImpl: slowWikidata });
+  eq("Browse and recommendations still wait for the correction", uncapped[0].year, "1925");
+}
+
+// ---- Oct 24: Open Library answered in 9-17 s; books must not fail for good, or stick as a cached miss -------
+{
+  const { BOOK_SEARCH_TIMEOUT_MS } = await import("../../src/catalog/providers.mjs");
+  const vercel = JSON.parse((await import("node:fs")).readFileSync(new URL("../../vercel.json", import.meta.url), "utf8"));
+  check("book search waits 20 s", BOOK_SEARCH_TIMEOUT_MS === 20_000);
+  check("and the catalog function is allowed longer than that", vercel.functions["api/catalog.mjs"].maxDuration * 1000 > BOOK_SEARCH_TIMEOUT_MS + 2000, vercel.functions["api/catalog.mjs"].maxDuration);
+
+  const { default: handler, booksFailed } = await import("../../api/catalog.mjs");
+  const realFetch = globalThis.fetch;
+  let olCalls = 0, olWorks = false;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("openlibrary.org")) {
+      olCalls += 1;
+      if (!olWorks) throw new Error("timeout");
+      return { ok: true, json: async () => ({ docs: [{ key: "/works/OLQW", title: "Quietbook", author_name: ["A"], first_publish_year: 2001 }] }) };
+    }
+    throw new Error(`unexpected ${url}`);
+  };
+  const call = async () => {
+    const res = { headers: {}, statusCode: 0, body: null, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status(c) { this.statusCode = c; return this; }, json(b) { this.body = b; return this; } };
+    await handler({ method: "GET", query: { q: "quietbook search", domain: "read" }, headers: {} }, res);
+    return res;
+  };
+  try {
+    const first = await call();
+    check("a failed book search is answered, marked failed", booksFailed(first.body) && first.statusCode === 200);
+    check("...and told not to be cached anywhere", first.headers["cache-control"] === "no-store", first.headers["cache-control"]);
+    olWorks = true;
+    const second = await call();
+    check("the next try asks Open Library again (the miss was not cached)", olCalls === 2, olCalls);
+    check("and gets the books once Open Library answers", second.body.items.some((i) => i.title === "Quietbook") && !booksFailed(second.body));
+    check("a good result is cacheable again", /public/.test(second.headers["cache-control"] ?? ""), second.headers["cache-control"]);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+// ---- Oct 24: Google Books fills the book half when Open Library is slow or down ----------------------------
+{
+  const { searchBooks, googleBookItem } = await import("../../src/catalog/providers.mjs");
+  const key = { TASTEMAKE_GOOGLE_BOOKS_API_KEY: "g-key" };
+  const olDoc = { key: "/works/OLFASTW", title: "Fast Open Library Book", author_name: ["A"], first_publish_year: 2001 };
+  const volume = { id: "gVol1", volumeInfo: { title: "Google Book", authors: ["B Writer"], publishedDate: "2019-05-01", categories: ["Fiction / Fantasy"], imageLinks: { thumbnail: "http://books.google.com/x.jpg" }, infoLink: "http://books.google.com/info", ratingsCount: 40 } };
+  const harness = ({ olDelay = 0, olFails = false, googleFails = false, googleEmpty = false } = {}) => {
+    const asked = { ol: 0, google: 0 };
+    const fetchImpl = async (url) => {
+      const u = String(url);
+      if (u.includes("openlibrary.org")) { asked.ol += 1; await new Promise((r) => setTimeout(r, olDelay)); if (olFails) throw new Error("timeout"); return { ok: true, json: async () => ({ docs: [olDoc] }) }; }
+      if (u.includes("googleapis.com/books")) { asked.google += 1; if (googleFails) throw new Error("down"); return { ok: true, json: async () => ({ items: googleEmpty ? [] : [volume] }) }; }
+      throw new Error(`unexpected ${u}`);
+    };
+    return { asked, fetchImpl };
+  };
+
+  let h = harness();
+  let r = await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 80 });
+  check("Open Library answers in time: its books, Google never asked", r.source === "openlibrary" && h.asked.google === 0 && r.rows[0].title === "Fast Open Library Book");
+  h = harness({ olDelay: 300 });
+  r = await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 50 });
+  check("Open Library slow: Google fills in after the wait", r.source === "googlebooks" && r.rows[0].title === "Google Book", r.source);
+  h = harness({ olFails: true });
+  const t0 = Date.now();
+  r = await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 2000 });
+  check("Open Library fails: Google straight away, without waiting", r.source === "googlebooks" && Date.now() - t0 < 1000, `${Date.now() - t0} ms`);
+  h = harness({ olDelay: 150 });
+  r = await searchBooks("book", {}, h.fetchImpl, { fallbackAfterMs: 20 });
+  check("no Google key: Open Library only, however slow", r.source === "openlibrary" && h.asked.google === 0);
+  h = harness({ olDelay: 200, googleEmpty: true });
+  r = await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 20 });
+  check("Google finds nothing: Open Library's answer is still used when it comes", r.source === "openlibrary", r.source);
+  h = harness({ olFails: true, googleFails: true });
+  let threw = false;
+  try { await searchBooks("book", key, h.fetchImpl, { fallbackAfterMs: 20 }); } catch { threw = true; }
+  check("both down: the book search fails (and the dialog says so)", threw);
+
+  const item = googleBookItem(volume);
+  check("Google items read like other books", item.id === "googlebooks-book-gVol1" && item.type === "book" && item.year === "2019" && item.by === "B Writer");
+  check("covers and links use https", item.artwork.startsWith("https://") && item.sourceUrl.startsWith("https://"));
+
+  // The endpoint never caches a Google fallback answer.
+  const { default: handler, uncacheable } = await import("../../api/catalog.mjs");
+  const realFetch = globalThis.fetch, realKey = process.env.TASTEMAKE_GOOGLE_BOOKS_API_KEY;
+  let googleCalls = 0;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes("openlibrary.org")) throw new Error("timeout");
+    if (u.includes("googleapis.com/books")) { googleCalls += 1; return { ok: true, json: async () => ({ items: [volume] }) }; }
+    throw new Error(`unexpected ${u}`);
+  };
+  process.env.TASTEMAKE_GOOGLE_BOOKS_API_KEY = "g-key";
+  const call = async () => {
+    const res = { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status() { return this; }, json(b) { this.body = b; return this; } };
+    await handler({ method: "GET", query: { q: "google book", domain: "read" }, headers: {} }, res);
+    return res;
+  };
+  try {
+    const first = await call();
+    check("a Google fallback answer has the books", first.body.items.some((i) => i.provider === "googlebooks") && uncacheable(first.body));
+    check("...and is sent no-store", first.headers["cache-control"] === "no-store", first.headers["cache-control"]);
+    await call();
+    eq("...and never kept: the next search asks Google again", googleCalls, 2);
+  } finally {
+    globalThis.fetch = realFetch;
+    if (realKey === undefined) delete process.env.TASTEMAKE_GOOGLE_BOOKS_API_KEY; else process.env.TASTEMAKE_GOOGLE_BOOKS_API_KEY = realKey;
+  }
+}
+
+// ---- Oct 24 deep test: failed answers are never cached; game search survives a backslash; fan books -------
+{
+  const { default: detailHandler } = await import("../../api/catalog-detail.mjs");
+  const { default: catalogHandler, uncacheable } = await import("../../api/catalog.mjs");
+  const realFetch = globalThis.fetch;
+  const makeRes = () => ({ headers: {}, statusCode: 0, body: null, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status(c) { this.statusCode = c; return this; }, json(b) { this.body = b; return this; } });
+  const get = async (fn, query) => { const res = makeRes(); await fn({ method: "GET", query, headers: {} }, res); return res; };
+
+  // Item details: Open Library down, then back.
+  let olUp = false, workCalls = 0;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes("openlibrary.org/works/OLDEEPW.json")) {
+      workCalls += 1;
+      if (!olUp) throw new Error("timeout");
+      return { ok: true, json: async () => ({ description: "A house of endless halls." }) };
+    }
+    if (u.includes("openlibrary.org/search.json")) return { ok: true, json: async () => ({ docs: [{ number_of_pages_median: 272 }] }) };
+    throw new Error(`unexpected ${u}`);
+  };
+  try {
+    const query = { provider: "openlibrary", providerId: "OLDEEPW", type: "book" };
+    const failed = await get(detailHandler, query);
+    check("a failed detail answers empty", failed.statusCode === 200 && !Object.keys(failed.body.detail).length, JSON.stringify(failed.body));
+    eq("...sent no-store", failed.headers["cache-control"], "no-store");
+    olUp = true;
+    const ok = await get(detailHandler, query);
+    eq("the next look asks again (the failure was not kept)", workCalls, 2);
+    check("and gets the description and pages", ok.body.detail.description === "A house of endless halls." && ok.body.detail.pageCount === 272, JSON.stringify(ok.body));
+    check("a real detail is cacheable", /public/.test(ok.headers["cache-control"] ?? ""), ok.headers["cache-control"]);
+    await get(detailHandler, query);
+    eq("...and is kept once it is real", workCalls, 2);
+    eq("missing type is refused", (await get(detailHandler, { provider: "openlibrary", providerId: "OLDEEPW" })).statusCode, 400);
+    eq("an unknown type is refused", (await get(detailHandler, { ...query, type: "album" })).statusCode, 400);
+    eq("an unknown provider is refused", (await get(detailHandler, { ...query, provider: "nope" })).statusCode, 400);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+
+  // Game search: IGDB failing is never cached; a backslash doesn't break the query.
+  const realEnv = { id: process.env.IGDB_CLIENT_ID, secret: process.env.IGDB_CLIENT_SECRET };
+  process.env.IGDB_CLIENT_ID = "id"; process.env.IGDB_CLIENT_SECRET = "secret";
+  let igdbUp = false, igdbCalls = 0;
+  const bodies = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    if (u.includes("id.twitch.tv")) return { ok: true, json: async () => ({ access_token: "tok", expires_in: 3600 }) };
+    if (u.includes("api.igdb.com")) {
+      igdbCalls += 1; bodies.push(String(init.body ?? ""));
+      if (!igdbUp) return { ok: false, status: 500, json: async () => ({}) };
+      return { ok: true, json: async () => ([{ id: 42, name: "Deep Test Quest", first_release_date: 1600000000, genres: [{ id: 12, name: "RPG" }] }]) };
+    }
+    throw new Error(`unexpected ${u}`);
+  };
+  try {
+    const failed = await get(catalogHandler, { q: "deep test quest", domain: "play" });
+    check("a failed game search is answered, uncacheable", failed.statusCode === 200 && uncacheable(failed.body), JSON.stringify(failed.body.providers));
+    eq("...sent no-store", failed.headers["cache-control"], "no-store");
+    igdbUp = true;
+    const ok = await get(catalogHandler, { q: "deep test quest", domain: "play" });
+    eq("the next try asks IGDB again", igdbCalls, 2);
+    check("and gets the game", ok.body.items.some((i) => i.title === "Deep Test Quest") && !uncacheable(ok.body));
+    const slash = await get(catalogHandler, { q: 'deep test quest\\', domain: "play" });
+    check("a trailing backslash still finds games", slash.body.items.some((i) => i.title === "Deep Test Quest"), JSON.stringify(slash.body.providers));
+    check("...because backslashes and quotes never reach IGDB's query", /search "deep test quest";/.test(bodies.at(-1)), bodies.at(-1));
+  } finally {
+    globalThis.fetch = realFetch;
+    for (const [k, v] of [["IGDB_CLIENT_ID", realEnv.id], ["IGDB_CLIENT_SECRET", realEnv.secret]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
+
+  // Fan books, art books and official guides are not book picks (unless asked for).
+  check("a fan book is dropped", isBookCompanion({ title: "Ascendance of a Bookworm: Fanbook 3", author_name: ["Miya Kazuki"] }, "ascendance of a bookworm"));
+  check("an art book and an official guide are dropped", isBookCompanion({ title: "The Art of Arcane: Art Book", author_name: ["X"] }, "arcane") && isBookCompanion({ title: "The Witcher Official Guide", author_name: ["X"] }, "witcher"));
+  check("a search that asks for the fan book still gets it", !isBookCompanion({ title: "Ascendance of a Bookworm: Fanbook 3", author_name: ["Miya Kazuki"] }, "bookworm fanbook"));
+  check("real books with nearby words stay", ![
+    { title: "Ascendance of a Bookworm: Part 3 Volume 1", author_name: ["Miya Kazuki"] },
+    { title: "The Art of Racing in the Rain", author_name: ["Garth Stein"] },
+    { title: "Guidebook to Murder", author_name: ["Lynn Cahoon"] },
+    { title: "The Hitchhiker's Guide to the Galaxy", author_name: ["Douglas Adams"] },
+    { title: "Companions", author_name: ["Katie M. Flynn"] }
+  ].some((row) => isBookCompanion(row, "anything")));
 }
 
 finish();

@@ -197,6 +197,15 @@
   margin:8px 0 0;
 }
 
+/* Oct 27: what the pick was grounded in, shown when the reason doesn't name it. */
+.editorial-grounding {
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+  line-height:1.4;
+  margin:5px 0 0;
+}
+
 /* #95/#121: default card copy prioritizes the recommendation rationale over the catalog synopsis —
    the synopsis string itself is capped at a clean boundary (see truncateCopy in recommendations.js)
    rather than clamped/clipped here. */
@@ -225,10 +234,12 @@
   font-weight:700;
   cursor:pointer;
 }
+/* Opens below the trigger: above it covered the pick's title and reason, the two things the "why"
+   is about (Oct 20 smoke test). Below it only covers the reaction buttons until it closes. */
 .why-popover {
   position:absolute;
   left:0;
-  bottom:calc(100% + 8px);
+  top:calc(100% + 8px);
   width:min(330px,100%,calc(100vw - 48px));
   padding:12px 13px;
   border:2px solid var(--navy);
@@ -238,19 +249,19 @@
   opacity:0;
   visibility:hidden;
   pointer-events:none;
-  transform:translateY(5px) rotate(calc(-.4deg * var(--tilt)));
+  transform:translateY(-5px) rotate(calc(-.4deg * var(--tilt)));
   transition:opacity .12s ease, transform .12s ease, visibility .12s ease;
 }
 .why-popover::after {
   content:"";
   position:absolute;
   left:18px;
-  bottom:-8px;
+  top:-8px;
   width:12px;
   height:12px;
   background:#fff;
-  border-right:2px solid var(--navy);
-  border-bottom:2px solid var(--navy);
+  border-left:2px solid var(--navy);
+  border-top:2px solid var(--navy);
   transform:rotate(calc(45deg * var(--tilt)));
 }
 .why-popover p { color:var(--muted); font-size:12px; line-height:1.45; margin:0; }
@@ -264,14 +275,19 @@
   margin-bottom:6px;
 }
 .why-caveat { margin-top:8px !important; font-style:italic; }
-.editorial-why:hover .why-popover,
-.editorial-why:focus-within .why-popover,
+/* Opening downward, the popover reaches into the next row; lift its own card above the neighbors. */
+.editorial-rec:has(.editorial-why:not(.is-dismissed):hover, .editorial-why:not(.is-dismissed):focus-within, .editorial-why.is-pinned) { position:relative; z-index:40; }
+/* Oct 23 smoke test: it opens over the reaction buttons, so only a pinned (clicked) popover takes clicks.
+   A hover/focus preview lets clicks through, and once closed (click again or Escape) it stays closed
+   until the pointer and focus leave (.is-dismissed, src/app.js). */
+.editorial-why:not(.is-dismissed):hover .why-popover,
+.editorial-why:not(.is-dismissed):focus-within .why-popover,
 .editorial-why.is-pinned .why-popover {
   opacity:1;
   visibility:visible;
-  pointer-events:auto;
   transform:translateY(0) rotate(calc(-.4deg * var(--tilt)));
 }
+.editorial-why.is-pinned .why-popover { pointer-events:auto; }
 
 /* #95: fixed, predictable aspect ratio; object-fit:cover on the real-artwork <img> below never
    stretches the image, and the container's own size never shifts once the layout is known — the
@@ -351,8 +367,8 @@
   background:var(--lime);
   color:var(--navy);
   font-family:var(--hand);
-  font-size:17px;
-  line-height:.8;
+  font-size:10px;   /* "SURPRISE ME" (Oct 27): sized so SURPRISE fits inside the star like the old "WEIRD" */
+  line-height:.9;
   clip-path:polygon(50% 0%,61% 20%,80% 8%,82% 31%,100% 37%,84% 52%,96% 71%,73% 72%,70% 96%,51% 82%,35% 100%,29% 77%,5% 84%,16% 61%,0% 49%,22% 40%,10% 20%,34% 23%);
   transform:rotate(calc(9deg * var(--tilt)));
 }
@@ -436,6 +452,20 @@
   line-height:1.35;
 }
 .ai-inline-status strong { color:var(--navy); }
+/* Calm, not an error: AI is paused on purpose (budget), and the catalog picks below are real. */
+.ai-paused-notice {
+  margin:0 0 16px;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-left:3px solid var(--accent-text,var(--pink));
+  border-radius:10px;
+  background:var(--paper,rgba(255,255,255,.7));
+  color:var(--ink,var(--navy));
+  font-size:13px;
+  line-height:1.45;
+}
+.ai-paused-notice strong { display:block; margin-bottom:2px; color:var(--navy); }
+.ai-paused-notice p { margin:0; max-width:72ch; }
 
 /* #93: the ongoing-loop action and the optional taste-input nudge. Both sit above the per-item
    grid so they read as "keep going" rather than an end-of-list footer action. */
@@ -738,3 +768,53 @@
   .first-insight-nudge { align-items:stretch; flex-direction:column; gap:10px; }
   .first-insight-nudge .button { width:100%; }
 }
+
+/* #6: New this week for you. A quiet strip under the set, not another set of cards. */
+.new-this-week { margin:28px 0 8px; padding:16px; border:2px solid var(--navy); border-radius:16px; background:var(--paper,#fff); }
+.new-this-week-head h2 { margin:0; color:var(--navy); font-size:20px; }
+.new-this-week-head p { margin:4px 0 12px; color:var(--muted); font-size:13px; line-height:1.4; max-width:70ch; }
+.new-this-week-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; margin:0; padding:0; list-style:none; }
+.new-release { display:flex; gap:10px; align-items:flex-start; padding:10px; border:1px solid var(--line); border-radius:12px; background:#fff; min-width:0; }
+.new-release-artwork { flex:0 0 56px; width:56px; height:84px; border-radius:6px; overflow:hidden; }
+/* Oct 24: without this the poster rendered at full size (780x1170) and the box showed only its corner. */
+.new-release-artwork img { width:100%; height:100%; display:block; object-fit:cover; }
+.new-release-copy { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.new-release-meta { color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+.new-release-copy strong { color:var(--navy); font-size:15px; line-height:1.25; overflow-wrap:anywhere; }
+.new-release-why { color:var(--accent-text,var(--pink)); font-size:12px; line-height:1.35; }
+.new-release-actions { display:flex; flex-direction:row; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.new-release-actions .button { flex:0 0 auto; width:auto; min-width:0; min-height:34px; padding:4px 12px; font-size:12px; }
+/* The no-cover placeholder is too small here for its title; the type label is enough. */
+.new-release-artwork .artwork-fallback-title { display:none; }
+/* #48: "Don't recommend…" sits quietly under the reasons; it is a boundary, not a reaction. */
+.exclude-menu { margin-top:4px; }
+.exclude-menu > summary {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;   /* WCAG 2.2 target size */
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  list-style:none;
+}
+.exclude-menu > summary::-webkit-details-marker { display:none; }
+.exclude-menu > summary:focus-visible { outline:3px solid var(--pink); outline-offset:2px; border-radius:4px; }
+.exclude-options { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 4px; }
+.exclude-option {
+  min-height:32px;
+  padding:4px 10px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:#fff;
+  color:var(--navy);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.exclude-option:hover { border-color:var(--navy); }
+.exclude-option:focus-visible { outline:3px solid var(--pink); outline-offset:2px; }
+.exclude-note { flex-basis:100%; margin:2px 0 0; color:var(--muted); font-size:11px; line-height:1.35; }
+
+/* Oct 24: the star is an SVG (src/components/star.js), so it sits at the true center of round buttons. */
+.star-icon { display:block; flex:none; }

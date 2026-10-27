@@ -192,4 +192,81 @@ check("searchRelevance keeps working for bare titles",
   check("other derivative words are capped too", searchRelevance("Breath of the Wild: Behind the Scenes", q) < searchRelevance("Breath of the Wild Expansion Pass", q));
 }
 
+// ---- Oct 27: tie-ins and editions -------------------------------------------------------------------
+// Live GET /api/catalog?domain=all on Oct 27. Fields are copied from the response; editionCount is Open
+// Library's edition_count for the same works (search.json, same day). TMDb popularity is not exposed by
+// the API, so it replays as unknown.
+const { dropWeakTieIns, mergeBookEditions, tieInSuffix } = await import("../../src/catalog/search-ranking.mjs");
+const replayItems = async (q, items) => (await searchCatalog(q, { domain: "all", env, fetchImpl: fetchFor(providerRows(items)) })).items;
+const ids = (items) => items.map((x) => x.id);
+const hailMary = [
+  { id: "tmdb-movie-687163", provider: "tmdb", providerId: "687163", type: "movie", title: "Project Hail Mary", year: "2026", artwork: "https://image.tmdb.org/t/p/w780/iOb2fjXLbpJgyQXe46n1WtGCnaa.jpg", genres: ["878", "12"], about: "Science teacher Ryland Grace wakes up on a spaceship light years from home with no recollection of who he is." },
+  { id: "openlibrary-book-OL21745884W", provider: "openlibrary", providerId: "OL21745884W", type: "book", title: "Project Hail Mary", by: "Andy Weir", year: "2021", artwork: "https://covers.openlibrary.org/b/id/11200092-L.jpg?default=false", genres: ["hard science-fiction", "Fiction"], editionCount: 32 },
+  { id: "tmdb-movie-1729088", provider: "tmdb", providerId: "1729088", type: "movie", title: "Project Hail Mary | Watch Rocky Sleep", year: "2026", artwork: "https://image.tmdb.org/t/p/w780/ubvkhYJdCcOXhiRPMs9vBScxcHn.jpg", genres: ["10402", "878"], about: "Rocky sleep, you watch, question? Settle in and relax to the Project Hail Mary (Original Motion Picture Score) by Daniel Pemberton." },
+  { id: "openlibrary-book-OL45858094W", provider: "openlibrary", providerId: "OL45858094W", type: "book", title: "Project Hail Mary: A Novel", by: "", year: "2021", artwork: null, genres: [], editionCount: 1 },
+  { id: "openlibrary-book-OL36735881W", provider: "openlibrary", providerId: "OL36735881W", type: "book", title: "Andy Weir's 3-Book Collection Set (Project Hail Mary, Artemis, the Martian)", by: "Andy Weir", year: "2022", artwork: null, genres: ["Fiction, science fiction, general", "Anthology"], editionCount: 1 }
+];
+const everything = [
+  { id: "tmdb-movie-545611", provider: "tmdb", providerId: "545611", type: "movie", title: "Everything Everywhere All at Once", year: "2022", artwork: "https://image.tmdb.org/t/p/w780/u68AjlvlutfEIcpmbYpKcdi09ut.jpg", genres: ["28", "12", "878"], about: "An aging Chinese immigrant is swept up in an insane adventure." },
+  { id: "openlibrary-book-OL37888827W", provider: "openlibrary", providerId: "OL37888827W", type: "book", title: "Everything Everywhere All at Once Screenplay Book", by: "Daniel Kwan, Daniel Scheinert", year: "2024", artwork: null, genres: ["Performing arts"], editionCount: 1 },
+  { id: "openlibrary-book-OL38652522W", provider: "openlibrary", providerId: "OL38652522W", type: "book", title: "Everything Everywhere All at Once Song Reader", by: "Son Lux", year: "2023", artwork: null, genres: ["Music"], editionCount: 1 },
+  { id: "openlibrary-book-OL38652598W", provider: "openlibrary", providerId: "OL38652598W", type: "book", title: "Everything Everywhere All at Once Collector's Edition", by: "A24", year: "2023", artwork: null, genres: ["Performing arts"], editionCount: 1 },
+  { id: "tmdb-movie-1258497", provider: "tmdb", providerId: "1258497", type: "movie", title: "Almost Everything You Ever Wanted to Know About Everything Everywhere All at Once", year: "2022", artwork: "https://image.tmdb.org/t/p/w780/A8eqNfQMAEI7GTChsA3XunC59RV.jpg", genres: ["99"], about: "A behind-the-scenes look at Everything Everywhere All at Once, with interviews from the directors/writers, cast and crew." }
+];
+
+{
+  const phm = await replayItems("Project Hail Mary", hailMary);
+  check("Project Hail Mary: the score listing (TMDb Music, '| Watch Rocky Sleep') is dropped", !ids(phm).includes("tmdb-movie-1729088"), ids(phm).join(", "));
+  check("Project Hail Mary: the authorless 1-edition ': A Novel' work is dropped", !ids(phm).includes("openlibrary-book-OL45858094W"), ids(phm).join(", "));
+  check("Project Hail Mary: the movie and the book stay", ids(phm).includes("tmdb-movie-687163") && ids(phm).includes("openlibrary-book-OL21745884W"));
+  check("Project Hail Mary: the 3-book collection set stays, below the book",
+    rankOf(phm, "openlibrary-book-OL36735881W") > rankOf(phm, "openlibrary-book-OL21745884W") && rankOf(phm, "openlibrary-book-OL36735881W") !== Infinity);
+  check("Project Hail Mary: the response carries no transient fields", phm.every((x) => !("_searchPopularity" in x)));
+  const rocky = await replayItems("project hail mary rocky sleep", hailMary);
+  check("asking for 'rocky sleep' keeps the score listing", ids(rocky).includes("tmdb-movie-1729088"));
+
+  const ee = await replayItems("Everything Everywhere All at Once", everything);
+  check("Everything Everywhere: the coverless 1-edition screenplay, song reader and collector's edition are dropped",
+    ["openlibrary-book-OL37888827W", "openlibrary-book-OL38652522W", "openlibrary-book-OL38652598W"].every((id) => !ids(ee).includes(id)), ids(ee).join(", "));
+  eq("Everything Everywhere: the film is #1", ee[0]?.id, "tmdb-movie-545611");
+  // Its title is not the film's title plus a suffix, so it is only ranked down, as before.
+  eq("Everything Everywhere: the documentary stays, last", ee.at(-1)?.id, "tmdb-movie-1258497");
+  const screenplay = await replayItems("everything everywhere screenplay", everything);
+  check("an explicit 'screenplay' query keeps the screenplay", ids(screenplay).includes("openlibrary-book-OL37888827W"));
+}
+
+{
+  const book = (title, extra = {}) => ({ provider: "openlibrary", type: "book", title, by: "Andy Weir", artwork: "c.jpg", genres: ["Fiction"], year: "2021", _searchPopularity: 1, ...extra });
+  eq("tieInSuffix: '| ...' after the exact title", tieInSuffix("Project Hail Mary | Watch Rocky Sleep", "Project Hail Mary"), "Watch Rocky Sleep");
+  eq("tieInSuffix: '(Original Motion Picture Score)'", tieInSuffix("Project Hail Mary (Original Motion Picture Score)", "Project Hail Mary"), "original motion picture score");
+  eq("tieInSuffix: a sequel is not a tie-in", tieInSuffix("Dune Messiah", "Dune"), null);
+  eq("tieInSuffix: a subtitle is not a tie-in", tieInSuffix("Dune: Part Two", "Dune"), null);
+
+  const screenplayWithMeta = book("Everything Everywhere All at Once Screenplay Book", { by: "Daniel Kwan", _searchPopularity: 4 });
+  const film = { ...item("Everything Everywhere All at Once"), id: "film" };
+  check("a screenplay with a cover and several editions is kept", dropWeakTieIns([film, screenplayWithMeta], "everything everywhere all at once").length === 2);
+  check("and ranks below the film", scoreSearchResult(screenplayWithMeta, "everything everywhere all at once") < scoreSearchResult(film, "everything everywhere all at once"));
+  const googleTieIn = { ...book("Project Hail Mary: A Novel", { provider: "googlebooks", artwork: null }), id: "g" };
+  check("a coverless Google Books tie-in is dropped", dropWeakTieIns([book("Project Hail Mary"), googleTieIn], "project hail mary").length === 1);
+  const musicExact = { ...item("Project Hail Mary | Watch Rocky Sleep"), providerMeta: { genreIds: [10402] } };
+  check("a music listing that is the query's exact title is kept",
+    dropWeakTieIns([item("Project Hail Mary"), musicExact], "Project Hail Mary | Watch Rocky Sleep").length === 2);
+
+  // Box sets: a popular one used to outrank the first book in the series on editions alone.
+  const boxSet = book("The Stormlight Archive Box Set", { by: "Brandon Sanderson", _searchPopularity: 40 });
+  const wayOfKings = book("The Stormlight Archive: The Way of Kings", { by: "Brandon Sanderson", _searchPopularity: 25 });
+  check("a box set ranks below the work itself", scoreSearchResult(boxSet, "stormlight archive") < scoreSearchResult(wayOfKings, "stormlight archive"));
+  check("asking for the box set still ranks it first", scoreSearchResult(boxSet, "stormlight archive box set") > scoreSearchResult(wayOfKings, "stormlight archive box set"));
+
+  const novel = book("Project Hail Mary: A Novel", { by: "", artwork: null, id: "novel" });
+  const real = book("Project Hail Mary", { _searchPopularity: 32, id: "real" });
+  eq("editions merge into the one with more editions, at the first edition's place",
+    ids(mergeBookEditions([novel, item("Project Hail Mary", { id: "movie" }), real], "project hail mary")).join(","), "real,movie");
+  eq("a deluxe edition by the same author merges", mergeBookEditions([real, book("Project Hail Mary (Deluxe Edition)", { id: "deluxe" })], "project hail mary").length, 1);
+  eq("asking for the deluxe edition keeps it apart", mergeBookEditions([real, book("Project Hail Mary (Deluxe Edition)", { id: "deluxe" })], "project hail mary deluxe edition").length, 2);
+  const hunger = [book("The Hunger", { by: "Alma Katsu", id: "katsu" }), book("The Hunger", { by: "Whitley Strieber", id: "strieber" })];
+  eq("two books with the same title by different authors are both kept", ids(mergeBookEditions(hunger, "the hunger")).join(","), "katsu,strieber");
+  eq("and neither is dropped as a tie-in", dropWeakTieIns(hunger, "the hunger").length, 2);
+}
+
 finish();
