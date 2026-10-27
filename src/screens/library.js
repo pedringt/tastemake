@@ -233,6 +233,11 @@ function reactionButton(itemId, action, label, pressed) {
     <button class="button button-secondary library-action" type="button" data-library-item="${itemId}" data-library-action="${action}" aria-pressed="${pressed}">${label}</button>`;
 }
 
+// Oct 27: "See similar" from something liked: same type for now (similar books for a book).
+const SIMILAR_NOUN = { movie: "movies", tv: "shows", book: "books", game: "games" };
+const canSeeSimilar = (item) => Boolean(item?.provider && item?.providerId && SIMILAR_NOUN[item.type]);
+const similarNoun = (item) => SIMILAR_NOUN[item.type] ?? "";
+
 function triedCard(entry) {
   const { item, id, source } = entry;
   const tried = source !== "starter";
@@ -262,8 +267,9 @@ function triedCard(entry) {
           title="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
           aria-pressed="${entry.isFavorite}"
         >${starIcon(entry.isFavorite)}</button>
-        <span>${entry.isFavorite ? "Favorite" : "Favorite marks this Tried · Loved."}</span>
-      </div>`
+        <span>${entry.isFavorite ? "Favorite" : "Starring it also marks it as loved."}</span>
+      </div>
+      ${canSeeSimilar(item) ? `<button class="button button-quiet library-see-similar" type="button" data-see-similar="${id}">See similar ${esc(similarNoun(item))} →</button>` : ""}`
     : `
       <div class="library-starter-actions">
         <button class="button button-quiet" type="button" data-starter-replace="${id}">Replace</button>

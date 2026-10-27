@@ -31,6 +31,7 @@ import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
 import { fetchBrowsePage } from "./catalog/browse-client.js";
+import { fetchSimilar } from "./catalog/similar-client.js";
 import { mergeUniqueBrowseItems } from "./model/browse.js";
 import { applyResolvedCatalogItem, applySearchAction, markCustomResolution } from "./model/search.js";
 import { isExperienced, isStrongPositive } from "./model/evidence.js";
@@ -340,6 +341,42 @@ async function loadBrowse({ reset = false, focusSelector = null } = {}) {
   }
 }
 
+// Oct 27: "See similar" shows its results on Browse, so they get the same rating buttons and reasons.
+let similarController = null;
+
+async function openSimilar(itemId) {
+  const item = state.customItems?.[itemId] ?? state.feedbackByRecommendation[itemId]?.item;
+  if (!item) return;
+  similarController?.abort();
+  browseController?.abort();
+  browseController = null;
+  const controller = new AbortController();
+  similarController = controller;
+  Object.assign(state, {
+    browseSimilar: { id: item.id, title: item.title, type: item.type },
+    browseItems: [], browsePage: 0, browseHasMore: false, browseError: false, browseLoading: true
+  });
+  navigate("browse");
+  restoreFocus(".browse-similar-head h2", app);
+  announce(`Finding things like ${item.title}.`);
+  const exclude = [...new Set([...Object.keys(state.feedbackByRecommendation), ...state.libraryFavorites, ...state.selectedFavorites])];
+  try {
+    const items = await fetchSimilar(item, exclude, { signal: controller.signal });
+    if (controller.signal.aborted || state.browseSimilar?.id !== item.id) return;
+    state.browseItems = items;
+    state.browseError = false;
+  } catch (error) {
+    if (error?.name === "AbortError" || state.browseSimilar?.id !== item.id) return;
+    state.browseError = true;
+  }
+  if (similarController === controller) similarController = null;
+  state.browseLoading = false;
+  if (state.screen !== "browse") return;
+  render();
+  updateStepper();
+  announce(state.browseItems.length ? `${state.browseItems.length} like ${item.title}.` : `Nothing new turned up like ${item.title}.`);
+}
+
 function maybeLoadBrowse() {
   if (state.screen === "browse" && !state.browseItems.length && !state.browseLoading) void loadBrowse();
 }
@@ -389,7 +426,16 @@ function navigate(screen, { replace = false, scroll = true, libraryView = "saved
   if (screen !== "browse") {
     browseController?.abort();
     browseController = null;
+    similarController?.abort();
+    similarController = null;
     state.browseLoading = false;
+    // Leaving Browse ends a "More like…" view; coming back shows genres again.
+    if (state.browseSimilar) {
+      state.browseSimilar = null;
+      state.browseItems = [];
+      state.browsePage = 0;
+      state.browseHasMore = true;
+    }
   }
 
   markOnboarded(screen);
@@ -896,6 +942,7 @@ app.addEventListener("click", async (event) => {
 
   const browseDomain = event.target.closest("[data-browse-domain]");
   if (browseDomain) {
+    state.browseSimilar = null;
     state.browseDomain = browseDomain.dataset.browseDomain;
     state.browseGenre = firstBrowseGenre(state.browseDomain);
     state.browseItems = [];
@@ -908,11 +955,31 @@ app.addEventListener("click", async (event) => {
 
   const browseGenre = event.target.closest("[data-browse-genre]");
   if (browseGenre) {
+    state.browseSimilar = null;
     state.browseGenre = browseGenre.dataset.browseGenre;
     state.browseItems = [];
     state.browsePage = 0;
     state.browseHasMore = true;
     state.browseError = false;
+    void loadBrowse({ focusSelector: `[data-browse-genre="${state.browseGenre}"]` });
+    return;
+  }
+
+  const seeSimilar = event.target.closest("[data-see-similar]");
+  if (seeSimilar) {
+    void openSimilar(seeSimilar.dataset.seeSimilar);
+    return;
+  }
+
+  const similarClose = event.target.closest("[data-browse-similar-close]");
+  if (similarClose) {
+    similarController?.abort();
+    state.browseSimilar = null;
+    state.browseItems = [];
+    state.browsePage = 0;
+    state.browseHasMore = true;
+    state.browseError = false;
+    state.browseLoading = false;
     void loadBrowse({ focusSelector: `[data-browse-genre="${state.browseGenre}"]` });
     return;
   }

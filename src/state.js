@@ -80,6 +80,8 @@ function fresh() {
     savedJustTried: [],
     // Oct 27: things rated on Browse since arriving there, for its "rated this visit" count. In memory only.
     browseRatedThisVisit: [],
+    // Oct 27: Browse showing "More like <item>" instead of a genre: { id, title, type }. In memory only.
+    browseSimilar: null,
     // Unused since the "This pick was" line was removed (Oct 27); kept so saved data loads unchanged.
     expandedFeedback: {},
     // My Tastemake (#8): settings, not taste. Areas are "show me / don't show me this kind of thing" and say

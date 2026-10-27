@@ -403,3 +403,4 @@
 /* #29: long sections stop at 30 with a "Show all" button. */
 .library-show-all { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:4px 0; color:var(--muted); font-size:13px; }
 .library-show-all .button { width:auto; flex:0 0 auto; }
+.library-see-similar { margin-top:8px; padding-left:0; }

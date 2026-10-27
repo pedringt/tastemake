@@ -38,6 +38,7 @@ const SUITES = [
   "new-releases-tests.mjs",
   "exclusions-tests.mjs",
   "browse-tests.mjs",
+  "similar-tests.mjs",
   "metadata-tests.mjs",
   "canonical-store-tests.mjs",
   "canonical-related-tests.mjs",
