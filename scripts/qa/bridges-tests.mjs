@@ -267,6 +267,60 @@ await section("broad-only items (Oct 27)", async () => {
   eq("...not even one", asked, 0);
 });
 
+// Oct 27: TMDb TV's combined "Sci-Fi & Fantasy" made every such show draw the same mixed list. The show's
+// own TMDb keywords now pick one half when they clearly lean one way.
+await section("sci-fi or fantasy, from the show's keywords (Oct 27)", async () => {
+  const { resolveSciFiFantasy } = bridges;
+  eq("dystopia and workplace keywords read as sci-fi", resolveSciFiFantasy(["dystopia", "office", "workplace", "corporation"]), "sci-fi");
+  eq("dragons and kingdoms read as fantasy", resolveSciFiFantasy(["dragon", "medieval", "kingdom", "politics"]), "fantasy");
+  eq("a mix stays combined", resolveSciFiFantasy(["supernatural", "small town", "1980s", "monster"]), null);
+  eq("no keywords stays combined", resolveSciFiFantasy([]), null);
+  check("whole words only ('spacey' is not space)", resolveSciFiFantasy(["spacey", "magical realism"]) === null);
+
+  const keywordsFor = { 95396: ["dystopia", "office", "workplace", "corporation", "memory"], 1399: ["dragon", "medieval", "kingdom", "based on novel or book"], 66732: ["supernatural", "small town", "1980s", "monster"] };
+  const asked = [];
+  const tmdb = async (url) => {
+    const u = String(url);
+    const id = u.match(/api\.themoviedb\.org\/3\/tv\/(\d+)\/keywords/)?.[1];
+    if (id) { asked.push(id); return { ok: true, json: async () => ({ results: (keywordsFor[id] ?? []).map((name, i) => ({ id: i, name })) }) }; }
+    return { ok: false, json: async () => ({}) };
+  };
+  const got = [];
+  const shelfBrowse = async ({ domain, genreId }) => { got.push(`${domain}:${genreId}`); return { items: SHELVES[`${domain}:${genreId}`] ?? [], hasMore: false, degraded: false }; };
+  const env = { TASTEMAKE_TMDB_TOKEN: "t" };
+  const thrones = { ...severance, id: "tmdb-tv-1399", providerId: "1399", title: "Game of Thrones", genres: ["10765", "18", "10759"], providerMeta: { genreIds: [10765, 18, 10759] } };
+  const stranger = { ...severance, id: "tmdb-tv-66732", providerId: "66732", title: "Stranger Things" };
+
+  got.length = 0;
+  const sev = await bridgeCandidates(severance, "read", { env, browse: shelfBrowse, fetchImpl: tmdb });
+  // Severance is also tagged mystery; mystery-only books are still dropped by the broad-label rule.
+  eq("Severance, by its keywords, searches the sci-fi shelf, never the fantasy one", got.join(","), "read:sci-fi,read:mystery-thriller");
+  check("and its reasons say sci-fi, never sci-fi & fantasy or fantasy", sev.length > 0 && sev.every((i) => i.bridge.sharedGenres.includes("sci-fi") && !i.bridge.sharedGenres.some((g) => /fantasy/.test(g))), sev.map((i) => i.bridge.sharedGenres.join("+")).join(" | "));
+  check("the result still says it came from Severance", sev.every((i) => i.relatedToId === severance.id && i.relatedTo === "Severance"));
+
+  got.length = 0;
+  await bridgeCandidates(thrones, "read", { env, browse: shelfBrowse, fetchImpl: tmdb });
+  eq("Game of Thrones searches only the fantasy book shelf", got.join(","), "read:fantasy");
+
+  got.length = 0;
+  const mixed = await bridgeCandidates(stranger, "read", { env, browse: shelfBrowse, fetchImpl: tmdb });
+  eq("Stranger Things, with mixed keywords, keeps both shelves", got.join(","), "read:sci-fi,read:fantasy");
+  check("and the combined reason", mixed.every((i) => i.bridge.sharedGenres.join() === "sci-fi & fantasy"));
+
+  got.length = 0;
+  const down = async () => { throw new Error("down"); };
+  await bridgeCandidates(severance, "read", { env, browse: shelfBrowse, fetchImpl: down });
+  eq("a failed keyword lookup keeps both shelves", got.join(","), "read:sci-fi,read:fantasy");
+
+  asked.length = 0; got.length = 0;
+  await bridgeCandidates(severance, "read", { env: {}, browse: shelfBrowse, fetchImpl: tmdb });
+  check("no TMDb token: no keyword call, both shelves", asked.length === 0 && got.join(",") === "read:sci-fi,read:fantasy", `${asked.join(",")} / ${got.join(",")}`);
+
+  asked.length = 0;
+  await bridgeCandidates(arrival, "read", { env, browse: shelfBrowse, fetchImpl: tmdb });
+  eq("a movie never asks for keywords", asked.length, 0);
+});
+
 await section("the screens", async () => {
   const { resetState, state } = await import("../../src/state.js");
   const { renderLibrary } = await import("../../src/screens/library.js");

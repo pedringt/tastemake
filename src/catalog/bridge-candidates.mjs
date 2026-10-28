@@ -4,7 +4,9 @@
 // item (so the book of the film is left out). No model call. Never throws; a failure is an empty list.
 
 import { browseCatalog } from "./browse.mjs";
-import { bridgeQueriesFor, domainOfItem, meaningfulShare, sharedBridgeLabels } from "./bridges.mjs";
+import { SCIFI_FANTASY, bridgeLabelsOf, bridgeQueriesFor, domainOfItem, meaningfulShare, resolveSciFiFantasy, sharedBridgeLabels } from "./bridges.mjs";
+import { cachedValue } from "../server/cache.mjs";
+import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { applyNoveltyGuard, isFranchiseContinuation } from "./novelty.mjs";
 import { bookAuthors, bookSeriesPosition, isBook, isLaterSeriesEntry } from "./book-series.mjs";
 import { withBookSeriesEvidence } from "./book-series-editions.mjs";
@@ -65,7 +67,34 @@ function interleave(rows) {
   return out;
 }
 
-export async function bridgeCandidates(item, targetDomain, { env = process.env, fetchImpl = fetch, browse = browseCatalog, exclude = [], limit = BRIDGE_LIMIT } = {}) {
+// Oct 27: a TV show's own TMDb keywords, to tell a sci-fi show from a fantasy one when TMDb gives it only
+// the combined "Sci-Fi & Fantasy" genre. One official call per show, cached a week; any failure is [].
+const KEYWORDS_TIMEOUT_MS = 1500;
+async function tmdbTvKeywords(item, env, fetchImpl) {
+  if (!env?.TASTEMAKE_TMDB_TOKEN || item?.provider !== "tmdb" || item?.type !== "tv" || !item.providerId) return [];
+  const load = async () => {
+    const response = await fetchWithTimeout(fetchImpl, `https://api.themoviedb.org/3/tv/${encodeURIComponent(item.providerId)}/keywords`, {
+      headers: { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" }
+    }, KEYWORDS_TIMEOUT_MS);
+    if (!response.ok) throw new Error(`tmdb keywords ${response.status}`);   // not cached
+    return ((await response.json()).results ?? []).map((keyword) => String(keyword?.name ?? "")).filter(Boolean).slice(0, 60);
+  };
+  try {
+    return fetchImpl === fetch ? await cachedValue(`tmdb-keywords:v1:tv:${item.providerId}`, load, { ttl: 7 * 24 * 60 * 60, tags: ["related-catalog"] }) : await load();
+  } catch {
+    return [];
+  }
+}
+
+// The item with TV's combined "Sci-Fi & Fantasy" resolved to one half when its keywords clearly say so.
+export async function resolveBridgeSource(item, { env = process.env, fetchImpl = fetch } = {}) {
+  if (!bridgeLabelsOf(item).includes(SCIFI_FANTASY)) return item;
+  const leaning = resolveSciFiFantasy(await tmdbTvKeywords(item, env, fetchImpl));
+  return leaning ? { ...item, providerMeta: { ...(item.providerMeta ?? {}), sciFiFantasyAs: leaning } } : item;
+}
+
+export async function bridgeCandidates(rawItem, targetDomain, { env = process.env, fetchImpl = fetch, browse = browseCatalog, exclude = [], limit = BRIDGE_LIMIT } = {}) {
+  const item = await resolveBridgeSource(rawItem, { env, fetchImpl });
   const queries = bridgeQueriesFor(item, targetDomain);
   // Nothing could qualify (only one broad label maps, e.g. Severance's mystery): skip the provider calls.
   if (!queries.length || !meaningfulShare([...new Set(queries.flatMap((query) => query.labels))])) return [];

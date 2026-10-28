@@ -10,6 +10,9 @@
 // TMDb TV's "Sci-Fi & Fantasy" (10765) is one genre for two shelves (Severance and Game of Thrones both get
 // it). Oct 27: it stays one combined label, "sci-fi & fantasy": a show searches both book shelves, a book
 // shares it when it is either, and the reason names it as TMDb does, never guessing which one the show is.
+// Oct 27 refinement: when the show's own TMDb keywords clearly lean one way ("dystopia", "space" vs "magic",
+// "dragon"), bridge-candidates.mjs resolves it to that one shelf (providerMeta.sciFiFantasyAs) before
+// searching; unclear or unknown keywords keep the combined label.
 //
 // Deliberately left out:
 //   - Drama, crime, literary, adventure: no matching shelf in the other medium's list.
@@ -50,10 +53,31 @@ const MAX_SHELVES_PER_DOMAIN = 2;
 const DOMAIN_OF_TYPE = { movie: "movies", tv: "tv", book: "read", game: "play" };
 export const domainOfItem = (item) => DOMAIN_OF_TYPE[item?.type] ?? item?.domains?.[0] ?? null;
 
+// TMDb keyword names that point a "Sci-Fi & Fantasy" show at one half. Whole words, case-insensitive.
+const SCIFI_KEYWORDS = ["science fiction", "sci-fi", "dystopia", "dystopian", "space", "outer space", "spaceship", "space travel", "space opera",
+  "alien", "extraterrestrial", "time travel", "robot", "android", "artificial intelligence", "cyborg", "cyberpunk", "post-apocalyptic",
+  "post-apocalyptic future", "simulation", "virtual reality", "genetic engineering", "cloning", "mad scientist", "scientific experiment",
+  "human experimentation", "biotechnology", "futuristic", "near future", "dark future", "mind control", "memory manipulation"];
+const FANTASY_KEYWORDS = ["fantasy", "high fantasy", "dark fantasy", "sword and sorcery", "magic", "magician", "wizard", "witch", "witchcraft",
+  "sorcery", "sorcerer", "dragon", "elves", "elf", "dwarf", "mythology", "mythical creature", "fairy tale", "fairy", "medieval",
+  "kingdom", "prophecy", "quest", "based on fantasy novel", "game of thrones"];
+const keywordScore = (names, terms) => names.filter((name) => terms.some((term) => new RegExp(`(^|\\W)${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\W|$)`, "i").test(name))).length;
+
+// "sci-fi", "fantasy", or null when the keywords don't clearly lean one way (then both shelves are used).
+export function resolveSciFiFantasy(keywordNames = []) {
+  const names = keywordNames.map((name) => String(name ?? "").trim()).filter(Boolean);
+  const scifi = keywordScore(names, SCIFI_KEYWORDS);
+  const fantasy = keywordScore(names, FANTASY_KEYWORDS);
+  if (scifi > fantasy) return "sci-fi";
+  if (fantasy > scifi) return "fantasy";
+  return null;
+}
+
 // The shared labels an item's own catalog tags carry, in the order the item lists them.
 export function bridgeLabelsOf(item) {
   const labels = [];
-  const add = (label) => { if (label && !labels.includes(label)) labels.push(label); };
+  const resolved = ["sci-fi", "fantasy"].includes(item?.providerMeta?.sciFiFantasyAs) ? item.providerMeta.sciFiFantasyAs : null;
+  const add = (label) => { const named = label === SCIFI_FANTASY && resolved ? resolved : label; if (named && !labels.includes(named)) labels.push(named); };
   if (item?.provider === "tmdb") {
     for (const id of [...(item.genres ?? []), ...(item.providerMeta?.genreIds ?? [])]) add(TMDB_LABEL[Number(id)]);
   } else if (item?.provider === "openlibrary" || item?.provider === "googlebooks" || item?.type === "book") {
