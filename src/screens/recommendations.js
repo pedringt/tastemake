@@ -202,6 +202,7 @@ function testedPattern(item) {
 
 function whyKicker(item, pattern) {
   const isCurveball = item.surprise || item.ai?.kind === "curveball";
+  if (item.bridge) return "Cross-media test";
   if (isCurveball) return "Surprise Me";
   if (!pattern) return "Why this one";
   const level = String(pattern.strength ?? "Emerging");
@@ -245,6 +246,8 @@ function groundingLine(item) {
   return `<p class="editorial-grounding">Based on ${esc(groundingText(sources))}</p>`;
 }
 
+const BRIDGE_NOUN = { book: "books", movie: "movies", tv: "shows", game: "games" };
+
 function whyContent(item) {
   const pattern = testedPattern(item);
   const isCurveball = item.surprise || item.ai?.kind === "curveball";
@@ -257,7 +260,9 @@ function whyContent(item) {
 
   let uncertainty = "";
   const level = String(pattern?.strength ?? "Emerging");
-  if (isCurveball) uncertainty = foundFrom?.label === "Liked"
+  // #252 part 2: a bridge pick tests whether a taste carries to another medium.
+  if (item.bridge) uncertainty = `This tests whether what you loved${foundFrom ? ` in ${foundFrom.title}` : ""} carries over to ${BRIDGE_NOUN[item.type] ?? "another medium"}. A miss is useful information, not a mark against it.`;
+  else if (isCurveball) uncertainty = foundFrom?.label === "Liked"
     ? `It comes from something you liked but didn't love, so it tests the edges of your taste. A miss is useful information.`
     : "This deliberately stretches beyond your strongest patterns, so a miss is useful information rather than a failure.";
   else if (!pattern) uncertainty = "Tastemake does not have a stable named pattern behind this yet, so this is still an early test.";
@@ -271,7 +276,7 @@ function whyContent(item) {
   return `
     <span class="why-kicker">${label}</span>
     ${truncated ? `<p><strong>Why this might work:</strong> ${esc(rationale)}</p>` : ""}
-    ${foundFrom ? `<p><strong>Found from:</strong> ${esc(groundingText([foundFrom]))}, through the catalog's related titles.</p>` : ""}
+    ${foundFrom ? `<p><strong>Found from:</strong> ${esc(groundingText([foundFrom]))}, ${item.bridge ? "through the genres they share." : "through the catalog's related titles."}</p>` : ""}
     ${closest.length ? `<p><strong>Closest things you rated:</strong> ${esc(groundingText(closest))}</p>` : ""}
     ${pattern ? `<p><strong>Pattern being tested:</strong> ${esc(pattern.claim)}</p>` : ""}
     <p class="why-caveat"><strong>What could miss:</strong> ${esc(uncertainty)}</p>`;
@@ -330,7 +335,7 @@ function recommendationCard(item, index, total) {
 
       <div class="editorial-rec-body">
         <div class="editorial-rec-meta">
-          <span>${item.surprise ? "Surprise Me" : `Pick ${String(index + 1).padStart(2, "0")}`}</span>
+          <span>${item.surprise ? "Surprise Me" : `Pick ${String(index + 1).padStart(2, "0")}`}${item.bridge ? ` · <span class="rec-bridge-tag">Cross-media test</span>` : ""}</span>
           <span>${esc(displayLabel(item))}${item.year ? ` · ${esc(item.year)}` : ""}</span>
         </div>
 

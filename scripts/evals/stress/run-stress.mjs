@@ -38,7 +38,7 @@ import { validatePicks } from "../../../src/ai/validate.js";
 import { parseModelJson, thinkingTypeFor } from "../../../src/server/anthropic.mjs";
 import { estimateCostUsd, PRICING_AS_OF } from "../../../src/server/ai-metrics.mjs";
 import { priceFor } from "../pricing.mjs";
-import { SHAPES, SIZES, candidateItems, itemsIndex, loadProfileSpecs, loadSnapshot, profileState } from "./profiles.mjs";
+import { ALL_SHAPES, SHAPES, SIZES, candidateItems, itemsIndex, loadProfileSpecs, loadSnapshot, profileState } from "./profiles.mjs";
 
 export const PICK_MAX_OUTPUT_TOKENS = 1000;   // src/server/anthropic.mjs MAX_OUTPUT_TOKENS (production default)
 const ANTHROPIC_HOST = "api.anthropic.com";
@@ -68,7 +68,7 @@ export function validateOptions(opts) {
   const problems = [];
   for (const m of opts.models) if (!/^claude-[a-z0-9.-]+$/.test(m)) problems.push(`"${m}" is not a model id`);
   for (const s of opts.sizes) if (!SIZES[s]) problems.push(`size "${s}" is not one of ${Object.keys(SIZES).join(", ")}`);
-  for (const s of opts.shapes) if (!SHAPES.includes(s)) problems.push(`profile "${s}" is not one of ${SHAPES.join(", ")}`);
+  for (const s of opts.shapes) if (!ALL_SHAPES.includes(s)) problems.push(`profile "${s}" is not one of ${ALL_SHAPES.join(", ")}`);
   if (!Number.isInteger(opts.repeats) || opts.repeats < 1) problems.push("--repeats must be a positive whole number");
   if (!Number.isFinite(opts.maxCalls) || opts.maxCalls < 0) problems.push("--max-calls must be a number");
   return problems;
@@ -211,19 +211,23 @@ export async function runTask(task, opts, { fetchImpl, snapshotIndex }) {
     catch (e) { parseError = String(e?.message ?? e).slice(0, 200); }
   }
   const rawById = new Map((validated?.accepted ?? []).map((p) => [p.itemId, p]));
+  const bridgeIds = new Map(candidates.filter((c) => c?.bridge).map((c) => [c.id, c.relatedTo]));
   const picks = payload.source === "model" ? payload.picks.map((p) => ({
     itemId: p.id, title: p.title, domains: p.domains ?? [], genres: p.genres ?? [], about: p.about ?? null,
     why: p.reason, rawWhy: rawById.get(p.id)?.why ?? null, cites: p.ai?.cites ?? [], kind: p.ai?.kind ?? "pick",
     fit: p.fit, prediction: p.prediction,
+    // #252 part 2: from the pool's own marks (profiles.mjs), so main and the bridge branch record the same.
+    ...(bridgeIds.has(p.id) ? { bridge: true, bridgeFrom: bridgeIds.get(p.id) } : {}),
     citedEvidence: citedEvidence(p.ai?.cites, index, promptRefs)
   })) : [];
   return {
     type: "call", kind: "picks", key: task.key, model, profile: spec.id, shape: spec.shape, size: spec.size, round,
     ms: Date.now() - started, source: payload.source, reason: payload.reason ?? null,
-    offered: offered.map((c) => ({ id: c.id, title: c.title, domains: c.domains })),
+    offered: offered.map((c) => ({ id: c.id, title: c.title, domains: c.domains, ...(bridgeIds.has(c.id) ? { bridge: true } : {}) })),
+    fallbackPicks: payload.source === "model" ? undefined : (payload.picks ?? []).map((p) => ({ itemId: p.id, bridge: bridgeIds.has(p.id), reason: p.reason })),
     promptEvidence: { count: promptRefs.size, refs: [...promptRefs] },
     profileFacts, picks,
-    rejected: (validated?.rejected ?? []).map((r) => ({ itemId: r.proposal?.itemId ?? null, why: r.proposal?.why ?? null, cites: r.proposal?.cites ?? [], reasons: r.reasons })),
+    rejected: (validated?.rejected ?? []).map((r) => ({ itemId: r.proposal?.itemId ?? null, why: r.proposal?.why ?? null, cites: r.proposal?.cites ?? [], reasons: r.reasons, ...(bridgeIds.has(r.proposal?.itemId) ? { bridge: true } : {}) })),
     consistency: validated ? { recomputedKept: validated.accepted.length, productionKept: picks.length } : null,
     parseError, request: capture && { promptChars: capture.promptChars, estInputTokens: capture.estInputTokens, maxTokens: capture.maxTokens, thinking: capture.thinking, effort: capture.effort },
     usage: capture?.usage ?? null, stopReason: capture?.stopReason ?? null, httpError: capture?.error ?? null,
