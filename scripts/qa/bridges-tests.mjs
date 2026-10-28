@@ -22,6 +22,8 @@ async function section(name, run) {
 
 // Realistic fixtures, shaped the way providers.mjs builds them.
 const arrival = { id: "tmdb-movie-329865", provider: "tmdb", providerId: "329865", type: "movie", title: "Arrival", domains: ["movies"], genres: ["878", "18"], providerMeta: { genreIds: [878, 18], collectionId: null } };
+// Oct 27: comedy has no book shelf, so a comedy-mystery show reaches books through mystery alone.
+const onlyMurders = { id: "tmdb-tv-107113", provider: "tmdb", providerId: "107113", type: "tv", title: "Only Murders in the Building", domains: ["tv"], genres: ["35", "9648", "80"], providerMeta: { genreIds: [35, 9648, 80] } };
 const severance = { id: "tmdb-tv-95396", provider: "tmdb", providerId: "95396", type: "tv", title: "Severance", domains: ["tv"], genres: ["18", "9648", "10765"], providerMeta: { genreIds: [18, 9648, 10765] } };
 const piranesi = { id: "openlibrary-book-OL20893680W", provider: "openlibrary", providerId: "OL20893680W", type: "book", title: "Piranesi", by: "Susanna Clarke", domains: ["read"],
   genres: ["Fantasy fiction", "Labyrinths", "Amnesia", "Fiction, fantasy, general", "Fiction, mystery & detective, general", "Fiction, literary"], providerMeta: {} };
@@ -54,7 +56,12 @@ await section("the mapping", () => {
 await section("the button rules", () => {
   const { bridgeTargetFor } = bridges;
   eq("a movie offers books", bridgeTargetFor(arrival, {}), "read");
-  eq("a show offers books", bridgeTargetFor(severance, {}), "read");
+  // TMDb TV genres have no separate sci-fi, fantasy or horror (only "Sci-Fi & Fantasy", unmapped), so a show
+  // reaches a book shelf only through mystery, which never qualifies on its own.
+  eq("a comedy-mystery show offers no books (comedy has no book shelf)", bridgeTargetFor(onlyMurders, {}), null);
+  // Oct 27 smoke test: Severance maps only to mystery (TV's "Sci-Fi & Fantasy" isn't mapped), and mystery
+  // alone never qualifies, so its button could only ever say "Nothing close turned up".
+  eq("a show whose only mapped genre is broad offers nothing", bridgeTargetFor(severance, {}), null);
   eq("a game offers books", bridgeTargetFor(hades, {}), "read");
   eq("a book offers movies and shows", bridgeTargetFor(piranesi, {}), "screen");
   eq("with TV off, a book offers movies", bridgeTargetFor(piranesi, { tv: false }), "movies");
@@ -249,6 +256,13 @@ await section("the endpoint", async () => {
   }
 });
 
+await section("broad-only items (Oct 27)", async () => {
+  let asked = 0;
+  const counting = async () => { asked += 1; return { items: [], hasMore: false, degraded: false }; };
+  eq("a broad-only item makes no provider call at all", (await bridgeCandidates(severance, "read", { browse: counting, fetchImpl: noSeries })).length, 0);
+  eq("...not even one", asked, 0);
+});
+
 await section("the screens", async () => {
   const { resetState, state } = await import("../../src/state.js");
   const { renderLibrary } = await import("../../src/screens/library.js");
@@ -256,11 +270,12 @@ await section("the screens", async () => {
   resetState();
   state.onboarded = true;
   state.libraryView = "tried";
-  for (const item of [arrival, severance, piranesi, hades, marriageStory]) state.feedbackByRecommendation[item.id] = { item, rating: "more", detail: "loved-before" };
+  for (const item of [arrival, severance, onlyMurders, piranesi, hades, marriageStory]) state.feedbackByRecommendation[item.id] = { item, rating: "more", detail: "loved-before" };
   let html = renderLibrary();
   const card = (id) => html.slice(html.indexOf(`data-library-id="${id}"`), html.indexOf("</details>", html.indexOf(`data-library-id="${id}"`) + 1) + 400);
   check("Arrival offers Books with these vibes", html.includes(`data-see-similar="${arrival.id}" data-similar-target="read">Books with these vibes →`));
-  check("Severance does too", html.includes(`data-see-similar="${severance.id}" data-similar-target="read">Books with these vibes →`));
+  check("nor does Only Murders in the Building", !html.includes(`data-see-similar="${onlyMurders.id}" data-similar-target`));
+  check("Severance keeps See similar but has no vibes button", html.includes(`data-see-similar="${severance.id}">See similar shows →`) && !html.includes(`data-see-similar="${severance.id}" data-similar-target`));
   check("Hades does too", html.includes(`data-see-similar="${hades.id}" data-similar-target="read">Books with these vibes →`));
   check("Piranesi offers Movies and shows with these vibes", html.includes(`data-see-similar="${piranesi.id}" data-similar-target="screen">Movies and shows with these vibes →`));
   check("a drama-only film keeps See similar but has no vibes button", html.includes(`data-see-similar="${marriageStory.id}">See similar movies →`) && !html.includes(`data-see-similar="${marriageStory.id}" data-similar-target`));
