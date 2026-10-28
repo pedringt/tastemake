@@ -35,10 +35,14 @@ const plainBook = { id: "openlibrary-book-OLPLAINW", provider: "openlibrary", pr
 const shelves = (queries) => (queries ?? []).map((q) => `${q.domain}:${q.genreId}:${q.labels.join("+")}`).join(" | ");
 
 await section("the mapping", () => {
-  const { bridgeQueriesFor, bridgeLabelsOf } = bridges;
+  const { bridgeQueriesFor, bridgeLabelsOf, sharedBridgeLabels } = bridges;
   eq("movie to books: Arrival's sci-fi goes to the Sci-fi book shelf (drama has no book shelf)", shelves(bridgeQueriesFor(arrival, "read")), "read:sci-fi:sci-fi");
-  eq("TV to books: Severance's mystery goes to Mystery / Thriller", shelves(bridgeQueriesFor(severance, "read")), "read:mystery-thriller:mystery");
-  check("TMDb TV's combined Sci-Fi & Fantasy is not read as either one", !bridgeLabelsOf(severance).includes("sci-fi") && !bridgeLabelsOf(severance).includes("fantasy"), bridgeLabelsOf(severance).join(","));
+  // Oct 27: TV's combined Sci-Fi & Fantasy searches both book shelves, ahead of the broad mystery shelf.
+  eq("TV to books: Severance's Sci-Fi & Fantasy goes to both book shelves", shelves(bridgeQueriesFor(severance, "read")), "read:sci-fi:sci-fi & fantasy | read:fantasy:sci-fi & fantasy");
+  check("TMDb TV's combined Sci-Fi & Fantasy is still not read as either one", !bridgeLabelsOf(severance).includes("sci-fi") && !bridgeLabelsOf(severance).includes("fantasy") && bridgeLabelsOf(severance).includes("sci-fi & fantasy"), bridgeLabelsOf(severance).join(","));
+  eq("a sci-fi book shares the combined label with it, named as TMDb names it", sharedBridgeLabels({ provider: "openlibrary", type: "book", genres: ["Science fiction"] }, severance, { domain: "read", genreId: "sci-fi" }).join(), "sci-fi & fantasy");
+  eq("so does a fantasy book", sharedBridgeLabels({ provider: "openlibrary", type: "book", genres: ["Fantasy fiction"] }, severance, { domain: "read", genreId: "fantasy" }).join(), "sci-fi & fantasy");
+  check("but a movie that is plain sci-fi never gains it", !sharedBridgeLabels({ provider: "openlibrary", type: "book", genres: ["Science fiction"] }, arrival).includes("sci-fi & fantasy"));
   eq("book to movies and shows: Piranesi's fantasy and mystery, on both", shelves(bridgeQueriesFor(piranesi, "screen")),
     "movies:fantasy:fantasy | movies:thriller:mystery | tv:fantasy:fantasy | tv:thriller:mystery");
   eq("book to movies only", shelves(bridgeQueriesFor(piranesi, "movies")), "movies:fantasy:fantasy | movies:thriller:mystery");
@@ -61,7 +65,7 @@ await section("the button rules", () => {
   eq("a comedy-mystery show offers no books (comedy has no book shelf)", bridgeTargetFor(onlyMurders, {}), null);
   // Oct 27 smoke test: Severance maps only to mystery (TV's "Sci-Fi & Fantasy" isn't mapped), and mystery
   // alone never qualifies, so its button could only ever say "Nothing close turned up".
-  eq("a show whose only mapped genre is broad offers nothing", bridgeTargetFor(severance, {}), null);
+  eq("Severance offers books again, through Sci-Fi & Fantasy", bridgeTargetFor(severance, {}), "read");
   eq("a game offers books", bridgeTargetFor(hades, {}), "read");
   eq("a book offers movies and shows", bridgeTargetFor(piranesi, {}), "screen");
   eq("with TV off, a book offers movies", bridgeTargetFor(piranesi, { tv: false }), "movies");
@@ -259,7 +263,7 @@ await section("the endpoint", async () => {
 await section("broad-only items (Oct 27)", async () => {
   let asked = 0;
   const counting = async () => { asked += 1; return { items: [], hasMore: false, degraded: false }; };
-  eq("a broad-only item makes no provider call at all", (await bridgeCandidates(severance, "read", { browse: counting, fetchImpl: noSeries })).length, 0);
+  eq("a broad-only item makes no provider call at all", (await bridgeCandidates(onlyMurders, "read", { browse: counting, fetchImpl: noSeries })).length, 0);
   eq("...not even one", asked, 0);
 });
 
@@ -275,7 +279,7 @@ await section("the screens", async () => {
   const card = (id) => html.slice(html.indexOf(`data-library-id="${id}"`), html.indexOf("</details>", html.indexOf(`data-library-id="${id}"`) + 1) + 400);
   check("Arrival offers Books with these vibes", html.includes(`data-see-similar="${arrival.id}" data-similar-target="read">Books with these vibes →`));
   check("nor does Only Murders in the Building", !html.includes(`data-see-similar="${onlyMurders.id}" data-similar-target`));
-  check("Severance keeps See similar but has no vibes button", html.includes(`data-see-similar="${severance.id}">See similar shows →`) && !html.includes(`data-see-similar="${severance.id}" data-similar-target`));
+  check("Severance offers Books with these vibes", html.includes(`data-see-similar="${severance.id}" data-similar-target="read">Books with these vibes →`));
   check("Hades does too", html.includes(`data-see-similar="${hades.id}" data-similar-target="read">Books with these vibes →`));
   check("Piranesi offers Movies and shows with these vibes", html.includes(`data-see-similar="${piranesi.id}" data-similar-target="screen">Movies and shows with these vibes →`));
   check("a drama-only film keeps See similar but has no vibes button", html.includes(`data-see-similar="${marriageStory.id}">See similar movies →`) && !html.includes(`data-see-similar="${marriageStory.id}" data-similar-target`));
