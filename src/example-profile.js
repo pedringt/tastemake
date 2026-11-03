@@ -4,6 +4,7 @@
 // every model call (no new picks or Taste Profile refreshes on Paige's budget). "Start my own" drops the
 // session flag and reloads the page, which brings back whatever the visitor had saved before.
 import { restoreStateFromBackupText, state } from "./state.js";
+import { screenFromPath } from "./router.js";
 
 export const EXAMPLE_NAME = "Paige's Example Profile";
 export const EXAMPLE_LOCKED_MESSAGE = `${EXAMPLE_NAME} is read-only for new AI picks. Start your own to get recommendations.`;
@@ -35,16 +36,27 @@ export function exampleLinkHtml(lead = "") {
   return `<p class="example-link-line">${lead ? `${lead} ` : ""}<button class="setup-example-link" type="button" data-action="view-example">See ${EXAMPLE_NAME} →</button></p>`;
 }
 
+// #320: the example honors the page its link (or a refresh) asked for. "/" and anything that isn't one of
+// these four lands on the Taste Profile, the example's intended front page. Unknown paths read as
+// "favorites" here (the not-onboarded fallback), so they can never resolve to another screen.
+const EXAMPLE_SCREENS = new Set(["recommendations", "browse", "library", "model"]);
+
+export function exampleScreenFromPath(pathname = "/") {
+  const screen = screenFromPath(pathname, { onboarded: false });
+  return EXAMPLE_SCREENS.has(screen) ? screen : "model";
+}
+
 export function isViewingExample(target = state) {
   return Boolean(target?.viewingExample);
 }
 
-export async function loadExampleProfile({ fetchImpl = fetch } = {}) {
+export async function loadExampleProfile({ fetchImpl = fetch, screen = "model" } = {}) {
   const response = await fetchImpl(EXAMPLE_URL, { headers: { accept: "application/json" } });
   if (!response.ok) throw new Error(`example profile failed to load: ${response.status}`);
   restoreStateFromBackupText(await response.text());
   state.viewingExample = true;
-  state.screen = "model";
+  state.screen = EXAMPLE_SCREENS.has(screen) ? screen : "model";
+  if (state.screen === "library") state.libraryView = "saved";
   rememberViewingExample();
   return state;
 }

@@ -17,7 +17,7 @@ const { check, eq, finish } = createSuite("example profile tests");
 const { state, resetState } = await import("../../src/state.js");
 const { persistState } = await import("../../src/persistence.js");
 const { parseBackupText } = await import("../../src/model/export.js");
-const { loadExampleProfile, exampleBannerHtml, isViewingExample, EXAMPLE_URL, EXAMPLE_SESSION_KEY, exampleRequestedAtBoot, forgetViewingExample } = await import("../../src/example-profile.js");
+const { loadExampleProfile, exampleBannerHtml, isViewingExample, EXAMPLE_URL, EXAMPLE_SESSION_KEY, exampleRequestedAtBoot, exampleScreenFromPath, forgetViewingExample } = await import("../../src/example-profile.js");
 const { refreshProfileHypotheses } = await import("../../src/ai/hypothesis-profile.js");
 const { renderMine } = await import("../../src/screens/mine.js");
 const { renderProfile } = await import("../../src/screens/profile.js");
@@ -71,6 +71,22 @@ check("boot with the flag set asks for the example", exampleRequestedAtBoot(""))
 await loadExampleProfile({ fetchImpl });
 check("after the refresh it is still the example", isViewingExample() && state.screen === "model");
 persistState(state);
+// #320: a direct link or a refresh opens the page its address names; "/" and anything else land on the
+// Taste Profile. Unknown paths never resolve to some other screen.
+for (const [path, screen] of [
+  ["/recommendations", "recommendations"], ["/browse", "browse"], ["/library", "library"], ["/taste-profile", "model"],
+  ["/recommendations/", "recommendations"], ["/bookmarks", "library"], ["/try-next", "library"],
+  ["/", "model"], ["", "model"], ["/setup", "model"], ["/favorites", "model"], ["/look", "model"],
+  ["/my-tastemake", "model"], ["/nope", "model"], ["/recommendations/extra", "model"]
+]) eq(`example route ${path || "(empty)"} opens ${screen}`, exampleScreenFromPath(path), screen);
+for (const screen of ["recommendations", "browse", "library", "model"]) {
+  await loadExampleProfile({ fetchImpl, screen });
+  check(`refreshing on ${screen} stays on ${screen} in the example`, isViewingExample() && state.screen === screen);
+  if (screen === "library") eq("Library opens on Saved, as at boot", state.libraryView, "saved");
+}
+await loadExampleProfile({ fetchImpl, screen: "setup" });
+eq("a screen outside the four falls back to the Taste Profile", state.screen, "model");
+eq("the visitor's saved profile is untouched by every route", stored.get(KEY), mine);
 // "Start over" inside the example clears the example, not the visitor's saved profile.
 resetState();
 persistState(state);
