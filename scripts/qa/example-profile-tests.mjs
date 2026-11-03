@@ -17,10 +17,12 @@ const { check, eq, finish } = createSuite("example profile tests");
 const { state, resetState } = await import("../../src/state.js");
 const { persistState } = await import("../../src/persistence.js");
 const { parseBackupText } = await import("../../src/model/export.js");
+const { esc } = await import("../../src/lib/html.js");
 const { loadExampleProfile, exampleBannerHtml, isViewingExample, EXAMPLE_URL, EXAMPLE_SESSION_KEY, exampleRequestedAtBoot, exampleScreenFromPath, forgetViewingExample } = await import("../../src/example-profile.js");
 const { refreshProfileHypotheses } = await import("../../src/ai/hypothesis-profile.js");
 const { renderMine } = await import("../../src/screens/mine.js");
 const { renderProfile } = await import("../../src/screens/profile.js");
+const { featuredCorrection } = await import("../../src/model/featured-correction.js");
 
 const text = readFileSync(new URL("../../data/example-profile.json", import.meta.url), "utf8");
 const parsed = parseBackupText(text);
@@ -87,6 +89,42 @@ for (const screen of ["recommendations", "browse", "library", "model"]) {
 await loadExampleProfile({ fetchImpl, screen: "setup" });
 eq("a screen outside the four falls back to the Taste Profile", state.screen, "model");
 eq("the visitor's saved profile is untouched by every route", stored.get(KEY), mine);
+// #319: the example Overview features one real correction apart from the strongest six.
+await loadExampleProfile({ fetchImpl });
+const featured = featuredCorrection(state);
+eq("the featured correction is the recorded partly-accurate answer", featured?.pattern.id, "ai-quirky-character-comedy");
+eq("its before-state is the model revision the answer superseded", featured?.inferred?.id, featured?.answer.supersedes);
+eq("no model change is recorded after the answer", featured?.later.length, 0);
+state.profileView = "list";
+const overview = renderProfile();
+const panel = overview.match(/<section class="profile-featured-correction"[\s\S]*?<\/section>/)?.[0] ?? "";
+check("the Overview shows the featured correction", panel.includes('data-featured-correction="ai-quirky-character-comedy"'));
+check("it quotes the inferred claim from the saved history", panel.includes(esc(featured.inferred.claim)));
+check("it shows Paige's actual answer", panel.includes("Partly accurate.") && panel.includes("No further detail was recorded with it."));
+check("it says the example makes no AI calls and nothing was measured", panel.includes("no effect on recommendations has been measured"));
+check("it never claims recommendations improved", !/improv|better|more accurate/i.test(panel));
+check("it links to the full profile", panel.includes('data-profile-view="full"'));
+const sixIds = [...overview.matchAll(/class="signal-row signal-row-\d+" data-profile-pattern="([^"]+)"/g)].map((m) => m[1]);
+eq("the strongest six are unchanged", sixIds.join(","), state.modelHypotheses.slice(0, 6).map((p) => p.id).join(","));
+check("the corrected pattern is not forced into the six", !sixIds.includes("ai-quirky-character-comedy"));
+state.profileView = "full";
+const full = renderProfile();
+check("Full profile has no featured panel but still lists the pattern", !full.includes("profile-featured-correction") && full.includes('data-profile-pattern="ai-quirky-character-comedy"') && full.includes("Partly accurate"));
+state.profileView = "list";
+// Missing before-state: say so rather than invent one.
+const savedHistory = state.hypothesisHistory;
+state.hypothesisHistory = savedHistory.filter((r) => !(r.hypothesisId === "ai-quirky-character-comedy" && r.origin === "model"));
+check("with no saved before-state it says so", renderProfile().includes("before her answer wasn't saved"));
+// No correction recorded at all: no panel, nothing else changes.
+state.hypothesisHistory = savedHistory;
+const savedStatements = state.patternStatements;
+state.patternStatements = savedStatements.filter((s) => s.says === "accurate");
+check("a confirmation alone is not featured as a correction", featuredCorrection(state) === null && !renderProfile().includes("profile-featured-correction"));
+state.patternStatements = savedStatements;
+// Not the example: a visitor's own profile never gets the sample panel.
+state.viewingExample = false;
+check("a visitor's own Overview never shows the panel", !renderProfile().includes("profile-featured-correction"));
+state.viewingExample = true;
 // "Start over" inside the example clears the example, not the visitor's saved profile.
 resetState();
 persistState(state);
