@@ -86,6 +86,17 @@ export function safeAbout(item) {
   return assessSynopsis({ about: text }).ok ? text : fallbackSummary(item);
 }
 
+// #321: the stored synopsis text itself, for "More about why" -- or null when there is none to show: no
+// text, a provider placeholder ("First published 2010.", "Game from IGDB."), or a synopsis the check above
+// replaced on the card. It may already be shortened at ingestion, so callers must not call it "full".
+const PLACEHOLDER_ABOUT = /^(?:first published \d{3,4}\.|book from (?:open library|google books)\.|game from igdb\.|no description (?:shown|available)\.)$/i;
+
+export function storedSynopsis(item) {
+  const text = String(item?.about ?? "").replace(/\s+/g, " ").trim();
+  if (!text || item?.aboutFlag || PLACEHOLDER_ABOUT.test(text)) return null;
+  return assessSynopsis({ about: text }).ok ? text : null;
+}
+
 // "about, else the user's own note, else a default" -- the pattern several screens already use --
 // with the synopsis check applied to the about part.
 export function blurbOf(item, fallback = "") {

@@ -102,4 +102,43 @@ const cardSynopsis = (it) => truncateCopy(safeAbout(it), 90);   // ABOUT_MAX_CHA
   eq("thin metadata says so instead of inventing", thin, "Found through Lost; it has no tags in common with it to show yet.");
 }
 
+// ---- #321 follow-up: the stored synopsis under "More about why" -----------------------------------------------
+// Real overviews from production's catalog (Nov 2). The card shows about 90 characters; "More about why" now
+// shows the stored text, labelled "Synopsis" (never "full": ingestion may already have shortened it, as with
+// Crystal Lake's "leaving the to"). This is access to context, not a check that a pitch is right.
+{
+  const { state, resetState } = await import("../../src/state.js");
+  const { renderRecommendations } = await import("../../src/screens/recommendations.js");
+  const { storedSynopsis } = await import("../../src/catalog/synopsis.mjs");
+  const mist = { id: "tmdb-tv-68315", provider: "tmdb", providerId: "68315", type: "tv", title: "The Mist", domains: ["tv"], year: "2017", genres: ["10765", "9648", "18"],
+    about: "A small town family is torn apart by a brutal crime. As they deal with the fallout an eerie mist rolls in, suddenly cutting them off from the rest of the world, and in some cases, each other.",
+    reason: "Isolating supernatural fog and a family under pressure, like Severance." };
+  const lake = { id: "tmdb-tv-213562", provider: "tmdb", providerId: "213562", type: "tv", title: "Crystal Lake", domains: ["tv"], year: "2026", genres: ["18", "9648"],
+    about: "Single mother Pam Voorhees has been unable to shake her grief after her young, sickly son Jason tragically drowned in the town lake almost a year before. When two strangers arrive at Pam's door digging into her past, a disturbing chain of events is set into motion, leaving the to",
+    reason: "A grief-haunted mystery in a small lake town, like Twin Peaks." };
+  const bare = { id: "tmdb-movie-1", provider: "tmdb", providerId: "1", type: "movie", title: "No Overview", domains: ["movies"], year: "2026", genres: ["18"], about: "No description available.", reason: "Quiet drama, like Moonlight." };
+  const book = { id: "openlibrary-book-OL1W", provider: "openlibrary", providerId: "OL1W", type: "book", title: "Placeholder Book", domains: ["read"], about: "First published 2010.", reason: "Wry voice, like Piranesi." };
+  const flagged = { id: "tmdb-movie-2", provider: "tmdb", providerId: "2", type: "movie", title: "Flagged", domains: ["movies"], year: "1982", genres: ["27"], about: "Horror · 1982", aboutFlag: "sensitive-term", reason: "Slow dread, like Hereditary." };
+  const none = { id: "tmdb-movie-3", provider: "tmdb", providerId: "3", type: "movie", title: "Store Item", domains: ["movies"], genres: ["18"], reason: "Steady character drama, like The Bear." };
+  resetState();
+  state.recommendationSets = [[mist, lake, bare, book, flagged, none]];
+  const html = renderRecommendations();
+  const card = (id) => html.slice(html.indexOf(`data-rec-id="${id}"`), html.indexOf("</article>", html.indexOf(`data-rec-id="${id}"`)));
+  const about = (id) => card(id).match(/<p class="editorial-about">([\s\S]*?)<\/p>/)?.[1] ?? "";
+  const synopsisLine = (id) => card(id).match(/<p class="why-synopsis">([\s\S]*?)<\/p>/)?.[1] ?? null;
+
+  eq("the collapsed card still shows only the first sentence", about(mist.id), "A small town family is torn apart by a brutal crime.");
+  check("More about why shows the stored synopsis, labelled Synopsis", synopsisLine(mist.id)?.includes("<strong>Synopsis:</strong>") && synopsisLine(mist.id).includes("an eerie mist rolls in"), synopsisLine(mist.id));
+  check("never called a full synopsis", !/full synopsis/i.test(html));
+  check("a long stored synopsis is shown as stored, cut and all", synopsisLine(lake.id)?.includes("Pam Voorhees") && synopsisLine(lake.id).includes("leaving the to"), synopsisLine(lake.id));
+  check("Crystal Lake's card is unchanged too", about(lake.id).startsWith("Single mother Pam Voorhees") && about(lake.id).length <= 95, about(lake.id));
+  eq("a provider placeholder gets no Synopsis line", synopsisLine(bare.id), null);
+  eq("nor does a book's 'First published' placeholder", synopsisLine(book.id), null);
+  eq("nor a synopsis the check replaced on the card", synopsisLine(flagged.id), null);
+  eq("nor an item with no stored text", synopsisLine(none.id), null);
+  check("and those cards still render their what-could-miss line", [bare, book, flagged, none].every((i) => card(i.id).includes("What could miss")));
+  eq("storedSynopsis trims spacing and keeps the text", storedSynopsis({ about: "  Two  lines\nof text.  " }), "Two lines of text.");
+  check("the pitch is left exactly as the model wrote it (this shows context, it doesn't grade the pitch)", card(mist.id).includes("Isolating supernatural fog"));
+}
+
 finish();
