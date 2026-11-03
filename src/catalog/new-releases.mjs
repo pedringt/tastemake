@@ -29,7 +29,6 @@ export function releaseWindow(now = new Date()) {
 }
 
 async function tmdbReleases(kind, window, region, env, fetchImpl) {
-  if (!env.TASTEMAKE_TMDB_TOKEN) return [];
   const dates = kind === "tv"
     ? `first_air_date.gte=${window.from}&first_air_date.lte=${window.to}`
     : `primary_release_date.gte=${window.from}&primary_release_date.lte=${window.to}&region=${region}&with_release_type=2|3|4`;
@@ -45,7 +44,7 @@ async function tmdbReleases(kind, window, region, env, fetchImpl) {
 
 async function igdbReleases(window, env, fetchImpl) {
   const token = await igdbToken(env, fetchImpl);
-  if (!token) return [];
+  if (!token) throw new Error("igdb token");
   const from = Math.floor(Date.parse(`${window.from}T00:00:00Z`) / 1000);
   const to = Math.floor(Date.parse(`${window.to}T23:59:59Z`) / 1000);
   const response = await fetchWithTimeout(fetchImpl, "https://api.igdb.com/v4/games", {
@@ -61,15 +60,32 @@ async function igdbReleases(window, env, fetchImpl) {
   }));
 }
 
+const configured = (area, env) => (area === "play" ? Boolean(env.IGDB_CLIENT_ID && env.IGDB_CLIENT_SECRET) : Boolean(env.TASTEMAKE_TMDB_TOKEN));
+
 // One shared list per area, country and day. Production caches; tests (a stub fetch) call straight through.
+// Nov 2 (#317): says whether the list loaded, so "nothing matched" is never confused with "couldn't look".
 async function releaseList(area, window, region, env, fetchImpl) {
+  if (!configured(area, env)) return { status: "unconfigured", items: [] };
   const load = () => (area === "play" ? igdbReleases(window, env, fetchImpl) : tmdbReleases(area === "tv" ? "tv" : "movie", window, region, env, fetchImpl));
   try {
-    if (fetchImpl !== fetch) return await load();
-    return await cachedValue(`new-releases:v1:${area}:${region}:${window.from}`, load, { ttl: LIST_TTL_SECONDS, tags: ["new-releases"] });
+    const items = fetchImpl !== fetch
+      ? await load()
+      : await cachedValue(`new-releases:v1:${area}:${region}:${window.from}`, load, { ttl: LIST_TTL_SECONDS, tags: ["new-releases"] });
+    return { status: "loaded", items: items ?? [] };
   } catch {
-    return [];   // one area failing never empties the others
+    return { status: "failed", items: [] };   // one area failing never empties the others
   }
+}
+
+// Why the strip has what it has (#317, Nov 2). Only "no-strong-matches" shows its empty message: every area
+// with experienced taste loaded a non-empty release list and nothing in it qualified. A failed or unconfigured
+// source, an empty release list, or no experienced taste anywhere keep the strip hidden, as before.
+export function releasesOutcome(itemCount, areaResults) {
+  if (itemCount) return "matched";
+  const checked = areaResults.filter((area) => area.status !== "no-anchors");
+  if (!checked.length) return "no-anchors";
+  if (checked.some((area) => area.status !== "loaded")) return "unavailable";
+  return checked.some((area) => area.considered > 0) ? "no-strong-matches" : "no-releases";
 }
 
 // What a release is matched on: TMDb genre ids, IGDB genre names (themes too).
@@ -122,9 +138,9 @@ export async function newReleasesFor(state, { env = process.env, fetchImpl = fet
   const known = new Set([...Object.keys(state.feedbackByRecommendation ?? {}), ...(state.selectedFavorites ?? []), ...(state.seenItemIds ?? [])]);
 
   const perArea = await Promise.all(areas.map(async (area) => {
-    if (!(anchors[area] ?? []).length) return [];
-    const list = await releaseList(area, window, code, env, fetchImpl);
-    return list
+    if (!(anchors[area] ?? []).length) return { status: "no-anchors", considered: 0, picks: [] };
+    const { status, items: list } = await releaseList(area, window, code, env, fetchImpl);
+    const picks = list
       // A shortlist nobody asked for stays clear of flagged synopses, explicitly adult-tagged titles and
       // anything the person ruled out in Never recommend (#48).
       .filter((item) => !known.has(item.id) && !item.aboutFlag && !isAdultTagged(item) && item.releaseDate && !excludedBy(item, state.exclusions ?? []))
@@ -132,16 +148,18 @@ export async function newReleasesFor(state, { env = process.env, fetchImpl = fet
       .filter((entry) => entry.anchor)
       .sort((a, b) => b.anchor.score - a.anchor.score || b.item.popularity - a.item.popularity)
       .slice(0, PER_AREA);
+    return { status, considered: list.length, picks };
   }));
 
   // Interleave areas so one busy week of films doesn't crowd out the rest.
   const picks = [];
   for (let round = 0; picks.length < MAX_RESULTS && round < PER_AREA; round += 1) {
-    for (const list of perArea) if (list[round] && picks.length < MAX_RESULTS) picks.push(list[round]);
+    for (const { picks: list } of perArea) if (list[round] && picks.length < MAX_RESULTS) picks.push(list[round]);
   }
   return {
     window,
     region: code,
+    outcome: releasesOutcome(picks.length, perArea),
     items: picks.map(({ item, anchor }, index) => {
       const { popularity, _searchPopularity, ...rest } = item;
       return { ...rest, reason: newReleaseReason(item, anchor.item, { index }), relatedToTitle: anchor.item.title };

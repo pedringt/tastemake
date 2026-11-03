@@ -4,9 +4,9 @@
 //
 //   node scripts/qa/new-releases-tests.mjs
 
-import { bestAnchor, newReleasesFor, releaseWindow } from "../../src/catalog/new-releases.mjs";
+import { bestAnchor, newReleasesFor, releasesOutcome, releaseWindow } from "../../src/catalog/new-releases.mjs";
 import { newReleaseReason } from "../../src/catalog/fallback-reasons.mjs";
-import { actOnNewRelease, releaseLabel } from "../../src/ai/new-releases.js";
+import { actOnNewRelease, newReleasesFromPayload, releaseLabel } from "../../src/ai/new-releases.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
 import { makeExclusion } from "../../src/model/exclusions.js";
 import { emptyState, react } from "../evals/fixtures.mjs";
@@ -224,6 +224,89 @@ eq("bad date, no label", releaseLabel("soon", now), "");
   eq("saving is not taste", evidenceRecords(s).filter((r) => r.countsAsTaste).length, tasteBefore);
   check("Not interested works the same way", /Not interested/.test(actOnNewRelease(s, "tmdb-movie-904", "not-interested") ?? "") && s.newReleases.items.length === 0);
   eq("anything else is ignored", actOnNewRelease(s, "tmdb-movie-904", "loved"), null);
+}
+
+// ---- #317 empty state: "nothing qualified" vs "couldn't look" ---------------------------------------------
+// Nov 2: Paige chose fewer picks over weak ones, and a message when none qualify. That message must only
+// appear when the releases actually loaded; a failed or unconfigured source keeps the strip hidden.
+{
+  const nov = new Date("2026-11-02T15:00:00Z");
+  const greenKnight = movie(559907, "The Green Knight", [12, 18, 14]);
+  const catInTheHat = { id: 1117898, title: "The Cat in the Hat", genre_ids: [12, 16, 35, 10751, 14], release_date: "2026-11-06", overview: "", popularity: 500 };
+  const folk = { id: 990010, title: "Fixture Folk Fantasy", genre_ids: [14, 18, 27], release_date: "2026-11-01", overview: "", popularity: 40 };
+  const movieOnly = (rows, { ok = true, throws = false } = {}) => async (url) => {
+    if (throws) throw new Error("network down");
+    if (String(url).includes("/discover/movie")) return ok ? { ok: true, json: async () => ({ results: rows }) } : { ok: false, status: 503, json: async () => ({}) };
+    throw new Error(`unexpected ${url}`);
+  };
+  const lovedFilm = () => {
+    const s = emptyState([]);
+    s.recommendationSets = [];
+    s.areas.play = false;
+    s.areas.tv = false;
+    react(s, greenKnight, "loved");
+    return s;
+  };
+  const run = (fetchImpl, opts = {}) => newReleasesFor(lovedFilm(), { env, fetchImpl, now: nov, ...opts });
+  eq("a match is 'matched'", (await run(movieOnly([catInTheHat, folk]))).outcome, "matched");
+  eq("releases loaded, none qualified: 'no-strong-matches'", (await run(movieOnly([catInTheHat]))).outcome, "no-strong-matches");
+  eq("a source that answers with an error is 'unavailable', not no matches", (await run(movieOnly([], { ok: false }))).outcome, "unavailable");
+  eq("a network failure is 'unavailable'", (await run(movieOnly([], { throws: true }))).outcome, "unavailable");
+  eq("no TMDb token is 'unavailable' and asks nothing", (await run(movieOnly([], { throws: true }), { env: {} })).outcome, "unavailable");
+  eq("an empty release list is 'no-releases', not no matches", (await run(movieOnly([]))).outcome, "no-releases");
+  const nobody = emptyState([]);
+  nobody.recommendationSets = [];
+  eq("no experienced taste anywhere is 'no-anchors'", (await newReleasesFor(nobody, { env, fetchImpl: movieOnly([folk]), now: nov })).outcome, "no-anchors");
+  // Several areas: any area that couldn't look makes the empty result 'unavailable'.
+  eq("one area loaded with no match, another failed: 'unavailable'", releasesOutcome(0, [{ status: "loaded", considered: 3 }, { status: "failed", considered: 0 }]), "unavailable");
+  eq("one area loaded with no match, another unconfigured: 'unavailable'", releasesOutcome(0, [{ status: "loaded", considered: 3 }, { status: "unconfigured", considered: 0 }]), "unavailable");
+  eq("areas without taste don't count against it", releasesOutcome(0, [{ status: "loaded", considered: 3 }, { status: "no-anchors", considered: 0 }]), "no-strong-matches");
+  eq("a pick wins even if another area failed", releasesOutcome(1, [{ status: "loaded", considered: 3 }, { status: "failed", considered: 0 }]), "matched");
+
+  // The API handler's own failure path says 'unavailable' too.
+  const { default: handler } = await import("../../api/new-releases.mjs");
+  const reply = {};
+  const resStub = { setHeader() {}, status(code) { reply.code = code; return this; }, json(body) { reply.body = body; return this; } };
+  await handler({ method: "POST", headers: {}, body: { state: { get feedbackByRecommendation() { throw new Error("boom"); } } } }, resStub);
+  check("the endpoint's catch-all says 'unavailable'", reply.code === 200 && reply.body?.outcome === "unavailable" && reply.body.items.length === 0, JSON.stringify(reply));
+
+  // Client: only a stated 'no-strong-matches' is read as one.
+  eq("client keeps the server's outcome", newReleasesFromPayload({ items: [], outcome: "no-strong-matches" }).outcome, "no-strong-matches");
+  eq("a reply without an outcome and no items is 'unavailable'", newReleasesFromPayload({ items: [] }).outcome, "unavailable");
+  eq("an unknown outcome is not trusted", newReleasesFromPayload({ items: [], outcome: "whatever" }).outcome, "unavailable");
+  eq("a broken body is 'unavailable'", newReleasesFromPayload(null).outcome, "unavailable");
+  eq("items without an outcome are 'matched'", newReleasesFromPayload({ items: [{ id: "x" }] }).outcome, "matched");
+  {
+    let saved = null;
+    const { maybeLoadNewReleases } = await import("../../src/ai/new-releases.js");
+    globalThis.navigator ??= { language: "en-US" };
+    for (const [label, fetchStub] of [["HTTP error", async () => ({ ok: false, json: async () => ({}) })], ["network error", async () => { throw new Error("offline"); }]]) {
+      const s = emptyState([]);
+      s.recommendationSets = [];
+      await new Promise((done) => maybeLoadNewReleases(s, () => { saved = s.newReleases; done(); }, fetchStub));
+      check(`client ${label} is 'unavailable', never 'no-strong-matches'`, saved.status === "ready" && saved.outcome === "unavailable" && saved.items.length === 0, JSON.stringify(saved));
+    }
+  }
+
+  // Rendering (the Recommendations screen's slot).
+  globalThis.document ??= { documentElement: { dataset: {} }, querySelector: () => null };
+  const { renderNewThisWeek } = await import("../../src/screens/recommendations.js");
+  const { state: appState } = await import("../../src/state.js");
+  const message = "No strong matches among the current new releases.";
+  const renderWith = (newReleases, aiStatus = "ready") => { appState.aiStatus = aiStatus; appState.newReleases = newReleases; return renderNewThisWeek(); };
+  const empty = renderWith({ status: "ready", items: [], outcome: "no-strong-matches" });
+  check("no strong matches: the strip shows with the message as real text", empty.includes(`<p>${message}</p>`), empty);
+  check("under the strip's own heading, which labels the section", /<section class="new-this-week new-this-week-empty" aria-labelledby="new-this-week-title">/.test(empty) && /<h2 id="new-this-week-title">New this week for you<\/h2>/.test(empty), empty);
+  check("with no list, cards or buttons", !/<ul|<li|<button/.test(empty));
+  for (const outcome of ["unavailable", "no-releases", "no-anchors", undefined]) {
+    eq(`${outcome ?? "no outcome"}: hidden, no message`, renderWith({ status: "ready", items: [], outcome }), "");
+  }
+  eq("still loading: hidden", renderWith({ status: "loading", items: [] }), "");
+  eq("while the set is loading: hidden", renderWith({ status: "ready", items: [], outcome: "no-strong-matches" }, "loading"), "");
+  eq("emptied by Save or Not interested: hidden (those were matches)", renderWith({ status: "ready", items: [], outcome: "matched" }), "");
+  const full = renderWith({ status: "ready", items: [{ ...movie(901, "Signal From Vega", [878]), releaseDate: "2026-10-24", reason: "New sci-fi this week, in the same genre as Arrival." }], outcome: "matched" });
+  check("with picks, the list shows and the empty message doesn't", full.includes('data-new-release="tmdb-movie-901"') && !full.includes(message));
+  appState.newReleases = undefined;
 }
 
 finish();

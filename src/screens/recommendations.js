@@ -539,10 +539,22 @@ function renderNextSteps() {
 }
 
 // #6: a small strip of this week's releases that match the person's own experienced taste (no AI). Hidden
-// while loading and when nothing matches, so it never shows an empty frame.
+// while loading. Nov 2 (#317): when the releases loaded and none matched strongly enough, it says so rather
+// than disappearing. A failed or unconfigured source, or no experienced taste, still hides it: those are not
+// "no strong matches". Emptied by Save / Not interested, it hides too (those were matches).
 export function renderNewThisWeek() {
   const items = state.newReleases?.items ?? [];
-  if (state.aiStatus === "loading" || state.newReleases?.status !== "ready" || !items.length) return "";
+  if (state.aiStatus === "loading" || state.newReleases?.status !== "ready") return "";
+  if (!items.length) {
+    if (state.newReleases.outcome !== "no-strong-matches") return "";
+    return `
+      <section class="new-this-week new-this-week-empty" aria-labelledby="new-this-week-title">
+        <div class="new-this-week-head">
+          <h2 id="new-this-week-title">New this week for you</h2>
+          <p>No strong matches among the current new releases.</p>
+        </div>
+      </section>`;
+  }
   return `
       <section class="new-this-week" aria-labelledby="new-this-week-title">
         <div class="new-this-week-head">
