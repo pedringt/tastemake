@@ -277,6 +277,9 @@
 .why-caveat { margin-top:8px !important; font-style:italic; }
 /* Opening downward, the popover reaches into the next row; lift its own card above the neighbors. */
 .editorial-rec:has(.editorial-why:not(.is-dismissed):hover, .editorial-why:not(.is-dismissed):focus-within, .editorial-why.is-pinned) { position:relative; z-index:40; }
+/* #321: with the Synopsis line the popover can reach past the last row; lift the grid above the bar after it
+   (both sit at z-index 2) only while a popover is open, so nothing changes for closed cards. */
+.editorial-grid:has(.editorial-why:not(.is-dismissed):hover, .editorial-why:not(.is-dismissed):focus-within, .editorial-why.is-pinned) { z-index:3; }
 /* Oct 23 smoke test: it opens over the reaction buttons, so only a pinned (clicked) popover takes clicks.
    A hover/focus preview lets clicks through, and once closed (click again or Escape) it stays closed
    until the pointer and focus leave (.is-dismissed, src/app.js). */
