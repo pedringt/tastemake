@@ -78,16 +78,21 @@ persistState(state);
 for (const [path, screen] of [
   ["/recommendations", "recommendations"], ["/browse", "browse"], ["/library", "library"], ["/taste-profile", "model"],
   ["/recommendations/", "recommendations"], ["/bookmarks", "library"], ["/try-next", "library"],
-  ["/", "model"], ["", "model"], ["/setup", "model"], ["/favorites", "model"], ["/look", "model"],
-  ["/my-tastemake", "model"], ["/nope", "model"], ["/recommendations/extra", "model"]
+  ["/look", "look"], ["/my-tastemake", "mine"],
+  ["/", "model"], ["", "model"], ["/setup", "model"], ["/favorites", "model"], ["/nope", "model"], ["/recommendations/extra", "model"]
 ]) eq(`example route ${path || "(empty)"} opens ${screen}`, exampleScreenFromPath(path), screen);
-for (const screen of ["recommendations", "browse", "library", "model"]) {
+for (const screen of ["recommendations", "browse", "library", "model", "look", "mine"]) {
   await loadExampleProfile({ fetchImpl, screen });
   check(`refreshing on ${screen} stays on ${screen} in the example`, isViewingExample() && state.screen === screen);
   if (screen === "library") eq("Library opens on Saved, as at boot", state.libraryView, "saved");
 }
 await loadExampleProfile({ fetchImpl, screen: "setup" });
-eq("a screen outside the four falls back to the Taste Profile", state.screen, "model");
+eq("a screen the example doesn't use falls back to the Taste Profile", state.screen, "model");
+// Nov 3: opened directly on Look or My Tastemake, Done and Back return to the example's Taste Profile.
+await loadExampleProfile({ fetchImpl, screen: "look" });
+eq("a direct Look link returns to the Taste Profile", state.lookReturn, "model");
+await loadExampleProfile({ fetchImpl, screen: "mine" });
+eq("a direct My Tastemake link returns to the Taste Profile", state.mineReturn, "model");
 eq("the visitor's saved profile is untouched by every route", stored.get(KEY), mine);
 // #319: the example Overview features one real correction apart from the strongest six.
 await loadExampleProfile({ fetchImpl });

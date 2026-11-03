@@ -37,9 +37,11 @@ export function exampleLinkHtml(lead = "") {
 }
 
 // #320: the example honors the page its link (or a refresh) asked for. "/" and anything that isn't one of
-// these four lands on the Taste Profile, the example's intended front page. Unknown paths read as
+// these lands on the Taste Profile, the example's intended front page. Unknown paths read as
 // "favorites" here (the not-onboarded fallback), so they can never resolve to another screen.
-const EXAMPLE_SCREENS = new Set(["recommendations", "browse", "library", "model"]);
+// Nov 3 (Paige): Look and My Tastemake too; both already open from the header inside the example, and
+// nothing done there is saved (persistState skips the example).
+const EXAMPLE_SCREENS = new Set(["recommendations", "browse", "library", "model", "look", "mine"]);
 
 export function exampleScreenFromPath(pathname = "/") {
   const screen = screenFromPath(pathname, { onboarded: false });
@@ -57,6 +59,9 @@ export async function loadExampleProfile({ fetchImpl = fetch, screen = "model" }
   state.viewingExample = true;
   state.screen = EXAMPLE_SCREENS.has(screen) ? screen : "model";
   if (state.screen === "library") state.libraryView = "saved";
+  // Opened directly on Look or My Tastemake there is no previous page, so Done and Back return to the Taste Profile.
+  if (state.screen === "look") state.lookReturn = "model";
+  if (state.screen === "mine") state.mineReturn = "model";
   rememberViewingExample();
   return state;
 }
