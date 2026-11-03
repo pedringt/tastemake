@@ -1,6 +1,7 @@
 // #6: "New this week for you." Movies, TV and games released in the last 7 or next 7 days, matched to the
-// person's own experienced taste without AI: a release must share a genre with something they loved, liked
-// or favorited in the same area, and it is explained by what it shares, in its own new-release wording
+// person's own experienced taste without AI: a release must share a specific genre (not only "drama" or
+// "comedy") with something they loved, liked or favorited in the same area, made for the same audience
+// (#317), and it is explained by what it shares, in its own new-release wording
 // ("New sci-fi this week, in the same genre as Arrival").
 // Server-only. Release lists are shared across visitors and cached; matching is per request.
 //
@@ -85,18 +86,29 @@ function anchorsByArea(state) {
   return byArea;
 }
 
+// Who a release is made for, when the provider says so: TMDb Family (10751) and Kids (10762, TV), IGDB's
+// "Kids" theme. Nov 2 (#317): The Cat in the Hat (2026; Adventure, Animation, Comedy, Family, Fantasy) read
+// "A new film with fantasy and adventure, like The Green Knight". Sharing two tags says nothing when the
+// release is made for children and the favorite isn't, so an audience the anchor doesn't share rules it out.
+// Missing tags rule nothing out: no tag is never read as "for adults".
+const AUDIENCE = new Set(["10751", "10762", "family", "kids"]);
+const audienceMismatch = (releaseKeys, anchorKeys) => [...releaseKeys].some((g) => AUDIENCE.has(g) && !anchorKeys.has(g));
+
 // The anchor in the same area that shares the most genres with the release (heavier evidence wins ties).
 // Oct 27: an anchor sharing a specific genre ("sci-fi") beats one sharing only broad ones ("comedy", "drama"),
 // so the reason can name something that says more.
+// Nov 2 (#317): broad genres alone ("drama", "comedy", "adventure") are no longer a match at all. A strip with
+// fewer picks, or none, is better than "A new drama series; it shares only that genre with Severance".
 export function bestAnchor(release, anchors = []) {
   const keys = genreKeys(release);
   let best = null;
   for (const anchor of anchors) {
-    const common = [...genreKeys(anchor.item)].filter((g) => keys.has(g));
+    const anchorKeys = genreKeys(anchor.item);
+    const common = [...anchorKeys].filter((g) => keys.has(g));
     const shared = common.length;
-    if (!shared) continue;
-    const specific = common.some((g) => specificGenre(g, anchor.item.provider));
-    const score = (specific ? 10 : 0) + shared + anchor.weight / 10;
+    if (!shared || audienceMismatch(keys, anchorKeys)) continue;
+    if (!common.some((g) => specificGenre(g, anchor.item.provider))) continue;
+    const score = 10 + shared + anchor.weight / 10;
     if (!best || score > best.score) best = { ...anchor, shared, score };
   }
   return best;

@@ -116,7 +116,76 @@ eq("bestAnchor prefers more shared genres", bestAnchor(movie(1, "X", [878, 9648]
 eq("bestAnchor needs at least one shared genre", bestAnchor(movie(1, "X", [35]), [{ item: movie(2, "Two", [878]), weight: 1 }]), null);
 // Oct 27: sharing comedy and drama says less than sharing sci-fi, even with heavier evidence behind it.
 eq("bestAnchor prefers a specific shared genre over broad-only ones", bestAnchor(movie(1, "X", [35, 18, 878]), [{ item: movie(2, "Broad", [35, 18]), weight: 3 }, { item: movie(3, "Specific", [878]), weight: 1 }])?.item.title, "Specific");
-eq("broad-only still matches when nothing else does", bestAnchor(movie(1, "X", [35, 18]), [{ item: movie(2, "Broad", [35, 18]), weight: 1 }])?.item.title, "Broad");
+// Nov 2 (#317): this used to match ("broad-only still matches when nothing else does"). Broad genres alone
+// are no longer taste support, so the strip shows fewer picks instead.
+eq("broad-only genres are not a match on their own", bestAnchor(movie(1, "X", [35, 18]), [{ item: movie(2, "Broad", [35, 18]), weight: 1 }]), null);
+
+// ---- #317: The Cat in the Hat vs The Green Knight --------------------------------------------------------
+// Real metadata, read from the two public TMDb pages on Nov 2 2026 (ids, genres, US release date). The review
+// saw "A new film with fantasy and adventure, like The Green Knight." on New this week. The Green Knight is
+// not in the Example Profile file, so that session had it as tried evidence some other way (not recorded).
+{
+  const catInTheHat = { id: 1117898, title: "The Cat in the Hat", genre_ids: [12, 16, 35, 10751, 14], release_date: "2026-11-06", overview: "", popularity: 500 };
+  const greenKnight = movie(559907, "The Green Knight", [12, 18, 14]);
+  const nov = new Date("2026-11-02T15:00:00Z");
+  const releases = (rows, tvRows = []) => async (url) => {
+    const u = String(url);
+    if (u.includes("/discover/movie")) return { ok: true, json: async () => ({ results: rows }) };
+    if (u.includes("/discover/tv")) return { ok: true, json: async () => ({ results: tvRows }) };
+    throw new Error(`unexpected ${u}`);
+  };
+  const lovedOnly = (...items) => {
+    const s = emptyState([]);
+    s.recommendationSets = [];
+    s.areas.play = false;
+    for (const item of items) react(s, item, "loved");
+    return s;
+  };
+  const cat = { ...movie(1117898, "The Cat in the Hat", [12, 16, 35, 10751, 14]) };
+  eq("(fixture) the old rule matched it on fantasy and adventure", newReleaseReason(cat, greenKnight, { index: 1 }), "A new film with fantasy and adventure, like The Green Knight.");
+  eq("a family film is not matched to a favorite made for adults", bestAnchor(cat, [{ item: greenKnight, weight: 2 }]), null);
+  const out = await newReleasesFor(lovedOnly(greenKnight), { env, fetchImpl: releases([catInTheHat]), now: nov });
+  eq("so loving The Green Knight brings no Cat in the Hat, and no padding", out.items.length, 0);
+
+  // A clearly supported match still shows, with a truthful reason naming only what is shared.
+  const folk = { id: 990010, title: "Fixture Folk Fantasy", genre_ids: [14, 18, 27], release_date: "2026-11-01", overview: "", popularity: 40 };
+  const both = await newReleasesFor(lovedOnly(greenKnight), { env, fetchImpl: releases([catInTheHat, folk]), now: nov });
+  eq("a specific shared genre for the same audience still shows", both.items.map((i) => i.title).join(), "Fixture Folk Fantasy");
+  check("and its reason names fantasy and the favorite, nothing it doesn't share", /fantasy/.test(both.items[0]?.reason ?? "") && both.items[0].reason.includes("The Green Knight") && !/horror|adventure/.test(both.items[0].reason), both.items[0]?.reason);
+
+  // Family on both sides is the same audience.
+  const familyFavorite = movie(116149, "Fixture Family Fantasy Favorite", [10751, 14, 35]);
+  eq("a family release can match a family favorite on a specific genre", bestAnchor(cat, [{ item: familyFavorite, weight: 1 }])?.item.title, familyFavorite.title);
+  // TV Kids and IGDB's Kids theme are audience tags too.
+  const kidsShow = { id: "tmdb-tv-1", provider: "tmdb", type: "tv", title: "Kids Fantasy", genres: ["10762", "10765"] };
+  eq("a kids show is not matched to an adult sci-fi & fantasy favorite", bestAnchor(kidsShow, [{ item: { provider: "tmdb", type: "tv", title: "The Leftovers", genres: ["10765", "18"] }, weight: 1 }]), null);
+  eq("a Kids-themed game is not matched to a favorite without it", bestAnchor({ ...game(1, "Bouncy", ["Platform", "Puzzle"]), providerMeta: { themes: ["Kids"] } }, [{ item: game(72, "Portal 2", ["Platform", "Puzzle", "Adventure"]), weight: 1 }]), null);
+
+  // Thin metadata never becomes certainty either way.
+  eq("a release with no genres matches nothing", bestAnchor(movie(5, "No Tags", []), [{ item: greenKnight, weight: 1 }]), null);
+  eq("an anchor with no genres anchors nothing", bestAnchor(movie(5, "Folk", [14]), [{ item: movie(6, "Untagged", []), weight: 1 }]), null);
+  eq("a missing audience tag rules nothing out", bestAnchor(movie(5, "Folk", [14, 12]), [{ item: greenKnight, weight: 1 }])?.item.title, "The Green Knight");
+
+  // No eligible releases at all: an empty list, not an error.
+  eq("an empty week is an empty strip", (await newReleasesFor(lovedOnly(greenKnight), { env, fetchImpl: releases([]), now: nov })).items.length, 0);
+
+  // Areas stay separate: a loved film anchors films only, so a TV release sharing its genres is not matched.
+  const tvFantasy = { id: 880010, name: "Fixture Fantasy Series", genre_ids: [14, 18], first_air_date: "2026-11-01", overview: "", popularity: 10 };
+  const sTv = lovedOnly(greenKnight);
+  const crossArea = await newReleasesFor(sTv, { env, fetchImpl: releases([], [tvFantasy]), now: nov });
+  eq("a film favorite doesn't anchor a TV release", crossArea.items.length, 0);
+
+  // Untried reactions to The Green Knight are intent, never an anchor.
+  const saved = emptyState([]);
+  saved.recommendationSets = [];
+  saved.feedbackByRecommendation[greenKnight.id] = { item: greenKnight, rating: "not-tried", detail: "bookmarked" };
+  const skipped = emptyState([]);
+  skipped.recommendationSets = [];
+  skipped.feedbackByRecommendation[greenKnight.id] = { item: greenKnight, rating: "not-tried", detail: "not-interested" };
+  for (const [label, s] of [["saved", saved], ["not interested", skipped]]) {
+    eq(`a ${label} Green Knight anchors nothing`, (await newReleasesFor(s, { env, fetchImpl: releases([folk]), now: nov })).items.length, 0);
+  }
+}
 
 {
   const tv = (title, genres) => ({ provider: "tmdb", type: "tv", title, genres: genres.map(String) });
