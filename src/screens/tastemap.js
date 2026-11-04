@@ -1,6 +1,7 @@
 import { nodeLayout } from "../model/tastemap.js";
 import { domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { NEEDS_REVIEW, NEEDS_REVIEW_LABEL } from "../model/statements.js";
 
 function sharedEvidence(a, b) {
   const aRefs = new Set([...(a.supports ?? []), ...(a.counters ?? [])]);
@@ -42,7 +43,8 @@ export function renderTasteMap(patterns = []) {
   const layout = nodeLayout(visiblePatterns.length);
   const links = mapLinks(visiblePatterns);
   const nodes = visiblePatterns.map((pattern, index) => {
-    const status = String(pattern.strength ?? "Emerging");
+    // #325: a confirmed pattern the evidence check can't verify shows that instead of a confidence level.
+    const status = pattern.evidenceStatus === NEEDS_REVIEW ? NEEDS_REVIEW_LABEL : String(pattern.strength ?? "Emerging");
     const note = pattern.status === "conditional" ? "Conditional" : "";
     const primaryDomain = pattern.domains?.[0] ?? "other";
     const domainClass = ["movies", "tv", "read", "play"].includes(primaryDomain) ? primaryDomain : "other";

@@ -1,0 +1,348 @@
+#!/usr/bin/env node
+// #325: a Taste Profile refresh must never silently drop a pattern the user confirmed, and unrelated
+// dislikes must not retire any pattern. Covers the server carry-forward (preserveExistingHypotheses,
+// settleConfirmedHypotheses, the endpoint), the client merge and "Needs another look" flag, the profile
+// cap, and the flag's save / reload / export / import and display. Free, no browser, no model call;
+// synthetic catalog fixtures only.
+//
+//   node scripts/qa/confirmed-patterns-tests.mjs
+
+import { createSuite } from "./lib/assert.mjs";
+
+const stored = new Map();
+globalThis.localStorage = {
+  getItem(key) { return stored.get(key) ?? null; },
+  setItem(key, value) { stored.set(key, String(value)); },
+  removeItem(key) { stored.delete(key); }
+};
+globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
+
+const { buildContext } = await import("../../src/ai/context.js");
+const { MAX_PROFILE_HYPOTHESES, normalizeHypothesisResponse, preserveExistingHypotheses, settleConfirmedHypotheses, validateHypotheses } = await import("../../src/ai/validate.js");
+const { markNeedsReview, mergeHypotheses, normalizeHypothesis, refreshProfileHypotheses } = await import("../../src/ai/hypothesis-profile.js");
+const { NEEDS_REVIEW, NEEDS_REVIEW_LABEL, NEEDS_REVIEW_TEXT } = await import("../../src/model/statements.js");
+const { produceHypotheses } = await import("../../api/hypotheses.mjs");
+const { persistState, loadPersistedState } = await import("../../src/persistence.js");
+const { buildBackup, buildHtmlExport, parseBackupText } = await import("../../src/model/export.js");
+const { recommendations, followUpPool } = await import("./fixtures/catalog.js");
+const { emptyState, react } = await import("../evals/fixtures.mjs");
+
+const { check, eq, finish } = createSuite("confirmed patterns tests");
+
+const byId = (id) => [...recommendations, ...followUpPool].find((item) => item.id === id);
+const pattern = (fields) => ({ counter: [], conditional: false, context: null, level: "emerging", crossDomain: "untested", ...fields });
+
+// The structure found in the Nov 4 investigation, on catalog fixtures: a confirmed movies+games pattern
+// and a confirmed games pattern, three unrelated game dislikes, and one of them cited against each.
+const WORLDS = { id: "ai-worlds", title: "Immersive, atmospheric worlds", claim: "Worlds that feel lived-in and atmospheric hold attention across shows and games.", supports: ["ev:severance", "ev:outerwilds", "ev:controlgame"], counters: ["ev:disco"], domains: ["movies", "play"], strength: "supported", status: "supported", crossDomain: "tentative", context: null };
+const PUZZLES = { id: "ai-puzzles", title: "Puzzle-driven story games", claim: "Games land when the story is uncovered by solving its puzzles yourself.", supports: ["ev:golden-idol", "ev:inscryption", "ev:outerwilds"], counters: ["ev:disco"], domains: ["play"], strength: "supported", status: "supported", crossDomain: "untested", context: null };
+const NEW_PATTERN = pattern({ id: "ai-comedy", label: "Comedy with a dark edge", claim: "Comedy lands when it has real stakes and a dark edge underneath.", evidence: ["ev:eeaao", "ev:barry"], domains: ["movies"], level: "supported" });
+
+function investigationState({ says = "accurate", extra = {} } = {}) {
+  const s = emptyState();
+  ["severance", "outerwilds", "controlgame", "golden-idol", "inscryption", "eeaao", "barry"].forEach((id) => react(s, byId(id), "loved"));
+  ["disco", "signalis", "forgotten-city"].forEach((id) => react(s, byId(id), "disliked"));
+  s.modelHypotheses = [{ ...WORLDS }, { ...PUZZLES }];
+  s.patternStatements = says ? s.modelHypotheses.map((h) => ({ hypothesisId: h.id, label: h.title, says, weight: says === "accurate" ? "lot" : null, context: null, authority: "user-confirmed", ...extra })) : [];
+  s.hypothesisHistory = [{ id: "rev-1", hypothesisId: "ai-worlds", claim: WORLDS.claim, origin: "model", reason: "earlier refresh" }];
+  return s;
+}
+
+// What production does with one model answer: the endpoint's server steps, then the client's merge.
+function refresh(s, modelAnswer) {
+  const ctx = buildContext(s);
+  const preserved = preserveExistingHypotheses(normalizeHypothesisResponse(modelAnswer, ctx), ctx, s.modelHypotheses);
+  const validated = settleConfirmedHypotheses(validateHypotheses(preserved, ctx), ctx, s.modelHypotheses);
+  const next = validated.accepted.map((h, i) => normalizeHypothesis(h, i, s));
+  const merged = markNeedsReview(mergeHypotheses(s.modelHypotheses, next, { statements: s.patternStatements, activeLimit: 12, preserveExistingActive: validated.rejected.length > 0 }), validated.needsReview);
+  return { preserved, validated, merged };
+}
+
+// ---- 1. regression: confirmed patterns survive unrelated same-medium dislikes ---------------------------
+for (const says of ["accurate", "partial"]) {
+  const s = investigationState({ says });
+  const statementsBefore = JSON.stringify(s.patternStatements);
+  const historyBefore = JSON.stringify(s.hypothesisHistory);
+  const { preserved, validated, merged } = refresh(s, { hypotheses: [NEW_PATTERN] });
+  check(`${says}: both confirmed patterns survive the server carry-forward`, ["ai-worlds", "ai-puzzles"].every((id) => preserved.hypotheses.some((h) => h.id === id)), preserved.hypotheses.map((h) => h.id).join(","));
+  check(`${says}: both are accepted by the check`, ["ai-worlds", "ai-puzzles"].every((id) => validated.accepted.some((h) => h.id === id)));
+  eq(`${says}: nothing needs review`, validated.needsReview.length, 0);
+  check(`${says}: both survive the client merge`, ["ai-worlds", "ai-puzzles"].every((id) => merged.some((h) => h.id === id)), merged.map((h) => h.id).join(","));
+  check(`${says}: the model's new pattern is kept too`, merged.some((h) => h.id === "ai-comedy"));
+  eq(`${says}: the cited counter stays attached`, merged.find((h) => h.id === "ai-worlds")?.counters.join(","), "ev:disco");
+  check(`${says}: no flag on patterns whose evidence holds`, merged.every((h) => !h.evidenceStatus));
+  eq(`${says}: the user's answers are untouched`, JSON.stringify(s.patternStatements), statementsBefore);
+  eq(`${says}: the revision history is untouched`, JSON.stringify(s.hypothesisHistory), historyBefore);
+}
+{
+  // A context-qualified answer ("depends on context") keeps the same protection and its level cap.
+  const s = investigationState({ says: "accurate", extra: { context: "some" } });
+  const { validated, merged } = refresh(s, { hypotheses: [NEW_PATTERN] });
+  check("context-qualified: both patterns survive", ["ai-worlds", "ai-puzzles"].every((id) => merged.some((h) => h.id === id)));
+  check("context-qualified: the level cap still applies", validated.accepted.filter((h) => h.carriedForward).every((h) => h.level !== "strong"));
+}
+
+// ---- 2. unconfirmed patterns: dislikes alone never retire them -------------------------------------------
+{
+  const s = investigationState({ says: null });
+  const { merged } = refresh(s, { hypotheses: [NEW_PATTERN] });
+  check("unconfirmed: same-medium dislikes do not drop either pattern", ["ai-worlds", "ai-puzzles"].every((id) => merged.some((h) => h.id === id)), merged.map((h) => h.id).join(","));
+}
+{
+  // Two cited dislikes against the pattern: citation alone is not proof of contradiction (#278).
+  const s = investigationState({ says: null });
+  s.modelHypotheses = [{ ...PUZZLES, counters: ["ev:disco", "ev:signalis", "ev:forgotten-city"] }];
+  const { validated, merged } = refresh(s, { hypotheses: [NEW_PATTERN] });
+  const kept = validated.accepted.find((h) => h.id === "ai-puzzles");
+  check("unconfirmed: three cited dislikes do not drop it", Boolean(kept) && merged.some((h) => h.id === "ai-puzzles"));
+  eq("unconfirmed: the cited dislikes stay attached", kept?.counter.length, 3);
+  eq("unconfirmed: the level is still capped by the evidence (3 tried for, 3 against)", kept?.level, "emerging");
+}
+
+// ---- 3. confirmed with genuine counter-evidence: kept, evidence attached, level evidence-capped ---------
+{
+  const s = investigationState();
+  s.modelHypotheses = [{ ...PUZZLES, strength: "strong", counters: ["ev:disco", "ev:signalis", "ev:forgotten-city"] }, { ...WORLDS }];
+  const statementsBefore = JSON.stringify(s.patternStatements);
+  const { validated, merged } = refresh(s, { hypotheses: [] });
+  const kept = validated.accepted.find((h) => h.id === "ai-puzzles");
+  check("confirmed with counters: kept", Boolean(kept) && merged.some((h) => h.id === "ai-puzzles"));
+  eq("confirmed with counters: counters attached", kept?.counter.length, 3);
+  eq("confirmed with counters: level re-capped by the evidence", kept?.level, "emerging");
+  eq("confirmed with counters: answer unchanged", JSON.stringify(s.patternStatements), statementsBefore);
+}
+
+// ---- 4. confirmed with invalid evidence: flagged, never presented as supported --------------------------
+function invalidEvidenceState() {
+  // ai-puzzles rested only on three reactions the user has since removed.
+  const s = investigationState();
+  ["golden-idol", "inscryption"].forEach((id) => delete s.feedbackByRecommendation[id]);
+  s.modelHypotheses = [{ ...WORLDS }, { ...PUZZLES, supports: ["ev:golden-idol", "ev:inscryption"], counters: [] }];
+  return s;
+}
+{
+  const s = invalidEvidenceState();
+  const statementsBefore = JSON.stringify(s.patternStatements);
+  const { validated, merged } = refresh(s, { hypotheses: [NEW_PATTERN] });
+  check("invalid evidence: not accepted as a normal pattern", !validated.accepted.some((h) => h.id === "ai-puzzles"));
+  eq("invalid evidence: listed in needsReview", validated.needsReview.join(","), "ai-puzzles");
+  const flagged = merged.find((h) => h.id === "ai-puzzles");
+  eq("invalid evidence: the client keeps it, flagged", flagged?.evidenceStatus, NEEDS_REVIEW);
+  eq("invalid evidence: the stored claim is unchanged", flagged?.claim, PUZZLES.claim);
+  eq("invalid evidence: the user's answer is unchanged", JSON.stringify(s.patternStatements), statementsBefore);
+  check("invalid evidence: the valid confirmed pattern is not flagged", !merged.find((h) => h.id === "ai-worlds")?.evidenceStatus);
+
+  // A later refresh with the evidence still missing keeps the flag.
+  s.modelHypotheses = merged;
+  const again = refresh(s, { hypotheses: [NEW_PATTERN] });
+  eq("still invalid on the next refresh: flag stays", again.merged.find((h) => h.id === "ai-puzzles")?.evidenceStatus, NEEDS_REVIEW);
+
+  // Evidence restored: the carried pattern passes the check, and the flag clears.
+  s.modelHypotheses = again.merged;
+  ["golden-idol", "inscryption"].forEach((id) => react(s, byId(id), "loved"));
+  const restored = refresh(s, { hypotheses: [NEW_PATTERN] });
+  const cleared = restored.merged.find((h) => h.id === "ai-puzzles");
+  check("evidence restored: accepted again", restored.validated.accepted.some((h) => h.id === "ai-puzzles"));
+  check("evidence restored: the flag clears", Boolean(cleared) && !cleared.evidenceStatus, JSON.stringify(cleared));
+}
+{
+  // The model returns its own version of the flagged confirmed pattern, still without valid evidence:
+  // it cannot replace the stored interpretation or clear the flag.
+  const s = invalidEvidenceState();
+  s.modelHypotheses = markNeedsReview(s.modelHypotheses, ["ai-puzzles"]);
+  const rewrite = pattern({ id: "ai-puzzles", label: "Puzzle-driven story games", claim: "A rewritten claim the model made up while the evidence is gone.", evidence: ["ev:golden-idol"], domains: ["play"], level: "strong" });
+  const { validated, merged } = refresh(s, { hypotheses: [rewrite, NEW_PATTERN] });
+  check("invalid model rewrite: rejected", validated.rejected.some((r) => r.proposal.id === "ai-puzzles"));
+  eq("invalid model rewrite: still listed for review", validated.needsReview.join(","), "ai-puzzles");
+  const kept = merged.find((h) => h.id === "ai-puzzles");
+  eq("invalid model rewrite: the stored claim stays", kept?.claim, PUZZLES.claim);
+  eq("invalid model rewrite: the flag stays", kept?.evidenceStatus, NEEDS_REVIEW);
+}
+{
+  // The model returns a rewrite of a confirmed pattern that fails the check, while the stored version is
+  // still valid: the stored version is kept, not the bad rewrite.
+  const s = investigationState();
+  const rewrite = pattern({ id: "ai-worlds", label: "Immersive, atmospheric worlds", claim: "Worlds are always atmospheric, no matter what the user tried.", evidence: ["ev:does-not-exist"], domains: ["movies", "play"] });
+  const { validated, merged } = refresh(s, { hypotheses: [rewrite, NEW_PATTERN] });
+  eq("bad rewrite of a valid confirmed pattern: the stored claim is kept", merged.find((h) => h.id === "ai-worlds")?.claim, WORLDS.claim);
+  eq("bad rewrite of a valid confirmed pattern: nothing needs review", validated.needsReview.length, 0);
+}
+{
+  // A valid model revision of a flagged pattern (its evidence restored) is a genuine pass: it is used, and the flag clears.
+  const s = invalidEvidenceState();
+  s.modelHypotheses = markNeedsReview(s.modelHypotheses, ["ai-puzzles"]);
+  react(s, byId("golden-idol"), "loved");
+  const revision = pattern({ id: "ai-puzzles", label: "Puzzle-driven story games", claim: "Games land when uncovering the story means solving its puzzles yourself.", evidence: ["ev:golden-idol"], domains: ["play"], level: "supported" });
+  const { merged } = refresh(s, { hypotheses: [revision] });
+  const kept = merged.find((h) => h.id === "ai-puzzles");
+  eq("valid revision: used", kept?.claim, revision.claim);
+  check("valid revision: the flag clears", !kept?.evidenceStatus);
+}
+
+// ---- 4b. the endpoint reports needsReview, including when nothing else was accepted ----------------------
+async function endpoint(s, answer) {
+  const rawState = { ...s, selectedFavorites: [...s.selectedFavorites], libraryFavorites: [], blindSpotDismissed: [] };
+  const env = { TASTEMAKE_AI_ENABLED: "1", ANTHROPIC_API_KEY: "fake-key", TASTEMAKE_AI_MODEL: "claude-test", TASTEMAKE_AI_RATE_LIMIT_CONFIRMED: "1", TASTEMAKE_AI_SPEND_CAP_CONFIRMED: "1", TASTEMAKE_AI_HYPOTHESES_ENABLED: "1", VERCEL_ENV: "preview" };
+  const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(answer) }], usage: { input_tokens: 10, output_tokens: 20 }, model: "claude-test" }) });
+  const quiet = [console.log, console.info];
+  console.log = () => {}; console.info = () => {};
+  try { return await produceHypotheses({ rawState, env, fetchImpl }); }
+  finally { [console.log, console.info] = quiet; }
+}
+{
+  const payload = await endpoint(invalidEvidenceState(), { hypotheses: [], insufficientEvidence: false });
+  eq("endpoint: needsReview lists the unverifiable confirmed pattern", payload.meta?.needsReview?.join(","), "ai-puzzles");
+  check("endpoint: the valid confirmed pattern is returned", payload.hypotheses.some((h) => h.id === "ai-worlds"));
+  check("endpoint: the unverifiable one is not returned as supported", !payload.hypotheses.some((h) => h.id === "ai-puzzles"));
+}
+{
+  const s = invalidEvidenceState();
+  s.modelHypotheses = [s.modelHypotheses[1]];
+  s.patternStatements = s.patternStatements.filter((x) => x.hypothesisId === "ai-puzzles");
+  const payload = await endpoint(s, { hypotheses: [], insufficientEvidence: false });
+  eq("endpoint, nothing accepted: still not a model answer", payload.source, "unavailable");
+  eq("endpoint, nothing accepted: needsReview is still reported", payload.meta?.needsReview?.join(","), "ai-puzzles");
+}
+
+// ---- 4c. the client refresh sets and clears the flag ----------------------------------------------------
+async function clientRefresh(s, payload) {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, json: async () => payload });
+  try { await refreshProfileHypotheses(s, { force: true }); }
+  finally { globalThis.fetch = realFetch; }
+}
+{
+  const s = invalidEvidenceState();
+  const accepted = { ...validateHypotheses(normalizeHypothesisResponse({ hypotheses: [{ ...NEW_PATTERN }] }, buildContext(s)), buildContext(s)).accepted[0] };
+  await clientRefresh(s, { source: "model", hypotheses: [accepted], meta: { rejected: 0, needsReview: ["ai-puzzles"] } });
+  eq("client: a refresh with needsReview flags the pattern", s.modelHypotheses.find((h) => h.id === "ai-puzzles")?.evidenceStatus, NEEDS_REVIEW);
+  check("client: the confirmed pattern with valid evidence is kept even with nothing rejected", s.modelHypotheses.some((h) => h.id === "ai-worlds"));
+
+  await clientRefresh(s, { source: "unavailable", hypotheses: [], meta: { needsReview: ["ai-puzzles"] } });
+  eq("client: a no-accept answer keeps the flag", s.modelHypotheses.find((h) => h.id === "ai-puzzles")?.evidenceStatus, NEEDS_REVIEW);
+
+  const back = normalizeHypothesis(pattern({ id: "ai-puzzles", label: PUZZLES.title, claim: PUZZLES.claim, evidence: ["ev:outerwilds"], domains: ["play"], level: "supported" }), 0, s);
+  await clientRefresh(s, { source: "model", hypotheses: [{ id: "ai-puzzles", label: PUZZLES.title, claim: PUZZLES.claim, evidence: back.supports, counter: [], domains: ["play"], level: "supported", crossDomain: "untested", conditional: false, context: null }], meta: { rejected: 0, needsReview: [] } });
+  const cleared = s.modelHypotheses.find((h) => h.id === "ai-puzzles");
+  check("client: a later accepted refresh clears the flag", Boolean(cleared) && !cleared.evidenceStatus, JSON.stringify(cleared));
+}
+
+// ---- 5. scoped exclusions ---------------------------------------------------------------------------------
+{
+  const s = investigationState({ says: "partial", extra: { excludedDomains: ["movies"] } });
+  s.patternStatements = s.patternStatements.filter((x) => x.hypothesisId === "ai-worlds");
+  const { validated, merged } = refresh(s, { hypotheses: [NEW_PATTERN] });
+  const kept = validated.accepted.find((h) => h.id === "ai-worlds");
+  check("scoped exclusion: the carried partly pattern survives", Boolean(kept) && merged.some((h) => h.id === "ai-worlds"));
+  eq("scoped exclusion: without the excluded area", kept?.domains.join(","), "play");
+  eq("scoped exclusion: nothing needs review", validated.needsReview.length, 0);
+
+  const claimsExcluded = pattern({ id: "ai-worlds", label: WORLDS.title, claim: WORLDS.claim, evidence: WORLDS.supports, domains: ["movies", "play"], crossDomain: "tentative", level: "supported" });
+  const ctx = buildContext(s);
+  const direct = validateHypotheses(normalizeHypothesisResponse({ hypotheses: [claimsExcluded] }, ctx), ctx);
+  check("scoped exclusion: a model answer claiming the excluded area is still rejected", direct.rejected.some((r) => r.reasons.some((why) => /not them in: movies/.test(why))));
+  const viaRefresh = refresh(s, { hypotheses: [claimsExcluded] });
+  eq("scoped exclusion: after that rejection the stored version is kept without the area", viaRefresh.validated.accepted.find((h) => h.id === "ai-worlds")?.domains.join(","), "play");
+}
+
+// ---- 6. "not me" still removes the pattern -----------------------------------------------------------------
+for (const before of ["accurate", null]) {
+  const s = investigationState({ says: before });
+  s.patternStatements = [{ hypothesisId: "ai-worlds", label: WORLDS.title, says: "not-me", authority: "user-confirmed" }];
+  const { validated, merged } = refresh(s, { hypotheses: [NEW_PATTERN] });
+  check(`not me (${before ?? "unconfirmed"} before): not accepted`, !validated.accepted.some((h) => h.id === "ai-worlds"));
+  check(`not me (${before ?? "unconfirmed"} before): not flagged for review`, !validated.needsReview.includes("ai-worlds"));
+  const active = merged.filter((h) => h.id !== "ai-worlds" || false);
+  check(`not me (${before ?? "unconfirmed"} before): kept only in corrected history, last`, merged[merged.length - 1]?.id === "ai-worlds" && active.length === merged.length - 1);
+}
+
+// ---- 7. the profile cap never displaces a confirmed pattern -------------------------------------------------
+const filler = (prefix, n) => Array.from({ length: n }, (_, i) => ({ id: `ai-${prefix}-${i}`, title: `${prefix} pattern ${i}`, claim: `A ${prefix} pattern number ${i} resting on one loved film.`, supports: ["ev:eeaao"], counters: [], domains: ["movies"], strength: "emerging" }));
+const confirm = (patterns) => patterns.map((p) => ({ hypothesisId: p.id, label: p.title, says: "accurate" }));
+function capState(confirmedCount, earlierUnconfirmed) {
+  const s = emptyState();
+  react(s, byId("eeaao"), "loved");
+  const confirmedPatterns = filler("confirmed", confirmedCount);
+  s.modelHypotheses = [...confirmedPatterns, ...filler("earlier", earlierUnconfirmed)];
+  s.patternStatements = confirm(confirmedPatterns);
+  return s;
+}
+const newProposals = (n) => ({ hypotheses: Array.from({ length: n }, (_, i) => pattern({ id: `ai-new-${i}`, label: `New pattern ${i}`, claim: `New pattern number ${i} resting on one loved film.`, evidence: ["ev:eeaao"], domains: ["movies"] })) });
+{
+  const s = capState(12, 0);
+  const ctx = buildContext(s);
+  const server = preserveExistingHypotheses(normalizeHypothesisResponse(newProposals(3), ctx), ctx, s.modelHypotheses);
+  eq("12 confirmed + 3 new: the server keeps all 12 confirmed and no new ones", server.hypotheses.map((h) => h.id).filter((id) => id.startsWith("ai-confirmed")).length, 12);
+  eq("12 confirmed + 3 new: new proposals give way", server.hypotheses.length, MAX_PROFILE_HYPOTHESES);
+  const client = mergeHypotheses(s.modelHypotheses, newProposals(3).hypotheses.map((h) => ({ id: h.id, title: h.label, claim: h.claim })), { statements: s.patternStatements, preserveExistingActive: false });
+  eq("12 confirmed + 3 new: the client keeps all 12 confirmed", client.filter((h) => h.id.startsWith("ai-confirmed")).length, 12);
+}
+{
+  const s = capState(13, 0);
+  const ctx = buildContext(s);
+  const server = preserveExistingHypotheses(normalizeHypothesisResponse({ hypotheses: [] }, ctx), ctx, s.modelHypotheses);
+  eq("13 confirmed: the server keeps all 13", server.hypotheses.length, 13);
+  const client = mergeHypotheses(s.modelHypotheses, [], { statements: s.patternStatements, preserveExistingActive: false });
+  eq("13 confirmed: the client keeps all 13", client.length, 13);
+}
+{
+  const s = capState(9, 4);
+  const ctx = buildContext(s);
+  const server = preserveExistingHypotheses(normalizeHypothesisResponse(newProposals(2), ctx), ctx, s.modelHypotheses);
+  const ids = server.hypotheses.map((h) => h.id);
+  eq("9 confirmed + 4 earlier + 2 new: 12 kept", ids.length, 12);
+  eq("…all 9 confirmed", ids.filter((id) => id.startsWith("ai-confirmed")).length, 9);
+  eq("…then earlier unconfirmed patterns take the remaining room", ids.filter((id) => id.startsWith("ai-earlier")).length, 3);
+  eq("…and new proposals give way first", ids.filter((id) => id.startsWith("ai-new")).length, 0);
+  const client = mergeHypotheses(s.modelHypotheses, newProposals(2).hypotheses.map((h) => ({ id: h.id, title: h.label, claim: h.claim })), { statements: s.patternStatements, preserveExistingActive: true });
+  eq("client, same mix: confirmed, then earlier, then new", [client.filter((h) => h.id.startsWith("ai-confirmed")).length, client.filter((h) => h.id.startsWith("ai-earlier")).length, client.filter((h) => h.id.startsWith("ai-new")).length].join(","), "9,3,0");
+}
+
+// ---- 8. the flag survives save, reload, export and import; older saves still work ---------------------------
+{
+  const s = invalidEvidenceState();
+  s.modelHypotheses = markNeedsReview(s.modelHypotheses, ["ai-puzzles"]);
+  persistState(s);
+  const reloaded = loadPersistedState();
+  eq("reload: the flag is saved with the pattern", reloaded.modelHypotheses.find((h) => h.id === "ai-puzzles")?.evidenceStatus, NEEDS_REVIEW);
+  const imported = parseBackupText(JSON.stringify(buildBackup(s)));
+  eq("export/import: the flag round-trips", imported.modelHypotheses.find((h) => h.id === "ai-puzzles")?.evidenceStatus, NEEDS_REVIEW);
+  check("HTML export: shows Needs another look, not a confidence level", buildHtmlExport(s).includes(`Status: ${NEEDS_REVIEW_LABEL}`));
+
+  // A save from before #325: no evidenceStatus anywhere.
+  const old = investigationState();
+  persistState(old);
+  const oldReloaded = loadPersistedState();
+  check("older save: loads with no flag", oldReloaded.modelHypotheses.every((h) => !("evidenceStatus" in h)));
+  const oldImported = parseBackupText(JSON.stringify(buildBackup(old)));
+  check("older backup: imports with no flag", oldImported.modelHypotheses.every((h) => !("evidenceStatus" in h)));
+  const { merged } = refresh({ ...old, modelHypotheses: oldReloaded.modelHypotheses }, { hypotheses: [NEW_PATTERN] });
+  check("older save: refreshes normally", ["ai-worlds", "ai-puzzles", "ai-comedy"].every((id) => merged.some((h) => h.id === id)) && merged.every((h) => !h.evidenceStatus));
+}
+
+// ---- 9. the flag's display: Taste Profile row and Taste Map ---------------------------------------------------
+{
+  const { state } = await import("../../src/state.js");
+  const { renderProfile } = await import("../../src/screens/profile.js");
+  const { renderTasteMap } = await import("../../src/screens/tastemap.js");
+  const s = invalidEvidenceState();
+  Object.assign(state, { feedbackByRecommendation: s.feedbackByRecommendation, patternStatements: s.patternStatements, modelHypotheses: markNeedsReview(s.modelHypotheses, ["ai-puzzles"]), profileView: "list" });
+  const html = renderProfile();
+  const row = (id) => html.slice(html.indexOf(`data-profile-pattern="${id}"`), html.indexOf("</article>", html.indexOf(`data-profile-pattern="${id}"`)));
+  const flaggedRow = row("ai-puzzles");
+  check("profile: the flagged row shows Needs another look", flaggedRow.includes(`<span class="signal-flag">${NEEDS_REVIEW_LABEL}</span>`), flaggedRow.slice(0, 400));
+  check("profile: the flagged row explains it", flaggedRow.includes(NEEDS_REVIEW_TEXT.replace("’", "&#39;")) || flaggedRow.includes(NEEDS_REVIEW_TEXT), flaggedRow.slice(0, 1200));
+  check("profile: the flagged row shows no confidence level", !/class="signal-status/.test(flaggedRow));
+  check("profile: the user's answer is still shown", flaggedRow.includes("You confirmed this"));
+  const validRow = row("ai-worlds");
+  check("profile: a valid row keeps its level and no flag", /class="signal-status/.test(validRow) && !validRow.includes(NEEDS_REVIEW_LABEL));
+
+  const map = renderTasteMap(state.modelHypotheses);
+  check("map: the flagged node shows Needs another look", map.includes(`<span class="map-node-conf">${NEEDS_REVIEW_LABEL}</span>`));
+  check("map: the valid node keeps its level", map.includes(`<span class="map-node-conf">supported</span>`) || map.includes(`<span class="map-node-conf">Supported</span>`));
+
+  state.modelHypotheses = state.modelHypotheses.map(({ evidenceStatus, ...rest }) => rest);
+  check("profile: once cleared, no flag is shown", !renderProfile().includes(NEEDS_REVIEW_LABEL));
+}
+
+finish();

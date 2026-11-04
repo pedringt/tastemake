@@ -1,5 +1,6 @@
 import { CIRCULAR_PATTERNS, CONTRACT_VERSION, CROSS_DOMAIN, GENRE_ONLY, IDENTITY_PATTERNS, LEVELS } from "./contract.js";
 import { domainScope } from "../model/interpretations.js";
+import { confirmationFor } from "../model/statements.js";
 import { isAdultTagged, triedAdultTagged } from "../catalog/adult-content.mjs";
 
 // The product's gate on model output (#31). Pure functions: (response, context) -> accepted / rejected.
@@ -111,15 +112,28 @@ export function normalizeHypothesisResponse(response, ctx) {
 }
 
 // #228: "One miss never weakens a pattern; two do" (evidence-contract.md, prototype-v1-spec.md). A
-// refresh used to be free to return a whole new set, and the client keeps earlier patterns only when
+// refresh used to be free to return a whole new set, and the client kept earlier patterns only when
 // something in the new answer was rejected, so one disliked item could replace every pattern on the
-// profile (the eval's single-miss fixture: 0 of 4-6 kept). Software now carries an earlier pattern
-// forward when the model leaves it out and fewer than two things the user tried and disliked fall in
-// that pattern's areas. A carried pattern is re-checked like any proposal (its evidence must still
-// exist and support it, the level is re-capped, and a "not me" statement still removes it), so this
-// never keeps something the evidence or the user has since ruled out.
+// profile (the eval's single-miss fixture: 0 of 4-6 kept). Software carries an earlier pattern forward
+// when the model leaves it out. A carried pattern is re-checked like any proposal (its evidence must
+// still exist and support it, the level is re-capped by the evidence, and a "not me" statement still
+// removes it), so this never presents something the evidence or the user has since ruled out.
+//
+// #325: the #228 rule dropped a pattern once two dislikes merely shared one of its media, cited
+// against it or not, and never looked at what the user had said. Now:
+//   - a pattern the user confirmed ("accurate" or "partly") is always carried, and never trimmed by the
+//     profile cap; settleConfirmedHypotheses (below) makes sure it is either accepted or reported for
+//     review, never silently lost;
+//   - an unconfirmed pattern is carried too. Dislikes alone never retire it: sharing a medium is not
+//     contradiction, and a cited dislike is not proof either. contradictedByEvidence is where a real
+//     contradiction check (#278) will plug in;
+//   - areas the user excluded (#36) are taken off a carried pattern instead of failing it.
 export const MAX_PROFILE_HYPOTHESES = 12;
-const MISSES_TO_DROP = 2;
+
+// #278 decides what genuinely contradicts a pattern. Until then nothing retires one automatically.
+function contradictedByEvidence(_stored, _ctx) {
+  return false;
+}
 
 function storedToProposal(stored) {
   const level = String(stored.strength ?? stored.level ?? "emerging").toLowerCase();
@@ -138,34 +152,59 @@ function storedToProposal(stored) {
   };
 }
 
+function carryStored(stored, ctx) {
+  const [proposal] = normalizeHypothesisResponse({ hypotheses: [storedToProposal(stored)] }, ctx).hypotheses;
+  const excluded = (ctx.statements ?? []).find((s) => (s.excludedDomains ?? []).length && (s.hypothesisId === stored.id || (s.label && s.label.toLowerCase() === String(proposal.label ?? "").toLowerCase())))?.excludedDomains ?? [];
+  const domains = proposal.domains.filter((d) => !excluded.includes(d));
+  return domains.length ? { ...proposal, domains } : proposal;
+}
+
 export function preserveExistingHypotheses(response, ctx, existing = []) {
   if (!response || !Array.isArray(response.hypotheses) || !Array.isArray(existing) || !existing.length) return response;
   const proposed = response.hypotheses.filter((h) => h && typeof h === "object");
   const proposedIds = new Set(proposed.map((h) => h.id).filter(Boolean));
   const proposedLabels = new Set(proposed.map((h) => String(h.label ?? "").trim().toLowerCase()).filter(Boolean));
-  const misses = (ctx.evidence ?? []).filter((r) => r.class === "experienced" && r.polarity < 0);
   const rejectedByUser = new Set((ctx.statements ?? []).filter((s) => s.says === "not-me").map((s) => s.hypothesisId));
+  const confirmed = (h) => Boolean(confirmationFor(ctx.statements, h));
 
   const carried = [];
   for (const stored of existing) {
     if (!stored?.id || !stored.claim || !(stored.title ?? stored.label)) continue;
     if (proposedIds.has(stored.id) || proposedLabels.has(String(stored.title ?? stored.label).trim().toLowerCase())) continue;
     if (rejectedByUser.has(stored.id)) continue;
-    const domains = stored.domains ?? [];
-    const missesInArea = misses.filter((r) => (r.domains ?? []).some((d) => domains.includes(d))).length;
-    if (missesInArea >= MISSES_TO_DROP) continue;
-    carried.push(storedToProposal(stored));
+    if (!confirmed(stored) && contradictedByEvidence(stored, ctx)) continue;
+    carried.push(carryStored(stored, ctx));
   }
-  if (!carried.length) return response;
 
-  const normalizedCarried = normalizeHypothesisResponse({ hypotheses: carried }, ctx).hypotheses;
-  // Keep the profile within its usual size: brand-new proposals give way before earlier patterns do.
+  // Keep the profile within its usual size. Confirmed patterns never count against the cap; the rest
+  // of the room goes to earlier patterns first, then to brand-new proposals.
   const existingIds = new Set(existing.map((h) => h?.id).filter(Boolean));
-  let hypotheses = [...response.hypotheses, ...normalizedCarried];
-  for (let i = response.hypotheses.length - 1; hypotheses.length > MAX_PROFILE_HYPOTHESES && i >= 0; i -= 1) {
-    if (!existingIds.has(response.hypotheses[i]?.id)) hypotheses = hypotheses.filter((h) => h !== response.hypotheses[i]);
+  const hypotheses = [...response.hypotheses, ...carried];
+  const unconfirmed = hypotheses.filter((h) => !confirmed(h));
+  const room = Math.max(0, MAX_PROFILE_HYPOTHESES - (hypotheses.length - unconfirmed.length));
+  const kept = new Set([...unconfirmed.filter((h) => existingIds.has(h?.id)), ...unconfirmed.filter((h) => !existingIds.has(h?.id))].slice(0, room));
+  return { ...response, hypotheses: hypotheses.filter((h) => confirmed(h) || kept.has(h)) };
+}
+
+// #325: run after validateHypotheses. A pattern the user confirmed must come out of a refresh either
+// accepted or listed in needsReview, never silently dropped. When the model's own version of it failed
+// the check, the stored version is checked instead, so a bad revision cannot replace what the user
+// confirmed. When the stored version fails too (say a reaction it rested on was removed), it is not
+// presented as supported: its id goes in needsReview and the client keeps it, flagged, with the user's
+// answer untouched.
+export function settleConfirmedHypotheses(validated, ctx, existing = []) {
+  if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [] };
+  const accepted = [...(validated.accepted ?? [])];
+  const needsReview = [];
+  for (const stored of existing) {
+    if (!stored?.id || !stored.claim || !(stored.title ?? stored.label) || !confirmationFor(ctx.statements, stored)) continue;
+    const label = String(stored.title ?? stored.label).trim().toLowerCase();
+    if (accepted.some((h) => h.id === stored.id || String(h.label ?? "").trim().toLowerCase() === label)) continue;
+    const retry = validateHypotheses({ hypotheses: [carryStored(stored, ctx)] }, ctx);
+    if (retry.accepted.length) accepted.push(...retry.accepted);
+    else needsReview.push(stored.id);
   }
-  return { ...response, hypotheses: hypotheses.slice(0, MAX_PROFILE_HYPOTHESES) };
+  return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview };
 }
 
 // #256: a pattern that talks about *why* something worked or failed must use the reasons the user actually

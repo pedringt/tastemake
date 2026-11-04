@@ -118,6 +118,23 @@ export function clearStatement(state, hypothesisId) {
   return message;
 }
 
+// #325: "accurate" and "partly" (with or without a context answer, which needs one of them) are the user
+// confirming a pattern. A refresh never removes a confirmed pattern; "unsure" is not a confirmation.
+// Works on bare statement lists so the server-side validator can use it too.
+export const CONFIRMING = ["accurate", "partial"];
+export function confirmationFor(statements, pattern) {
+  const label = String(pattern?.title ?? pattern?.label ?? "").trim().toLowerCase();
+  return (statements ?? []).find((s) => CONFIRMING.includes(s?.says)
+    && (s.hypothesisId === pattern?.id || (label && String(s.label ?? "").trim().toLowerCase() === label))) ?? null;
+}
+
+// #325: a confirmed pattern the evidence check can no longer verify is kept, marked with this status
+// (on the stored pattern, so it is saved and exported with it). It describes evidence validity only:
+// it changes nothing about picks.
+export const NEEDS_REVIEW = "needs-review";
+export const NEEDS_REVIEW_LABEL = "Needs another look";
+export const NEEDS_REVIEW_TEXT = "Some evidence behind this pattern is no longer available. Your earlier answer is saved, but Tastemake can’t currently verify the pattern.";
+
 export function activeStatements(state) {
   return (state.patternStatements ?? []).filter((s) => s.says || s.weight || s.context || s.excludedDomains?.length);
 }

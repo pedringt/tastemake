@@ -124,7 +124,7 @@ const PRODUCERS = {
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;
       spend.usd += priceFor(liveProfileModel, model.usage?.input_tokens ?? 0, model.usage?.output_tokens ?? 0);
-      // Same post-validation as api/hypotheses.mjs: earlier patterns are carried forward unless two misses count against them.
+      // Same carry-forward as api/hypotheses.mjs (#228/#325): earlier patterns the model left out are carried forward.
       return preserveExistingHypotheses(normalizeHypothesisResponse(expandProfileRefs(model.json, refs), pctx), pctx, state.modelHypotheses);
     },
     pick: async (state, ctx) => {

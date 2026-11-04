@@ -2,6 +2,7 @@ import { serializeAiState } from "./live-client.js";
 import { evidenceRecords } from "../model/evidence.js";
 import { recordRevisionIfChanged } from "../model/history.js";
 import { noteAiAnswer } from "./ai-status.js";
+import { NEEDS_REVIEW, confirmationFor } from "../model/statements.js";
 
 const slug = (text) => String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
@@ -34,6 +35,9 @@ export function normalizeHypothesis(h, index, state) {
   };
 }
 
+// #325: a pattern the user confirmed ("accurate" or "partly") is always kept, whatever the refresh
+// returned, and never counts against activeLimit (only the user can grow the confirmed set past it).
+// The rest of the room goes to earlier patterns first, then to new ones.
 export function mergeHypotheses(existing = [], incoming = [], { statements = [], activeLimit = 12, preserveExistingActive = true } = {}) {
   const correctedIds = new Set(
     (statements ?? []).filter((entry) => entry?.says === "not-me").map((entry) => entry.hypothesisId)
@@ -46,15 +50,29 @@ export function mergeHypotheses(existing = [], incoming = [], { statements = [],
     corrected.push(item);
   }
 
+  const confirmed = (item) => Boolean(confirmationFor(statements, item));
   const activeById = new Map();
   for (const item of incoming) if (item?.id && !correctedIds.has(item.id)) activeById.set(item.id, item);
-  if (preserveExistingActive) {
-    for (const item of existing) {
-      if (!item?.id || correctedIds.has(item.id) || activeById.has(item.id)) continue;
-      activeById.set(item.id, item);
-    }
+  for (const item of existing) {
+    if (!item?.id || correctedIds.has(item.id) || activeById.has(item.id)) continue;
+    if (preserveExistingActive || confirmed(item)) activeById.set(item.id, item);
   }
-  return [...activeById.values()].slice(0, activeLimit).concat(corrected);
+  const active = [...activeById.values()];
+  const existingIds = new Set(existing.map((item) => item?.id));
+  const unconfirmed = active.filter((item) => !confirmed(item));
+  const room = Math.max(0, activeLimit - (active.length - unconfirmed.length));
+  const kept = new Set([...unconfirmed.filter((item) => existingIds.has(item.id)), ...unconfirmed.filter((item) => !existingIds.has(item.id))].slice(0, room));
+  return active.filter((item) => confirmed(item) || kept.has(item)).concat(corrected);
+}
+
+// #325: a confirmed pattern whose evidence no longer passes the check (the server lists it in
+// meta.needsReview) is kept as stored, with the user's answer and history untouched, but marked so it
+// is not shown as supported. The mark is cleared only when a refresh accepts the pattern again: an
+// accepted pattern is rebuilt by normalizeHypothesis, which has no such field.
+export function markNeedsReview(patterns = [], needsReview = []) {
+  const ids = new Set(needsReview ?? []);
+  if (!ids.size) return patterns;
+  return patterns.map((p) => (ids.has(p?.id) ? { ...p, evidenceStatus: NEEDS_REVIEW } : p));
 }
 
 export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, force = false } = {}) {
@@ -94,15 +112,17 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         });
       }
       const rejected = Number(payload.meta?.rejected ?? 0);
-      state.modelHypotheses = mergeHypotheses(state.modelHypotheses ?? [], next, {
+      state.modelHypotheses = markNeedsReview(mergeHypotheses(state.modelHypotheses ?? [], next, {
         statements: state.patternStatements ?? [],
         activeLimit: 12,
         preserveExistingActive: rejected > 0
-      });
+      }), payload.meta?.needsReview);
       state.hypothesisAiMessage = "Your Taste Profile is up to date.";
       state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");
     } else {
+      // Nothing was accepted, but the check may still have found confirmed patterns it can't verify.
+      if (payload.meta?.needsReview?.length) state.modelHypotheses = markNeedsReview(state.modelHypotheses ?? [], payload.meta.needsReview);
       state.hypothesisAiKey = null;
       // The full explanation sits in the empty state (or the header badge) when AI is paused; this line stays short.
       state.hypothesisAiMessage = payload.meta?.budgetPaused
