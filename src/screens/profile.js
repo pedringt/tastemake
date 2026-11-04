@@ -217,13 +217,13 @@ function learningPanel(patterns = []) {
       consequence = levelChangeConsequence(previous.level, current.level);
     } else if (String(previous.claim ?? "") !== String(current.claim ?? "")) {
       changed = "The pattern became more specific.";
-      consequence = "Future picks will use the narrower interpretation instead of the older broad one.";
+      consequence = "Your Taste Profile now uses the narrower version instead of the older, broader one.";
     } else if ((current.supports?.length ?? 0) > (previous.supports?.length ?? 0)) {
       changed = "This pattern gained another supporting example.";
-      consequence = "Tastemake has more reason to test this pattern again in future picks.";
+      consequence = "This gives Tastemake another example to consider when assessing the pattern.";
     } else if (JSON.stringify(previous.domains ?? []) !== JSON.stringify(current.domains ?? [])) {
       changed = "Where this pattern applies changed.";
-      consequence = "Tastemake will apply it more selectively across books, movies, shows, and games.";
+      consequence = "Your Taste Profile has updated which kinds of titles this pattern covers.";
     } else if (current.origin === "user-confirmed" && current.reason) {
       changed = current.reason;
       consequence = "Your correction now outranks Tastemake’s earlier inference.";
@@ -241,7 +241,7 @@ function learningPanel(patterns = []) {
         title: pattern.title,
         sourceLine: "",
         changed: pattern.claim,
-        consequence: "This is one of the patterns Tastemake is currently testing when it chooses recommendations."
+        consequence: "This is one of the patterns Tastemake sees in what you’ve rated so far. If it’s wrong, you can correct it."
       }));
 
   return `

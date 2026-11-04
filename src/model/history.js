@@ -92,7 +92,7 @@ export function levelChangeConsequence(from, to) {
   if (a == null || b == null) return "Tastemake updated how much it relies on this pattern.";
   if (a === b) return "";
   if (b > a) return b === LEVEL_RANK.strong
-    ? "This pattern can carry more weight in future recommendations."
+    ? "Tastemake is now more confident in this pattern."
     : "Tastemake can lean on this pattern a little more.";
   return b === LEVEL_RANK.emerging
     ? "Tastemake will treat this pattern as an open question again."

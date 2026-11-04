@@ -4,6 +4,7 @@
 //   - The Taste Profile copy promises only what the software does.
 import { readFileSync } from "node:fs";
 import { createSuite } from "./lib/assert.mjs";
+import { levelChangeConsequence } from "../../src/model/history.js";
 import { badgeFor, noteAiAnswer, setSource, syncAiBadge, CATALOG_SET_LINE } from "../../src/ai/ai-status.js";
 
 const { check, eq, finish } = createSuite("ai status tests");
@@ -88,7 +89,12 @@ for (const stale of [
   // Nov 4 preview review: three more promises the software does not keep.
   "They no longer shape recommendations",
   "That changes how much it counts when picking",
-  "changed your Taste Profile, which Tastemake’s AI uses when it explains future picks"
+  "changed your Taste Profile, which Tastemake’s AI uses when it explains future picks",
+  // Nov 4 journey review: the "Learning out loud" panel said patterns steer or are tested in picks.
+  "Future picks will use the narrower interpretation",
+  "more reason to test this pattern again in future picks",
+  "apply it more selectively across books, movies, shows, and games",
+  "currently testing when it chooses recommendations"
 ]) check(`profile copy no longer promises: "${stale}"`, !profile.includes(stale));
 for (const approved of [
   "Tastemake won’t use this pattern in your Taste Profile, and asks its AI not to lean on it when explaining picks.",
@@ -98,7 +104,15 @@ for (const approved of [
   "Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count.",
   "Your recent reactions and corrections changed your Taste Profile. Your corrections are also passed to Tastemake’s AI when it orders and explains future picks.",
   "Patterns you said do not fit you. Tastemake leaves them out of your Taste Profile. Picks can still resemble the titles behind them, because your ratings still count. You can revisit them.",
-  "Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is."
+  "Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is.",
+  "Your Taste Profile now uses the narrower version instead of the older, broader one.",
+  "This gives Tastemake another example to consider when assessing the pattern.",
+  "Your Taste Profile has updated which kinds of titles this pattern covers.",
+  "This is one of the patterns Tastemake sees in what you’ve rated so far. If it’s wrong, you can correct it."
 ]) check(`profile copy says: "${approved.slice(0, 60)}…"`, profile.includes(approved));
+
+const history = readFileSync(new URL("../../src/model/history.js", import.meta.url), "utf8");
+check('history copy no longer promises: "more weight in future recommendations"', !history.includes("carry more weight in future recommendations"));
+eq("up to Strong: confidence, not recommendation weight", levelChangeConsequence("supported", "strong"), "Tastemake is now more confident in this pattern.");
 
 finish();
