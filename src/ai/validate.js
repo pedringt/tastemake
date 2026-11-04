@@ -176,10 +176,19 @@ function everyAreaExcluded(stored, ctx) {
   return domains.length > 0 && domains.every((d) => excluded.includes(d));
 }
 
+// Nov 4 (after #325): a stored pattern keeps its own areas (still capped to what its evidence supports).
+// The user's excluded areas are applied wherever the pattern is used, never written into it: removing
+// them here made "include this area again" come back as untested instead of supported.
+// src/model/area-scope.js restores areas already removed this way.
 function carryStored(stored, ctx) {
   const [proposal] = normalizeHypothesisResponse({ hypotheses: [storedToProposal(stored)] }, ctx).hypotheses;
-  const excluded = excludedAreas(stored, ctx);
-  return { ...proposal, domains: proposal.domains.filter((d) => !excluded.includes(d)) };
+  return proposal;
+}
+
+// A confirmed pattern's areas come from what was stored, plus any the model's identical version adds;
+// never narrowed by the user's exclusions (which the model was told about, so its copy may leave them out).
+function keepStoredAreas(h, stored, ctx) {
+  return { ...h, domains: [...new Set([...carryStored(stored, ctx).domains, ...(h.domains ?? [])])], carriedForward: true };
 }
 
 export function preserveExistingHypotheses(response, ctx, existing = []) {
@@ -198,7 +207,7 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
     if (answered.has(stored.id) || everyAreaExcluded(stored, ctx)) continue;
     answered.add(stored.id);
     const same = h.id === stored.id && text(h.label) === storedLabel(stored) && text(h.claim) === text(stored.claim);
-    proposals.push(same ? h : carryStored(stored, ctx));
+    proposals.push(same ? keepStoredAreas(h, stored, ctx) : carryStored(stored, ctx));
   }
 
   const proposed = proposals.filter((h) => h && typeof h === "object");
@@ -373,7 +382,9 @@ export function validateHypotheses(response, ctx) {
     // #36: a narrower "not in {domain}" correction outranks inference the same way a full "not me" does,
     // just scoped to that one domain rather than the whole pattern.
     const scopedStatement = (ctx.statements ?? []).find((s) => (s.excludedDomains ?? []).length && (s.hypothesisId === h.id || (s.label && s.label.toLowerCase() === h.label.toLowerCase())));
-    const excludedDomainsClaimed = scopedStatement ? h.domains.filter((d) => scopedStatement.excludedDomains.includes(d)) : [];
+    // A pattern carried forward from what was stored keeps its own areas; the exclusion is applied where it
+    // is used (Nov 4, carryStored). A new claim from the model still may not claim an excluded area.
+    const excludedDomainsClaimed = scopedStatement && !h.carriedForward ? h.domains.filter((d) => scopedStatement.excludedDomains.includes(d)) : [];
     if (excludedDomainsClaimed.length) reasons.push(`claims domains the user said this pattern is not them in: ${excludedDomainsClaimed.join(", ")}`);
     // #36 v1: "only applies in some contexts" caps confidence the same way the product caps it from
     // evidence alone (below) — the model cannot claim Strong for a pattern the user says isn't universal.

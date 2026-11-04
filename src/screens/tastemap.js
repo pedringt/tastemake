@@ -36,9 +36,18 @@ function domainLine(pattern) {
   return labels.length ? labels.join(" · ") : "Still finding where this shows up";
 }
 
+// Nov 4 (after #325): a pattern keeps its own areas; the ones the user excluded are left out where it's shown,
+// as the Taste Profile does (domainScopeFromDomains, src/model/interpretations.js). A pattern excluded from
+// every area is left whole: its status already says so ("Excluded from all areas", patternDisplayStatus).
+function withoutExcludedAreas(pattern, statements) {
+  const excluded = statementFor({ patternStatements: statements }, pattern.id)?.excludedDomains ?? [];
+  const permitted = (pattern.domains ?? []).filter((d) => !excluded.includes(d));
+  return excluded.length && permitted.length ? { ...pattern, domains: permitted } : pattern;
+}
+
 export function renderTasteMap(patterns = [], statements = []) {
   if (!patterns.length) return "";
-  const visiblePatterns = patterns.slice(0, 8);
+  const visiblePatterns = patterns.slice(0, 8).map((pattern) => withoutExcludedAreas(pattern, statements));
 
   const layout = nodeLayout(visiblePatterns.length);
   const links = mapLinks(visiblePatterns);

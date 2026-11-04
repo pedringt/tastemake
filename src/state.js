@@ -2,6 +2,7 @@ import { DEFAULT_LOOK, isLook } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { clearPersistedState, loadPersistedState } from "./persistence.js";
 import { parseBackupText } from "./model/export.js";
+import { restoreNarrowedAreas } from "./model/area-scope.js";
 
 // Everything the user has told Tastemake or configured, in one place so "Start over" can clear it.
 // (The look, and where the user is, are not part of this: starting over keeps your look.)
@@ -154,6 +155,8 @@ export const state = {
   starterReplaceId: null,
   resetArmed: false
 };
+// Nov 4 (after #325): put back pattern areas an earlier refresh removed by mistake, where history is unambiguous.
+restoreNarrowedAreas(state);
 
 document.documentElement.dataset.look = state.look;
 
@@ -208,6 +211,7 @@ export function restoreStateFromBackupText(text) {
     starterReplaceId: null,
     resetArmed: false
   });
+  restoreNarrowedAreas(state);
   document.documentElement.dataset.look = state.look;
   return state;
 }
