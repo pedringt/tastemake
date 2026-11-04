@@ -2,7 +2,8 @@
   "git": {
     "deploymentEnabled": {
       "**": false,
-      "main": true
+      "main": true,
+      "trust-fixes-t1-t2": true
     }
   },
   "functions": {
