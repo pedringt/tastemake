@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // #1a candidate trace: show one recommendation request's full path -- which ratings retrieval used,
 // every candidate's taste-score parts and why it was offered or cut, and for each final pick the ratings
-// that selected it and whether its reason cites one of them.
+// that selected it and whether its reason's citations overlap them (not whether the reason is accurate).
 //
 //   node scripts/evals/trace-request.mjs                          # stress profile narrow-10, round 0
 //   node scripts/evals/trace-request.mjs --profile split-50 --round 2
@@ -37,7 +37,7 @@ const fmt = (value) => (typeof value === "number" ? value.toFixed(3) : String(va
 
 function printTrace(spec, result) {
   const { trace } = result;
-  console.log(`${spec.id} -- source ${result.source}; ${trace.summary.candidates} candidates, ${trace.summary.offered} offered, ${trace.summary.picks} picks; reasons citing selection evidence: ${trace.summary.citesSelectionEvidence}/${trace.summary.picks}`);
+  console.log(`${spec.id} -- source ${result.source}; ${trace.summary.candidates} candidates, ${trace.summary.offered} offered, ${trace.summary.picks} picks; citations overlapping selection evidence: ${trace.summary.citationOverlapsSelection}/${trace.summary.picks}`);
   console.log("\nCandidates (retrieval order):");
   for (const c of trace.candidates) {
     const top = c.positives.slice(0, 2).map((m) => `${m.title ?? m.ref} ${fmt(m.contribution)}`).join(", ");
@@ -45,7 +45,7 @@ function printTrace(spec, result) {
   }
   console.log("\nPicks:");
   for (const p of trace.picks) {
-    console.log(`  ${p.title}: found from ${p.retrievedFromRef ?? p.retrievedFrom ?? "-"}; scored from ${p.scoredFrom.join(", ") || "-"}; cites ${p.cites.join(", ") || "-"} -> ${p.citesSelectionEvidence ? "cites selection evidence" : "DOES NOT cite selection evidence"}`);
+    console.log(`  ${p.title}: found from ${p.retrievedFromRef ?? p.retrievedFrom ?? "-"}; scored from ${p.scoredFrom.join(", ") || "-"}; cites ${p.cites.join(", ") || "-"} -> ${p.citationOverlapsSelection ? "overlaps selection evidence" : "no overlap with selection evidence"}`);
   }
 }
 
@@ -57,7 +57,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     for (const spec of specs) {
       const { source, trace } = await traceProfile(spec, { round, snapshotIndex });
       const outcomes = trace.candidates.reduce((counts, c) => ({ ...counts, [c.outcome]: (counts[c.outcome] ?? 0) + 1 }), {});
-      console.log(`${spec.id.padEnd(14)} ${source}  picks ${trace.summary.picks}  cite selection evidence ${trace.summary.citesSelectionEvidence}/${trace.summary.picks}  ${JSON.stringify(outcomes)}`);
+      console.log(`${spec.id.padEnd(14)} ${source}  picks ${trace.summary.picks}  citations overlap selection ${trace.summary.citationOverlapsSelection}/${trace.summary.picks}  ${JSON.stringify(outcomes)}`);
     }
   } else {
     const id = arg("--profile", "narrow-10");

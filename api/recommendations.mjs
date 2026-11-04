@@ -335,7 +335,7 @@ export async function warmRecommendationCandidates({ rawState, env = process.env
 // (scripts/evals/stress/) passes its own, to hold the candidate pool fixed while measuring reasoning.
 // #1a: `trace: true` (evals and dev scripts only; the API handler never passes it) adds result.trace:
 // every candidate's path through retrieval, the shortlist, the model and validation, and for each
-// final pick the ratings that selected it and whether its reason cites one of them. The payload is
+// final pick the ratings that selected it and whether its reason's citations overlap them. The payload is
 // otherwise identical.
 export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates, trace = false } = {}) {
   if (!trace) return recommend({ rawState, env, fetchImpl, retrieve, trace: null });
@@ -508,8 +508,11 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
 }
 
 // #1a: assemble the request trace. A pick's selection evidence is the rating it was found from plus
-// the ratings that made up its taste score; `citesSelectionEvidence` says whether its reason cites one
-// of them. Catalog-fallback reasons are written from the found-from item, so that is what they cite.
+// the positive ratings that made up its taste score. `citationOverlapsSelection` only says whether its
+// reason cites at least one of them -- an overlap diagnostic, not a check that the reason names the
+// decisive factor (a pick can cite a minor contributor while a dislike weighed heavily against it; the
+// candidate's full parts, negatives included, are in trace.candidates). Catalog-fallback reasons are
+// written from the found-from item, so that is what they cite.
 function requestTrace(steps, result) {
   const evidence = steps.evidence ?? [];
   const refFor = (itemId) => evidence.find((record) => record.itemId === itemId && record.class === "experienced")?.ref ?? null;
@@ -529,7 +532,7 @@ function requestTrace(steps, result) {
       retrievedFromRef,
       scoredFrom,
       cites,
-      citesSelectionEvidence: cites.some((ref) => selection.has(ref))
+      citationOverlapsSelection: cites.some((ref) => selection.has(ref))
     };
   });
   return {
@@ -543,7 +546,7 @@ function requestTrace(steps, result) {
       candidates: (steps.candidates ?? []).length,
       offered: (steps.candidates ?? []).filter((entry) => entry.outcome === "chosen" || entry.outcome === "edge").length,
       picks: picks.length,
-      citesSelectionEvidence: picks.filter((pick) => pick.citesSelectionEvidence).length
+      citationOverlapsSelection: picks.filter((pick) => pick.citationOverlapsSelection).length
     }
   };
 }

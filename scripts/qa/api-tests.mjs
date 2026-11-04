@@ -480,7 +480,7 @@ for(const [name,opts] of [["timeout",{abort:true}],["network",{fail:"boom"}],["5
   eq("trace: model payload identical apart from trace",JSON.stringify(tracedRest),JSON.stringify(withinOffer));
   check("trace: retrieval records the favorite as the anchor with its result count",requestTrace.retrieval?.anchors?.some(a=>a.itemId===favorite.id&&a.results===manyRows.length),JSON.stringify(requestTrace.retrieval));
   eq("trace: the model's picks and citations are recorded",requestTrace.model?.picks?.length,6);
-  check("trace: picks citing the found-from favorite count as citing selection evidence",requestTrace.picks.length===6&&requestTrace.picks.every(p=>p.retrievedFromRef===`ev:${favorite.id}`&&p.citesSelectionEvidence));
+  check("trace: picks citing the found-from favorite count as overlapping selection evidence",requestTrace.picks.length===6&&requestTrace.picks.every(p=>p.retrievedFromRef===`ev:${favorite.id}`&&p.citationOverlapsSelection));
   const tracedReject=await produceRecommendations({rawState:rawState(),env:ON,fetchImpl:manyFetch(seventhItemPick),trace:true});
   check("trace: a rejected model pick is recorded with the validator's reasons",tracedReject.trace.model?.rejected?.some(r=>r.itemId===`tmdb-movie-${manyRows[6].id}`&&r.reasons.length>0));
   eq("trace: rejected request still falls back exactly as before",tracedReject.source,"catalog");
