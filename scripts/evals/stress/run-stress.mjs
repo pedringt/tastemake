@@ -213,7 +213,7 @@ export async function runTask(task, opts, { fetchImpl, snapshotIndex }) {
   const rawById = new Map((validated?.accepted ?? []).map((p) => [p.itemId, p]));
   const picks = payload.source === "model" ? payload.picks.map((p) => ({
     itemId: p.id, title: p.title, domains: p.domains ?? [], genres: p.genres ?? [], about: p.about ?? null,
-    why: p.reason, rawWhy: rawById.get(p.id)?.why ?? null, cites: p.ai?.cites ?? [], kind: p.ai?.kind ?? "pick",
+    why: p.reason, rawWhy: rawById.get(p.id)?.why ?? null, cites: p.ai?.cites ?? [], kind: p.ai?.kind ?? "pick", anchor: p.ai?.anchor ?? null,
     fit: p.fit, prediction: p.prediction,
     citedEvidence: citedEvidence(p.ai?.cites, index, promptRefs)
   })) : [];
