@@ -35,7 +35,7 @@ export function renderTastebreakPanel(itemId) {
         </div>
         <label class="tastebreak-note-label" for="tastebreak-note-${itemId}">In your own words (optional)</label>
         <textarea class="tastebreak-note" id="tastebreak-note-${itemId}" data-tastebreak-item="${itemId}" data-tastebreak-note rows="2" placeholder="What actually pulled you in, or pushed you away?">${esc(draft.note)}</textarea>
-        <p class="tastebreak-help">Tap once for "yes, that's part of it", twice for "no, not really". Confirmed patterns outrank Tastemake's own guess about why it picked this.</p>
+        <p class="tastebreak-help">Tap once for "yes, that's part of it", twice for "no, not really". Your answer is saved with this title, so you can revisit it later.</p>
         <div class="tastebreak-actions">
           ${control(itemId, "save", "Save", "button button-primary")}
           ${control(itemId, "discard", "Cancel", "button button-quiet")}
