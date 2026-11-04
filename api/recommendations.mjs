@@ -81,8 +81,8 @@ function promptEvidencePriority(record) {
 // Oct 27: the six offered are the best fits for everything the person has rated (src/ai/taste-score.js),
 // not the first six retrieval returned. With a surprise slot, it goes to a candidate found from a Liked item.
 // Exported so the stress eval offers exactly what production does.
-export function offeredCandidates(ctx, count = 6) {
-  return chooseCandidates(ctx.candidates, ctx.evidence, { count, mode: ctx.recommendationFilter, curveball: ctx.curveball });
+export function offeredCandidates(ctx, count = 6, trace = null) {
+  return chooseCandidates(ctx.candidates, ctx.evidence, { count, mode: ctx.recommendationFilter, curveball: ctx.curveball, trace });
 }
 
 export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
@@ -333,20 +333,33 @@ export async function warmRecommendationCandidates({ rawState, env = process.env
 
 // `retrieve` defaults to production's catalog retrieval. Only the #28 stress eval
 // (scripts/evals/stress/) passes its own, to hold the candidate pool fixed while measuring reasoning.
-export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates } = {}) {
+// #1a: `trace: true` (evals and dev scripts only; the API handler never passes it) adds result.trace:
+// every candidate's path through retrieval, the shortlist, the model and validation, and for each
+// final pick the ratings that selected it and whether its reason cites one of them. The payload is
+// otherwise identical.
+export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates, trace = false } = {}) {
+  if (!trace) return recommend({ rawState, env, fetchImpl, retrieve, trace: null });
+  const steps = {};
+  const result = await recommend({ rawState, env, fetchImpl, retrieve, trace: steps });
+  return { ...result, trace: requestTrace(steps, result) };
+}
+
+async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
   const state = hydrateState(rawState);
 
   let started = Date.now();
   // #48: "never recommend" boundaries come off before anything is picked, for live AI and fallback alike.
-  const pool = await retrieve(state, { env, fetchImpl });
+  const pool = await retrieve(state, { env, fetchImpl, ...(trace ? { trace } : {}) });
   const retrieved = state.exclusions.length ? pool.filter((item) => !excludedBy(item, state.exclusions)) : pool;
+  if (trace) trace.excluded = pool.filter((item) => !retrieved.includes(item)).map((item) => item.id);
   logStage("candidateRetrieval", Date.now() - started, { candidates: retrieved.length, excluded: pool.length - retrieved.length });
 
   started = Date.now();
   const ctx = buildContext(state, retrieved);
   logStage("buildContext", Date.now() - started);
+  if (trace) trace.evidence = ctx.evidence ?? [];
 
-  const candidates = offeredCandidates(ctx);
+  const candidates = offeredCandidates(ctx, 6, trace);
   if (!candidates.length) {
     // Real bug (2026-09-29): retrieveCatalogCandidates narrows anchor selection to only evidence
     // already tagged with the active domain filter (related.mjs's `evidenceItems` filter) before it
@@ -374,6 +387,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   // context with candidates capped to the actual offered set, used everywhere the model's answer is
   // built or checked.
   const promptCtx = { ...ctx, candidates };
+  if (trace) trace.promptEvidence = selectPromptEvidence(promptCtx).map((record) => record.ref);
   const offeredDomains = {};
   for (const candidate of candidates) {
     for (const domain of candidate.domains ?? []) offeredDomains[domain] = (offeredDomains[domain] ?? 0) + 1;
@@ -419,6 +433,12 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     started = Date.now();
     const normalizedModel = normalizeModelPicks(model.json);
     const validated = validatePicks(normalizedModel, promptCtx);
+    if (trace) {
+      trace.model = {
+        picks: (normalizedModel?.picks ?? []).map((pick) => ({ itemId: pick.itemId ?? null, cites: pick.cites ?? [], kind: pick.kind ?? null })),
+        rejected: (validated.rejected ?? []).map((entry) => ({ itemId: entry.proposal?.itemId ?? null, reasons: entry.reasons }))
+      };
+    }
     // #120/QA-sweep follow-up (Paige's explicit call, 2026-09-28): this used to require every
     // candidate offered (up to 6) to individually pass validation, or the whole batch fell back to
     // catalog picks -- one flawed pick discarded five good ones, and #148's logging confirmed this
@@ -485,6 +505,47 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       catalogCandidates: retrieved.length
     }, ctx.candidates);
   }
+}
+
+// #1a: assemble the request trace. A pick's selection evidence is the rating it was found from plus
+// the ratings that made up its taste score; `citesSelectionEvidence` says whether its reason cites one
+// of them. Catalog-fallback reasons are written from the found-from item, so that is what they cite.
+function requestTrace(steps, result) {
+  const evidence = steps.evidence ?? [];
+  const refFor = (itemId) => evidence.find((record) => record.itemId === itemId && record.class === "experienced")?.ref ?? null;
+  const byId = new Map((steps.candidates ?? []).map((entry) => [entry.itemId, entry]));
+  const picks = (result.picks ?? []).map((pick) => {
+    const entry = byId.get(pick.id) ?? null;
+    const retrievedFromRef = refFor(pick.relatedToId);
+    const scoredFrom = entry ? entry.positives.map((match) => match.ref) : [];
+    const cites = pick.ai?.cites ?? (retrievedFromRef ? [retrievedFromRef] : []);
+    const selection = new Set([retrievedFromRef, ...scoredFrom].filter(Boolean));
+    return {
+      itemId: pick.id,
+      title: pick.title ?? null,
+      source: result.source,
+      outcome: entry?.outcome ?? null,
+      retrievedFrom: pick.relatedToId ?? null,
+      retrievedFromRef,
+      scoredFrom,
+      cites,
+      citesSelectionEvidence: cites.some((ref) => selection.has(ref))
+    };
+  });
+  return {
+    retrieval: steps.retrieval ?? null,
+    excluded: steps.excluded ?? [],
+    candidates: steps.candidates ?? [],
+    promptEvidence: steps.promptEvidence ?? [],
+    model: steps.model ?? null,
+    picks,
+    summary: {
+      candidates: (steps.candidates ?? []).length,
+      offered: (steps.candidates ?? []).filter((entry) => entry.outcome === "chosen" || entry.outcome === "edge").length,
+      picks: picks.length,
+      citesSelectionEvidence: picks.filter((pick) => pick.citesSelectionEvidence).length
+    }
+  };
 }
 
 export default async function handler(req, res) {
