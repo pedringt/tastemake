@@ -82,15 +82,25 @@ const reasonFactor = (record) => ((record.refinements ?? []).length ? REASON_BOO
 
 // How well a candidate fits everything the person has rated. Higher is better; below zero means it
 // mostly resembles things they disliked.
-export function tasteScore(candidate, records, { cache, rarity = null } = {}) {
+export function tasteScore(candidate, records, options = {}) {
+  return tasteScoreParts(candidate, records, options).score;
+}
+
+// The same score with the ratings that produced it (#1a candidate trace): the closest liked/loved and
+// disliked matches, each with its similarity and contribution, and the found-from bonus. `score` is
+// computed in exactly the order tasteScore always used, so the two never differ.
+export function tasteScoreParts(candidate, records, { cache, rarity = null } = {}) {
   const features = tasteFeatures(candidate);
   const contribution = ({ record, similarity }) => similarity * record.weight * reasonFactor(record);
   const positives = closestRatings(candidate, records, { polarity: 1, limit: TOP_POSITIVE, features, cache, rarity });
   const negatives = closestRatings(candidate, records, { polarity: -1, limit: TOP_NEGATIVE, features, cache, rarity });
   const anchor = candidate?.relatedToId ? experienced(records).find((record) => record.itemId === candidate.relatedToId) : null;
-  return positives.reduce((sum, match) => sum + contribution(match), 0)
+  const anchorBonus = anchor && anchor.polarity > 0 ? ANCHOR_BONUS * anchor.weight : 0;
+  const score = positives.reduce((sum, match) => sum + contribution(match), 0)
     + negatives.reduce((sum, match) => sum + contribution(match), 0)
-    + (anchor && anchor.polarity > 0 ? ANCHOR_BONUS * anchor.weight : 0);
+    + anchorBonus;
+  const part = (match) => ({ ref: match.record.ref, itemId: match.record.itemId, title: match.record.title ?? null, similarity: match.similarity, weight: match.record.weight, contribution: contribution(match) });
+  return { score, positives: positives.map(part), negatives: negatives.map(part), anchorBonus };
 }
 
 const MIXED_DOMAINS = ["movies", "tv", "read", "play"];
@@ -111,17 +121,28 @@ export function isEdgeCandidate(candidate, records) {
 // - One title per franchise.
 // - With a surprise slot, the last place goes to the best candidate found from a Liked item, if any,
 //   and it is marked `edge: true`.
-export function chooseCandidates(candidates, records, { count = 6, mode = "all", curveball = false } = {}) {
+// - With `trace` (an object, eval/dev only), trace.candidates gets one entry per candidate: its score
+//   parts, ranks and outcome (chosen, edge, same-franchise, count-reached, scored-below-zero). The
+//   return value is the same either way.
+export function chooseCandidates(candidates, records, { count = 6, mode = "all", curveball = false, trace = null } = {}) {
   const cache = new Map();
   const rarity = featureRarity(records, cache);
-  const scored = candidates.map((item, index) => ({ item, index, score: tasteScore(item, records, { cache, rarity }) }));
+  const scored = candidates.map((item, index) => {
+    const parts = tasteScoreParts(item, records, { cache, rarity });
+    return { item, index, score: parts.score, ...(trace ? { parts } : {}) };
+  });
   const byTaste = [...scored].sort((a, b) => b.score - a.score || a.index - b.index);
   byTaste.forEach((entry, rank) => { entry.fused = 1 / (FUSION_K + rank) + 1 / (FUSION_K + entry.index); });
   const ordered = [...scored].sort((a, b) => (b.score >= 0) - (a.score >= 0) || b.fused - a.fused || a.index - b.index);
 
   const chosen = [];
+  const blocked = new Set();
   const sameFranchise = (entry) => chosen.some((other) => isFranchiseContinuation(entry.item, other.item) || isFranchiseContinuation(other.item, entry.item));
-  const take = (entry) => { if (entry && !chosen.includes(entry) && !sameFranchise(entry)) chosen.push(entry); };
+  const take = (entry) => {
+    if (!entry || chosen.includes(entry)) return;
+    if (sameFranchise(entry)) blocked.add(entry);
+    else chosen.push(entry);
+  };
 
   const edge = curveball ? ordered.find(({ item, score }) => score >= 0 && isEdgeCandidate(item, records)) : null;
   const mainCount = edge ? count - 1 : count;
@@ -150,8 +171,43 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
   } else {
     for (const entry of pool) { if (chosen.length >= mainCount) break; take(entry); }
   }
-  if (edge && !sameFranchise(edge)) chosen.push({ ...edge, isEdge: true });
+  const edgeTaken = Boolean(edge && !sameFranchise(edge));
+  if (edge && !edgeTaken) blocked.add(edge);
+  if (edgeTaken) chosen.push({ ...edge, isEdge: true });
+  if (trace) trace.candidates = traceCandidates({ scored, ordered, chosen, blocked, edge: edgeTaken ? edge : null });
   return chosen.map(({ item, score, isEdge }) => ({ ...item, tasteScore: round(score), ...(isEdge ? { edge: true } : {}) }));
+}
+
+// One trace entry per candidate, in retrieval order. Outcomes:
+//   chosen / edge         offered (edge = the surprise slot)
+//   same-franchise        reached, but another title from its franchise was already offered
+//   scored-below-zero     not reached; mostly resembles dislikes, so it was ordered last
+//   count-reached         not reached before the set was full
+function traceCandidates({ scored, ordered, chosen, blocked, edge }) {
+  const chosenIndex = new Set(chosen.filter((entry) => !entry.isEdge).map((entry) => entry.index));
+  const tasteRank = new Map([...scored].sort((a, b) => b.score - a.score || a.index - b.index).map((entry, rank) => [entry.index, rank]));
+  const orderRank = new Map(ordered.map((entry, rank) => [entry.index, rank]));
+  const outcome = (entry) => (edge && entry.index === edge.index ? "edge"
+    : chosenIndex.has(entry.index) ? "chosen"
+      : blocked.has(entry) ? "same-franchise"
+        : entry.score < 0 ? "scored-below-zero" : "count-reached");
+  return scored.map((entry) => ({
+    itemId: entry.item.id,
+    title: entry.item.title ?? null,
+    medium: primaryDomain(entry.item),
+    provider: String(entry.item.id ?? "").split("-")[0] || null,
+    retrievalIndex: entry.index,
+    relatedToId: entry.item.relatedToId ?? null,
+    relatedTo: entry.item.relatedTo ?? null,
+    score: entry.score,
+    tasteRank: tasteRank.get(entry.index),
+    fused: entry.fused,
+    order: orderRank.get(entry.index),
+    positives: entry.parts.positives,
+    negatives: entry.parts.negatives,
+    anchorBonus: entry.parts.anchorBonus,
+    outcome: outcome(entry)
+  }));
 }
 
 const round = (value) => Math.round(value * 1000) / 1000;
