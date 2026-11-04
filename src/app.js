@@ -274,7 +274,10 @@ function maybeRefreshProfile({ force = false } = {}) {
   void refreshProfileHypotheses(state, {
     force,
     onUpdate() { render(); updateStepper(); },
-    announce
+    announce,
+    // Nov 4: the answer was dropped because the user changed something while it was loading. Ask again the
+    // normal way (never forced), so this screen, the evidence-key check and the loading guard all still apply.
+    onStale() { maybeRefreshProfile(); }
   });
 }
 

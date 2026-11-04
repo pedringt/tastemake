@@ -76,11 +76,49 @@ export function markNeedsReview(patterns = [], needsReview = []) {
   return patterns.map((p) => (ids.has(p?.id) ? { ...p, evidenceStatus: NEEDS_REVIEW } : p));
 }
 
-export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, force = false } = {}) {
+// Nov 4 (after #325): why a profile answer no longer describes the user's current profile, or null.
+// Same idea as staleReason for picks (src/ai/requests.js, #42). hypothesisEvidenceKey already covers
+// every input the user can change while a refresh is in flight: their reactions and refinements, and
+// their pattern answers (says, weight, context, excluded areas). If the UI ever lets people edit a
+// pattern directly, add it to that key too or staleness will miss it.
+export function profileRefreshStaleReason(state, request) {
+  if (!request) return "no request";
+  if (state.hypothesisRequest !== request) return "a newer request replaced it";
+  if ((state.profileGeneration ?? 0) !== request.generation) return "the profile was replaced";
+  if (Boolean(state.viewingExample) !== request.viewingExample) return "the profile was replaced";
+  if (hypothesisEvidenceKey(state) !== request.key) return "your answers or reactions changed while it was checking";
+  return null;
+}
+
+// A stale answer changes nothing: no patterns, history, flags, key, message or announcement. When the same
+// profile changed underneath it, the status and message go back to what they were before the request, and
+// onStale lets the caller ask again through its normal refresh path (which keeps the Profile-screen,
+// deduplication and loading guards). A paused budget never asks again. When the profile was replaced
+// (Start over, a restored backup, the Example Profile), nothing is touched and nothing is asked.
+function settleStale(state, request, { payload = null, onStale, onUpdate }) {
+  if (state.hypothesisRequest === request) state.hypothesisRequest = null;
+  const sameProfile = (state.profileGeneration ?? 0) === request.generation && Boolean(state.viewingExample) === request.viewingExample;
+  if (!sameProfile) return;
+  state.hypothesisAiStatus = request.previousStatus;
+  state.hypothesisAiMessage = request.previousMessage;
+  onUpdate();
+  if (!payload?.meta?.budgetPaused && !state.aiPaused) onStale();
+}
+
+export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, onStale = () => {}, force = false } = {}) {
   if (state.viewingExample) return;   // the example's patterns are fixed; no model calls on its behalf
   const key = hypothesisEvidenceKey(state);
   if (state.hypothesisAiStatus === "loading" || (!force && state.hypothesisAiKey === key)) return;
 
+  const request = {
+    key,
+    generation: state.profileGeneration ?? 0,
+    viewingExample: Boolean(state.viewingExample),
+    previousStatus: state.hypothesisAiStatus,
+    previousMessage: state.hypothesisAiMessage ?? null,
+    controller: typeof AbortController === "function" ? new AbortController() : null
+  };
+  state.hypothesisRequest = request;
   state.hypothesisAiStatus = "loading";
   state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
     ? "Refreshing your Taste Profile…"
@@ -92,11 +130,15 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     const response = await fetch("/api/hypotheses", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ state: bodyState })
+      body: JSON.stringify({ state: bodyState }),
+      ...(request.controller ? { signal: request.controller.signal } : {})
     });
     const payload = await response.json().catch(() => null);
+    if (profileRefreshStaleReason(state, request)) return settleStale(state, request, { payload, onStale, onUpdate });
     if (!response.ok || !payload) throw new Error(payload?.error || "profile request failed");
 
+    request.settled = true;
+    state.hypothesisRequest = null;
     noteAiAnswer(state, { budgetPaused: Boolean(payload.meta?.budgetPaused), usedModel: payload.source === "model" });
     const needsReview = Array.isArray(payload.meta?.needsReview) ? payload.meta.needsReview : [];
     if (payload.source === "model" && Array.isArray(payload.hypotheses) && payload.hypotheses.length) {
@@ -142,6 +184,10 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     }
     state.hypothesisAiStatus = "ready";
   } catch {
+    // An aborted or failed request for a profile that has since changed or been replaced is stale too.
+    // (Not one this request already accepted: an error after that point is an ordinary failure.)
+    if (!request.settled && profileRefreshStaleReason(state, request)) return settleStale(state, request, { onStale, onUpdate });
+    if (state.hypothesisRequest === request) state.hypothesisRequest = null;
     state.hypothesisAiStatus = "ready";
     state.hypothesisAiKey = null;
     state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
