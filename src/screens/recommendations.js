@@ -260,7 +260,7 @@ function whyContent(item) {
   if (isCurveball) uncertainty = foundFrom?.label === "Liked"
     ? `It comes from something you liked but didn't love, so it tests the edges of your taste. A miss is useful information.`
     : "This deliberately stretches beyond your strongest patterns, so a miss is useful information rather than a failure.";
-  else if (!pattern) uncertainty = "Tastemake does not have a stable named pattern behind this yet, so this is still an early test.";
+  else if (!pattern) uncertainty = "It’s based on your favorites and ratings so far, which may not capture everything you enjoy.";
   else if (pattern.status === "conditional") uncertainty = "This pattern has only held in some contexts, so this pick may expose where the boundary is.";
   else if (level === "Emerging") uncertainty = "This pattern is still early. One reaction could make Tastemake narrow it, strengthen it, or drop it.";
   else if (level === "Strong") uncertainty = "The pattern is strong, but Tastemake may still be wrong about which details of it matter most to you.";

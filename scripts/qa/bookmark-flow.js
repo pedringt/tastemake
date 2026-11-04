@@ -280,6 +280,10 @@ export async function run() {
     const covers=[whyCard.querySelector("h3"),whyCard.querySelector(".editorial-rationale")].map(el=>el.getBoundingClientRect()).some(r=>r.bottom>pop.top&&r.top<pop.bottom);
     check("the why popover opens without covering the pick's title or reason",whyCard.querySelector(".editorial-why").classList.contains("is-pinned")&&!covers,`${Math.round(pop.top)}`);
     check("its card is lifted above the next row while it is open",getComputedStyle(whyCard).zIndex==="40",getComputedStyle(whyCard).zIndex);
+    // Nov 4 (T1): with no tested pattern, the caveat says what the pick is based on, not that no stable pattern exists.
+    const caveat=whyCard.querySelector(".why-caveat")?.textContent||"";
+    check("why caveat: no claim that there's no stable pattern",!/stable named pattern/.test(caveat),caveat);
+    check("why caveat: based on favorites and ratings",whyCard.classList.contains("is-surprise")||/based on your favorites and ratings so far/.test(caveat)||/stretches|edges of your taste/.test(caveat),caveat);
     await act('.editorial-rec .why-trigger',120);
     // Oct 23 smoke test: the second click unpinned it, but focus (and the pointer) kept it on screen over the reaction buttons.
     const shown=()=>getComputedStyle(whyCard.querySelector(".why-popover")).visibility==="visible";

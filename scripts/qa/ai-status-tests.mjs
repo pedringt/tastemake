@@ -111,6 +111,16 @@ for (const approved of [
   "This is one of the patterns Tastemake sees in what you’ve rated so far. If it’s wrong, you can correct it."
 ]) check(`profile copy says: "${approved.slice(0, 60)}…"`, profile.includes(approved));
 
+// Nov 4 final T1 round: three more promises, outside profile.js's correction cards.
+const recsScreen = readFileSync(new URL("../../src/screens/recommendations.js", import.meta.url), "utf8");
+const tastebreakPanel = readFileSync(new URL("../../src/components/tastebreak.js", import.meta.url), "utf8");
+check('"More about why" no longer says there is no stable pattern behind every pick', !recsScreen.includes("does not have a stable named pattern behind this yet"));
+check('"More about why" fallback caveat names what picks are based on', recsScreen.includes("It’s based on your favorites and ratings so far, which may not capture everything you enjoy."));
+check("Tastebreak no longer claims answers outrank Tastemake's guess", !tastebreakPanel.includes("outrank Tastemake's own guess"));
+check("Tastebreak says what happens to the answer", tastebreakPanel.includes("Your answer is saved with this title, so you can revisit it later."));
+check("Learning panel no longer claims a correction outranks inference (Tastebreaks reach it too)", !profile.includes("Your correction now outranks Tastemake’s earlier inference."));
+check("Learning panel user-confirmed consequence is true for corrections and Tastebreaks", profile.includes("Tastemake keeps your answer alongside its own read of this pattern."));
+
 const history = readFileSync(new URL("../../src/model/history.js", import.meta.url), "utf8");
 check('history copy no longer promises: "more weight in future recommendations"', !history.includes("carry more weight in future recommendations"));
 eq("up to Strong: confidence, not recommendation weight", levelChangeConsequence("supported", "strong"), "Tastemake is now more confident in this pattern.");
