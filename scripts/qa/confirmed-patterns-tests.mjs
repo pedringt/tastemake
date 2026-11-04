@@ -22,6 +22,7 @@ const { MAX_PROFILE_HYPOTHESES, normalizeHypothesisResponse, preserveExistingHyp
 const { markNeedsReview, mergeHypotheses, normalizeHypothesis, refreshProfileHypotheses } = await import("../../src/ai/hypothesis-profile.js");
 const { ALL_AREAS_EXCLUDED_LABEL, NEEDS_REVIEW, NEEDS_REVIEW_LABEL, NEEDS_REVIEW_TEXT, toggleDomainExclusion } = await import("../../src/model/statements.js");
 const { produceHypotheses } = await import("../../api/hypotheses.mjs");
+const { domainScopeFromDomains } = await import("../../src/model/interpretations.js");
 const { persistState, loadPersistedState } = await import("../../src/persistence.js");
 const { buildBackup, buildHtmlExport, parseBackupText } = await import("../../src/model/export.js");
 const { recommendations, followUpPool } = await import("./fixtures/catalog.js");
@@ -177,7 +178,13 @@ function invalidEvidenceState() {
   const { merged } = refresh(s, { hypotheses: [revision] });
   const kept = merged.find((h) => h.id === "ai-puzzles");
   eq("reworded revision of a flagged confirmed pattern: the confirmed claim stays", kept?.claim, PUZZLES.claim);
-  check("…and the flag clears once its evidence passes again", Boolean(kept) && !kept.evidenceStatus);
+  // PR #328 review: Inscryption, which it also cites, is still removed, so the flag stays (a removed
+  // supporting reaction always means "Needs another look", even when what remains passes).
+  eq("…but while one of its supporting reactions is still removed, the flag stays", kept?.evidenceStatus, NEEDS_REVIEW);
+  s.modelHypotheses = merged;
+  react(s, byId("inscryption"), "loved");
+  const again = refresh(s, { hypotheses: [revision] }).merged.find((h) => h.id === "ai-puzzles");
+  check("…and the flag clears once all its evidence passes again", Boolean(again) && !again.evidenceStatus);
 }
 
 // ---- 4b. the endpoint reports needsReview, including when nothing else was accepted ----------------------
@@ -235,7 +242,9 @@ async function clientRefresh(s, payload) {
   const { validated, merged } = refresh(s, { hypotheses: [NEW_PATTERN] });
   const kept = validated.accepted.find((h) => h.id === "ai-worlds");
   check("scoped exclusion: the carried partly pattern survives", Boolean(kept) && merged.some((h) => h.id === "ai-worlds"));
-  eq("scoped exclusion: without the excluded area", kept?.domains.join(","), "play");
+  // Nov 4 (after #325): the pattern keeps its own areas; the exclusion is applied where it is shown.
+  eq("scoped exclusion: the stored areas are kept, not narrowed", kept?.domains.join(","), "movies,play");
+  eq("scoped exclusion: shown without the excluded area", domainScopeFromDomains(kept?.domains, ["movies"]).supported.join(","), "play");
   eq("scoped exclusion: nothing needs review", validated.needsReview.length, 0);
 
   const claimsExcluded = pattern({ id: "ai-worlds", label: WORLDS.title, claim: WORLDS.claim, evidence: WORLDS.supports, domains: ["movies", "play"], crossDomain: "tentative", level: "supported" });
@@ -243,7 +252,7 @@ async function clientRefresh(s, payload) {
   const direct = validateHypotheses(normalizeHypothesisResponse({ hypotheses: [claimsExcluded] }, ctx), ctx);
   check("scoped exclusion: a model answer claiming the excluded area is still rejected", direct.rejected.some((r) => r.reasons.some((why) => /not them in: movies/.test(why))));
   const viaRefresh = refresh(s, { hypotheses: [claimsExcluded] });
-  eq("scoped exclusion: after that rejection the stored version is kept without the area", viaRefresh.validated.accepted.find((h) => h.id === "ai-worlds")?.domains.join(","), "play");
+  eq("scoped exclusion: after that rejection the stored version is kept with its own areas", viaRefresh.validated.accepted.find((h) => h.id === "ai-worlds")?.domains.join(","), "movies,play");
 }
 
 // ---- 6. "not me" still removes the pattern -----------------------------------------------------------------
@@ -375,7 +384,9 @@ const newProposals = (n) => ({ hypotheses: Array.from({ length: n }, (_, i) => p
   const restored = allExcluded();
   restored.patternStatements[0].excludedDomains = ["movies"];
   const back = refresh(restored, { hypotheses: [NEW_PATTERN] });
-  eq("an area included again: accepted in that area", back.validated.accepted.find((h) => h.id === "ai-worlds")?.domains.join(","), "play");
+  const backAreas = back.validated.accepted.find((h) => h.id === "ai-worlds")?.domains ?? [];
+  eq("an area included again: accepted with its own areas", backAreas.join(","), "movies,play");
+  eq("an area included again: shown in the included area only", domainScopeFromDomains(backAreas, ["movies"]).supported.join(","), "play");
   check("an area included again: not flagged", !back.merged.find((h) => h.id === "ai-worlds")?.evidenceStatus);
 }
 

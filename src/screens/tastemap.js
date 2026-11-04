@@ -31,20 +31,31 @@ function mapLinks(patterns) {
   return links.sort((a, b) => b.score - a.score).slice(0, 18);
 }
 
-function domainLine(pattern) {
+function domainLine(pattern, shown) {
+  if (shown.kind === "excluded") return "";   // the status already says "Excluded from all areas"
   const labels = (pattern.domains ?? []).map((id) => domainById(id)?.label ?? id);
   return labels.length ? labels.join(" · ") : "Still finding where this shows up";
 }
 
+// Nov 4 (after #325): a pattern keeps its own areas; the ones the user excluded are left out wherever the map
+// uses them (area labels, colour, area links, the by-area list), as the Taste Profile does
+// (domainScopeFromDomains, src/model/interpretations.js). Excluded from every area means no areas at all here;
+// its status still comes from the whole pattern ("Excluded from all areas", patternDisplayStatus).
+function withoutExcludedAreas(pattern, statements) {
+  const excluded = statementFor({ patternStatements: statements }, pattern.id)?.excludedDomains ?? [];
+  return excluded.length ? { ...pattern, domains: (pattern.domains ?? []).filter((d) => !excluded.includes(d)) } : pattern;
+}
+
 export function renderTasteMap(patterns = [], statements = []) {
   if (!patterns.length) return "";
-  const visiblePatterns = patterns.slice(0, 8);
+  const wholePatterns = patterns.slice(0, 8);
+  const visiblePatterns = wholePatterns.map((pattern) => withoutExcludedAreas(pattern, statements));
 
   const layout = nodeLayout(visiblePatterns.length);
   const links = mapLinks(visiblePatterns);
   const nodes = visiblePatterns.map((pattern, index) => {
     // #325: the same status the Taste Profile shows ("Excluded from all areas", "Needs another look", or the level).
-    const shown = patternDisplayStatus(pattern, statementFor({ patternStatements: statements }, pattern.id));
+    const shown = patternDisplayStatus(wholePatterns[index], statementFor({ patternStatements: statements }, pattern.id));
     const status = shown.kind === "level" ? String(pattern.strength ?? "Emerging") : shown.label;
     const note = pattern.status === "conditional" ? "Conditional" : "";
     const primaryDomain = pattern.domains?.[0] ?? "other";
@@ -56,7 +67,7 @@ export function renderTasteMap(patterns = [], statements = []) {
         <span class="map-node-orbit" aria-hidden="true"></span>
         <b>${esc(pattern.title)}</b>
         <span class="map-node-conf">${esc(status)}</span>
-        <span class="map-node-notes">${esc(domainLine(pattern))}${note ? ` · ${esc(note)}` : ""}</span>
+        <span class="map-node-notes">${esc(domainLine(pattern, shown))}${note ? `${domainLine(pattern, shown) ? " · " : ""}${esc(note)}` : ""}</span>
       </div>`;
   }).join("");
 

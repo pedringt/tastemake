@@ -2,6 +2,7 @@ import { DEFAULT_LOOK, isLook } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { clearPersistedState, loadPersistedState } from "./persistence.js";
 import { parseBackupText } from "./model/export.js";
+import { restoreNarrowedAreas } from "./model/area-scope.js";
 
 // Everything the user has told Tastemake or configured, in one place so "Start over" can clear it.
 // (The look, and where the user is, are not part of this: starting over keeps your look.)
@@ -154,21 +155,37 @@ export const state = {
   starterReplaceId: null,
   resetArmed: false
 };
+// Nov 4 (after #325): put back pattern areas an earlier refresh removed by mistake, where history is unambiguous.
+restoreNarrowedAreas(state);
 
 document.documentElement.dataset.look = state.look;
 
+// Nov 4 (after #325): "Start over", restoring a backup and opening the Example Profile all replace the
+// profile in place. A Taste Profile refresh still in flight belongs to the profile that was there before,
+// so it is cancelled, and the new generation makes its answer stale if it lands anyway
+// (profileRefreshStaleReason in src/ai/hypothesis-profile.js). Kept outside fresh() so Object.assign can't
+// reset it to a value an old request already holds.
+function startNewProfileGeneration() {
+  state.hypothesisRequest?.controller?.abort?.();
+  return (state.profileGeneration ?? 0) + 1;
+}
+
 export function resetState() {
   const look = state.look;
+  const profileGeneration = startNewProfileGeneration();
   // Oct 27: "Start over" inside Paige's Example Profile clears the example in memory, never the visitor's saved profile.
   if (!state.viewingExample) clearPersistedState();
-  Object.assign(state, fresh(), { look });
+  Object.assign(state, fresh(), { look, profileGeneration, hypothesisRequest: null });
 }
 
 
 export function restoreStateFromBackupText(text) {
   const restored = parseBackupText(text);
   const look = isLook(restored.look) ? restored.look : state.look;
+  const profileGeneration = startNewProfileGeneration();
   Object.assign(state, fresh(), restored, {
+    profileGeneration,
+    hypothesisRequest: null,
     look,
     patternStatements: normalizePersistedPatternStatements(restored.patternStatements ?? []),
     exclusions: Array.isArray(restored.exclusions) ? restored.exclusions : [],
@@ -194,6 +211,7 @@ export function restoreStateFromBackupText(text) {
     starterReplaceId: null,
     resetArmed: false
   });
+  restoreNarrowedAreas(state);
   document.documentElement.dataset.look = state.look;
   return state;
 }

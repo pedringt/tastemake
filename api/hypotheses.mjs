@@ -15,8 +15,11 @@ export const PROFILE_MAX_OUTPUT_TOKENS = 3200;
 // hydrateState (now in src/server/request-state.mjs) -- it had already drifted (missing blindSpots,
 // blindSpotDrafts, recommendationFilter). Sharing the base function means the two endpoints can
 // never drift again; modelHypotheses is the one field genuinely unique to this endpoint.
+// Nov 4 (after #325): presentRefs is also unique to it -- evidence the stored patterns cite that the client
+// still has but didn't send (src/ai/live-client.js serializeAiState). Strings only; anything else is ignored.
 function hydrateState(raw = {}) {
-  return { ...hydrateBaseState(raw), modelHypotheses: raw.modelHypotheses ?? [] };
+  const presentRefs = Array.isArray(raw.presentRefs) ? raw.presentRefs.filter((ref) => typeof ref === "string") : [];
+  return { ...hydrateBaseState(raw), modelHypotheses: raw.modelHypotheses ?? [], presentRefs };
 }
 
 export function hypothesisConfig(env = process.env) {
@@ -92,7 +95,7 @@ function rejectionCategoryCounts(rejected = []) {
 
 export async function produceHypotheses({ rawState, env = process.env, fetchImpl = fetch } = {}) {
   const state = hydrateState(rawState);
-  const ctx = buildContext(state);
+  const ctx = { ...buildContext(state), presentRefs: state.presentRefs };
   const config = hypothesisConfig(env);
   if (!config.enabled) {
     // #86: this gate was failing silently in production with no way to tell which of the six
@@ -142,14 +145,14 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
         rejectedReasons: (validated.rejected ?? []).flatMap((r) => r.reasons ?? [])
       }));
       recordAiCallInBackground({ ...baseMetric, outcome: "validation_fallback" }, { env });
-      return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage, needsReview: validated.needsReview } };
+      return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage, needsReview: validated.needsReview, notChecked: validated.notChecked } };
     }
     recordAiCallInBackground({ ...baseMetric, outcome: "success" }, { env });
     return {
       source: "model",
       reason: null,
       hypotheses: validated.accepted,
-      meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, rejectionCategories, notes: validated.notes, needsReview: validated.needsReview }
+      meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, rejectionCategories, notes: validated.notes, needsReview: validated.needsReview, notChecked: validated.notChecked }
     };
   } catch (error) {
     recordAiCallInBackground({

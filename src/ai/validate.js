@@ -176,10 +176,19 @@ function everyAreaExcluded(stored, ctx) {
   return domains.length > 0 && domains.every((d) => excluded.includes(d));
 }
 
+// Nov 4 (after #325): a stored pattern keeps its own areas (still capped to what its evidence supports).
+// The user's excluded areas are applied wherever the pattern is used, never written into it: removing
+// them here made "include this area again" come back as untested instead of supported.
+// src/model/area-scope.js restores areas already removed this way.
 function carryStored(stored, ctx) {
   const [proposal] = normalizeHypothesisResponse({ hypotheses: [storedToProposal(stored)] }, ctx).hypotheses;
-  const excluded = excludedAreas(stored, ctx);
-  return { ...proposal, domains: proposal.domains.filter((d) => !excluded.includes(d)) };
+  return proposal;
+}
+
+// A confirmed pattern's areas come from what was stored, plus any the model's identical version adds;
+// never narrowed by the user's exclusions (which the model was told about, so its copy may leave them out).
+function keepStoredAreas(h, stored, ctx) {
+  return { ...h, domains: [...new Set([...carryStored(stored, ctx).domains, ...(h.domains ?? [])])], carriedForward: true };
 }
 
 export function preserveExistingHypotheses(response, ctx, existing = []) {
@@ -198,7 +207,7 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
     if (answered.has(stored.id) || everyAreaExcluded(stored, ctx)) continue;
     answered.add(stored.id);
     const same = h.id === stored.id && text(h.label) === storedLabel(stored) && text(h.claim) === text(stored.claim);
-    proposals.push(same ? h : carryStored(stored, ctx));
+    proposals.push(same ? keepStoredAreas(h, stored, ctx) : carryStored(stored, ctx));
   }
 
   const proposed = proposals.filter((h) => h && typeof h === "object");
@@ -229,18 +238,71 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
 // confirmed. When the stored version fails too (say a reaction it rested on was removed), it is not
 // presented as supported: its id goes in needsReview and the client keeps it, flagged, with the user's
 // answer untouched. A confirmed pattern with every area excluded is neither: the client keeps it as stored.
+//
+// Nov 4 (after #325): evidence a confirmed pattern cites is in one of three states.
+//   - validated: sent with this request (in ctx.evidence) and checked as usual;
+//   - not checked: the client still has it but didn't send it (ctx.presentRefs, payload limit);
+//   - invalid: neither, so the reaction was removed or no longer counts.
+// Only validated evidence is checked or counted.
+//   - Not-checked refs are kept on the pattern as they were, but never raise its level: when any are involved
+//     the level is capped at the stored one. Every confirmed pattern with not-checked evidence is listed in
+//     notChecked, accepted or not, and the client keeps an earlier "Needs another look" flag on it: only a
+//     check of all its evidence clears one. One that can't pass on its validated evidence alone, with nothing
+//     invalid, is not accepted either, so the client keeps it exactly as stored.
+//   - A supporting reaction that is invalid (removed) always means needsReview, even when the rest of the
+//     evidence still passes: the pattern may be accepted on what remains, but it is flagged, never silently
+//     treated as the same confirmed interpretation. A removed counter-example doesn't weaken it, so it
+//     doesn't count.
+//   - The removed reaction stays cited on the pattern, so a later refresh still finds it missing and the flag
+//     stays (Paige, PR #328 review). It clears only when the reaction is back and the check passes, or when
+//     the user confirms the pattern still fits without it (reconfirmPattern, src/model/statements.js, which
+//     drops the missing citation and makes no model call).
+// A client that sends no presentRefs has no not-checked evidence.
+function evidenceStates(stored, ctx) {
+  const sent = new Set((ctx.evidence ?? []).map((row) => row.ref));
+  const present = new Set(ctx.presentRefs ?? []);
+  const supports = stored.supports ?? stored.evidence ?? [];
+  const refs = [...supports, ...(stored.counters ?? stored.counter ?? [])];
+  return {
+    notChecked: refs.filter((ref) => !sent.has(ref) && present.has(ref)),
+    invalid: supports.filter((ref) => !sent.has(ref) && !present.has(ref))
+  };
+}
+
+// Puts back on an accepted confirmed pattern what the check couldn't use: not-checked refs, and removed
+// supporting reactions (so the flag holds). Neither counts toward its level, which is capped at the stored one.
+function keepStoredEvidence(h, stored, ctx) {
+  const { notChecked, invalid } = evidenceStates(stored, ctx);
+  const kept = [...notChecked, ...invalid];
+  if (!kept.length) return h;
+  const storedSupports = new Set(stored.supports ?? stored.evidence ?? []);
+  const add = (list, wanted) => [...list, ...kept.filter((ref) => wanted(ref) && !list.includes(ref))];
+  const storedLevel = String(stored.strength ?? stored.level ?? "emerging").toLowerCase();
+  return {
+    ...h,
+    evidence: add(h.evidence ?? [], (ref) => storedSupports.has(ref)),
+    counter: add(h.counter ?? [], (ref) => !storedSupports.has(ref)),
+    level: LEVELS.includes(storedLevel) ? capLevel(h.level, storedLevel) : h.level
+  };
+}
+
 export function settleConfirmedHypotheses(validated, ctx, existing = []) {
-  if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [] };
+  if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [], notChecked: [] };
   const accepted = [...(validated.accepted ?? [])];
   const needsReview = [];
+  const notChecked = [];
   for (const stored of existing) {
     if (!isStoredPattern(stored) || !confirmationFor(ctx.statements, stored) || everyAreaExcluded(stored, ctx)) continue;
-    if (accepted.some((h) => h.id === stored.id || text(h.label) === storedLabel(stored))) continue;
+    const states = evidenceStates(stored, ctx);
+    if (states.notChecked.length) notChecked.push(stored.id);
+    if (states.invalid.length) needsReview.push(stored.id);
+    const at = accepted.findIndex((h) => h.id === stored.id || text(h.label) === storedLabel(stored));
+    if (at >= 0) { accepted[at] = keepStoredEvidence(accepted[at], stored, ctx); continue; }
     const retry = validateHypotheses({ hypotheses: [carryStored(stored, ctx)] }, ctx);
-    if (retry.accepted.length) accepted.push(...retry.accepted);
-    else needsReview.push(stored.id);
+    if (retry.accepted.length) accepted.push(...retry.accepted.map((h) => keepStoredEvidence(h, stored, ctx)));
+    else if (!states.invalid.length && !states.notChecked.length) needsReview.push(stored.id);
   }
-  return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview };
+  return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview, notChecked };
 }
 
 // #256: a pattern that talks about *why* something worked or failed must use the reasons the user actually
@@ -334,7 +396,9 @@ export function validateHypotheses(response, ctx) {
     // #36: a narrower "not in {domain}" correction outranks inference the same way a full "not me" does,
     // just scoped to that one domain rather than the whole pattern.
     const scopedStatement = (ctx.statements ?? []).find((s) => (s.excludedDomains ?? []).length && (s.hypothesisId === h.id || (s.label && s.label.toLowerCase() === h.label.toLowerCase())));
-    const excludedDomainsClaimed = scopedStatement ? h.domains.filter((d) => scopedStatement.excludedDomains.includes(d)) : [];
+    // A pattern carried forward from what was stored keeps its own areas; the exclusion is applied where it
+    // is used (Nov 4, carryStored). A new claim from the model still may not claim an excluded area.
+    const excludedDomainsClaimed = scopedStatement && !h.carriedForward ? h.domains.filter((d) => scopedStatement.excludedDomains.includes(d)) : [];
     if (excludedDomainsClaimed.length) reasons.push(`claims domains the user said this pattern is not them in: ${excludedDomainsClaimed.join(", ")}`);
     // #36 v1: "only applies in some contexts" caps confidence the same way the product caps it from
     // evidence alone (below) — the model cannot claim Strong for a pattern the user says isn't universal.

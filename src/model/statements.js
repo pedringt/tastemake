@@ -1,5 +1,6 @@
 import { hypothesisMatches } from "./taste.js";
 import { recordRevision } from "./history.js";
+import { evidenceRecords } from "./evidence.js";
 
 // What the user has said about a pattern (pattern corrections). Decided Sept 22, 2026:
 //   - This is its own authority, **user-confirmed**. It outranks anything Tastemake or a model inferred.
@@ -147,6 +148,47 @@ export function patternDisplayStatus(pattern, statement) {
   if (domains.length && domains.every((d) => excluded.includes(d))) return { kind: "excluded", label: ALL_AREAS_EXCLUDED_LABEL };
   if (pattern?.evidenceStatus === NEEDS_REVIEW) return { kind: "needs-review", label: NEEDS_REVIEW_LABEL };
   return { kind: "level", label: pattern?.strength ?? null };
+}
+
+// Nov 4 (PR #328 review): a confirmed pattern flagged because a reaction it rested on was removed stays
+// flagged (the removed citation is kept, so every check finds it missing) until the reaction is back and the
+// check passes, or the user says the pattern still fits without it. This is that second way: it drops the
+// missing citations, clears the flag and records the user's answer in the pattern's history. No model call;
+// the next refresh judges the pattern on the evidence it has left. Offered only when something was removed
+// and evidence is left to rest on, and only when removal is the whole problem: every supporting reaction
+// still there must still be one the user tried and liked (what the validator accepts as support). If one
+// became a dislike, "not interested" or a bookmark, acknowledging the removal isn't enough, so it isn't offered.
+export const RECONFIRM_LABEL = "Confirm it still fits";
+export const RECONFIRM_TEXT = "If it still describes you without the rating that was removed, confirm it again. Adding that rating back works too.";
+
+function reconfirmation(state, hypothesisId) {
+  const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
+  if (!pattern || pattern.evidenceStatus !== NEEDS_REVIEW || !confirmationFor(state.patternStatements, pattern)) return null;
+  const present = new Map(evidenceRecords(state).map((row) => [row.ref, row]));
+  const supports = (pattern.supports ?? []).filter((ref) => present.has(ref));
+  const removed = (pattern.supports ?? []).length - supports.length;
+  if (!removed || !supports.length) return null;
+  if (!supports.every((ref) => present.get(ref).class === "experienced" && present.get(ref).polarity > 0)) return null;
+  return { pattern, present, supports, removed };
+}
+
+export const canReconfirm = (state, hypothesisId) => Boolean(reconfirmation(state, hypothesisId));
+
+export function reconfirmPattern(state, hypothesisId) {
+  const found = reconfirmation(state, hypothesisId);
+  if (!found) return null;
+  const { pattern, present, supports, removed } = found;
+  const { evidenceStatus, ...rest } = pattern;
+  const next = {
+    ...rest,
+    supports,
+    counters: (pattern.counters ?? []).filter((ref) => present.has(ref)),
+    evidence: supports.map((ref) => present.get(ref).title).join(", ")
+  };
+  state.modelHypotheses = state.modelHypotheses.map((p) => (p.id === hypothesisId ? next : p));
+  const message = `${pattern.title}: you confirmed it still fits without the ${removed === 1 ? "rating" : `${removed} ratings`} that ${removed === 1 ? "was" : "were"} removed.`;
+  recordRevision(state, { hypothesisId, claim: next.claim, supports: next.supports, counters: next.counters, domains: next.domains, level: next.strength, origin: "user-confirmed", reason: message });
+  return message;
 }
 
 export function activeStatements(state) {
