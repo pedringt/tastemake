@@ -155,7 +155,9 @@ export function patternDisplayStatus(pattern, statement) {
 // check passes, or the user says the pattern still fits without it. This is that second way: it drops the
 // missing citations, clears the flag and records the user's answer in the pattern's history. No model call;
 // the next refresh judges the pattern on the evidence it has left. Offered only when something was removed
-// and evidence is left to rest on.
+// and evidence is left to rest on, and only when removal is the whole problem: every supporting reaction
+// still there must still be one the user tried and liked (what the validator accepts as support). If one
+// became a dislike, "not interested" or a bookmark, acknowledging the removal isn't enough, so it isn't offered.
 export const RECONFIRM_LABEL = "Confirm it still fits";
 export const RECONFIRM_TEXT = "If it still describes you without the rating that was removed, confirm it again. Adding that rating back works too.";
 
@@ -166,6 +168,7 @@ function reconfirmation(state, hypothesisId) {
   const supports = (pattern.supports ?? []).filter((ref) => present.has(ref));
   const removed = (pattern.supports ?? []).length - supports.length;
   if (!removed || !supports.length) return null;
+  if (!supports.every((ref) => present.get(ref).class === "experienced" && present.get(ref).polarity > 0)) return null;
   return { pattern, present, supports, removed };
 }
 

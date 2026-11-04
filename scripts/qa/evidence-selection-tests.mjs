@@ -331,6 +331,23 @@ async function clientRefresh(s, raw, answer) {
     eq("not offered: not a confirmed pattern", canReconfirm(u, "ai-old"), false);
     eq("not offered: reconfirmPattern does nothing", reconfirmPattern(u, "ai-old"), null);
   }
+  // PR #328 final review: one supporting rating removed and another changed so it no longer supports.
+  for (const [name, how] of [["changed to a dislike", "disliked"], ["changed to intent only (saved, not tried)", "bookmark"], ["changed to not interested", "not-interested"]]) {
+    const s = await flagged();
+    react(s, ITEMS[0], how);
+    eq(`removed plus one ${name}: reconfirm not offered`, canReconfirm(s, "ai-old"), false);
+    const historyBefore = s.hypothesisHistory.length;
+    eq(`removed plus one ${name}: reconfirmPattern does nothing`, reconfirmPattern(s, "ai-old"), null);
+    eq(`removed plus one ${name}: the flag stays`, pat(s)?.evidenceStatus, NEEDS_REVIEW);
+    eq(`removed plus one ${name}: no history written`, s.hypothesisHistory.length, historyBefore);
+  }
+  {
+    // Changed back to loved: only the deletion is left to acknowledge, so it's offered again.
+    const s = await flagged();
+    react(s, ITEMS[0], "disliked");
+    react(s, ITEMS[0], "loved");
+    eq("removed, one changed and changed back: offered again", canReconfirm(s, "ai-old"), true);
+  }
 }
 
 // ---- 4. client: "not checked" never clears an earlier flag ----------------------------------------------
