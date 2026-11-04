@@ -1,5 +1,5 @@
 import { CIRCULAR_PATTERNS, CONTRACT_VERSION, CROSS_DOMAIN, GENRE_ONLY, IDENTITY_PATTERNS, LEVELS } from "./contract.js";
-import { domainScope } from "../model/interpretations.js";
+import { allowedCrossDomain, allowedLevel, capLevel, domainScope, evidenceRows, triedRecords } from "../model/evidence-rules.js";
 import { confirmationFor } from "../model/statements.js";
 import { isAdultTagged, triedAdultTagged } from "../catalog/adult-content.mjs";
 
@@ -33,35 +33,10 @@ function checkShape(obj, fields) {
   return problems;
 }
 
-// Starter favorites make a pattern plausible as a starting point, but nothing the user tried has tested
-// it yet (evidence-contract.md, "Emerging"). Only Loved / Liked / disliked reactions test a pattern, so
-// the level and cross-domain caps below both count through this one filter.
-export const triedRecords = (records) => records.filter((r) => r.kind !== "starter-favorite");
-
-// The strongest level the cited evidence allows (evidence-contract.md, #26; mirrors patternConfidence in
-// tastemap.js): "supported" needs at least one tried thing backing it and more backing it than against;
-// "strong" needs 3+ tried things backing it, two clear of what counts against it. Starter favorites may
-// still be cited as support, but a pattern resting only on them stays "emerging".
-export function allowedLevel(supportRecords, counterRecords) {
-  const tried = triedRecords(supportRecords).length;
-  const against = counterRecords.length;
-  if (tried >= 3 && tried - against >= 2) return "strong";
-  if (tried >= 1 && tried > against) return "supported";
-  return "emerging";
-}
-const capLevel = (claimed, allowed) => LEVELS[Math.min(LEVELS.indexOf(claimed), LEVELS.indexOf(allowed))];
-
-const asRows = (records) => records.map((r) => ({ item: { id: r.itemId, domains: r.domains } }));
-
-// #228: the furthest a cross-domain link may go. Docs (evidence-contract.md): "Emerging: a starting
-// pattern. Nothing the user tried has tested it yet", and cross-domain links "must be supported by
-// evidence in both areas, not assumed". Starter favorites make a pattern plausible as a starting
-// point but do not test a link between areas, so only things the user tried (Loved / Liked / disliked
-// reactions) count here. The eval (cold-4, starter-6: at most "untested"; cross-domain: one loved
-// thing in each of two areas, at most "tentative") encodes the same rule.
-export function allowedCrossDomain(supportRecords, counterRecords) {
-  return domainScope({ supports: asRows(triedRecords(supportRecords)), against: asRows(counterRecords), heldUp: [] }).crossDomain;
-}
+// The evidence rules (level, areas, cross-domain) live in src/model/evidence-rules.js so the browser's
+// reconfirmation applies exactly the same ones; re-exported here so existing imports keep working.
+export { allowedCrossDomain, allowedLevel, triedRecords };
+const asRows = evidenceRows;
 const hypothesisAliases = (id) => id === "H01/H07" ? ["H01", "H07", "H01/H07"] : [id];
 const sameHypothesis = (a, b) => hypothesisAliases(a).some((id) => hypothesisAliases(b).includes(id));
 
