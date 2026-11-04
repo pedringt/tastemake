@@ -165,7 +165,7 @@ function hypothesisCard(item, index, records = new Map()) {
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.says === "partial" ? `<div class="signal-said"><strong>${FIT.partial}.</strong> Tastemake treats it as a narrower pattern and uses the details you add below.</div>` : ""}
         ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake keeps the pattern tentative rather than treating your uncertainty as evidence.</div>` : ""}
-        ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
+        ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is.</div>` : ""}
         ${["accurate", "partial"].includes(said?.says) && said?.context ? `<div class="signal-said">${CONTEXT[said.context] ?? "You refined when this applies."}.</div>` : ""}
         ${sayControls(item, said, record)}
         ${statementConsequence(item, said)}
@@ -179,7 +179,7 @@ function correctedPatternsSection(items) {
   return `
     <details class="corrected-patterns">
       <summary>Corrected patterns <span class="corrected-pattern-count">${items.length}</span></summary>
-      <p class="corrected-patterns-note">Patterns you said do not fit you. They no longer shape recommendations, but you can revisit them.</p>
+      <p class="corrected-patterns-note">Patterns you said do not fit you. Tastemake leaves them out of your Taste Profile. Picks can still resemble the titles behind them, because your ratings still count. You can revisit them.</p>
       <div class="corrected-pattern-list">
         ${items.map((item) => `
           <div class="corrected-pattern-row" data-profile-pattern="${item.id}">
@@ -251,7 +251,7 @@ function learningPanel(patterns = []) {
           <p class="kicker">Learning out loud</p>
           <h2 id="profile-learning-title">${hasChanges ? "What changed" : "What Tastemake learned"}</h2>
           <p>${hasChanges
-            ? "Your recent reactions and corrections changed your Taste Profile, which Tastemake’s AI uses when it explains future picks."
+            ? "Your recent reactions and corrections changed your Taste Profile. Your corrections are also passed to Tastemake’s AI when it orders and explains future picks."
             : "A few patterns Tastemake is starting to see in what you love."}</p>
         </div>
       </div>

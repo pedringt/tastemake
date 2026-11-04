@@ -84,7 +84,11 @@ for (const stale of [
   "will count less when Tastemake ranks future picks",
   "It will not use it for",
   "Tastemake leaves it out of what it picks for you.",
-  "changed how Tastemake will choose future picks"
+  "changed how Tastemake will choose future picks",
+  // Nov 4 preview review: three more promises the software does not keep.
+  "They no longer shape recommendations",
+  "That changes how much it counts when picking",
+  "changed your Taste Profile, which Tastemake’s AI uses when it explains future picks"
 ]) check(`profile copy no longer promises: "${stale}"`, !profile.includes(stale));
 for (const approved of [
   "Tastemake won’t use this pattern in your Taste Profile, and asks its AI not to lean on it when explaining picks.",
@@ -92,7 +96,9 @@ for (const approved of [
   "Tastemake will tell its AI this pattern matters less to you.",
   "Your Taste Profile won’t apply it to",
   "Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count.",
-  "changed your Taste Profile, which Tastemake’s AI uses when it explains future picks."
+  "Your recent reactions and corrections changed your Taste Profile. Your corrections are also passed to Tastemake’s AI when it orders and explains future picks.",
+  "Patterns you said do not fit you. Tastemake leaves them out of your Taste Profile. Picks can still resemble the titles behind them, because your ratings still count. You can revisit them.",
+  "Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is."
 ]) check(`profile copy says: "${approved.slice(0, 60)}…"`, profile.includes(approved));
 
 finish();
