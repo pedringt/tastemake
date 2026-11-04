@@ -226,7 +226,7 @@ function learningPanel(patterns = []) {
       consequence = "Your Taste Profile has updated which kinds of titles this pattern covers.";
     } else if (current.origin === "user-confirmed" && current.reason) {
       changed = current.reason;
-      consequence = "Your correction now outranks Tastemake’s earlier inference.";
+      consequence = "Tastemake keeps your answer alongside its own read of this pattern.";
     } else {
       continue;
     }
