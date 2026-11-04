@@ -31,7 +31,7 @@ export async function run() {
     id:`tmdb-movie-${offset+i}`,provider:"tmdb",providerId:String(offset+i),
     title:`Catalog Pick ${offset+i}`,type:"movie",domains:["movies"],about:`Real catalog recommendation ${i+1}.`,
     artwork:null,genres:i===1?["27"]:[],rank:i===4?null:i+1,fit:i===4?"Exploratory fit":"Catalog match",prediction:"Worth testing",
-    surprise:i===4,reason:"Related to a favorite from the real catalog. Live AI did not rank this fallback set.",ai:null
+    surprise:i===4,reason:"A catalog match Tastemake hasn't ranked yet: it's here while AI ranking is unavailable.",ai:null
   }));
   let recCalls=0, newReleaseCalls=0;
   // "off": catalog fallback (the default); "paused": the AI budget is used up (#263); "model": live AI answered.
@@ -72,7 +72,8 @@ export async function run() {
       if(call===0) await firstGate;
       const picks=recSet(call ? 710 : 700);
       if(aiMode==="paused") return {ok:true,status:200,json:async()=>({source:"catalog",reason:"AI features are paused for now.",picks,meta:{paidCallMade:false,budgetPaused:true,catalogCandidates:picks.length}})};
-      if(aiMode==="model") return {ok:true,status:200,json:async()=>({source:"model",reason:null,picks,meta:{paidCallMade:false,catalogCandidates:picks.length}})};
+      // Nov 3 (T2): like the real server (api/recommendations.mjs), a validated model pick carries its ai object.
+      if(aiMode==="model") return {ok:true,status:200,json:async()=>({source:"model",reason:null,picks:picks.map(p=>({...p,ai:{cites:["ev:tmdb-movie-501"],tests:null,kind:"pick",contract:"2026-09-22"}})),meta:{paidCallMade:false,catalogCandidates:picks.length}})};
       return {ok:true,status:200,json:async()=>({source:"catalog",reason:"live AI off in browser QA",picks,meta:{paidCallMade:false,catalogCandidates:picks.length}})};
     }
     if(url.pathname==="/api/new-releases"){
@@ -357,7 +358,13 @@ export async function run() {
 
   // No-AI mode (Oct 20 smoke test): when the AI budget is used up, every surface says so calmly.
   const badge=()=>$(".prototype-label");
-  check("header says Live AI before any pause",badge()?.textContent.trim()==="Live AI"&&!badge()?.classList.contains("is-paused"),badge()?.textContent);
+  // Nov 3 (T2): every set so far came from the catalog stub, so the badge must not claim Live AI.
+  check("header stays neutral over catalog picks before any AI answer",badge()?.textContent.trim()==="AI picks"&&!badge()?.classList.contains("is-paused"),badge()?.textContent);
+  const live=()=>document.getElementById("live")?.textContent||"";
+  const pageSaysLiveAi=()=>/live ai/i.test(`${document.body.innerText} ${badge()?.title||""}`);
+  check("catalog set: nothing on the page says Live AI",!pageSaysLiveAi());
+  // A reload keeps the saved sets and drops the session-only AI state (state.js fresh/initial values).
+  const simulateReload=async()=>{state.aiPaused=false;state.aiLive=false;state.aiMessage=null;state.aiSource=null;await act('[data-step-jump="recommendations"]',250);};
   aiMode="paused";
   await act('[data-step-jump="recommendations"]',200);
   await act('[data-action="keep-discovering"]',700);
@@ -366,6 +373,13 @@ export async function run() {
   check("paused: the generic catalog line is replaced, not repeated",!$(".ai-inline-status"));
   check("paused: header badge reads AI paused",badge()?.textContent.trim()==="AI paused"&&badge()?.classList.contains("is-paused")&&/personal AI budget/.test(badge()?.title||""),badge()?.textContent);
   check("paused: the pause is never saved with the user's data",!/aiPaused/.test(localStorage.getItem("tastemake:test-state:v1")||""));
+  check("paused: the screen-reader announcement does not claim Live AI",await until(()=>/catalog fallback/i.test(live()))&&!/live ai/i.test(live()),live());
+  check("paused: nothing on the page says Live AI",!pageSaysLiveAi());
+  await simulateReload();
+  check("reload, catalog set: labeled as catalog picks",$(".ai-catalog-set")?.textContent.trim()==="These picks came from the catalog, not AI.",$(".ai-catalog-set")?.textContent);
+  check("reload, catalog set: the paused explainer is not carried over",!$(".ai-paused-notice"));
+  check("reload, catalog set: badge is neutral, not paused or Live AI",badge()?.textContent.trim()==="AI picks"&&!badge()?.classList.contains("is-paused"),badge()?.textContent);
+  check("reload, catalog set: nothing on the page says Live AI",!pageSaysLiveAi());
   state.modelHypotheses=[];
   await act('[data-step-jump="model"]',300);
   if($('[data-action="retry-profile"]')) await act('[data-action="retry-profile"]',400);
@@ -376,6 +390,12 @@ export async function run() {
   await act('[data-step-jump="recommendations"]',200);
   await act('[data-action="keep-discovering"]',700);
   check("a live-AI answer clears the pause",badge()?.textContent.trim()==="Live AI"&&!$(".ai-paused-notice"),badge()?.textContent);
+  check("model set: no catalog label",!$(".ai-catalog-set"));
+  check("model set: the announcement says live AI was used",await until(()=>/Live AI was used/.test(live())),live());
+  check("the session-only AI state is never saved with the user's data",!/aiLive|aiPaused/.test(localStorage.getItem("tastemake:test-state:v1")||""));
+  await simulateReload();
+  check("reload, model set: no catalog label",!$(".ai-catalog-set"));
+  check("reload, model set: badge is neutral until this session hears from the AI",badge()?.textContent.trim()==="AI picks",badge()?.textContent);
 
   const failed=results.filter(r=>!r.ok);
   return {passed:results.length-failed.length,failed:failed.length,total:results.length,results:failed.length?failed:undefined};

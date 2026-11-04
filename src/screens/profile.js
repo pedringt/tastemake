@@ -105,16 +105,19 @@ function statementConsequence(item, said) {
   if (!said?.says) return "";
   const excluded = (said.excludedDomains ?? []).map((id) => domainById(id)?.label ?? id);
 
+  // Nov 3, 2026 (T1): say only what the software does. Corrections are enforced in the Taste Profile;
+  // for recommendations they are passed to the AI as instructions, and they do not reach candidate
+  // scoring or the catalog fallback. So no line here promises that future picks will change.
   let text = "";
-  if (said.says === "not-me") text = "Future recommendations will leave this pattern out.";
+  if (said.says === "not-me") text = "Tastemake won’t use this pattern in your Taste Profile, and asks its AI not to lean on it when explaining picks.";
   else if (said.says === "unsure") text = "Tastemake will keep this tentative instead of leaning on it.";
   else if (said.says === "partial") text = "Tastemake will use this pattern more selectively.";
-  else if (said.weight === "lot") text = "This pattern will count more when Tastemake ranks future picks.";
-  else if (said.weight === "little") text = "This pattern will count less when Tastemake ranks future picks.";
+  else if (said.weight === "lot") text = "Tastemake will tell its AI this pattern matters more to you.";
+  else if (said.weight === "little") text = "Tastemake will tell its AI this pattern matters less to you.";
   else if (said.context === "some") text = "Tastemake will treat this as conditional rather than broadly true.";
   else if (said.says === "accurate") text = "Tastemake can keep using this pattern when it explains a future pick.";
 
-  if (excluded.length) text += ` It will not use it for ${excluded.join(", ")}.`;
+  if (excluded.length) text += ` Your Taste Profile won’t apply it to ${excluded.join(", ")}.`;
   if (!text) return "";
   return `<div class="signal-consequence"><strong>What this changes</strong><span>${esc(text)}</span></div>`;
 }
@@ -159,7 +162,7 @@ function hypothesisCard(item, index, records = new Map()) {
         <div class="signal-evidence"><span>What this comes from</span> ${esc(item.evidence)}</div>
         ${saidReasonsLine(item, records)}
         <div class="signal-provenance">${esc(update.provenance)}</div>
-        ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
+        ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.says === "partial" ? `<div class="signal-said"><strong>${FIT.partial}.</strong> Tastemake treats it as a narrower pattern and uses the details you add below.</div>` : ""}
         ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake keeps the pattern tentative rather than treating your uncertainty as evidence.</div>` : ""}
         ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
@@ -248,7 +251,7 @@ function learningPanel(patterns = []) {
           <p class="kicker">Learning out loud</p>
           <h2 id="profile-learning-title">${hasChanges ? "What changed" : "What Tastemake learned"}</h2>
           <p>${hasChanges
-            ? "Your recent reactions and corrections changed how Tastemake will choose future picks."
+            ? "Your recent reactions and corrections changed your Taste Profile, which Tastemake’s AI uses when it explains future picks."
             : "A few patterns Tastemake is starting to see in what you love."}</p>
         </div>
       </div>
