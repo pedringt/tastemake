@@ -76,6 +76,16 @@ export function markNeedsReview(patterns = [], needsReview = []) {
   return patterns.map((p) => (ids.has(p?.id) ? { ...p, evidenceStatus: NEEDS_REVIEW } : p));
 }
 
+// Nov 4 (after #325): the evidence the stored patterns rest on, which a refresh must send if it still
+// exists, so the server never mistakes "not sent" for "removed". Patterns the user confirmed come first,
+// then the rest; supports before counters.
+export function citedEvidenceRefs(state) {
+  const patterns = state.modelHypotheses ?? [];
+  const confirmed = (p) => Boolean(confirmationFor(state.patternStatements ?? [], p));
+  const tier = (list) => [...list.flatMap((p) => p.supports ?? []), ...list.flatMap((p) => p.counters ?? [])];
+  return [...new Set([...tier(patterns.filter(confirmed)), ...tier(patterns.filter((p) => !confirmed(p)))])];
+}
+
 // Nov 4 (after #325): why a profile answer no longer describes the user's current profile, or null.
 // Same idea as staleReason for picks (src/ai/requests.js, #42). hypothesisEvidenceKey already covers
 // every input the user can change while a refresh is in flight: their reactions and refinements, and
@@ -126,7 +136,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
   onUpdate();
 
   try {
-    const bodyState = { ...serializeAiState(state), modelHypotheses: state.modelHypotheses ?? [] };
+    const bodyState = { ...serializeAiState(state, { requiredRefs: citedEvidenceRefs(state) }), modelHypotheses: state.modelHypotheses ?? [] };
     const response = await fetch("/api/hypotheses", {
       method: "POST",
       headers: { "content-type": "application/json" },

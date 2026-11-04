@@ -229,18 +229,57 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
 // confirmed. When the stored version fails too (say a reaction it rested on was removed), it is not
 // presented as supported: its id goes in needsReview and the client keeps it, flagged, with the user's
 // answer untouched. A confirmed pattern with every area excluded is neither: the client keeps it as stored.
+//
+// Nov 4 (after #325): evidence a confirmed pattern cites is in one of three states.
+//   - validated: sent with this request (in ctx.evidence) and checked as usual;
+//   - not checked: the client still has it but didn't send it (ctx.presentRefs, payload limit);
+//   - invalid: neither, so the reaction was removed or no longer counts.
+// Only validated evidence is checked or counted. Not-checked refs are kept on the pattern as they were, but
+// never raise its level: when any are involved the level is capped at the stored one. A pattern that can't
+// pass on its validated evidence alone, but has nothing invalid, is listed in notChecked: it is neither
+// accepted nor flagged, so the client keeps it exactly as stored, including any earlier flag (only a real
+// check clears one). Anything invalid still means needsReview. A client that sends no presentRefs gets the
+// same answers as before.
+function evidenceStates(stored, ctx) {
+  const sent = new Set((ctx.evidence ?? []).map((row) => row.ref));
+  const present = new Set(ctx.presentRefs ?? []);
+  const refs = [...(stored.supports ?? stored.evidence ?? []), ...(stored.counters ?? stored.counter ?? [])];
+  return {
+    notChecked: refs.filter((ref) => !sent.has(ref) && present.has(ref)),
+    invalid: refs.filter((ref) => !sent.has(ref) && !present.has(ref))
+  };
+}
+
+function keepNotChecked(h, stored, ctx) {
+  const { notChecked } = evidenceStates(stored, ctx);
+  if (!notChecked.length) return h;
+  const storedSupports = new Set(stored.supports ?? stored.evidence ?? []);
+  const add = (list, wanted) => [...list, ...notChecked.filter((ref) => wanted(ref) && !list.includes(ref))];
+  const storedLevel = String(stored.strength ?? stored.level ?? "emerging").toLowerCase();
+  return {
+    ...h,
+    evidence: add(h.evidence ?? [], (ref) => storedSupports.has(ref)),
+    counter: add(h.counter ?? [], (ref) => !storedSupports.has(ref)),
+    level: LEVELS.includes(storedLevel) ? capLevel(h.level, storedLevel) : h.level
+  };
+}
+
 export function settleConfirmedHypotheses(validated, ctx, existing = []) {
-  if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [] };
+  if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [], notChecked: [] };
   const accepted = [...(validated.accepted ?? [])];
   const needsReview = [];
+  const notChecked = [];
   for (const stored of existing) {
     if (!isStoredPattern(stored) || !confirmationFor(ctx.statements, stored) || everyAreaExcluded(stored, ctx)) continue;
-    if (accepted.some((h) => h.id === stored.id || text(h.label) === storedLabel(stored))) continue;
+    const at = accepted.findIndex((h) => h.id === stored.id || text(h.label) === storedLabel(stored));
+    if (at >= 0) { accepted[at] = keepNotChecked(accepted[at], stored, ctx); continue; }
     const retry = validateHypotheses({ hypotheses: [carryStored(stored, ctx)] }, ctx);
-    if (retry.accepted.length) accepted.push(...retry.accepted);
+    const states = evidenceStates(stored, ctx);
+    if (retry.accepted.length) accepted.push(...retry.accepted.map((h) => keepNotChecked(h, stored, ctx)));
+    else if (!states.invalid.length && states.notChecked.length) notChecked.push(stored.id);
     else needsReview.push(stored.id);
   }
-  return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview };
+  return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview, notChecked };
 }
 
 // #256: a pattern that talks about *why* something worked or failed must use the reasons the user actually
