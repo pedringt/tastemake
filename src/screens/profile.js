@@ -203,8 +203,19 @@ function learningPanel(patterns = []) {
   for (const pattern of patterns) {
     const revisions = history.filter((entry) => entry.hypothesisId === pattern.id);
     if (revisions.length < 2) continue;
-    const previous = revisions[revisions.length - 2];
     const current = revisions[revisions.length - 1];
+
+    // Nov 4, 2026 (R-1): a user answer (Taste Profile correction or Tastebreak) is recorded without the
+    // pattern's categories, supports or level. Compared field by field, it read as "Where this pattern
+    // applies changed" on every correction, and the next refresh after one read as a new supporting
+    // example. So a user answer is reported as itself, and a refresh is compared only with the previous
+    // refresh. Only the latest change per pattern is shown, so a later refresh replaces the answer here.
+    if (current.origin === "user-confirmed") {
+      if (current.reason) changes.push({ title: pattern.title, sourceLine: "", changed: current.reason, consequence: "Tastemake keeps your answer alongside its own read of this pattern." });
+      continue;
+    }
+    const previous = revisions.slice(0, -1).reverse().find((entry) => entry.origin !== "user-confirmed");
+    if (!previous) continue;
 
     const addedSupport = (current.supports ?? []).find((ref) => !(previous.supports ?? []).includes(ref));
     const source = addedSupport ? evidence.get(addedSupport) : null;
@@ -224,9 +235,6 @@ function learningPanel(patterns = []) {
     } else if (JSON.stringify(previous.domains ?? []) !== JSON.stringify(current.domains ?? [])) {
       changed = "Where this pattern applies changed.";
       consequence = "Your Taste Profile has updated which kinds of titles this pattern covers.";
-    } else if (current.origin === "user-confirmed" && current.reason) {
-      changed = current.reason;
-      consequence = "Tastemake keeps your answer alongside its own read of this pattern.";
     } else {
       continue;
     }
