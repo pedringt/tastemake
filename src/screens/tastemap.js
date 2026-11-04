@@ -1,6 +1,7 @@
 import { nodeLayout } from "../model/tastemap.js";
 import { domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
+import { patternDisplayStatus, statementFor } from "../model/statements.js";
 
 function sharedEvidence(a, b) {
   const aRefs = new Set([...(a.supports ?? []), ...(a.counters ?? [])]);
@@ -35,14 +36,16 @@ function domainLine(pattern) {
   return labels.length ? labels.join(" · ") : "Still finding where this shows up";
 }
 
-export function renderTasteMap(patterns = []) {
+export function renderTasteMap(patterns = [], statements = []) {
   if (!patterns.length) return "";
   const visiblePatterns = patterns.slice(0, 8);
 
   const layout = nodeLayout(visiblePatterns.length);
   const links = mapLinks(visiblePatterns);
   const nodes = visiblePatterns.map((pattern, index) => {
-    const status = String(pattern.strength ?? "Emerging");
+    // #325: the same status the Taste Profile shows ("Excluded from all areas", "Needs another look", or the level).
+    const shown = patternDisplayStatus(pattern, statementFor({ patternStatements: statements }, pattern.id));
+    const status = shown.kind === "level" ? String(pattern.strength ?? "Emerging") : shown.label;
     const note = pattern.status === "conditional" ? "Conditional" : "";
     const primaryDomain = pattern.domains?.[0] ?? "other";
     const domainClass = ["movies", "tv", "read", "play"].includes(primaryDomain) ? primaryDomain : "other";

@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
-import { normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../src/ai/validate.js";
+import { normalizeHypothesisResponse, preserveExistingHypotheses, settleConfirmedHypotheses, validateHypotheses } from "../src/ai/validate.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
 import { HYPOTHESES_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
@@ -116,10 +116,11 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
       cacheReadTokens: model.usage?.cache_read_input_tokens ?? null,
       cacheWriteTokens: model.usage?.cache_creation_input_tokens ?? null
     };
-    // #228: an earlier pattern the model left out is carried forward unless two misses count against
-    // it; shared with scripts/evals/run.mjs so the live eval measures what production keeps.
+    // #228/#325: an earlier pattern the model left out is carried forward; shared with
+    // scripts/evals/run.mjs so the live eval measures what production keeps. Then every pattern the
+    // user confirmed is either accepted or listed in needsReview for the client to keep, flagged.
     const normalizedResponse = preserveExistingHypotheses(normalizeHypothesisResponse(expandProfileRefs(model.json, request.refs), ctx), ctx, state.modelHypotheses);
-    const validated = validateHypotheses(normalizedResponse, ctx);
+    const validated = settleConfirmedHypotheses(validateHypotheses(normalizedResponse, ctx), ctx, state.modelHypotheses);
     const rejectionCategories = rejectionCategoryCounts(validated.rejected);
     if (validated.rejected.length) {
       console.info("[tastemake-profile-validation]", JSON.stringify({
@@ -141,14 +142,14 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
         rejectedReasons: (validated.rejected ?? []).flatMap((r) => r.reasons ?? [])
       }));
       recordAiCallInBackground({ ...baseMetric, outcome: "validation_fallback" }, { env });
-      return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage } };
+      return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage, needsReview: validated.needsReview } };
     }
     recordAiCallInBackground({ ...baseMetric, outcome: "success" }, { env });
     return {
       source: "model",
       reason: null,
       hypotheses: validated.accepted,
-      meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, rejectionCategories, notes: validated.notes }
+      meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, rejectionCategories, notes: validated.notes, needsReview: validated.needsReview }
     };
   } catch (error) {
     recordAiCallInBackground({
