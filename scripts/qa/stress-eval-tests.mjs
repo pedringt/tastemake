@@ -139,7 +139,8 @@ const fakeAnthropic = async (url, init) => {
   const content = body.messages[0].content;
   const context = JSON.parse(content.slice(content.indexOf("{")));
   const positive = context.evidence.find((e) => e.polarity > 0);
-  const picks = context.candidates.slice(0, 5).map((c, i) => ({ itemId: c.id, why: i === 4 ? "It matches your taste." : `Because you loved ${positive.title}, the slow dread here should land.`, cites: [positive.ref] }));
+  // Like a model following the prompt: cite a rating from the candidate's basis when it has one (#1b).
+  const picks = context.candidates.slice(0, 5).map((c, i) => ({ itemId: c.id, why: i === 4 ? "It matches your taste." : `Because you loved ${positive.title}, the slow dread here should land.`, cites: [c.basis?.[0]?.ref ?? positive.ref] }));
   const text = JSON.stringify({ picks, curveballItemId: null });
   return new Response(JSON.stringify({ model: body.model, content: [{ type: "text", text }], usage: { input_tokens: 2000, output_tokens: 300 } }), { status: 200 });
 };
