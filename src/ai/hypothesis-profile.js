@@ -69,6 +69,7 @@ export function mergeHypotheses(existing = [], incoming = [], { statements = [],
 // meta.needsReview) is kept as stored, with the user's answer and history untouched, but marked so it
 // is not shown as supported. The mark is cleared only when a refresh accepts the pattern again: an
 // accepted pattern is rebuilt by normalizeHypothesis, which has no such field.
+const CHECKED_NEEDS_REVIEW = "Tastemake checked your profile. Some patterns need another look because their evidence is no longer available.";
 export function markNeedsReview(patterns = [], needsReview = []) {
   const ids = new Set(needsReview ?? []);
   if (!ids.size) return patterns;
@@ -97,6 +98,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     if (!response.ok || !payload) throw new Error(payload?.error || "profile request failed");
 
     noteAiAnswer(state, { budgetPaused: Boolean(payload.meta?.budgetPaused), usedModel: payload.source === "model" });
+    const needsReview = Array.isArray(payload.meta?.needsReview) ? payload.meta.needsReview : [];
     if (payload.source === "model" && Array.isArray(payload.hypotheses) && payload.hypotheses.length) {
       const next = payload.hypotheses.map((h, index) => normalizeHypothesis(h, index, state));
       for (const h of next) {
@@ -116,13 +118,20 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         statements: state.patternStatements ?? [],
         activeLimit: 12,
         preserveExistingActive: rejected > 0
-      }), payload.meta?.needsReview);
-      state.hypothesisAiMessage = "Your Taste Profile is up to date.";
+      }), needsReview);
+      state.hypothesisAiMessage = needsReview.length ? CHECKED_NEEDS_REVIEW : "Your Taste Profile is up to date.";
       state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");
+    } else if (needsReview.length) {
+      // #325: nothing new was accepted, but the evidence check itself completed and found confirmed
+      // patterns it can't verify. That is a result, not a failed refresh: record it, say what changed,
+      // and don't ask again until the evidence changes.
+      state.modelHypotheses = markNeedsReview(state.modelHypotheses ?? [], needsReview);
+      state.hypothesisAiMessage = CHECKED_NEEDS_REVIEW;
+      state.hypothesisAiKey = key;
+      announce(CHECKED_NEEDS_REVIEW);
     } else {
-      // Nothing was accepted, but the check may still have found confirmed patterns it can't verify.
-      if (payload.meta?.needsReview?.length) state.modelHypotheses = markNeedsReview(state.modelHypotheses ?? [], payload.meta.needsReview);
+      // A failed, paused or empty answer leaves the saved profile exactly as it was.
       state.hypothesisAiKey = null;
       // The full explanation sits in the empty state (or the header badge) when AI is paused; this line stays short.
       state.hypothesisAiMessage = payload.meta?.budgetPaused

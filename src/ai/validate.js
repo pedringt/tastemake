@@ -127,7 +127,16 @@ export function normalizeHypothesisResponse(response, ctx) {
 //   - an unconfirmed pattern is carried too. Dislikes alone never retire it: sharing a medium is not
 //     contradiction, and a cited dislike is not proof either. contradictedByEvidence is where a real
 //     contradiction check (#278) will plug in;
-//   - areas the user excluded (#36) are taken off a carried pattern instead of failing it.
+//   - areas the user excluded (#36) are taken off a carried pattern instead of failing it. A confirmed
+//     pattern with every area excluded is a scope correction, not an evidence failure: it is left out of
+//     the refresh entirely (not carried, not flagged, any model version of it dropped), and the client
+//     keeps it exactly as stored until the user includes an area again;
+//   - a confirmed pattern's identity, name and claim are frozen until the user changes or clears their
+//     answer, so a confirmation never transfers to a different interpretation. A model version of it
+//     (same id, or same name under a new id) is used only when it keeps the same id, name and claim,
+//     which is how the prompt asks for existing patterns back; then its evidence is checked against the
+//     confirmed claim like any proposal. Anything else is replaced by the stored version. There is no
+//     check of meaning here (#278, #318).
 export const MAX_PROFILE_HYPOTHESES = 12;
 
 // #278 decides what genuinely contradicts a pattern. Until then nothing retires one automatically.
@@ -152,34 +161,62 @@ function storedToProposal(stored) {
   };
 }
 
+const text = (value) => String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+const storedLabel = (stored) => text(stored?.title ?? stored?.label);
+const isStoredPattern = (stored) => Boolean(stored?.id && stored.claim && (stored.title ?? stored.label));
+
+function excludedAreas(stored, ctx) {
+  const label = storedLabel(stored);
+  return (ctx.statements ?? []).find((s) => (s.excludedDomains ?? []).length && (s.hypothesisId === stored.id || (s.label && text(s.label) === label)))?.excludedDomains ?? [];
+}
+
+function everyAreaExcluded(stored, ctx) {
+  const domains = stored.domains ?? [];
+  const excluded = excludedAreas(stored, ctx);
+  return domains.length > 0 && domains.every((d) => excluded.includes(d));
+}
+
 function carryStored(stored, ctx) {
   const [proposal] = normalizeHypothesisResponse({ hypotheses: [storedToProposal(stored)] }, ctx).hypotheses;
-  const excluded = (ctx.statements ?? []).find((s) => (s.excludedDomains ?? []).length && (s.hypothesisId === stored.id || (s.label && s.label.toLowerCase() === String(proposal.label ?? "").toLowerCase())))?.excludedDomains ?? [];
-  const domains = proposal.domains.filter((d) => !excluded.includes(d));
-  return domains.length ? { ...proposal, domains } : proposal;
+  const excluded = excludedAreas(stored, ctx);
+  return { ...proposal, domains: proposal.domains.filter((d) => !excluded.includes(d)) };
 }
 
 export function preserveExistingHypotheses(response, ctx, existing = []) {
   if (!response || !Array.isArray(response.hypotheses) || !Array.isArray(existing) || !existing.length) return response;
-  const proposed = response.hypotheses.filter((h) => h && typeof h === "object");
-  const proposedIds = new Set(proposed.map((h) => h.id).filter(Boolean));
-  const proposedLabels = new Set(proposed.map((h) => String(h.label ?? "").trim().toLowerCase()).filter(Boolean));
   const rejectedByUser = new Set((ctx.statements ?? []).filter((s) => s.says === "not-me").map((s) => s.hypothesisId));
   const confirmed = (h) => Boolean(confirmationFor(ctx.statements, h));
+  const confirmedStored = existing.filter((stored) => isStoredPattern(stored) && confirmed(stored));
+  const confirmedFor = (h) => confirmedStored.find((stored) => h?.id === stored.id || (text(h?.label) && text(h.label) === storedLabel(stored)));
 
+  // A model version of a confirmed pattern: kept only when it is the same pattern, word for word.
+  const answered = new Set();
+  const proposals = [];
+  for (const h of response.hypotheses) {
+    const stored = h && typeof h === "object" ? confirmedFor(h) : null;
+    if (!stored) { proposals.push(h); continue; }
+    if (answered.has(stored.id) || everyAreaExcluded(stored, ctx)) continue;
+    answered.add(stored.id);
+    const same = h.id === stored.id && text(h.label) === storedLabel(stored) && text(h.claim) === text(stored.claim);
+    proposals.push(same ? h : carryStored(stored, ctx));
+  }
+
+  const proposed = proposals.filter((h) => h && typeof h === "object");
+  const proposedIds = new Set(proposed.map((h) => h.id).filter(Boolean));
+  const proposedLabels = new Set(proposed.map((h) => text(h.label)).filter(Boolean));
   const carried = [];
   for (const stored of existing) {
-    if (!stored?.id || !stored.claim || !(stored.title ?? stored.label)) continue;
-    if (proposedIds.has(stored.id) || proposedLabels.has(String(stored.title ?? stored.label).trim().toLowerCase())) continue;
+    if (!isStoredPattern(stored)) continue;
+    if (proposedIds.has(stored.id) || proposedLabels.has(storedLabel(stored))) continue;
     if (rejectedByUser.has(stored.id)) continue;
-    if (!confirmed(stored) && contradictedByEvidence(stored, ctx)) continue;
+    if (confirmed(stored) ? everyAreaExcluded(stored, ctx) : contradictedByEvidence(stored, ctx)) continue;
     carried.push(carryStored(stored, ctx));
   }
 
   // Keep the profile within its usual size. Confirmed patterns never count against the cap; the rest
   // of the room goes to earlier patterns first, then to brand-new proposals.
   const existingIds = new Set(existing.map((h) => h?.id).filter(Boolean));
-  const hypotheses = [...response.hypotheses, ...carried];
+  const hypotheses = [...proposals, ...carried];
   const unconfirmed = hypotheses.filter((h) => !confirmed(h));
   const room = Math.max(0, MAX_PROFILE_HYPOTHESES - (hypotheses.length - unconfirmed.length));
   const kept = new Set([...unconfirmed.filter((h) => existingIds.has(h?.id)), ...unconfirmed.filter((h) => !existingIds.has(h?.id))].slice(0, room));
@@ -191,15 +228,14 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
 // the check, the stored version is checked instead, so a bad revision cannot replace what the user
 // confirmed. When the stored version fails too (say a reaction it rested on was removed), it is not
 // presented as supported: its id goes in needsReview and the client keeps it, flagged, with the user's
-// answer untouched.
+// answer untouched. A confirmed pattern with every area excluded is neither: the client keeps it as stored.
 export function settleConfirmedHypotheses(validated, ctx, existing = []) {
   if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [] };
   const accepted = [...(validated.accepted ?? [])];
   const needsReview = [];
   for (const stored of existing) {
-    if (!stored?.id || !stored.claim || !(stored.title ?? stored.label) || !confirmationFor(ctx.statements, stored)) continue;
-    const label = String(stored.title ?? stored.label).trim().toLowerCase();
-    if (accepted.some((h) => h.id === stored.id || String(h.label ?? "").trim().toLowerCase() === label)) continue;
+    if (!isStoredPattern(stored) || !confirmationFor(ctx.statements, stored) || everyAreaExcluded(stored, ctx)) continue;
+    if (accepted.some((h) => h.id === stored.id || text(h.label) === storedLabel(stored))) continue;
     const retry = validateHypotheses({ hypotheses: [carryStored(stored, ctx)] }, ctx);
     if (retry.accepted.length) accepted.push(...retry.accepted);
     else needsReview.push(stored.id);

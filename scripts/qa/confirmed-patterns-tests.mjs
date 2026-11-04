@@ -168,15 +168,16 @@ function invalidEvidenceState() {
   eq("bad rewrite of a valid confirmed pattern: nothing needs review", validated.needsReview.length, 0);
 }
 {
-  // A valid model revision of a flagged pattern (its evidence restored) is a genuine pass: it is used, and the flag clears.
+  // Evidence restored and the model rewords the flagged confirmed pattern: the confirmed claim stays
+  // (a confirmation never transfers to a new wording), the stored evidence passes again, the flag clears.
   const s = invalidEvidenceState();
   s.modelHypotheses = markNeedsReview(s.modelHypotheses, ["ai-puzzles"]);
   react(s, byId("golden-idol"), "loved");
   const revision = pattern({ id: "ai-puzzles", label: "Puzzle-driven story games", claim: "Games land when uncovering the story means solving its puzzles yourself.", evidence: ["ev:golden-idol"], domains: ["play"], level: "supported" });
   const { merged } = refresh(s, { hypotheses: [revision] });
   const kept = merged.find((h) => h.id === "ai-puzzles");
-  eq("valid revision: used", kept?.claim, revision.claim);
-  check("valid revision: the flag clears", !kept?.evidenceStatus);
+  eq("reworded revision of a flagged confirmed pattern: the confirmed claim stays", kept?.claim, PUZZLES.claim);
+  check("…and the flag clears once its evidence passes again", Boolean(kept) && !kept.evidenceStatus);
 }
 
 // ---- 4b. the endpoint reports needsReview, including when nothing else was accepted ----------------------
@@ -343,6 +344,137 @@ const newProposals = (n) => ({ hypotheses: Array.from({ length: n }, (_, i) => p
 
   state.modelHypotheses = state.modelHypotheses.map(({ evidenceStatus, ...rest }) => rest);
   check("profile: once cleared, no flag is shown", !renderProfile().includes(NEEDS_REVIEW_LABEL));
+}
+
+// ---- 10. PR #327 review: every area excluded is a scope correction, not an evidence failure -------------
+{
+  const allExcluded = () => {
+    const s = investigationState({ says: "partial", extra: { excludedDomains: ["movies", "play"] } });
+    s.patternStatements = s.patternStatements.filter((x) => x.hypothesisId === "ai-worlds");
+    return s;
+  };
+  const s = allExcluded();
+  const storedBefore = JSON.stringify(s.modelHypotheses.find((h) => h.id === "ai-worlds"));
+  const { preserved, validated, merged } = refresh(s, { hypotheses: [NEW_PATTERN] });
+  check("every area excluded: not carried into the refresh", !preserved.hypotheses.some((h) => h.id === "ai-worlds"));
+  check("every area excluded: not accepted", !validated.accepted.some((h) => h.id === "ai-worlds"));
+  check("every area excluded: not flagged for review", !validated.needsReview.includes("ai-worlds"));
+  eq("every area excluded: the client keeps the stored pattern exactly", JSON.stringify(merged.find((h) => h.id === "ai-worlds")), storedBefore);
+  eq("every area excluded: the user's correction is untouched", JSON.stringify(s.patternStatements[0].excludedDomains), JSON.stringify(["movies", "play"]));
+
+  // The model can't override the exclusions: its version of the pattern is dropped, whatever it claims.
+  for (const [name, domains] of [["claiming the excluded areas", ["movies", "play"]], ["claiming one excluded area", ["play"]]]) {
+    const version = pattern({ id: "ai-worlds", label: WORLDS.title, claim: WORLDS.claim, evidence: WORLDS.supports, domains, crossDomain: "untested", level: "supported" });
+    const r = refresh(allExcluded(), { hypotheses: [version, NEW_PATTERN] });
+    check(`every area excluded, model version ${name}: dropped before the check`, !r.preserved.hypotheses.some((h) => h.id === "ai-worlds"));
+    check(`every area excluded, model version ${name}: not accepted or flagged`, !r.validated.accepted.some((h) => h.id === "ai-worlds") && !r.validated.needsReview.length);
+    eq(`every area excluded, model version ${name}: stored pattern kept as is`, JSON.stringify(r.merged.find((h) => h.id === "ai-worlds")), storedBefore);
+  }
+
+  // The user includes an area again: the pattern is checked normally, in that area only.
+  const restored = allExcluded();
+  restored.patternStatements[0].excludedDomains = ["movies"];
+  const back = refresh(restored, { hypotheses: [NEW_PATTERN] });
+  eq("an area included again: accepted in that area", back.validated.accepted.find((h) => h.id === "ai-worlds")?.domains.join(","), "play");
+  check("an area included again: not flagged", !back.merged.find((h) => h.id === "ai-worlds")?.evidenceStatus);
+}
+
+// ---- 11. PR #327 review: a completed evidence check is not a failed refresh -------------------------------
+{
+  const s = invalidEvidenceState();
+  const said = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ source: "unavailable", hypotheses: [], meta: { paidCallMade: true, needsReview: ["ai-puzzles"] } }) });
+  try { await refreshProfileHypotheses(s, { force: true, announce: (m) => said.push(m) }); }
+  finally { globalThis.fetch = realFetch; }
+  eq("completed check, nothing accepted: the flag is set", s.modelHypotheses.find((h) => h.id === "ai-puzzles")?.evidenceStatus, NEEDS_REVIEW);
+  check("completed check: the message says the check ran and what it found", /checked your profile/i.test(s.hypothesisAiMessage) && /need another look/i.test(s.hypothesisAiMessage), s.hypothesisAiMessage);
+  check("completed check: never says nothing changed", !/couldn.t update|still here|unchanged/i.test(s.hypothesisAiMessage));
+  check("completed check: recorded, so it isn't repeated until the evidence changes", s.hypothesisAiKey != null);
+  eq("completed check: announced once", said.length, 1);
+  let calls = 0;
+  globalThis.fetch = async () => { calls += 1; return { ok: true, json: async () => ({ source: "unavailable", hypotheses: [], meta: {} }) }; };
+  try { await refreshProfileHypotheses(s, {}); }
+  finally { globalThis.fetch = realFetch; }
+  eq("completed check: the next visit with the same evidence makes no call", calls, 0);
+}
+{
+  const accepted = { ...NEW_PATTERN };
+  const s = invalidEvidenceState();
+  await clientRefresh(s, { source: "model", hypotheses: [accepted], meta: { rejected: 0, needsReview: ["ai-puzzles"] } });
+  check("accepted refresh with needsReview: the message says patterns need another look", /need another look/i.test(s.hypothesisAiMessage), s.hypothesisAiMessage);
+}
+for (const [name, respond] of [
+  ["a failed validation with nothing to review", async () => ({ ok: true, json: async () => ({ source: "unavailable", hypotheses: [], meta: { paidCallMade: true, needsReview: [] } }) })],
+  ["a paused AI", async () => ({ ok: true, json: async () => ({ source: "unavailable", hypotheses: [], meta: { budgetPaused: true } }) })],
+  ["a server error", async () => ({ ok: false, json: async () => ({ error: "boom" }) })],
+  ["a network failure", async () => { throw new Error("offline"); }]
+]) {
+  const s = invalidEvidenceState();
+  s.modelHypotheses = markNeedsReview(s.modelHypotheses, ["ai-worlds"]);
+  const before = JSON.stringify({ patterns: s.modelHypotheses, statements: s.patternStatements, history: s.hypothesisHistory });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = respond;
+  try { await refreshProfileHypotheses(s, { force: true }); }
+  finally { globalThis.fetch = realFetch; }
+  eq(`${name}: the saved profile is unchanged`, JSON.stringify({ patterns: s.modelHypotheses, statements: s.patternStatements, history: s.hypothesisHistory }), before);
+  eq(`${name}: not recorded as a completed check`, s.hypothesisAiKey, null);
+  check(`${name}: the message says it couldn't update`, /couldn.t update|paused/i.test(s.hypothesisAiMessage), s.hypothesisAiMessage);
+}
+
+// ---- 12. PR #327 review: a confirmation never transfers to a different interpretation ---------------------
+const REWORDED = "Low-stakes comfort viewing matters more than any sense of place or atmosphere.";
+{
+  // Same id, different name and claim, structurally valid: the confirmed pattern stays as it was.
+  const s = investigationState();
+  const rewrite = pattern({ id: "ai-worlds", label: "Cozy comfort viewing", claim: REWORDED, evidence: ["ev:severance", "ev:outerwilds"], domains: ["movies", "play"], crossDomain: "tentative", level: "supported" });
+  const { validated, merged } = refresh(s, { hypotheses: [rewrite] });
+  const kept = merged.find((h) => h.id === "ai-worlds");
+  eq("same-id rewrite: the confirmed name stays", kept?.title, WORLDS.title);
+  eq("same-id rewrite: the confirmed claim stays", kept?.claim, WORLDS.claim);
+  eq("same-id rewrite: the stored evidence stays, not the rewrite's", kept?.supports.join(","), WORLDS.supports.join(","));
+  check("same-id rewrite: the rewrite itself is not accepted", !validated.accepted.some((h) => h.claim === REWORDED));
+}
+{
+  // Same claim, only a wording-neutral change in the evidence, as the prompt asks: the evidence update is used.
+  const s = investigationState();
+  const update = pattern({ id: "ai-puzzles", label: PUZZLES.title, claim: PUZZLES.claim, evidence: [...PUZZLES.supports, "ev:controlgame"], counter: ["ev:disco"], domains: ["play"], level: "supported" });
+  const { merged } = refresh(s, { hypotheses: [update] });
+  const kept = merged.find((h) => h.id === "ai-puzzles");
+  eq("same pattern returned with more evidence: the new evidence is used", kept?.supports.length, 4);
+  eq("same pattern returned with more evidence: claim unchanged", kept?.claim, PUZZLES.claim);
+}
+{
+  // Same name under a new id: one pattern, under the confirmed id, with the confirmed claim.
+  const s = investigationState();
+  const relabel = pattern({ id: "ai-worlds-2", label: WORLDS.title, claim: "A different claim about lived-in worlds that the user never confirmed at all.", evidence: ["ev:severance", "ev:outerwilds"], domains: ["movies", "play"], crossDomain: "tentative", level: "supported" });
+  const { merged } = refresh(s, { hypotheses: [relabel] });
+  const named = merged.filter((h) => h.title === WORLDS.title);
+  eq("same name, new id: no duplicate", named.length, 1);
+  eq("same name, new id: the confirmed id is kept", named[0]?.id, "ai-worlds");
+  eq("same name, new id: the confirmed claim is kept", named[0]?.claim, WORLDS.claim);
+}
+{
+  // Unconfirmed patterns can still evolve.
+  const s = investigationState({ says: null });
+  const rewrite = pattern({ id: "ai-worlds", label: "Lived-in worlds", claim: REWORDED, evidence: ["ev:severance", "ev:outerwilds"], domains: ["movies", "play"], crossDomain: "tentative", level: "supported" });
+  const { merged } = refresh(s, { hypotheses: [rewrite] });
+  eq("unconfirmed: a same-id rewrite is used", merged.find((h) => h.id === "ai-worlds")?.claim, REWORDED);
+}
+for (const [name, change] of [["cleared", (s) => { s.patternStatements = []; }], ["changed to Not sure", (s) => { s.patternStatements[0].says = "unsure"; s.patternStatements[0].weight = null; }]]) {
+  // Clearing or changing the confirmation lets the model revise the pattern again.
+  const s = investigationState();
+  change(s);
+  const rewrite = pattern({ id: "ai-worlds", label: "Lived-in worlds", claim: REWORDED, evidence: ["ev:severance", "ev:outerwilds"], domains: ["movies", "play"], crossDomain: "tentative", level: "supported" });
+  const { merged } = refresh(s, { hypotheses: [rewrite] });
+  eq(`confirmation ${name}: the model may revise the pattern again`, merged.find((h) => h.id === "ai-worlds")?.claim, REWORDED);
+}
+{
+  const s = investigationState();
+  s.patternStatements[0].says = "not-me";
+  const rewrite = pattern({ id: "ai-worlds", label: WORLDS.title, claim: WORLDS.claim, evidence: WORLDS.supports, domains: ["movies", "play"], crossDomain: "tentative", level: "supported" });
+  const { validated } = refresh(s, { hypotheses: [rewrite] });
+  check("confirmation changed to Not me: the pattern is removed", !validated.accepted.some((h) => h.id === "ai-worlds"));
 }
 
 finish();
