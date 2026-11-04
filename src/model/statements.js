@@ -134,6 +134,20 @@ export function confirmationFor(statements, pattern) {
 export const NEEDS_REVIEW = "needs-review";
 export const NEEDS_REVIEW_LABEL = "Needs another look";
 export const NEEDS_REVIEW_TEXT = "Some evidence behind this pattern is no longer available. Your earlier answer is saved, but Tastemake can’t currently verify the pattern.";
+export const ALL_AREAS_EXCLUDED_LABEL = "Excluded from all areas";
+
+// #325: the one status a pattern shows on the Taste Profile, Taste Map and HTML export, so they never
+// disagree. Display only: nothing stored changes. In order:
+//   1. every area excluded by the user: their scope correction outranks anything else;
+//   2. the saved evidence flag: the last check couldn't verify the pattern;
+//   3. otherwise its confidence level (each surface keeps its own fallback wording for that).
+export function patternDisplayStatus(pattern, statement) {
+  const domains = pattern?.domains ?? [];
+  const excluded = statement?.excludedDomains ?? [];
+  if (domains.length && domains.every((d) => excluded.includes(d))) return { kind: "excluded", label: ALL_AREAS_EXCLUDED_LABEL };
+  if (pattern?.evidenceStatus === NEEDS_REVIEW) return { kind: "needs-review", label: NEEDS_REVIEW_LABEL };
+  return { kind: "level", label: pattern?.strength ?? null };
+}
 
 export function activeStatements(state) {
   return (state.patternStatements ?? []).filter((s) => s.says || s.weight || s.context || s.excludedDomains?.length);

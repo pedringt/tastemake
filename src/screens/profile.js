@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { canKeepDiscovering } from "../model/taste.js";
-import { CONTEXT, FIT, NEEDS_REVIEW, NEEDS_REVIEW_LABEL, NEEDS_REVIEW_TEXT, WEIGHT, statementFor } from "../model/statements.js";
+import { CONTEXT, FIT, NEEDS_REVIEW_TEXT, WEIGHT, patternDisplayStatus, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
@@ -139,7 +139,7 @@ function saidReasonsLine(item, records) {
 function hypothesisCard(item, index, records = new Map()) {
   const update = { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." };
   const said = statementFor(state, item.id);
-  const needsReview = item.evidenceStatus === NEEDS_REVIEW;
+  const shown = patternDisplayStatus(item, said);
   const record = { scope: { supported: item.domains ?? [], excluded: said?.excludedDomains ?? [] } };
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
@@ -156,11 +156,11 @@ function hypothesisCard(item, index, records = new Map()) {
             ${said?.says === "accurate" ? `<span class="signal-flag signal-confirmed">You confirmed this</span>` : ""}
             ${said?.says === "partial" ? `<span class="signal-flag">Partly accurate</span>` : ""}
             ${said?.says === "unsure" ? `<span class="signal-flag">Not sure yet</span>` : ""}
-            ${needsReview ? `<span class="signal-flag">${NEEDS_REVIEW_LABEL}</span>` : `<span class="signal-status ${update.status}">${esc(update.level)}</span>`}
+            ${shown.kind === "level" ? `<span class="signal-status ${update.status}">${esc(update.level)}</span>` : `<span class="signal-flag">${esc(shown.label)}</span>`}
           </span>
         </div>
         <p class="signal-claim">${esc(item.claim)}</p>
-        ${needsReview ? `<div class="signal-said">${esc(NEEDS_REVIEW_TEXT)}</div>` : ""}
+        ${shown.kind === "needs-review" ? `<div class="signal-said">${esc(NEEDS_REVIEW_TEXT)}</div>` : ""}
         <div class="signal-evidence"><span>What this comes from</span> ${esc(item.evidence)}</div>
         ${saidReasonsLine(item, records)}
         <div class="signal-provenance">${esc(update.provenance)}</div>
@@ -350,7 +350,7 @@ export function renderProfile() {
 
       ${liveProfile ? (
         profileView === "map"
-          ? renderTasteMap(activeHypotheses)
+          ? renderTasteMap(activeHypotheses, state.patternStatements)
           : `
             <div class="profile-depth-head">
               <div>

@@ -1,6 +1,6 @@
 import { displayLabel } from "../data/domains.js";
 import { refinementRecords } from "./refinements.js";
-import { NEEDS_REVIEW, NEEDS_REVIEW_LABEL } from "./statements.js";
+import { patternDisplayStatus, statementFor } from "./statements.js";
 
 export const BACKUP_VERSION = 1;
 
@@ -119,9 +119,14 @@ export function buildHtmlExport(state, generatedAt = new Date().toISOString()) {
   const activePatterns = (state.modelHypotheses ?? []).filter((item) => !correctedIds.has(item.id));
   const correctedPatterns = (state.modelHypotheses ?? []).filter((item) => correctedIds.has(item.id));
   const exported = generatedAt.replace("T", " ").replace(/\.\d{3}Z$/, " UTC");
+  // #325: the same status the Taste Profile shows.
+  const exportStatus = (pattern) => {
+    const shown = patternDisplayStatus(pattern, statementFor(state, pattern.id));
+    return shown.kind === "level" ? pattern.strength || pattern.level || "working pattern" : shown.label;
+  };
 
   const patternHtml = activePatterns.length
-    ? activePatterns.map((pattern) => `<article class="pattern"><h3>${htmlEscape(pattern.title || pattern.label || "Pattern")}</h3><p>${htmlEscape(pattern.claim || "")}</p><small>Status: ${htmlEscape(pattern.evidenceStatus === NEEDS_REVIEW ? NEEDS_REVIEW_LABEL : pattern.strength || pattern.level || "working pattern")}</small></article>`).join("")
+    ? activePatterns.map((pattern) => `<article class="pattern"><h3>${htmlEscape(pattern.title || pattern.label || "Pattern")}</h3><p>${htmlEscape(pattern.claim || "")}</p><small>Status: ${htmlEscape(exportStatus(pattern))}</small></article>`).join("")
     : '<p class="empty">No active patterns yet.</p>';
 
   const correctedHtml = correctedPatterns.length

@@ -20,7 +20,7 @@ globalThis.document = { documentElement: { dataset: {} }, querySelector: () => n
 const { buildContext } = await import("../../src/ai/context.js");
 const { MAX_PROFILE_HYPOTHESES, normalizeHypothesisResponse, preserveExistingHypotheses, settleConfirmedHypotheses, validateHypotheses } = await import("../../src/ai/validate.js");
 const { markNeedsReview, mergeHypotheses, normalizeHypothesis, refreshProfileHypotheses } = await import("../../src/ai/hypothesis-profile.js");
-const { NEEDS_REVIEW, NEEDS_REVIEW_LABEL, NEEDS_REVIEW_TEXT } = await import("../../src/model/statements.js");
+const { ALL_AREAS_EXCLUDED_LABEL, NEEDS_REVIEW, NEEDS_REVIEW_LABEL, NEEDS_REVIEW_TEXT, toggleDomainExclusion } = await import("../../src/model/statements.js");
 const { produceHypotheses } = await import("../../api/hypotheses.mjs");
 const { persistState, loadPersistedState } = await import("../../src/persistence.js");
 const { buildBackup, buildHtmlExport, parseBackupText } = await import("../../src/model/export.js");
@@ -475,6 +475,75 @@ for (const [name, change] of [["cleared", (s) => { s.patternStatements = []; }],
   const rewrite = pattern({ id: "ai-worlds", label: WORLDS.title, claim: WORLDS.claim, evidence: WORLDS.supports, domains: ["movies", "play"], crossDomain: "tentative", level: "supported" });
   const { validated } = refresh(s, { hypotheses: [rewrite] });
   check("confirmation changed to Not me: the pattern is removed", !validated.accepted.some((h) => h.id === "ai-worlds"));
+}
+
+// ---- 13. one status everywhere: "Excluded from all areas", then "Needs another look", then the level ---------
+{
+  const { state } = await import("../../src/state.js");
+  const { renderProfile } = await import("../../src/screens/profile.js");
+  const { renderTasteMap } = await import("../../src/screens/tastemap.js");
+  // Two confirmed "partly" patterns across movies+play: one flagged by an earlier check, one not.
+  const s = investigationState({ says: "partial" });
+  s.modelHypotheses = markNeedsReview([{ ...WORLDS }, { ...WORLDS, id: "ai-plain", title: "Lived-in places", claim: "Places that feel lived-in keep attention in shows and games alike." }], ["ai-worlds"]);
+  s.patternStatements = s.modelHypotheses.map((h) => ({ hypothesisId: h.id, label: h.title, says: "partial", weight: null, context: null, authority: "user-confirmed" }));
+  const views = (st) => {
+    Object.assign(state, { feedbackByRecommendation: st.feedbackByRecommendation, patternStatements: st.patternStatements, modelHypotheses: st.modelHypotheses });
+    const row = (html, id) => { const at = html.indexOf(`data-profile-pattern="${id}"`); return at < 0 ? "" : html.slice(at, html.indexOf("</article>", at)); };
+    const node = (html, title) => { const at = html.indexOf(`<b>${title}</b>`); return at < 0 ? "" : html.slice(at, html.indexOf("</div>", at)); };
+    const out = {};
+    for (const view of ["list", "full"]) { state.profileView = view; const html = renderProfile(); out[view] = { worlds: row(html, "ai-worlds"), plain: row(html, "ai-plain") }; }
+    state.profileView = "map";
+    const mapHtml = renderProfile();
+    out.map = { worlds: node(mapHtml, WORLDS.title), plain: node(mapHtml, "Lived-in places") };
+    const exportHtml = buildHtmlExport(st);
+    const card = (title) => { const at = exportHtml.indexOf(`<h3>${title}</h3>`); return exportHtml.slice(at, exportHtml.indexOf("</article>", at)); };
+    out.export = { worlds: card(WORLDS.title), plain: card("Lived-in places") };
+    state.profileView = "list";
+    return out;
+  };
+  const level = /class="signal-status|map-node-conf">supported<|Status: supported/i;
+
+  // 1 + 2: every area excluded, flagged and unflagged.
+  const stored = JSON.stringify(s.modelHypotheses);
+  const history = s.hypothesisHistory.length;
+  for (const id of ["ai-worlds", "ai-plain"]) { toggleDomainExclusion(s, id, "movies"); toggleDomainExclusion(s, id, "play"); }
+  const historyAfterToggles = s.hypothesisHistory.length;
+  const excludedJson = JSON.stringify(s.patternStatements.map((x) => x.excludedDomains));
+  const all = views(s);
+  for (const surface of ["list", "full", "map", "export"]) {
+    for (const [which, label] of [["worlds", "flagged"], ["plain", "unflagged"]]) {
+      const html = all[surface][which];
+      check(`every area excluded (${label}), ${surface}: shows Excluded from all areas`, html.includes(ALL_AREAS_EXCLUDED_LABEL), html.slice(0, 300));
+      check(`every area excluded (${label}), ${surface}: no Needs another look`, !html.includes(NEEDS_REVIEW_LABEL));
+      check(`every area excluded (${label}), ${surface}: no confidence level`, !level.test(html), html.slice(0, 300));
+    }
+  }
+  check("every area excluded (flagged), profile: no evidence warning line", !all.list.worlds.includes("no longer available") && !all.full.worlds.includes("no longer available"));
+
+  // 3: nothing stored changes.
+  eq("display only: the saved patterns and evidence flag are unchanged", JSON.stringify(s.modelHypotheses), stored);
+  eq("display only: the corrections are unchanged", JSON.stringify(s.patternStatements.map((x) => x.excludedDomains)), excludedJson);
+  eq("display only: rendering adds no history", s.hypothesisHistory.length, historyAfterToggles);
+  check("the toggles themselves were recorded in history as before", historyAfterToggles > history);
+
+  // 4: one area included again.
+  for (const id of ["ai-worlds", "ai-plain"]) toggleDomainExclusion(s, id, "play");
+  const back = views(s);
+  for (const surface of ["list", "full", "map", "export"]) {
+    check(`one area back (flagged), ${surface}: Needs another look again`, back[surface].worlds.includes(NEEDS_REVIEW_LABEL) && !back[surface].worlds.includes(ALL_AREAS_EXCLUDED_LABEL));
+    check(`one area back (unflagged), ${surface}: its level again`, level.test(back[surface].plain) && !back[surface].plain.includes(ALL_AREAS_EXCLUDED_LABEL), back[surface].plain.slice(0, 300));
+  }
+  check("one area back (flagged), profile: the evidence line returns", back.list.worlds.includes("no longer available"));
+
+  // 5: only some areas excluded changes nothing (same as the state above, checked from a fresh partial exclusion).
+  const some = investigationState({ says: "partial", extra: { excludedDomains: ["movies"] } });
+  some.modelHypotheses = s.modelHypotheses;
+  some.patternStatements = s.modelHypotheses.map((h) => ({ hypothesisId: h.id, label: h.title, says: "partial", excludedDomains: ["movies"] }));
+  const partial = views(some);
+  check("some areas excluded: flagged still shows Needs another look", ["list", "map", "export"].every((v) => partial[v].worlds.includes(NEEDS_REVIEW_LABEL)));
+  check("some areas excluded: unflagged still shows its level", ["list", "map", "export"].every((v) => level.test(partial[v].plain)));
+  check("some areas excluded: never Excluded from all areas", ["list", "full", "map", "export"].every((v) => !partial[v].worlds.includes(ALL_AREAS_EXCLUDED_LABEL) && !partial[v].plain.includes(ALL_AREAS_EXCLUDED_LABEL)));
+  check("renderTasteMap without statements keeps working", renderTasteMap(s.modelHypotheses).includes(NEEDS_REVIEW_LABEL));
 }
 
 finish();
