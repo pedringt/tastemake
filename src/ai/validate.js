@@ -253,6 +253,10 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
 //     evidence still passes: the pattern may be accepted on what remains, but it is flagged, never silently
 //     treated as the same confirmed interpretation. A removed counter-example doesn't weaken it, so it
 //     doesn't count.
+//   - The removed reaction stays cited on the pattern, so a later refresh still finds it missing and the flag
+//     stays (Paige, PR #328 review). It clears only when the reaction is back and the check passes, or when
+//     the user confirms the pattern still fits without it (reconfirmPattern, src/model/statements.js, which
+//     drops the missing citation and makes no model call).
 // A client that sends no presentRefs has no not-checked evidence.
 function evidenceStates(stored, ctx) {
   const sent = new Set((ctx.evidence ?? []).map((row) => row.ref));
@@ -265,11 +269,14 @@ function evidenceStates(stored, ctx) {
   };
 }
 
-function keepNotChecked(h, stored, ctx) {
-  const { notChecked } = evidenceStates(stored, ctx);
-  if (!notChecked.length) return h;
+// Puts back on an accepted confirmed pattern what the check couldn't use: not-checked refs, and removed
+// supporting reactions (so the flag holds). Neither counts toward its level, which is capped at the stored one.
+function keepStoredEvidence(h, stored, ctx) {
+  const { notChecked, invalid } = evidenceStates(stored, ctx);
+  const kept = [...notChecked, ...invalid];
+  if (!kept.length) return h;
   const storedSupports = new Set(stored.supports ?? stored.evidence ?? []);
-  const add = (list, wanted) => [...list, ...notChecked.filter((ref) => wanted(ref) && !list.includes(ref))];
+  const add = (list, wanted) => [...list, ...kept.filter((ref) => wanted(ref) && !list.includes(ref))];
   const storedLevel = String(stored.strength ?? stored.level ?? "emerging").toLowerCase();
   return {
     ...h,
@@ -290,9 +297,9 @@ export function settleConfirmedHypotheses(validated, ctx, existing = []) {
     if (states.notChecked.length) notChecked.push(stored.id);
     if (states.invalid.length) needsReview.push(stored.id);
     const at = accepted.findIndex((h) => h.id === stored.id || text(h.label) === storedLabel(stored));
-    if (at >= 0) { accepted[at] = keepNotChecked(accepted[at], stored, ctx); continue; }
+    if (at >= 0) { accepted[at] = keepStoredEvidence(accepted[at], stored, ctx); continue; }
     const retry = validateHypotheses({ hypotheses: [carryStored(stored, ctx)] }, ctx);
-    if (retry.accepted.length) accepted.push(...retry.accepted.map((h) => keepNotChecked(h, stored, ctx)));
+    if (retry.accepted.length) accepted.push(...retry.accepted.map((h) => keepStoredEvidence(h, stored, ctx)));
     else if (!states.invalid.length && !states.notChecked.length) needsReview.push(stored.id);
   }
   return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview, notChecked };

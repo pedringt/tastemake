@@ -8,7 +8,12 @@
 
 import { createSuite } from "./lib/assert.mjs";
 
-globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+const stored = new Map();
+globalThis.localStorage = {
+  getItem(key) { return stored.get(key) ?? null; },
+  setItem(key, value) { stored.set(key, String(value)); },
+  removeItem(key) { stored.delete(key); }
+};
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { selectExperiencedFeedbackForWire, serializeAiState } = await import("../../src/ai/live-client.js");
@@ -183,7 +188,7 @@ async function clientRefresh(s, raw, answer) {
   const pa = await clientRefresh(a, body(a, { requiredRefs: citedEvidenceRefs(a) }));
   eq("removed support, carried path: flagged as needing another look", pa.meta?.needsReview?.join(","), "ai-old");
   eq("removed support, carried path: the client shows the flag", a.modelHypotheses.find((p) => p.id === "ai-old")?.evidenceStatus, NEEDS_REVIEW);
-  check("removed support, carried path: the removed reaction is no longer cited", !a.modelHypotheses.find((p) => p.id === "ai-old")?.supports.includes(OLD[4]));
+  check("removed support, carried path: the removed reaction stays cited, so the flag holds", a.modelHypotheses.find((p) => p.id === "ai-old")?.supports.includes(OLD[4]));
   eq("removed support, carried path: the confirmed claim is unchanged", a.modelHypotheses.find((p) => p.id === "ai-old")?.claim, confirmedPattern().claim);
   // (b) the model returns its own word-for-word copy (the accepted path).
   const b = removedOne();
@@ -224,6 +229,108 @@ async function clientRefresh(s, raw, answer) {
   raw.presentRefs = [{ ref: OLD[0] }, 42, null];
   const payload = await endpoint(raw);
   eq("malformed presentRefs: ignored, so the pattern is flagged as before", payload.meta?.needsReview?.join(","), "ai-old");
+}
+
+// ---- 3c. PR #328 review: the flag holds until the rating is back or the user confirms again ----------------
+{
+  const { RECONFIRM_LABEL, canReconfirm, reconfirmPattern } = await import("../../src/model/statements.js");
+  const { hypothesisEvidenceKey } = await import("../../src/ai/hypothesis-profile.js");
+  const { persistState, loadPersistedState } = await import("../../src/persistence.js");
+  const { buildBackup } = await import("../../src/model/export.js");
+  const { state: appState, restoreStateFromBackupText } = await import("../../src/state.js");
+  const { renderProfile } = await import("../../src/screens/profile.js");
+  const removedOne = () => {
+    const s = bigState();
+    s.modelHypotheses = [confirmedPattern()];
+    confirm(s, ["ai-old"]);
+    delete s.feedbackByRecommendation[ITEMS[4].id];
+    return s;
+  };
+  const flagged = async () => { const s = removedOne(); await clientRefresh(s, body(s, { requiredRefs: citedEvidenceRefs(s) })); return s; };
+  const pat = (s) => s.modelHypotheses.find((p) => p.id === "ai-old");
+
+  // A second refresh on the remaining evidence alone doesn't clear it.
+  {
+    const s = await flagged();
+    eq("after removal: flagged", pat(s)?.evidenceStatus, NEEDS_REVIEW);
+    const second = await clientRefresh(s, body(s, { requiredRefs: citedEvidenceRefs(s) }));
+    eq("second refresh: still needs another look", second.meta?.needsReview?.join(","), "ai-old");
+    eq("second refresh: the flag stays", pat(s)?.evidenceStatus, NEEDS_REVIEW);
+    check("second refresh: the removed rating is still cited", pat(s)?.supports.includes(OLD[4]));
+    const third = await clientRefresh(s, body(s, { requiredRefs: citedEvidenceRefs(s) }));
+    eq("third refresh: the flag still stays", pat(s)?.evidenceStatus, NEEDS_REVIEW);
+    check("third refresh: the server still reports it", third.meta?.needsReview?.includes("ai-old"));
+  }
+  // Confirming it again resolves it, with no model call.
+  {
+    const s = await flagged();
+    eq("reconfirm: offered", canReconfirm(s, "ai-old"), true);
+    const keyBefore = hypothesisEvidenceKey(s);
+    const historyBefore = s.hypothesisHistory.length;
+    let calls = 0;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async () => { calls += 1; return { ok: true, json: async () => ({}) }; };
+    const message = reconfirmPattern(s, "ai-old");
+    globalThis.fetch = realFetch;
+    eq("reconfirm: no request is made", calls, 0);
+    check("reconfirm: says what happened", /still fits without the rating that was removed/.test(message ?? ""), message);
+    check("reconfirm: the flag clears", !pat(s)?.evidenceStatus);
+    check("reconfirm: the missing rating is no longer cited", !pat(s)?.supports.includes(OLD[4]));
+    eq("reconfirm: the rest is still cited", pat(s)?.supports.join(","), OLD.slice(0, 4).join(","));
+    eq("reconfirm: the claim is unchanged", pat(s)?.claim, confirmedPattern().claim);
+    eq("reconfirm: the user's answer is unchanged", s.patternStatements.find((x) => x.hypothesisId === "ai-old")?.says, "accurate");
+    eq("reconfirm: recorded in the pattern's history", s.hypothesisHistory.length, historyBefore + 1);
+    eq("reconfirm: recorded as the user's", s.hypothesisHistory.at(-1)?.origin, "user-confirmed");
+    eq("reconfirm: doesn't change the evidence key, so it triggers no refresh", hypothesisEvidenceKey(s), keyBefore);
+    eq("reconfirm: not offered again", canReconfirm(s, "ai-old"), false);
+    const next = await clientRefresh(s, body(s, { requiredRefs: citedEvidenceRefs(s) }));
+    eq("after reconfirming, a refresh: not flagged", (next.meta?.needsReview ?? []).length, 0);
+    check("after reconfirming, a refresh: stays clear", !pat(s)?.evidenceStatus);
+  }
+  // Rating it again resolves it once the check passes.
+  {
+    const s = await flagged();
+    react(s, ITEMS[4], "loved");
+    const back = await clientRefresh(s, body(s, { requiredRefs: citedEvidenceRefs(s) }));
+    eq("rating restored: nothing needs review", (back.meta?.needsReview ?? []).length, 0);
+    check("rating restored: the flag clears", !pat(s)?.evidenceStatus);
+    check("rating restored: cited again", pat(s)?.supports.includes(OLD[4]));
+  }
+  // Save / reload and backup / restore keep the flag and the missing citation, and reconfirming still works.
+  {
+    const s = await flagged();
+    persistState(s);
+    const reloaded = loadPersistedState();
+    eq("saved and reloaded: still flagged", reloaded.modelHypotheses.find((p) => p.id === "ai-old")?.evidenceStatus, NEEDS_REVIEW);
+    check("saved and reloaded: the missing rating still cited", reloaded.modelHypotheses.find((p) => p.id === "ai-old")?.supports.includes(OLD[4]));
+    appState.viewingExample = false;
+    restoreStateFromBackupText(JSON.stringify(buildBackup(s)));
+    eq("backup restored: still flagged", pat(appState)?.evidenceStatus, NEEDS_REVIEW);
+    eq("backup restored: reconfirm offered", canReconfirm(appState, "ai-old"), true);
+    appState.profileView = "list";
+    const html = renderProfile();
+    const row = html.slice(html.indexOf('data-profile-pattern="ai-old"'), html.indexOf("</article>", html.indexOf('data-profile-pattern="ai-old"')));
+    check("profile: the flagged row offers the reconfirm button", row.includes('data-reconfirm-pattern="ai-old"') && row.includes(RECONFIRM_LABEL), row.slice(0, 600));
+    reconfirmPattern(appState, "ai-old");
+    check("profile: once reconfirmed, no button and no flag", !renderProfile().includes("data-reconfirm-pattern"));
+    persistState(appState);
+    check("reconfirmed, saved and reloaded: stays clear", !loadPersistedState().modelHypotheses.find((p) => p.id === "ai-old")?.evidenceStatus);
+  }
+  // Not offered when it wouldn't mean anything.
+  {
+    const s = bigState();
+    s.modelHypotheses = [confirmedPattern()];
+    confirm(s, ["ai-old"]);
+    eq("not offered: not flagged", canReconfirm(s, "ai-old"), false);
+    s.modelHypotheses = markNeedsReview(s.modelHypotheses, ["ai-old"]);
+    eq("not offered: flagged but nothing was removed", canReconfirm(s, "ai-old"), false);
+    for (const ref of OLD.slice(0, 5)) delete s.feedbackByRecommendation[ref.slice(3)];
+    eq("not offered: nothing left to rest on", canReconfirm(s, "ai-old"), false);
+    const u = await flagged();
+    u.patternStatements = [];
+    eq("not offered: not a confirmed pattern", canReconfirm(u, "ai-old"), false);
+    eq("not offered: reconfirmPattern does nothing", reconfirmPattern(u, "ai-old"), null);
+  }
 }
 
 // ---- 4. client: "not checked" never clears an earlier flag ----------------------------------------------

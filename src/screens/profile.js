@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { canKeepDiscovering } from "../model/taste.js";
-import { CONTEXT, FIT, NEEDS_REVIEW_TEXT, WEIGHT, patternDisplayStatus, statementFor } from "../model/statements.js";
+import { CONTEXT, FIT, NEEDS_REVIEW_TEXT, RECONFIRM_LABEL, RECONFIRM_TEXT, WEIGHT, canReconfirm, patternDisplayStatus, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
@@ -161,6 +161,7 @@ function hypothesisCard(item, index, records = new Map()) {
         </div>
         <p class="signal-claim">${esc(item.claim)}</p>
         ${shown.kind === "needs-review" ? `<div class="signal-said">${esc(NEEDS_REVIEW_TEXT)}</div>` : ""}
+        ${shown.kind === "needs-review" && canReconfirm(state, item.id) ? `<div class="signal-said signal-reconfirm"><span>${esc(RECONFIRM_TEXT)}</span> <button type="button" class="button button-secondary signal-say-button" data-reconfirm-pattern="${esc(item.id)}">${esc(RECONFIRM_LABEL)}</button></div>` : ""}
         <div class="signal-evidence"><span>What this comes from</span> ${esc(item.evidence)}</div>
         ${saidReasonsLine(item, records)}
         <div class="signal-provenance">${esc(update.provenance)}</div>

@@ -26,7 +26,7 @@ import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/clie
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
 import { renderMine } from "./screens/mine.js";
-import { setStatement, toggleDomainExclusion } from "./model/statements.js";
+import { reconfirmPattern, setStatement, toggleDomainExclusion } from "./model/statements.js";
 import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
@@ -646,6 +646,18 @@ app.addEventListener("click", async (event) => {
     const message = setStatement(state, statementPattern, statementField, statementValue);
     if (!message) return;
     renderPreservingPatternPosition(statementPattern, focusSelector);
+    announce(message);
+    return;
+  }
+
+  // PR #328 review: "Confirm it still fits" on a pattern flagged because a rating it rested on was removed.
+  // Local only, no model call (reconfirmPattern).
+  const reconfirmButton = event.target.closest("[data-reconfirm-pattern]");
+  if (reconfirmButton) {
+    const id = reconfirmButton.dataset.reconfirmPattern;
+    const message = reconfirmPattern(state, id);
+    if (!message) return;
+    renderPreservingPatternPosition(id, focusSelector);
     announce(message);
     return;
   }
