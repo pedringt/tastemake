@@ -82,26 +82,32 @@ const reasonFactor = (record) => ((record.refinements ?? []).length ? REASON_BOO
 
 // How well a candidate fits everything the person has rated. Higher is better; below zero means it
 // mostly resembles things they disliked.
-export function tasteScore(candidate, records, options = {}) {
-  return tasteScoreParts(candidate, records, options).score;
+export function tasteScore(candidate, records, { cache, rarity = null } = {}) {
+  return sumMatches(closestMatches(candidate, records, { cache, rarity }));
 }
 
 // The same score with the ratings that produced it (#1a candidate trace): the closest liked/loved and
-// disliked matches, each with its similarity and contribution, and the found-from bonus. `score` is
-// computed in exactly the order tasteScore always used, so the two never differ.
+// disliked matches, each with its similarity and contribution, and the found-from bonus. Built only when
+// tracing; `score` is the same sum tasteScore returns.
 export function tasteScoreParts(candidate, records, { cache, rarity = null } = {}) {
+  const matches = closestMatches(candidate, records, { cache, rarity });
+  const part = (match) => ({ ref: match.record.ref, itemId: match.record.itemId, title: match.record.title ?? null, similarity: match.similarity, weight: match.record.weight, contribution: contribution(match) });
+  return { score: sumMatches(matches), positives: matches.positives.map(part), negatives: matches.negatives.map(part), anchorBonus: matches.anchorBonus };
+}
+
+const contribution = ({ record, similarity }) => similarity * record.weight * reasonFactor(record);
+
+function closestMatches(candidate, records, { cache, rarity }) {
   const features = tasteFeatures(candidate);
-  const contribution = ({ record, similarity }) => similarity * record.weight * reasonFactor(record);
   const positives = closestRatings(candidate, records, { polarity: 1, limit: TOP_POSITIVE, features, cache, rarity });
   const negatives = closestRatings(candidate, records, { polarity: -1, limit: TOP_NEGATIVE, features, cache, rarity });
   const anchor = candidate?.relatedToId ? experienced(records).find((record) => record.itemId === candidate.relatedToId) : null;
-  const anchorBonus = anchor && anchor.polarity > 0 ? ANCHOR_BONUS * anchor.weight : 0;
-  const score = positives.reduce((sum, match) => sum + contribution(match), 0)
-    + negatives.reduce((sum, match) => sum + contribution(match), 0)
-    + anchorBonus;
-  const part = (match) => ({ ref: match.record.ref, itemId: match.record.itemId, title: match.record.title ?? null, similarity: match.similarity, weight: match.record.weight, contribution: contribution(match) });
-  return { score, positives: positives.map(part), negatives: negatives.map(part), anchorBonus };
+  return { positives, negatives, anchorBonus: anchor && anchor.polarity > 0 ? ANCHOR_BONUS * anchor.weight : 0 };
 }
+
+const sumMatches = ({ positives, negatives, anchorBonus }) => positives.reduce((sum, match) => sum + contribution(match), 0)
+  + negatives.reduce((sum, match) => sum + contribution(match), 0)
+  + anchorBonus;
 
 const MIXED_DOMAINS = ["movies", "tv", "read", "play"];
 const primaryDomain = (item) => MIXED_DOMAINS.find((domain) => item?.domains?.includes(domain)) ?? "other";
@@ -128,8 +134,9 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
   const cache = new Map();
   const rarity = featureRarity(records, cache);
   const scored = candidates.map((item, index) => {
+    if (!trace) return { item, index, score: tasteScore(item, records, { cache, rarity }) };
     const parts = tasteScoreParts(item, records, { cache, rarity });
-    return { item, index, score: parts.score, ...(trace ? { parts } : {}) };
+    return { item, index, score: parts.score, parts };
   });
   const byTaste = [...scored].sort((a, b) => b.score - a.score || a.index - b.index);
   byTaste.forEach((entry, rank) => { entry.fused = 1 / (FUSION_K + rank) + 1 / (FUSION_K + entry.index); });
