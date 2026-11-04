@@ -1,0 +1,878 @@
+{
+  "_about": "Oct 27: fixed test profiles for the TMDb related quality floor before/after eval (PR related-quality-floor). Each state is the request body's `state` for POST /api/recommendations. Ids were looked up with the free GET /api/catalog. For later sets in a run, append the ids offered so far to state.seenItemIds.",
+  "profiles": [
+    {
+      "id": "eeaao-bear-hades-phm",
+      "label": "Everything Everywhere All at Once / The Bear / Hades / Project Hail Mary",
+      "state": {
+        "selectedFavorites": [
+          "tmdb-movie-545611",
+          "tmdb-tv-136315",
+          "igdb-game-113112",
+          "openlibrary-book-OL21745884W"
+        ],
+        "feedbackByRecommendation": {
+          "tmdb-movie-324857": {
+            "rating": "more",
+            "detail": "loved-before",
+            "item": {
+              "id": "tmdb-movie-324857",
+              "provider": "tmdb",
+              "providerId": "324857",
+              "title": "Spider-Man: Into the Spider-Verse",
+              "type": "movie",
+              "domains": [
+                "movies"
+              ],
+              "year": "2018",
+              "genres": [
+                "16",
+                "28",
+                "12",
+                "878"
+              ],
+              "providerMeta": {
+                "genreIds": [
+                  16,
+                  28,
+                  12,
+                  878
+                ],
+                "collectionId": null
+              }
+            }
+          },
+          "tmdb-tv-97546": {
+            "rating": "more",
+            "detail": "liked-before",
+            "item": {
+              "id": "tmdb-tv-97546",
+              "provider": "tmdb",
+              "providerId": "97546",
+              "title": "Ted Lasso",
+              "type": "tv",
+              "domains": [
+                "tv"
+              ],
+              "year": "2020",
+              "genres": [
+                "18",
+                "35"
+              ],
+              "providerMeta": {
+                "genreIds": [
+                  18,
+                  35
+                ],
+                "collectionId": null
+              }
+            }
+          }
+        },
+        "seenItemIds": [],
+        "recommendationSets": [],
+        "libraryFavorites": [],
+        "customItems": {
+          "tmdb-movie-545611": {
+            "id": "tmdb-movie-545611",
+            "provider": "tmdb",
+            "providerId": "545611",
+            "title": "Everything Everywhere All at Once",
+            "type": "movie",
+            "domains": [
+              "movies"
+            ],
+            "year": "2022",
+            "genres": [
+              "28",
+              "12",
+              "878"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                28,
+                12,
+                878
+              ],
+              "collectionId": null
+            }
+          },
+          "tmdb-tv-136315": {
+            "id": "tmdb-tv-136315",
+            "provider": "tmdb",
+            "providerId": "136315",
+            "title": "The Bear",
+            "type": "tv",
+            "domains": [
+              "tv"
+            ],
+            "year": "2022",
+            "genres": [
+              "18",
+              "35"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                18,
+                35
+              ],
+              "collectionId": null
+            }
+          },
+          "igdb-game-113112": {
+            "id": "igdb-game-113112",
+            "provider": "igdb",
+            "providerId": "113112",
+            "title": "Hades",
+            "type": "game",
+            "domains": [
+              "play"
+            ],
+            "year": "2020",
+            "genres": [
+              "Role-playing (RPG)",
+              "Hack and slash/Beat 'em up",
+              "Adventure",
+              "Indie"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                12,
+                25,
+                31,
+                32
+              ],
+              "themes": [
+                "Action",
+                "Fantasy",
+                "Drama"
+              ],
+              "collectionId": null,
+              "franchiseId": null
+            }
+          },
+          "openlibrary-book-OL21745884W": {
+            "id": "openlibrary-book-OL21745884W",
+            "provider": "openlibrary",
+            "providerId": "OL21745884W",
+            "title": "Project Hail Mary",
+            "type": "book",
+            "domains": [
+              "read"
+            ],
+            "year": "2021",
+            "by": "Andy Weir",
+            "genres": [
+              "hard science-fiction",
+              "science-fiction",
+              "sci-fi",
+              "hard sci-fi",
+              "nyt:hardcover-fiction=2021-05-23",
+              "New York Times bestseller",
+              "New York Times reviewed",
+              "Fiction, science fiction, action & adventure",
+              "Fiction, science fiction, hard science fiction",
+              "End of the world",
+              "Fiction",
+              "Astronauts"
+            ],
+            "providerMeta": {
+              "seriesKey": null,
+              "seriesKeys": [],
+              "seriesNames": [],
+              "seriesPosition": null,
+              "isbns": [
+                "8328716801",
+                "0593135210",
+                "9523930001",
+                "8925588730",
+                "9401614075",
+                "9783453321342",
+                "9786257442398",
+                "9781529100631",
+                "8413148464",
+                "059335527X",
+                "9788925588735",
+                "1529100615",
+                "1529100623",
+                "9781713630296",
+                "0593395565",
+                "9781529100617",
+                "9787544787352",
+                "0593135202",
+                "9791028119676",
+                "6064310995",
+                "9780593135211",
+                "9780593135228",
+                "0593135229",
+                "9781529100624"
+              ]
+            }
+          }
+        },
+        "patternStatements": [],
+        "exclusions": [],
+        "areas": {
+          "movies": true,
+          "tv": true,
+          "read": true,
+          "play": true
+        },
+        "recommendationFilter": "all",
+        "curveball": true
+      }
+    },
+    {
+      "id": "arrival-severance-outerwilds-piranesi",
+      "label": "Arrival / Severance / Outer Wilds / Piranesi",
+      "state": {
+        "selectedFavorites": [
+          "tmdb-movie-329865",
+          "tmdb-tv-95396",
+          "igdb-game-11737",
+          "openlibrary-book-OL20893680W"
+        ],
+        "feedbackByRecommendation": {
+          "tmdb-movie-300668": {
+            "rating": "more",
+            "detail": "loved-before",
+            "item": {
+              "id": "tmdb-movie-300668",
+              "provider": "tmdb",
+              "providerId": "300668",
+              "title": "Annihilation",
+              "type": "movie",
+              "domains": [
+                "movies"
+              ],
+              "year": "2018",
+              "genres": [
+                "878",
+                "27"
+              ],
+              "providerMeta": {
+                "genreIds": [
+                  878,
+                  27
+                ],
+                "collectionId": null
+              }
+            }
+          },
+          "tmdb-tv-70523": {
+            "rating": "more",
+            "detail": "liked-before",
+            "item": {
+              "id": "tmdb-tv-70523",
+              "provider": "tmdb",
+              "providerId": "70523",
+              "title": "Dark",
+              "type": "tv",
+              "domains": [
+                "tv"
+              ],
+              "year": "2017",
+              "genres": [
+                "80",
+                "18",
+                "10765",
+                "9648"
+              ],
+              "providerMeta": {
+                "genreIds": [
+                  80,
+                  18,
+                  10765,
+                  9648
+                ],
+                "collectionId": null
+              }
+            }
+          }
+        },
+        "seenItemIds": [],
+        "recommendationSets": [],
+        "libraryFavorites": [],
+        "customItems": {
+          "tmdb-movie-329865": {
+            "id": "tmdb-movie-329865",
+            "provider": "tmdb",
+            "providerId": "329865",
+            "title": "Arrival",
+            "type": "movie",
+            "domains": [
+              "movies"
+            ],
+            "year": "2016",
+            "genres": [
+              "18",
+              "878",
+              "9648"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                18,
+                878,
+                9648
+              ],
+              "collectionId": null
+            }
+          },
+          "tmdb-tv-95396": {
+            "id": "tmdb-tv-95396",
+            "provider": "tmdb",
+            "providerId": "95396",
+            "title": "Severance",
+            "type": "tv",
+            "domains": [
+              "tv"
+            ],
+            "year": "2022",
+            "genres": [
+              "18",
+              "9648",
+              "10765"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                18,
+                9648,
+                10765
+              ],
+              "collectionId": null
+            }
+          },
+          "igdb-game-11737": {
+            "id": "igdb-game-11737",
+            "provider": "igdb",
+            "providerId": "11737",
+            "title": "Outer Wilds",
+            "type": "game",
+            "domains": [
+              "play"
+            ],
+            "year": "2019",
+            "genres": [
+              "Puzzle",
+              "Simulator",
+              "Adventure",
+              "Indie"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                9,
+                13,
+                31,
+                32
+              ],
+              "themes": [
+                "Action",
+                "Science fiction",
+                "Open world",
+                "Mystery"
+              ],
+              "collectionId": null,
+              "franchiseId": null
+            }
+          },
+          "openlibrary-book-OL20893680W": {
+            "id": "openlibrary-book-OL20893680W",
+            "provider": "openlibrary",
+            "providerId": "OL20893680W",
+            "title": "Piranesi",
+            "type": "book",
+            "domains": [
+              "read"
+            ],
+            "year": "2020",
+            "by": "Susanna Clarke",
+            "genres": [
+              "form:novel",
+              "genre:fantasy",
+              "English literature",
+              "nyt:combined-print-and-e-book-fiction=2020-10-04",
+              "New York Times bestseller",
+              "Labyrinths",
+              "Fiction",
+              "Curiosities and wonders",
+              "Dwellings",
+              "Dead"
+            ],
+            "providerMeta": {
+              "seriesKey": null,
+              "seriesKeys": [],
+              "seriesNames": [],
+              "seriesPosition": null,
+              "isbns": [
+                "1635575648",
+                "9781526622440",
+                "9781432895082",
+                "9788418363283",
+                "1526625970",
+                "9781526631008",
+                "1526631008",
+                "9781526622426",
+                "1526681536",
+                "8418363282",
+                "9781635575637",
+                "9783453321984",
+                "163557563X",
+                "1526622602",
+                "9781635575644",
+                "6586015316",
+                "9781526622433",
+                "9781635577808",
+                "9782221250242",
+                "1526622416",
+                "1635576717",
+                "9791259670021",
+                "9786586015317",
+                "1526622432"
+              ]
+            }
+          }
+        },
+        "patternStatements": [],
+        "exclusions": [],
+        "areas": {
+          "movies": true,
+          "tv": true,
+          "read": true,
+          "play": true
+        },
+        "recommendationFilter": "all",
+        "curveball": true
+      }
+    },
+    {
+      "id": "horror-heavy",
+      "label": "Horror: Hereditary / The Haunting of Hill House / Resident Evil 4 / Mexican Gothic",
+      "state": {
+        "selectedFavorites": [
+          "tmdb-movie-493922",
+          "tmdb-tv-72844",
+          "igdb-game-974",
+          "openlibrary-book-OL20759125W"
+        ],
+        "feedbackByRecommendation": {
+          "tmdb-movie-694": {
+            "rating": "more",
+            "detail": "loved-before",
+            "item": {
+              "id": "tmdb-movie-694",
+              "provider": "tmdb",
+              "providerId": "694",
+              "title": "The Shining",
+              "type": "movie",
+              "domains": [
+                "movies"
+              ],
+              "year": "1980",
+              "genres": [
+                "27",
+                "53"
+              ],
+              "providerMeta": {
+                "genreIds": [
+                  27,
+                  53
+                ],
+                "collectionId": null
+              }
+            }
+          },
+          "tmdb-movie-419430": {
+            "rating": "more",
+            "detail": "liked-before",
+            "item": {
+              "id": "tmdb-movie-419430",
+              "provider": "tmdb",
+              "providerId": "419430",
+              "title": "Get Out",
+              "type": "movie",
+              "domains": [
+                "movies"
+              ],
+              "year": "2017",
+              "genres": [
+                "9648",
+                "53",
+                "27"
+              ],
+              "providerMeta": {
+                "genreIds": [
+                  9648,
+                  53,
+                  27
+                ],
+                "collectionId": null
+              }
+            }
+          }
+        },
+        "seenItemIds": [],
+        "recommendationSets": [],
+        "libraryFavorites": [],
+        "customItems": {
+          "tmdb-movie-493922": {
+            "id": "tmdb-movie-493922",
+            "provider": "tmdb",
+            "providerId": "493922",
+            "title": "Hereditary",
+            "type": "movie",
+            "domains": [
+              "movies"
+            ],
+            "year": "2018",
+            "genres": [
+              "27",
+              "9648",
+              "53"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                27,
+                9648,
+                53
+              ],
+              "collectionId": null
+            }
+          },
+          "tmdb-tv-72844": {
+            "id": "tmdb-tv-72844",
+            "provider": "tmdb",
+            "providerId": "72844",
+            "title": "The Haunting of Hill House",
+            "type": "tv",
+            "domains": [
+              "tv"
+            ],
+            "year": "2018",
+            "genres": [
+              "9648",
+              "18"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                9648,
+                18
+              ],
+              "collectionId": null
+            }
+          },
+          "igdb-game-974": {
+            "id": "igdb-game-974",
+            "provider": "igdb",
+            "providerId": "974",
+            "title": "Resident Evil 4",
+            "type": "game",
+            "domains": [
+              "play"
+            ],
+            "year": "2005",
+            "genres": [
+              "Shooter",
+              "Adventure"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                5,
+                31
+              ],
+              "themes": [
+                "Action",
+                "Horror",
+                "Survival"
+              ],
+              "collectionId": null,
+              "franchiseId": 29
+            }
+          },
+          "openlibrary-book-OL20759125W": {
+            "id": "openlibrary-book-OL20759125W",
+            "provider": "openlibrary",
+            "providerId": "OL20759125W",
+            "title": "Mexican Gothic",
+            "type": "book",
+            "domains": [
+              "read"
+            ],
+            "year": "2020",
+            "by": "Silvia Moreno-Garcia",
+            "genres": [
+              "English literature",
+              "nyt:combined-print-and-e-book-fiction=2020-07-19",
+              "New York Times bestseller",
+              "Fiction, gothic",
+              "Fiction, historical",
+              "Mexico, fiction",
+              "Fiction, historical, general",
+              "nyt:trade-fiction-paperback=2021-07-11",
+              "Haunted houses",
+              "Fiction",
+              "Families",
+              "Family secrets"
+            ],
+            "providerMeta": {
+              "seriesKey": null,
+              "seriesKeys": [],
+              "seriesNames": [],
+              "seriesPosition": null,
+              "isbns": [
+                "1432885383",
+                "9781529402674",
+                "9781663634269",
+                "9780525620792",
+                "9791028112486",
+                "052562080X",
+                "1529402654",
+                "9788445009819",
+                "9781432892043",
+                "1663634262",
+                "9786070778018",
+                "1529402670",
+                "9781529402681",
+                "1432892045",
+                "0525620796",
+                "8445009818",
+                "0593213874",
+                "6070778014",
+                "9781529402650",
+                "9788445014318",
+                "1529402689",
+                "0525620788",
+                "9780525620785",
+                "9781529427097"
+              ]
+            }
+          }
+        },
+        "patternStatements": [],
+        "exclusions": [],
+        "areas": {
+          "movies": true,
+          "tv": true,
+          "read": true,
+          "play": true
+        },
+        "recommendationFilter": "all",
+        "curveball": true
+      }
+    },
+    {
+      "id": "comedy-heavy",
+      "label": "Comedy: What We Do in the Shadows / Schitt's Creek / Untitled Goose Game / Good Omens",
+      "state": {
+        "selectedFavorites": [
+          "tmdb-movie-246741",
+          "tmdb-tv-61662",
+          "igdb-game-72813",
+          "openlibrary-book-OL453936W"
+        ],
+        "feedbackByRecommendation": {
+          "tmdb-movie-4638": {
+            "rating": "more",
+            "detail": "loved-before",
+            "item": {
+              "id": "tmdb-movie-4638",
+              "provider": "tmdb",
+              "providerId": "4638",
+              "title": "Hot Fuzz",
+              "type": "movie",
+              "domains": [
+                "movies"
+              ],
+              "year": "2007",
+              "genres": [
+                "80",
+                "28",
+                "35"
+              ],
+              "providerMeta": {
+                "genreIds": [
+                  80,
+                  28,
+                  35
+                ],
+                "collectionId": null
+              }
+            }
+          },
+          "tmdb-movie-8363": {
+            "rating": "more",
+            "detail": "liked-before",
+            "item": {
+              "id": "tmdb-movie-8363",
+              "provider": "tmdb",
+              "providerId": "8363",
+              "title": "Superbad",
+              "type": "movie",
+              "domains": [
+                "movies"
+              ],
+              "year": "2007",
+              "genres": [
+                "35"
+              ],
+              "providerMeta": {
+                "genreIds": [
+                  35
+                ],
+                "collectionId": null
+              }
+            }
+          }
+        },
+        "seenItemIds": [],
+        "recommendationSets": [],
+        "libraryFavorites": [],
+        "customItems": {
+          "tmdb-movie-246741": {
+            "id": "tmdb-movie-246741",
+            "provider": "tmdb",
+            "providerId": "246741",
+            "title": "What We Do in the Shadows",
+            "type": "movie",
+            "domains": [
+              "movies"
+            ],
+            "year": "2014",
+            "genres": [
+              "35",
+              "27"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                35,
+                27
+              ],
+              "collectionId": null
+            }
+          },
+          "tmdb-tv-61662": {
+            "id": "tmdb-tv-61662",
+            "provider": "tmdb",
+            "providerId": "61662",
+            "title": "Schitt's Creek",
+            "type": "tv",
+            "domains": [
+              "tv"
+            ],
+            "year": "2015",
+            "genres": [
+              "35"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                35
+              ],
+              "collectionId": null
+            }
+          },
+          "igdb-game-72813": {
+            "id": "igdb-game-72813",
+            "provider": "igdb",
+            "providerId": "72813",
+            "title": "Untitled Goose Game",
+            "type": "game",
+            "domains": [
+              "play"
+            ],
+            "year": "2019",
+            "genres": [
+              "Puzzle",
+              "Simulator",
+              "Adventure",
+              "Indie"
+            ],
+            "providerMeta": {
+              "genreIds": [
+                9,
+                13,
+                31,
+                32
+              ],
+              "themes": [
+                "Action",
+                "Stealth",
+                "Comedy",
+                "Sandbox",
+                "Kids"
+              ],
+              "collectionId": null,
+              "franchiseId": null
+            }
+          },
+          "openlibrary-book-OL453936W": {
+            "id": "openlibrary-book-OL453936W",
+            "provider": "openlibrary",
+            "providerId": "OL453936W",
+            "title": "Good Omens",
+            "type": "book",
+            "domains": [
+              "read"
+            ],
+            "year": "1990",
+            "by": "Terry Pratchett, Neil Gaiman",
+            "genres": [
+              "End of the world",
+              "Humorous",
+              "Fantasy fiction",
+              "Fiction",
+              "Prophecies",
+              "Occult fiction",
+              "Witches",
+              "Humorous fiction",
+              "Apocalypse",
+              "Roman",
+              "Sorcières",
+              "Antichrist"
+            ],
+            "providerMeta": {
+              "seriesKey": null,
+              "seriesKeys": [],
+              "seriesNames": [],
+              "seriesPosition": null,
+              "isbns": [
+                "5041604827",
+                "9780613673297",
+                "0753125803",
+                "9780061967085",
+                "9786558380764",
+                "8804544627",
+                "8528624021",
+                "2290315869",
+                "9788448040253",
+                "0060853964",
+                "0062934910",
+                "6053751839",
+                "9178039029",
+                "3492281664",
+                "9787559418364",
+                "9781448110230",
+                "1473214718",
+                "9780062836977",
+                "9780061121302",
+                "9781417767601",
+                "9780575048003",
+                "9788804544623",
+                "9788374692724",
+                "3492285058"
+              ]
+            }
+          }
+        },
+        "patternStatements": [],
+        "exclusions": [],
+        "areas": {
+          "movies": true,
+          "tv": true,
+          "read": true,
+          "play": true
+        },
+        "recommendationFilter": "all",
+        "curveball": true
+      }
+    }
+  ]
+}
