@@ -1,6 +1,8 @@
 import { hypothesisMatches } from "./taste.js";
 import { recordRevision } from "./history.js";
 import { evidenceRecords } from "./evidence.js";
+import { allowedCrossDomain, allowedLevel, capLevel, domainScope, evidenceRows } from "./evidence-rules.js";
+import { CROSS_DOMAIN, LEVELS } from "../ai/contract.js";
 
 // What the user has said about a pattern (pattern corrections). Decided Sept 22, 2026:
 //   - This is its own authority, **user-confirmed**. It outranks anything Tastemake or a model inferred.
@@ -174,16 +176,42 @@ function reconfirmation(state, hypothesisId) {
 
 export const canReconfirm = (state, hypothesisId) => Boolean(reconfirmation(state, hypothesisId));
 
+// Nov 4 (after #328): the user confirming the claim still fits doesn't vouch for how much evidence is left.
+// What the remaining evidence allows is recomputed with the validator's own rules (src/model/evidence-rules.js):
+// the level, never higher than before (and no higher than Supported when the user said it only applies in
+// some contexts); the areas, keeping only earlier ones a remaining supporting rating is in (the user's
+// excluded areas are a separate setting and stay as they are); never a new area, even when none of the earlier
+// ones is left (the scope is then empty, shown as "still finding where this shows up"); the cross-domain
+// reach, never further than before. Conditional stays Conditional. The next refresh can reconsider all of it
+// by the normal rules.
+function recomputedFromEvidence(state, pattern, supportRows, counterRows) {
+  const storedLevel = String(pattern.strength ?? "emerging").toLowerCase();
+  let strength = capLevel(LEVELS.includes(storedLevel) ? storedLevel : "emerging", allowedLevel(supportRows, counterRows));
+  if (contextQualifiedFor(state, pattern.id)) strength = capLevel(strength, "supported");
+  const supported = domainScope({ supports: evidenceRows(supportRows), against: evidenceRows(counterRows), heldUp: [] }).scope.supported;
+  const kept = (pattern.domains ?? []).filter((domain) => supported.includes(domain));
+  const storedReach = CROSS_DOMAIN.includes(pattern.crossDomain) ? pattern.crossDomain : "untested";
+  const reach = allowedCrossDomain(supportRows, counterRows);
+  return {
+    strength,
+    status: pattern.status === "conditional" ? "conditional" : strength,
+    domains: kept,
+    crossDomain: CROSS_DOMAIN[Math.min(CROSS_DOMAIN.indexOf(storedReach), CROSS_DOMAIN.indexOf(reach))]
+  };
+}
+
 export function reconfirmPattern(state, hypothesisId) {
   const found = reconfirmation(state, hypothesisId);
   if (!found) return null;
   const { pattern, present, supports, removed } = found;
   const { evidenceStatus, ...rest } = pattern;
+  const counters = (pattern.counters ?? []).filter((ref) => present.has(ref));
   const next = {
     ...rest,
     supports,
-    counters: (pattern.counters ?? []).filter((ref) => present.has(ref)),
-    evidence: supports.map((ref) => present.get(ref).title).join(", ")
+    counters,
+    evidence: supports.map((ref) => present.get(ref).title).join(", "),
+    ...recomputedFromEvidence(state, pattern, supports.map((ref) => present.get(ref)), counters.map((ref) => present.get(ref)))
   };
   state.modelHypotheses = state.modelHypotheses.map((p) => (p.id === hypothesisId ? next : p));
   const message = `${pattern.title}: you confirmed it still fits without the ${removed === 1 ? "rating" : `${removed} ratings`} that ${removed === 1 ? "was" : "were"} removed.`;
