@@ -129,6 +129,31 @@ eq("interpretations' domainScope is the shared rule", interpretations.domainScop
   eq("excluded area: shown without the excluded area", interpretations.domainScopeFromDomains(pat(s, "ai-p").domains, ["tv"]).supported.join(","), "movies");
 }
 
+// ---- 6b. PR #329 review: reconfirming never adds an area ------------------------------------------------------
+{
+  // A Games-only pattern that also cites movie ratings loses its only game rating.
+  const s = flagged({ id: "ai-g", title: "Games only", supports: ["ev:g1", "ev:m1", "ev:m2"], domains: ["play"], strength: "supported", status: "supported", crossDomain: "untested" },
+    { g1: ["play"], m1: ["movies"], m2: ["movies"] }, "g1");
+  check("games-only, game rating removed: reconfirm still offered (movie ratings remain)", ST.canReconfirm(s, "ai-g"));
+  ST.reconfirmPattern(s, "ai-g");
+  eq("games-only, game rating removed: no area is invented (scope not changed to Movies)", pat(s, "ai-g").domains.join(","), "");
+  eq("…history records the empty scope too", s.hypothesisHistory.at(-1)?.domains.join(","), "");
+  const { renderTasteMap } = await import("../../src/screens/tastemap.js");
+  const map = renderTasteMap(s.modelHypotheses, s.patternStatements);
+  const notes = map.match(/<b>Games only<\/b>[\s\S]*?map-node-notes">([^<]*)</)?.[1];
+  eq("Taste Map: an empty scope reads as still finding where it shows up", notes, "Still finding where this shows up");
+  check("Taste Map: in no area panel", ![...map.matchAll(/<h3>([^<]*)<\/h3>\s*<p>([^<]*)<\/p>/g)].some((m) => m[2].includes("Games only")));
+  appState.viewingExample = false;
+  restoreStateFromBackupText(JSON.stringify(buildBackup(s)));
+  appState.profileView = "list";
+  const { renderProfile } = await import("../../src/screens/profile.js");
+  const html = renderProfile();
+  const row = html.slice(html.indexOf('data-profile-pattern="ai-g"'), html.indexOf("</article>", html.indexOf('data-profile-pattern="ai-g"')));
+  check("Profile: the row renders", row.includes("Games only"), row.slice(0, 300));
+  const rowText = row.replace(/<[^>]+>/g, " ").replaceAll("Games only", "");
+  check("Profile: no area named for it", !/Movies|Games/.test(rowText), rowText.slice(0, 600));
+}
+
 // ---- 7. save / reload and backup / restore keep the recomputed values ----------------------------------------------
 {
   const s = flagged({ id: "ai-s", title: "Strong", supports: ["ev:a", "ev:b", "ev:c", "ev:g1"], domains: ["movies", "play"], strength: "strong", status: "strong", crossDomain: "tentative" },

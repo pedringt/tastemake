@@ -180,8 +180,10 @@ export const canReconfirm = (state, hypothesisId) => Boolean(reconfirmation(stat
 // What the remaining evidence allows is recomputed with the validator's own rules (src/model/evidence-rules.js):
 // the level, never higher than before (and no higher than Supported when the user said it only applies in
 // some contexts); the areas, keeping only earlier ones a remaining supporting rating is in (the user's
-// excluded areas are a separate setting and stay as they are); the cross-domain reach, never further than
-// before. Conditional stays Conditional. The next refresh can reconsider all of it by the normal rules.
+// excluded areas are a separate setting and stay as they are); never a new area, even when none of the earlier
+// ones is left (the scope is then empty, shown as "still finding where this shows up"); the cross-domain
+// reach, never further than before. Conditional stays Conditional. The next refresh can reconsider all of it
+// by the normal rules.
 function recomputedFromEvidence(state, pattern, supportRows, counterRows) {
   const storedLevel = String(pattern.strength ?? "emerging").toLowerCase();
   let strength = capLevel(LEVELS.includes(storedLevel) ? storedLevel : "emerging", allowedLevel(supportRows, counterRows));
@@ -193,7 +195,7 @@ function recomputedFromEvidence(state, pattern, supportRows, counterRows) {
   return {
     strength,
     status: pattern.status === "conditional" ? "conditional" : strength,
-    domains: kept.length ? kept : supported,
+    domains: kept,
     crossDomain: CROSS_DOMAIN[Math.min(CROSS_DOMAIN.indexOf(storedReach), CROSS_DOMAIN.indexOf(reach))]
   };
 }
