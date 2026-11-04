@@ -111,6 +111,9 @@ export function isEdgeCandidate(candidate, records) {
 // - One title per franchise.
 // - With a surprise slot, the last place goes to the best candidate found from a Liked item, if any,
 //   and it is marked `edge: true`.
+// - #252 part 2 (Oct 27): with a surprise slot and the filter on All, a bridge candidate (a cross-medium test,
+//   src/catalog/related.mjs) takes that last place instead, and no other bridge candidate is offered. Without
+//   one, nothing changes.
 export function chooseCandidates(candidates, records, { count = 6, mode = "all", curveball = false } = {}) {
   const cache = new Map();
   const rarity = featureRarity(records, cache);
@@ -123,9 +126,11 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
   const sameFranchise = (entry) => chosen.some((other) => isFranchiseContinuation(entry.item, other.item) || isFranchiseContinuation(other.item, entry.item));
   const take = (entry) => { if (entry && !chosen.includes(entry) && !sameFranchise(entry)) chosen.push(entry); };
 
-  const edge = curveball ? ordered.find(({ item, score }) => score >= 0 && isEdgeCandidate(item, records)) : null;
-  const mainCount = edge ? count - 1 : count;
-  const pool = ordered.filter((entry) => entry !== edge);
+  const bridge = curveball && mode === "all" ? ordered.find(({ item, score }) => item?.bridge && score >= 0) ?? null : null;
+  const edge = curveball && !bridge ? ordered.find(({ item, score }) => score >= 0 && !item?.bridge && isEdgeCandidate(item, records)) : null;
+  const slot = bridge ?? edge;
+  const mainCount = slot ? count - 1 : count;
+  const pool = ordered.filter((entry) => entry !== slot && !entry.item?.bridge);
 
   if (mode === "all") {
     const buckets = new Map();
@@ -150,7 +155,7 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
   } else {
     for (const entry of pool) { if (chosen.length >= mainCount) break; take(entry); }
   }
-  if (edge && !sameFranchise(edge)) chosen.push({ ...edge, isEdge: true });
+  if (slot && !sameFranchise(slot)) chosen.push({ ...slot, isEdge: slot === edge });
   return chosen.map(({ item, score, isEdge }) => ({ ...item, tasteScore: round(score), ...(isEdge ? { edge: true } : {}) }));
 }
 

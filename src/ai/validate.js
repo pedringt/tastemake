@@ -306,6 +306,7 @@ export function validatePicks(response, ctx) {
   const used = new Set();
   const evidenceUse = new Map();
   let curveballs = 0;
+  let bridges = 0;
   for (const p of response.picks) {
     const reasons = checkShape(p, { itemId: "string", why: "string", cites: "refs", tests: "nullable-string", kind: "enum:kind" });
     if (!reasons.length) {
@@ -345,11 +346,20 @@ export function validatePicks(response, ctx) {
         else if (curveballs >= 1) reasons.push("more than one curveball");
         else if (isAdultTagged(candidate) && !triedAdultTagged(ctx.evidence)) reasons.push("curveball into explicitly adult-tagged content the user has not tried (#257)");
       }
+      // #252 part 2 (Oct 27): a bridge candidate tests whether a taste carries to another medium. One per set,
+      // never into an area that's off, citing the item it was found from and saying it's a test.
+      if (candidate?.bridge) {
+        if (bridges >= 1) reasons.push("more than one cross-medium test");
+        if ((candidate.domains ?? []).length && candidate.domains.every((domain) => ctx.areas?.[domain] === false)) reasons.push("cross-medium test into an area that is off");
+        if (candidate.relatedToId && !p.cites.includes(`ev:${candidate.relatedToId}`)) reasons.push("cross-medium test does not cite the item it was found from");
+        if (!/\btest/i.test(p.why)) reasons.push("cross-medium test is not labeled as a test");
+      }
     }
     if (reasons.length) { rejected.push({ proposal: p, reasons }); continue; }
     used.add(p.itemId);
     for (const ref of new Set(p.cites)) evidenceUse.set(ref, (evidenceUse.get(ref) ?? 0) + 1);
     if (p.kind === "curveball") curveballs += 1;
+    if (candidates.get(p.itemId)?.bridge) bridges += 1;
     accepted.push({ ...p, item: candidates.get(p.itemId), authority: "inferred", source: "model", contract: CONTRACT_VERSION });
   }
   return { ok: accepted.length > 0, accepted, rejected, notes: [], fallback: accepted.length === 0 };

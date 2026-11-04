@@ -33,6 +33,8 @@ export function buildContext(state, extraCandidates = []) {
     statements: state.patternStatements ?? [],   // user-confirmed statements (pattern corrections; not built yet)
     contexts: [],                                 // contexts the user gave (taste modes; not collected yet)
     recommendationFilter: state.recommendationFilter ?? "all",
+    // #252 part 2: the validator refuses a cross-medium test into an area that's off.
+    areas: { ...(state.areas ?? {}) },
     evidenceRotation: Math.floor((state.seenItemIds?.length ?? 0) / 5)
   };
 }
