@@ -166,11 +166,15 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         });
       }
       const rejected = Number(payload.meta?.rejected ?? 0);
+      // Nov 4 (after #325): a pattern accepted while some of its evidence went unchecked (meta.notChecked)
+      // keeps an earlier "Needs another look" flag; rebuilding it must not clear one.
+      const notChecked = new Set(Array.isArray(payload.meta?.notChecked) ? payload.meta.notChecked : []);
+      const stillFlagged = (state.modelHypotheses ?? []).filter((p) => p?.evidenceStatus === NEEDS_REVIEW && notChecked.has(p.id)).map((p) => p.id);
       state.modelHypotheses = markNeedsReview(mergeHypotheses(state.modelHypotheses ?? [], next, {
         statements: state.patternStatements ?? [],
         activeLimit: 12,
         preserveExistingActive: rejected > 0
-      }), needsReview);
+      }), [...needsReview, ...stillFlagged]);
       state.hypothesisAiMessage = needsReview.length ? CHECKED_NEEDS_REVIEW : "Your Taste Profile is up to date.";
       state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");

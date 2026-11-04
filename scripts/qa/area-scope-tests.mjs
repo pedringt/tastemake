@@ -100,6 +100,29 @@ const copyWithout = (domains) => ({ hypotheses: [{ id: "ai-places", label: PLACE
   check("a model answer can't mark itself carried forward to skip that check", viaModel.rejected.some((r) => r.reasons.some((why) => /not them in: movies/.test(why))));
 }
 
+// ---- 1b. PR #328 review: the Taste Map when every area is excluded ---------------------------------------------
+{
+  const pats = [
+    { id: "ai-all", title: "All excluded", claim: "x", supports: [], counters: [], domains: ["movies", "play"], strength: "supported", status: "supported" },
+    { id: "ai-other", title: "Other pattern", claim: "y", supports: [], counters: [], domains: ["movies"], strength: "supported", status: "supported" },
+    { id: "ai-some", title: "Some excluded", claim: "z", supports: [], counters: [], domains: ["movies", "tv"], strength: "supported", status: "supported" }
+  ];
+  const statements = [
+    { hypothesisId: "ai-all", says: "partial", excludedDomains: ["movies", "play"] },
+    { hypothesisId: "ai-some", says: "partial", excludedDomains: ["movies"] }
+  ];
+  const html = renderTasteMap(pats, statements);
+  const node = (title) => html.match(new RegExp(`<b>${title}</b>[\\s\\S]*?map-node-conf">([^<]*)</span>[\\s\\S]*?map-node-notes">([^<]*)</span>`));
+  eq("every area excluded, map: status says so", node("All excluded")?.[1], "Excluded from all areas");
+  eq("every area excluded, map: no areas listed on the node", node("All excluded")?.[2], "");
+  eq("partly excluded, map: only the included area is listed", node("Some excluded")?.[2], "TV");
+  eq("excluded areas never connect patterns (only the other pattern's own area is left)", (html.match(/<line /g) ?? []).length, 0);
+  const panels = [...html.matchAll(/<h3>([^<]*)<\/h3>\s*<p>([^<]*)<\/p>/g)].map((m) => `${m[1]}=${m[2]}`);
+  check("every area excluded, map: not in any area panel", !panels.some((p) => p.includes("All excluded")), panels.join(" | "));
+  check("partly excluded, map: not in the excluded area's panel", !panels.some((p) => p.startsWith("Movies=") && p.includes("Some excluded")), panels.join(" | "));
+  check("partly excluded, map: in the included area's panel", panels.some((p) => p.startsWith("TV=") && p.includes("Some excluded")), panels.join(" | "));
+}
+
 // ---- 2. the migration -------------------------------------------------------------------------------------------
 // A profile narrowed by the old behavior: model revision with both areas, the user's exclusion, then a refresh
 // that wrote the narrowed list.

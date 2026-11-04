@@ -178,7 +178,13 @@ function invalidEvidenceState() {
   const { merged } = refresh(s, { hypotheses: [revision] });
   const kept = merged.find((h) => h.id === "ai-puzzles");
   eq("reworded revision of a flagged confirmed pattern: the confirmed claim stays", kept?.claim, PUZZLES.claim);
-  check("…and the flag clears once its evidence passes again", Boolean(kept) && !kept.evidenceStatus);
+  // PR #328 review: Inscryption, which it also cites, is still removed, so the flag stays (a removed
+  // supporting reaction always means "Needs another look", even when what remains passes).
+  eq("…but while one of its supporting reactions is still removed, the flag stays", kept?.evidenceStatus, NEEDS_REVIEW);
+  s.modelHypotheses = merged;
+  react(s, byId("inscryption"), "loved");
+  const again = refresh(s, { hypotheses: [revision] }).merged.find((h) => h.id === "ai-puzzles");
+  check("…and the flag clears once all its evidence passes again", Boolean(again) && !again.evidenceStatus);
 }
 
 // ---- 4b. the endpoint reports needsReview, including when nothing else was accepted ----------------------

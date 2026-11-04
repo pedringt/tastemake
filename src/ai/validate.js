@@ -243,19 +243,25 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
 //   - validated: sent with this request (in ctx.evidence) and checked as usual;
 //   - not checked: the client still has it but didn't send it (ctx.presentRefs, payload limit);
 //   - invalid: neither, so the reaction was removed or no longer counts.
-// Only validated evidence is checked or counted. Not-checked refs are kept on the pattern as they were, but
-// never raise its level: when any are involved the level is capped at the stored one. A pattern that can't
-// pass on its validated evidence alone, but has nothing invalid, is listed in notChecked: it is neither
-// accepted nor flagged, so the client keeps it exactly as stored, including any earlier flag (only a real
-// check clears one). Anything invalid still means needsReview. A client that sends no presentRefs gets the
-// same answers as before.
+// Only validated evidence is checked or counted.
+//   - Not-checked refs are kept on the pattern as they were, but never raise its level: when any are involved
+//     the level is capped at the stored one. Every confirmed pattern with not-checked evidence is listed in
+//     notChecked, accepted or not, and the client keeps an earlier "Needs another look" flag on it: only a
+//     check of all its evidence clears one. One that can't pass on its validated evidence alone, with nothing
+//     invalid, is not accepted either, so the client keeps it exactly as stored.
+//   - A supporting reaction that is invalid (removed) always means needsReview, even when the rest of the
+//     evidence still passes: the pattern may be accepted on what remains, but it is flagged, never silently
+//     treated as the same confirmed interpretation. A removed counter-example doesn't weaken it, so it
+//     doesn't count.
+// A client that sends no presentRefs has no not-checked evidence.
 function evidenceStates(stored, ctx) {
   const sent = new Set((ctx.evidence ?? []).map((row) => row.ref));
   const present = new Set(ctx.presentRefs ?? []);
-  const refs = [...(stored.supports ?? stored.evidence ?? []), ...(stored.counters ?? stored.counter ?? [])];
+  const supports = stored.supports ?? stored.evidence ?? [];
+  const refs = [...supports, ...(stored.counters ?? stored.counter ?? [])];
   return {
     notChecked: refs.filter((ref) => !sent.has(ref) && present.has(ref)),
-    invalid: refs.filter((ref) => !sent.has(ref) && !present.has(ref))
+    invalid: supports.filter((ref) => !sent.has(ref) && !present.has(ref))
   };
 }
 
@@ -280,13 +286,14 @@ export function settleConfirmedHypotheses(validated, ctx, existing = []) {
   const notChecked = [];
   for (const stored of existing) {
     if (!isStoredPattern(stored) || !confirmationFor(ctx.statements, stored) || everyAreaExcluded(stored, ctx)) continue;
+    const states = evidenceStates(stored, ctx);
+    if (states.notChecked.length) notChecked.push(stored.id);
+    if (states.invalid.length) needsReview.push(stored.id);
     const at = accepted.findIndex((h) => h.id === stored.id || text(h.label) === storedLabel(stored));
     if (at >= 0) { accepted[at] = keepNotChecked(accepted[at], stored, ctx); continue; }
     const retry = validateHypotheses({ hypotheses: [carryStored(stored, ctx)] }, ctx);
-    const states = evidenceStates(stored, ctx);
     if (retry.accepted.length) accepted.push(...retry.accepted.map((h) => keepNotChecked(h, stored, ctx)));
-    else if (!states.invalid.length && states.notChecked.length) notChecked.push(stored.id);
-    else needsReview.push(stored.id);
+    else if (!states.invalid.length && !states.notChecked.length) needsReview.push(stored.id);
   }
   return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview, notChecked };
 }

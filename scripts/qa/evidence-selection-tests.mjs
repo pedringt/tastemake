@@ -12,7 +12,7 @@ globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { selectExperiencedFeedbackForWire, serializeAiState } = await import("../../src/ai/live-client.js");
-const { citedEvidenceRefs, markNeedsReview, mergeHypotheses, normalizeHypothesis } = await import("../../src/ai/hypothesis-profile.js");
+const { citedEvidenceRefs, markNeedsReview, mergeHypotheses, normalizeHypothesis, refreshProfileHypotheses } = await import("../../src/ai/hypothesis-profile.js");
 const { NEEDS_REVIEW } = await import("../../src/model/statements.js");
 const { produceHypotheses } = await import("../../api/hypotheses.mjs");
 const { emptyState, react, syntheticItems } = await import("../evals/fixtures.mjs");
@@ -134,6 +134,73 @@ const body = (s, opts) => ({ ...serializeAiState(s, opts), modelHypotheses: s.mo
   check("partly sent: accepted on its validated evidence", Boolean(kept));
   eq("partly sent: the not-checked refs are kept on it", OLD.slice(0, 5).every((ref) => kept?.evidence.includes(ref)), true);
   eq("partly sent: the level is not raised above the stored one", kept?.level, "emerging");
+  eq("partly sent: reported as having evidence not checked", payload.meta?.notChecked?.join(","), "ai-old");
+  eq("partly sent: not flagged (nothing was removed)", (payload.meta?.needsReview ?? []).length, 0);
+}
+
+// ---- 3b. PR #328 review: the boundaries between the three states ----------------------------------------
+// The client's real refresh, fed the endpoint's real answer for a request built from `raw`.
+async function clientRefresh(s, raw, answer) {
+  const payload = await endpoint(raw, answer);
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, json: async () => payload });
+  try { await refreshProfileHypotheses(s, { force: true }); }
+  finally { globalThis.fetch = realFetch; }
+  return payload;
+}
+{
+  // Review case 1: a flagged pattern accepted on part of its evidence while the rest went unchecked.
+  const s = bigState();
+  s.modelHypotheses = markNeedsReview([confirmedPattern()], ["ai-old"]);
+  confirm(s, ["ai-old"]);
+  const raw = body(s, { requiredRefs: citedEvidenceRefs(s) });
+  for (const ref of OLD.slice(3, 5)) delete raw.feedbackByRecommendation[ref.slice(3)];
+  raw.presentRefs = OLD.slice(3, 5);
+  const payload = await clientRefresh(s, raw);
+  check("flagged, partly unchecked: the server accepts it on its checked evidence", payload.hypotheses.some((h) => h.id === "ai-old"));
+  eq("flagged, partly unchecked: the earlier flag is kept", s.modelHypotheses.find((p) => p.id === "ai-old")?.evidenceStatus, NEEDS_REVIEW);
+  check("flagged, partly unchecked: the unchecked evidence is still on it", OLD.slice(0, 5).every((ref) => s.modelHypotheses.find((p) => p.id === "ai-old")?.supports.includes(ref)));
+}
+{
+  // Control: every piece of evidence checked again, so the flag clears.
+  const s = bigState();
+  s.modelHypotheses = markNeedsReview([confirmedPattern()], ["ai-old"]);
+  confirm(s, ["ai-old"]);
+  await clientRefresh(s, body(s, { requiredRefs: citedEvidenceRefs(s) }));
+  check("flagged, all evidence checked and passing: the flag clears", !s.modelHypotheses.find((p) => p.id === "ai-old")?.evidenceStatus);
+}
+{
+  // Review case 2: one supporting reaction genuinely removed, the rest still enough to pass.
+  const removedOne = () => {
+    const s = bigState();
+    s.modelHypotheses = [confirmedPattern()];
+    confirm(s, ["ai-old"]);
+    delete s.feedbackByRecommendation[ITEMS[4].id];
+    return s;
+  };
+  // (a) the model leaves it out, so the stored version is carried and checked (the fallback path).
+  const a = removedOne();
+  const pa = await clientRefresh(a, body(a, { requiredRefs: citedEvidenceRefs(a) }));
+  eq("removed support, carried path: flagged as needing another look", pa.meta?.needsReview?.join(","), "ai-old");
+  eq("removed support, carried path: the client shows the flag", a.modelHypotheses.find((p) => p.id === "ai-old")?.evidenceStatus, NEEDS_REVIEW);
+  check("removed support, carried path: the removed reaction is no longer cited", !a.modelHypotheses.find((p) => p.id === "ai-old")?.supports.includes(OLD[4]));
+  eq("removed support, carried path: the confirmed claim is unchanged", a.modelHypotheses.find((p) => p.id === "ai-old")?.claim, confirmedPattern().claim);
+  // (b) the model returns its own word-for-word copy (the accepted path).
+  const b = removedOne();
+  const copy = { hypotheses: [{ id: "ai-old", label: confirmedPattern().title, claim: confirmedPattern().claim, evidence: [], counter: [], domains: confirmedPattern().domains, crossDomain: "untested", level: "supported", conditional: false, context: null }], insufficientEvidence: false };
+  const pb = await clientRefresh(b, body(b, { requiredRefs: citedEvidenceRefs(b) }), copy);
+  eq("removed support, model's own copy: flagged as needing another look", pb.meta?.needsReview?.join(","), "ai-old");
+  eq("removed support, model's own copy: the client shows the flag", b.modelHypotheses.find((p) => p.id === "ai-old")?.evidenceStatus, NEEDS_REVIEW);
+}
+{
+  // A removed counter-example doesn't weaken the pattern, so it isn't flagged.
+  const s = bigState();
+  s.modelHypotheses = [confirmedPattern({ counters: [`ev:${ITEMS[140].id}`] })];
+  confirm(s, ["ai-old"]);
+  delete s.feedbackByRecommendation[ITEMS[140].id];
+  const payload = await endpoint(body(s, { requiredRefs: citedEvidenceRefs(s) }));
+  eq("removed counter-example: not flagged", (payload.meta?.needsReview ?? []).length, 0);
+  check("removed counter-example: accepted", payload.hypotheses.some((h) => h.id === "ai-old"));
 }
 {
   // Invalid: a cited reaction was removed (absent from both lists). Still flagged.
@@ -145,7 +212,7 @@ const body = (s, opts) => ({ ...serializeAiState(s, opts), modelHypotheses: s.mo
   raw.presentRefs = OLD.slice(0, 4);   // OLD[4] is genuinely gone
   const payload = await endpoint(raw);
   eq("invalid: a removed reaction still means needs another look", payload.meta?.needsReview?.join(","), "ai-old");
-  eq("invalid: not reported as merely not checked", (payload.meta?.notChecked ?? []).length, 0);
+  check("invalid: flagged even though its other evidence was only not checked", !payload.hypotheses.some((h) => h.id === "ai-old"));
 }
 {
   // presentRefs from the request is untrusted shape: non-strings are dropped.
