@@ -14,7 +14,7 @@ import { evidenceRecords } from "../src/model/evidence.js";
 import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
 import { contentThemesFor } from "../src/model/refinements.js";
 import { excludedBy } from "../src/model/exclusions.js";
-import { chooseCandidates, closestRatings, featureRarity, selectionBasis } from "../src/ai/taste-score.js";
+import { chooseCandidates, closestRatings } from "../src/ai/taste-score.js";
 
 const MAX_BODY_BYTES = 160_000;
 const DEFAULT_VISITOR_LIMIT = 6;
@@ -85,16 +85,6 @@ export function offeredCandidates(ctx, count = 6, trace = null) {
   return chooseCandidates(ctx.candidates, ctx.evidence, { count, mode: ctx.recommendationFilter, curveball: ctx.curveball, trace });
 }
 
-// The context the model's prompt is built from and its answer is validated against: the offered
-// candidates, plus (#1b) what decided each one (see selectionBasis) for the prompt, the evidence list
-// and the validator's citation rule. Exported so the stress eval validates exactly what production does.
-export function promptContext(ctx, candidates) {
-  const cache = new Map();
-  const rarity = featureRarity(ctx.evidence, cache);
-  const basis = new Map(candidates.map((item) => [item.id, selectionBasis(item, ctx.evidence, { cache, rarity })]));
-  return { ...ctx, candidates, basis };
-}
-
 export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
   const all = (ctx.evidence ?? []).filter((record) => record?.class === "experienced");
   const candidates = ctx.candidates ?? [];
@@ -124,15 +114,11 @@ export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
     .map(({ record }) => record);
   const cache = new Map();
 
-  // 1. For each candidate: the item it was found from, then (#1b) the top rating that decided its score,
-  //    so the model can always cite what selected it, then its closest liked/loved ratings.
+  // 1. For each candidate: the item it was found from, then its closest liked/loved ratings.
   for (const candidate of candidates) {
     const anchor = pool.find((record) => record.itemId === candidate.relatedToId && record.polarity > 0);
     add(anchor);
-    const decidedRef = ctx.basis?.get(candidate.id)?.rows.find((row) => row.role === "scored")?.ref;
-    const decided = decidedRef && !seen.has(decidedRef) ? all.find((record) => record.ref === decidedRef) : null;
-    add(decided);
-    const room = Math.max(0, (anchor ? 1 : 2) - (decided ? 1 : 0));
+    const room = anchor ? 1 : 2;
     closestRatings(candidate, pool, { polarity: 1, limit: room + 1, cache })
       .map(({ record }) => record)
       .filter((record) => !seen.has(record.ref))
@@ -156,15 +142,6 @@ export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
   return selected.slice(0, limit);
 }
 
-// #1b: the basis as the model sees it: refs and shared facts only, plus weakBasis when the support is thin.
-function basisFields(basis) {
-  if (!basis) return {};
-  return {
-    basis: basis.rows.map(({ ref, shares }) => ({ ref, shares: shares.slice(0, 3) })),
-    ...(basis.weakBasis.length ? { weakBasis: basis.weakBasis } : {})
-  };
-}
-
 function pickPromptPayload(ctx) {
   return {
     evidence: selectPromptEvidence(ctx).map(compactEvidenceRecord),
@@ -179,8 +156,7 @@ function pickPromptPayload(ctx) {
         year,
         genres: (genres ?? []).slice(0, 8),
         ...(themes.length ? { themes } : {}),
-        ...(item.edge ? { edge: true } : {}),
-        ...basisFields(ctx.basis?.get(id))
+        ...(item.edge ? { edge: true } : {})
       };
     }),
     curveball: ctx.curveball,
@@ -221,7 +197,6 @@ function pickPromptInstructions(count, { recommendationFilter = "all" } = {}) {
     "User-facing explanations must say why the pick may fit the person, not how retrieval found it. Never mention providers, catalog branches/paths/neighbors/signals, metadata, similarity scores, embeddings, retrieval provenance, or raw overlap counts. A disliked item may only appear as explicit contrast, never as the positive reason a pick fits.",
     "An evidence row may include refinements: explicit reasons the user said that specific item worked or did not work. Use them as item-local context, not as standalone evidence or a global preference unless multiple independent experienced items support that broader pattern.",
     "A refinement may name a direction (\"Pacing: too slow\", \"Pacing: slow burn paid off\"): keep the direction, since opposite directions are opposite signals. A candidate's themes mean the theme is present, not that it dominates the book; one item's reason about a theme (\"Romance took over the story\") must not rule out every candidate with that theme.",
-    "basis lists the ratings that decided why a candidate was offered and the facts they share. Cite at least one basis ref as the main reason and describe the connection through what they share. With weakBasis, keep the why modest (state the shared facts plainly or call it worth testing) and never invent a specific reason the person would enjoy it; contested means it also resembles dislikes, so don't overstate. Never write basis or weakBasis in why.",
     "Rules: itemId must come from candidates; every why must cite at least one experienced evidence ref; the evidence list has already been limited by software to relevant experienced signals; never cite intent-only evidence as support; never contradict a user-confirmed pattern statement; treat says=partial as narrow/conditional and honor its context or excludedDomains; says=unsure is not a confirmed preference; never describe one global identity/aesthetic; never use circular reasons like 'matches your taste'; explain why the pick may fit in specific plain English, in one sentence of 14 words or fewer counting the title, naming at least one cited item by the shortest form of its title people would recognize ('Everything' for Everything Everywhere All at Once); don't start the why with the pick's own title, since the card already shows it (start with what it shares, e.g. 'Quiet alien dread like Arrival.'); internal refs such as ev:... belong only in cites and must never appear in why; never expose provider ids or other internal identifiers in why; if curveball is true you may choose at most one exploratory pick by putting only its itemId in curveballItemId, otherwise use null; if curveball is false curveballItemId must be null; a candidate with edge:true was found from something the user liked but did not love, so when you choose an exploratory pick prefer it and ground its why in a liked item; do not write the word curveball in why.",
     "Respond with the JSON object only — the very first character of your reply must be { and the very last must be }. No markdown fences, no preamble like \"Looking at...\", no commentary before or after the JSON."
   ].join("\n\n");
@@ -411,8 +386,7 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
   // clientPicks' rank/fit) only ever expects the first 6 to have been offered. promptCtx is the same
   // context with candidates capped to the actual offered set, used everywhere the model's answer is
   // built or checked.
-  const promptCtx = promptContext(ctx, candidates);
-  if (trace) trace.basis = promptCtx.basis;
+  const promptCtx = { ...ctx, candidates };
   if (trace) trace.promptEvidence = selectPromptEvidence(promptCtx).map((record) => record.ref);
   const offeredDomains = {};
   for (const candidate of candidates) {
@@ -549,7 +523,6 @@ function requestTrace(steps, result) {
     const scoredFrom = entry ? entry.positives.map((match) => match.ref) : [];
     const cites = pick.ai?.cites ?? (retrievedFromRef ? [retrievedFromRef] : []);
     const selection = new Set([retrievedFromRef, ...scoredFrom].filter(Boolean));
-    const basis = steps.basis?.get(pick.id) ?? null;
     return {
       itemId: pick.id,
       title: pick.title ?? null,
@@ -559,12 +532,7 @@ function requestTrace(steps, result) {
       retrievedFromRef,
       scoredFrom,
       cites,
-      citationOverlapsSelection: cites.some((ref) => selection.has(ref)),
-      // #1b: the stricter check -- does the reason cite a rating that decided the pick -- and what made
-      // the basis weak, if anything. A valid citation never clears weakBasis.
-      decidedBy: basis?.refs ?? [],
-      citesDecisiveBasis: basis ? cites.some((ref) => basis.refs.includes(ref)) : null,
-      weakBasis: basis?.weakBasis ?? []
+      citationOverlapsSelection: cites.some((ref) => selection.has(ref))
     };
   });
   return {
@@ -578,9 +546,7 @@ function requestTrace(steps, result) {
       candidates: (steps.candidates ?? []).length,
       offered: (steps.candidates ?? []).filter((entry) => entry.outcome === "chosen" || entry.outcome === "edge").length,
       picks: picks.length,
-      citationOverlapsSelection: picks.filter((pick) => pick.citationOverlapsSelection).length,
-      citesDecisiveBasis: picks.filter((pick) => pick.citesDecisiveBasis).length,
-      weakBasis: picks.filter((pick) => pick.weakBasis.length).length
+      citationOverlapsSelection: picks.filter((pick) => pick.citationOverlapsSelection).length
     }
   };
 }

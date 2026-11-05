@@ -452,11 +452,6 @@ export function validatePicks(response, ctx) {
           }
         }
       }
-      // #1b: when software knows which ratings decided this candidate (ctx.basis, from selectionBasis),
-      // the reason must cite at least one of them. A candidate with no basis is not rejected for this;
-      // its weakness is reported in the trace instead.
-      const decidedBy = ctx.basis?.get?.(p.itemId)?.refs ?? [];
-      if (candidate && decidedBy.length && !p.cites.some((ref) => decidedBy.includes(ref))) reasons.push("cites none of the ratings that decided this pick");
       if (CIRCULAR_PATTERNS.some((re) => re.test(p.why))) reasons.push("circular reasoning");
       if (IDENTITY_PATTERNS.some((re) => re.test(p.why))) reasons.push("states a single identity or aesthetic about the user");
       if (p.kind === "curveball") {

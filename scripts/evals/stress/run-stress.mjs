@@ -29,7 +29,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { offeredCandidates, produceRecommendations, normalizeModelPicks, promptContext, selectPromptEvidence } from "../../../api/recommendations.mjs";
+import { offeredCandidates, produceRecommendations, normalizeModelPicks, selectPromptEvidence } from "../../../api/recommendations.mjs";
 import { produceHypotheses, PROFILE_MAX_OUTPUT_TOKENS } from "../../../api/hypotheses.mjs";
 import { serializeAiState } from "../../../src/ai/live-client.js";
 import { hydrateState } from "../../../src/server/request-state.mjs";
@@ -203,7 +203,7 @@ export async function runTask(task, opts, { fetchImpl, snapshotIndex }) {
   const capture = captures[0] ?? null;
   // Production's own offer and validation context (api/recommendations.mjs: promptCtx).
   const offered = offeredCandidates(ctx);
-  const promptCtx = promptContext(ctx, offered);
+  const promptCtx = { ...ctx, candidates: offered };
   const promptRefs = new Set(selectPromptEvidence(promptCtx).map((r) => r.ref));
   let validated = null, parseError = null;
   if (capture?.text) {
