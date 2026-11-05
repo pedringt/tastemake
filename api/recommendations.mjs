@@ -14,7 +14,7 @@ import { evidenceRecords } from "../src/model/evidence.js";
 import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
 import { contentThemesFor } from "../src/model/refinements.js";
 import { excludedBy } from "../src/model/exclusions.js";
-import { chooseCandidates, closestRatings } from "../src/ai/taste-score.js";
+import { chooseCandidates, closestRatings, featureRarity, selectionBasis } from "../src/ai/taste-score.js";
 
 const MAX_BODY_BYTES = 160_000;
 const DEFAULT_VISITOR_LIMIT = 6;
@@ -515,6 +515,9 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
 // written from the found-from item, so that is what they cite.
 function requestTrace(steps, result) {
   const evidence = steps.evidence ?? [];
+  // #1b (diagnostic only): what decided each pick, computed here so untraced requests do no extra work.
+  const basisCache = new Map();
+  const basisRarity = featureRarity(evidence, basisCache);
   const refFor = (itemId) => evidence.find((record) => record.itemId === itemId && record.class === "experienced")?.ref ?? null;
   const byId = new Map((steps.candidates ?? []).map((entry) => [entry.itemId, entry]));
   const picks = (result.picks ?? []).map((pick) => {
@@ -523,6 +526,7 @@ function requestTrace(steps, result) {
     const scoredFrom = entry ? entry.positives.map((match) => match.ref) : [];
     const cites = pick.ai?.cites ?? (retrievedFromRef ? [retrievedFromRef] : []);
     const selection = new Set([retrievedFromRef, ...scoredFrom].filter(Boolean));
+    const basis = selectionBasis(pick, evidence, { cache: basisCache, rarity: basisRarity });
     return {
       itemId: pick.id,
       title: pick.title ?? null,
@@ -532,7 +536,14 @@ function requestTrace(steps, result) {
       retrievedFromRef,
       scoredFrom,
       cites,
-      citationOverlapsSelection: cites.some((ref) => selection.has(ref))
+      citationOverlapsSelection: cites.some((ref) => selection.has(ref)),
+      // #1b: does the reason cite a rating that decided the pick (null when none did: not applicable),
+      // and every weakness label that applies, with the totals behind them. Measured, not enforced.
+      decidedBy: basis.refs,
+      citesDecisiveBasis: basis.refs.length ? cites.some((ref) => basis.refs.includes(ref)) : null,
+      weakBasis: basis.weakBasis,
+      positiveTotal: basis.positiveTotal,
+      againstTotal: basis.againstTotal
     };
   });
   return {
@@ -546,7 +557,10 @@ function requestTrace(steps, result) {
       candidates: (steps.candidates ?? []).length,
       offered: (steps.candidates ?? []).filter((entry) => entry.outcome === "chosen" || entry.outcome === "edge").length,
       picks: picks.length,
-      citationOverlapsSelection: picks.filter((pick) => pick.citationOverlapsSelection).length
+      citationOverlapsSelection: picks.filter((pick) => pick.citationOverlapsSelection).length,
+      citesDecisiveBasis: picks.filter((pick) => pick.citesDecisiveBasis === true).length,
+      decisiveBasisNotApplicable: picks.filter((pick) => pick.citesDecisiveBasis === null).length,
+      weakBasis: picks.filter((pick) => pick.weakBasis.length).length
     }
   };
 }

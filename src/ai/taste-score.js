@@ -1,5 +1,6 @@
 import { contentThemesFor } from "../model/refinements.js";
 import { isFranchiseContinuation } from "../catalog/novelty.mjs";
+import { TMDB_GENRES } from "../catalog/synopsis.mjs";
 
 // Oct 27 (whole-profile recommendations): every rating votes, not just the handful sent to the model.
 //
@@ -93,6 +94,67 @@ export function tasteScoreParts(candidate, records, { cache, rarity = null } = {
   const matches = closestMatches(candidate, records, { cache, rarity });
   const part = (match) => ({ ref: match.record.ref, itemId: match.record.itemId, title: match.record.title ?? null, similarity: match.similarity, weight: match.record.weight, contribution: contribution(match) });
   return { score: sumMatches(matches), positives: matches.positives.map(part), negatives: matches.negatives.map(part), anchorBonus: matches.anchorBonus };
+}
+
+// #1b explanation provenance (diagnostic only; used by the request trace, never by the prompt, the
+// validator or the shortlist): the ratings that decided why this candidate was offered, and honest labels
+// when that basis is weak. Blind testing (Nov 4) found that making the model cite this basis made
+// explanations worse under genre scoring, so it is measured, not enforced.
+// - Basis: the rating it was found from (when liked/loved), plus the smallest set of top positive
+//   contributors that make up at least half its positive score, each with the catalog facts the two share.
+// - weakBasis: every label that applies (diagnostic only; nothing is rejected or hidden for it, and a
+//   citation never clears it). found-from-only and broad-only exclude each other by definition, and
+//   no-positive-basis excludes both; contested can accompany any of them. positiveTotal and againstTotal
+//   are returned so a label is never the only record.
+//     no-positive-basis  no found-from rating and no positive match at all
+//     found-from-only    found from a rated item, but nothing they rated scores it positively
+//     broad-only         the deciding matches share only genre labels: the evidence supports a broad
+//                        relationship, which says nothing about whether the pick is good
+//     contested          dislikes weigh at least half as much as the positives, or weigh against it at
+//                        all when nothing positive does (people can still enjoy such titles; it is a
+//                        threshold for evaluation, not a verdict)
+export function selectionBasis(candidate, records, { cache, rarity = null } = {}) {
+  const features = tasteFeatures(candidate);
+  const { positives, negatives } = closestMatches(candidate, records, { cache, rarity });
+  const anchor = candidate?.relatedToId ? experienced(records).find((record) => record.itemId === candidate.relatedToId && record.polarity > 0) : null;
+  const shares = (record) => [...features.keys()].filter((key) => featuresOf(record, cache).has(key)).map(factLabel);
+  const positiveTotal = positives.reduce((sum, match) => sum + contribution(match), 0);
+  const decisive = [];
+  let covered = 0;
+  for (const match of [...positives].sort((a, b) => contribution(b) - contribution(a))) {
+    if (covered >= positiveTotal / 2) break;
+    decisive.push(match.record);
+    covered += contribution(match);
+  }
+  const rows = [
+    ...(anchor ? [{ ref: anchor.ref, title: anchor.title ?? null, role: "found-from", shares: shares(anchor) }] : []),
+    ...decisive.filter((record) => record !== anchor).map((record) => ({ ref: record.ref, title: record.title ?? null, role: "scored", shares: shares(record) }))
+  ];
+  const againstTotal = -negatives.reduce((sum, match) => sum + contribution(match), 0);
+  const contested = againstTotal > 0 && againstTotal >= positiveTotal / 2;
+  const scoredKeys = decisive.flatMap((record) => [...features.keys()].filter((key) => featuresOf(record, cache).has(key)));
+  const weakBasis = [
+    ...(!rows.length ? ["no-positive-basis"] : []),
+    ...(anchor && !decisive.length ? ["found-from-only"] : []),
+    ...(!anchor && decisive.length && scoredKeys.every((key) => key.startsWith("g:")) ? ["broad-only"] : []),
+    ...(contested ? ["contested"] : [])
+  ];
+  return {
+    refs: rows.map((row) => row.ref),
+    rows,
+    against: negatives.map((match) => ({ ref: match.record.ref, title: match.record.title ?? null })),
+    contested,
+    weakBasis,
+    positiveTotal,
+    againstTotal
+  };
+}
+
+// A shared feature as a reader would name it: TMDb genre ids become names ("27" -> "Horror").
+function factLabel(key) {
+  const [kind, value] = [key.slice(0, 1), key.slice(2)];
+  if (kind === "g") return TMDB_GENRES[value] ?? value;
+  return value;
 }
 
 const contribution = ({ record, similarity }) => similarity * record.weight * reasonFactor(record);
