@@ -96,17 +96,23 @@ export function tasteScoreParts(candidate, records, { cache, rarity = null } = {
   return { score: sumMatches(matches), positives: matches.positives.map(part), negatives: matches.negatives.map(part), anchorBonus: matches.anchorBonus };
 }
 
-// #1b explanation provenance: the ratings that decided why this candidate was offered, which a pick's
-// reason must cite, and an honest label when that basis is weak.
+// #1b explanation provenance (diagnostic only; used by the request trace, never by the prompt, the
+// validator or the shortlist): the ratings that decided why this candidate was offered, and honest labels
+// when that basis is weak. Blind testing (Nov 4) found that making the model cite this basis made
+// explanations worse under genre scoring, so it is measured, not enforced.
 // - Basis: the rating it was found from (when liked/loved), plus the smallest set of top positive
 //   contributors that make up at least half its positive score, each with the catalog facts the two share.
-// - weakBasis (diagnostic only; nothing is rejected or hidden for it, and a valid citation never clears it):
+// - weakBasis: every label that applies (diagnostic only; nothing is rejected or hidden for it, and a
+//   citation never clears it). found-from-only and broad-only exclude each other by definition, and
+//   no-positive-basis excludes both; contested can accompany any of them. positiveTotal and againstTotal
+//   are returned so a label is never the only record.
 //     no-positive-basis  no found-from rating and no positive match at all
 //     found-from-only    found from a rated item, but nothing they rated scores it positively
 //     broad-only         the deciding matches share only genre labels: the evidence supports a broad
 //                        relationship, which says nothing about whether the pick is good
-//     contested          dislikes weigh at least half as much as the positives (people can still enjoy
-//                        such titles; it is a threshold for evaluation, not a verdict)
+//     contested          dislikes weigh at least half as much as the positives, or weigh against it at
+//                        all when nothing positive does (people can still enjoy such titles; it is a
+//                        threshold for evaluation, not a verdict)
 export function selectionBasis(candidate, records, { cache, rarity = null } = {}) {
   const features = tasteFeatures(candidate);
   const { positives, negatives } = closestMatches(candidate, records, { cache, rarity });
@@ -125,7 +131,7 @@ export function selectionBasis(candidate, records, { cache, rarity = null } = {}
     ...decisive.filter((record) => record !== anchor).map((record) => ({ ref: record.ref, title: record.title ?? null, role: "scored", shares: shares(record) }))
   ];
   const againstTotal = -negatives.reduce((sum, match) => sum + contribution(match), 0);
-  const contested = positiveTotal > 0 && againstTotal >= positiveTotal / 2;
+  const contested = againstTotal > 0 && againstTotal >= positiveTotal / 2;
   const scoredKeys = decisive.flatMap((record) => [...features.keys()].filter((key) => featuresOf(record, cache).has(key)));
   const weakBasis = [
     ...(!rows.length ? ["no-positive-basis"] : []),
@@ -138,7 +144,9 @@ export function selectionBasis(candidate, records, { cache, rarity = null } = {}
     rows,
     against: negatives.map((match) => ({ ref: match.record.ref, title: match.record.title ?? null })),
     contested,
-    weakBasis
+    weakBasis,
+    positiveTotal,
+    againstTotal
   };
 }
 
