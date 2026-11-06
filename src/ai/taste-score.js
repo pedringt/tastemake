@@ -79,7 +79,10 @@ function featuresOf(record, cache) {
   return cache.get(record.ref);
 }
 
-const reasonFactor = (record) => ((record.refinements ?? []).length ? REASON_BOOST : 1);
+// Reasons boost liked/loved ratings only. A reason on a dislike names one part that didn't work, so it
+// must not make everything that title shares (genres, creator) count more against other titles. This
+// removes the extra weight; dislike matching itself is still whole-title, not aspect-aware.
+const reasonFactor = (record) => (record.polarity > 0 && (record.refinements ?? []).length ? REASON_BOOST : 1);
 
 // How well a candidate fits everything the person has rated. Higher is better; below zero means it
 // mostly resembles things they disliked.

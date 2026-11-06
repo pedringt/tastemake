@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Oct 27: whole-profile recommendations. Every rating votes on which candidates are offered, Liked
-// counts, reasons count, dislikes count against; prompt evidence is chosen per candidate; Liked items
-// start searches; Surprise Me comes from a Liked item. Free: no network, no model.
+// counts, reasons count (on likes only since Nov 5: a reason never adds weight against a dislike),
+// dislikes count against; prompt evidence is chosen per candidate; Liked items start searches;
+// Surprise Me comes from a Liked item. Free: no network, no model.
 //
 //   node scripts/qa/taste-score-tests.mjs
 
@@ -10,7 +11,7 @@ globalThis.document = { documentElement: { dataset: {} }, querySelector: () => n
 import { createSuite } from "./lib/assert.mjs";
 
 const { check, eq, finish } = createSuite("taste score tests");
-const { chooseCandidates, closestRatings, featureRarity, isEdgeCandidate, tasteScore } = await import("../../src/ai/taste-score.js");
+const { chooseCandidates, closestRatings, featureRarity, isEdgeCandidate, tasteScore, tasteScoreParts } = await import("../../src/ai/taste-score.js");
 const { buildPickPrompt, offeredCandidates, selectPromptEvidence } = await import("../../api/recommendations.mjs");
 const { weightedOrder, withEdgeAnchor } = await import("../../src/catalog/related.mjs");
 
@@ -46,6 +47,19 @@ const game = (title, genres, extra = {}) => ({ id: `igdb-game-${++n}`, provider:
 
   const withReason = [rec("experienced-positive", liked, { refinements: [{ id: "pacing", label: "Pacing" }] })];
   check("a rating with reasons counts for more", tasteScore(near, withReason) > tasteScore(near, records));
+  eq("...by exactly the 1.25 reason boost (liked/loved behavior unchanged)",
+    Math.round(tasteScore(near, withReason) * 1e9), Math.round(tasteScore(near, records) * 1.25 * 1e9));
+
+  // A reason on a dislike names one part that didn't work; it must not make the whole title count more against.
+  const dislikedWithReason = rec("experienced-negative", disliked, { refinements: [{ id: "characters", label: "Characters" }] });
+  eq("a dislike with a reason weighs the same as one without",
+    tasteScore(scary, [...records, dislikedWithReason]), tasteScore(scary, [...records, rec("experienced-negative", disliked)]));
+  const parts = tasteScoreParts(scary, [...records, dislikedWithReason]);
+  check("the trace's dislike contribution is similarity x weight, with no boost",
+    parts.negatives.length > 0 && parts.negatives.every((p) => p.contribution === p.similarity * p.weight));
+  eq("...and the trace's score is the score", parts.score, tasteScore(scary, [...records, dislikedWithReason]));
+  eq("a candidate matching no dislike scores the same whether the dislike has reasons or not",
+    tasteScore(near, [...withReason, dislikedWithReason]), tasteScore(near, [...withReason, rec("experienced-negative", disliked)]));
 
   const creator = movie("Same Director", ["99"], { by: "Denis Villeneuve" });
   const lovedByCreator = movie("Arrival", ["878", "18"], { by: "Denis Villeneuve" });
