@@ -12,7 +12,7 @@ import { readableRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { basisSentence, recommendationBasis } from "../model/loading-basis.js";
-import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE } from "../ai/ai-status.js";
+import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE, CATALOG_SET_LINE, setSource } from "../ai/ai-status.js";
 import { renderArtwork } from "../components/artwork.js";
 import { releaseLabel } from "../ai/new-releases.js";
 import { exclusionOptions } from "../model/exclusions.js";
@@ -260,7 +260,7 @@ function whyContent(item) {
   if (isCurveball) uncertainty = foundFrom?.label === "Liked"
     ? `It comes from something you liked but didn't love, so it tests the edges of your taste. A miss is useful information.`
     : "This deliberately stretches beyond your strongest patterns, so a miss is useful information rather than a failure.";
-  else if (!pattern) uncertainty = "Tastemake does not have a stable named pattern behind this yet, so this is still an early test.";
+  else if (!pattern) uncertainty = "It’s based on your favorites and ratings so far, which may not capture everything you enjoy.";
   else if (pattern.status === "conditional") uncertainty = "This pattern has only held in some contexts, so this pick may expose where the boundary is.";
   else if (level === "Emerging") uncertainty = "This pattern is still early. One reaction could make Tastemake narrow it, strengthen it, or drop it.";
   else if (level === "Strong") uncertainty = "The pattern is strong, but Tastemake may still be wrong about which details of it matter most to you.";
@@ -453,7 +453,13 @@ function renderAiStatus() {
         </div>
       </div>`;
   }
-  if (!state.aiMessage) return "";
+  // Nov 3, 2026 (T2): no answer yet this session (a reload, or a return visit). The saved set still says
+  // where it came from, so a catalog set is labeled as such, with no claim about why.
+  if (!state.aiMessage) {
+    return setSource(activeRecommendations(state)) === "catalog"
+      ? `<p class="ai-inline-status ai-catalog-set">${CATALOG_SET_LINE}</p>`
+      : "";
+  }
   if (state.aiSource === "model") return "";
   if (state.aiSource === "catalog" && state.aiPaused) return `
     <aside class="ai-paused-notice" role="status">

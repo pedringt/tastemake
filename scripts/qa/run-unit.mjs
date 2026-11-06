@@ -25,6 +25,11 @@ const SUITES = [
   "async-tests.mjs",
   "validate-tests.mjs",
   "profile-rules-tests.mjs",
+  "confirmed-patterns-tests.mjs",
+  "profile-refresh-race-tests.mjs",
+  "evidence-selection-tests.mjs",
+  "area-scope-tests.mjs",
+  "reconfirm-recompute-tests.mjs",
   "profile-prompt-tests.mjs",
   "novelty-tests.mjs",
   "loop-tests.mjs",
@@ -41,6 +46,8 @@ const SUITES = [
   "similar-tests.mjs",
   "bridges-tests.mjs",
   "taste-score-tests.mjs",
+  "candidate-trace-tests.mjs",
+  "explanation-provenance-tests.mjs",
   "pm-review-tests.mjs",
   "metadata-tests.mjs",
   "canonical-store-tests.mjs",
@@ -54,7 +61,9 @@ const SUITES = [
   "insights-tests.mjs",
   "latency-tests.mjs",
   "stress-eval-tests.mjs",
-  "security-headers-tests.mjs"
+  "security-headers-tests.mjs",
+  "ai-status-tests.mjs",
+  "learning-panel-tests.mjs"
 ];
 
 // A new *-tests.mjs file that is not listed above would otherwise never run.

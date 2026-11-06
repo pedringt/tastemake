@@ -71,7 +71,7 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
 // Oct 23 smoke test: "emerging → supported" was explained as "lean on this pattern more cautiously".
 {
   check("up a level reads as more confidence", /a little more/.test(levelChangeConsequence("emerging", "supported")), levelChangeConsequence("emerging", "supported"));
-  check("up to Strong reads as more weight", /more weight/.test(levelChangeConsequence("supported", "strong")));
+  check("up to Strong reads as more confidence, not more weight in recommendations", /more confident/.test(levelChangeConsequence("supported", "strong")) && !/recommend|pick/i.test(levelChangeConsequence("supported", "strong")));
   check("down from Strong reads as more cautious", /more cautiously/.test(levelChangeConsequence("strong", "supported")));
   check("down to Emerging reads as an open question again", /open question/.test(levelChangeConsequence("supported", "emerging")));
   check("capitalized levels work too", /a little more/.test(levelChangeConsequence("Emerging", "Supported")));

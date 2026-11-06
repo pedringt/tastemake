@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
-import { normalizeHypothesisResponse, preserveExistingHypotheses, validateHypotheses } from "../src/ai/validate.js";
+import { normalizeHypothesisResponse, preserveExistingHypotheses, settleConfirmedHypotheses, validateHypotheses } from "../src/ai/validate.js";
 import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
 import { HYPOTHESES_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
@@ -15,8 +15,11 @@ export const PROFILE_MAX_OUTPUT_TOKENS = 3200;
 // hydrateState (now in src/server/request-state.mjs) -- it had already drifted (missing blindSpots,
 // blindSpotDrafts, recommendationFilter). Sharing the base function means the two endpoints can
 // never drift again; modelHypotheses is the one field genuinely unique to this endpoint.
+// Nov 4 (after #325): presentRefs is also unique to it -- evidence the stored patterns cite that the client
+// still has but didn't send (src/ai/live-client.js serializeAiState). Strings only; anything else is ignored.
 function hydrateState(raw = {}) {
-  return { ...hydrateBaseState(raw), modelHypotheses: raw.modelHypotheses ?? [] };
+  const presentRefs = Array.isArray(raw.presentRefs) ? raw.presentRefs.filter((ref) => typeof ref === "string") : [];
+  return { ...hydrateBaseState(raw), modelHypotheses: raw.modelHypotheses ?? [], presentRefs };
 }
 
 export function hypothesisConfig(env = process.env) {
@@ -92,7 +95,7 @@ function rejectionCategoryCounts(rejected = []) {
 
 export async function produceHypotheses({ rawState, env = process.env, fetchImpl = fetch } = {}) {
   const state = hydrateState(rawState);
-  const ctx = buildContext(state);
+  const ctx = { ...buildContext(state), presentRefs: state.presentRefs };
   const config = hypothesisConfig(env);
   if (!config.enabled) {
     // #86: this gate was failing silently in production with no way to tell which of the six
@@ -116,10 +119,11 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
       cacheReadTokens: model.usage?.cache_read_input_tokens ?? null,
       cacheWriteTokens: model.usage?.cache_creation_input_tokens ?? null
     };
-    // #228: an earlier pattern the model left out is carried forward unless two misses count against
-    // it; shared with scripts/evals/run.mjs so the live eval measures what production keeps.
+    // #228/#325: an earlier pattern the model left out is carried forward; shared with
+    // scripts/evals/run.mjs so the live eval measures what production keeps. Then every pattern the
+    // user confirmed is either accepted or listed in needsReview for the client to keep, flagged.
     const normalizedResponse = preserveExistingHypotheses(normalizeHypothesisResponse(expandProfileRefs(model.json, request.refs), ctx), ctx, state.modelHypotheses);
-    const validated = validateHypotheses(normalizedResponse, ctx);
+    const validated = settleConfirmedHypotheses(validateHypotheses(normalizedResponse, ctx), ctx, state.modelHypotheses);
     const rejectionCategories = rejectionCategoryCounts(validated.rejected);
     if (validated.rejected.length) {
       console.info("[tastemake-profile-validation]", JSON.stringify({
@@ -141,14 +145,14 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
         rejectedReasons: (validated.rejected ?? []).flatMap((r) => r.reasons ?? [])
       }));
       recordAiCallInBackground({ ...baseMetric, outcome: "validation_fallback" }, { env });
-      return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage } };
+      return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage, needsReview: validated.needsReview, notChecked: validated.notChecked } };
     }
     recordAiCallInBackground({ ...baseMetric, outcome: "success" }, { env });
     return {
       source: "model",
       reason: null,
       hypotheses: validated.accepted,
-      meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, rejectionCategories, notes: validated.notes }
+      meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, rejectionCategories, notes: validated.notes, needsReview: validated.needsReview, notChecked: validated.notChecked }
     };
   } catch (error) {
     recordAiCallInBackground({

@@ -1,5 +1,6 @@
 import { CIRCULAR_PATTERNS, CONTRACT_VERSION, CROSS_DOMAIN, GENRE_ONLY, IDENTITY_PATTERNS, LEVELS } from "./contract.js";
-import { domainScope } from "../model/interpretations.js";
+import { allowedCrossDomain, allowedLevel, capLevel, domainScope, evidenceRows, triedRecords } from "../model/evidence-rules.js";
+import { confirmationFor } from "../model/statements.js";
 import { isAdultTagged, triedAdultTagged } from "../catalog/adult-content.mjs";
 
 // The product's gate on model output (#31). Pure functions: (response, context) -> accepted / rejected.
@@ -32,35 +33,10 @@ function checkShape(obj, fields) {
   return problems;
 }
 
-// Starter favorites make a pattern plausible as a starting point, but nothing the user tried has tested
-// it yet (evidence-contract.md, "Emerging"). Only Loved / Liked / disliked reactions test a pattern, so
-// the level and cross-domain caps below both count through this one filter.
-export const triedRecords = (records) => records.filter((r) => r.kind !== "starter-favorite");
-
-// The strongest level the cited evidence allows (evidence-contract.md, #26; mirrors patternConfidence in
-// tastemap.js): "supported" needs at least one tried thing backing it and more backing it than against;
-// "strong" needs 3+ tried things backing it, two clear of what counts against it. Starter favorites may
-// still be cited as support, but a pattern resting only on them stays "emerging".
-export function allowedLevel(supportRecords, counterRecords) {
-  const tried = triedRecords(supportRecords).length;
-  const against = counterRecords.length;
-  if (tried >= 3 && tried - against >= 2) return "strong";
-  if (tried >= 1 && tried > against) return "supported";
-  return "emerging";
-}
-const capLevel = (claimed, allowed) => LEVELS[Math.min(LEVELS.indexOf(claimed), LEVELS.indexOf(allowed))];
-
-const asRows = (records) => records.map((r) => ({ item: { id: r.itemId, domains: r.domains } }));
-
-// #228: the furthest a cross-domain link may go. Docs (evidence-contract.md): "Emerging: a starting
-// pattern. Nothing the user tried has tested it yet", and cross-domain links "must be supported by
-// evidence in both areas, not assumed". Starter favorites make a pattern plausible as a starting
-// point but do not test a link between areas, so only things the user tried (Loved / Liked / disliked
-// reactions) count here. The eval (cold-4, starter-6: at most "untested"; cross-domain: one loved
-// thing in each of two areas, at most "tentative") encodes the same rule.
-export function allowedCrossDomain(supportRecords, counterRecords) {
-  return domainScope({ supports: asRows(triedRecords(supportRecords)), against: asRows(counterRecords), heldUp: [] }).crossDomain;
-}
+// The evidence rules (level, areas, cross-domain) live in src/model/evidence-rules.js so the browser's
+// reconfirmation applies exactly the same ones; re-exported here so existing imports keep working.
+export { allowedCrossDomain, allowedLevel, triedRecords };
+const asRows = evidenceRows;
 const hypothesisAliases = (id) => id === "H01/H07" ? ["H01", "H07", "H01/H07"] : [id];
 const sameHypothesis = (a, b) => hypothesisAliases(a).some((id) => hypothesisAliases(b).includes(id));
 
@@ -111,15 +87,37 @@ export function normalizeHypothesisResponse(response, ctx) {
 }
 
 // #228: "One miss never weakens a pattern; two do" (evidence-contract.md, prototype-v1-spec.md). A
-// refresh used to be free to return a whole new set, and the client keeps earlier patterns only when
+// refresh used to be free to return a whole new set, and the client kept earlier patterns only when
 // something in the new answer was rejected, so one disliked item could replace every pattern on the
-// profile (the eval's single-miss fixture: 0 of 4-6 kept). Software now carries an earlier pattern
-// forward when the model leaves it out and fewer than two things the user tried and disliked fall in
-// that pattern's areas. A carried pattern is re-checked like any proposal (its evidence must still
-// exist and support it, the level is re-capped, and a "not me" statement still removes it), so this
-// never keeps something the evidence or the user has since ruled out.
+// profile (the eval's single-miss fixture: 0 of 4-6 kept). Software carries an earlier pattern forward
+// when the model leaves it out. A carried pattern is re-checked like any proposal (its evidence must
+// still exist and support it, the level is re-capped by the evidence, and a "not me" statement still
+// removes it), so this never presents something the evidence or the user has since ruled out.
+//
+// #325: the #228 rule dropped a pattern once two dislikes merely shared one of its media, cited
+// against it or not, and never looked at what the user had said. Now:
+//   - a pattern the user confirmed ("accurate" or "partly") is always carried, and never trimmed by the
+//     profile cap; settleConfirmedHypotheses (below) makes sure it is either accepted or reported for
+//     review, never silently lost;
+//   - an unconfirmed pattern is carried too. Dislikes alone never retire it: sharing a medium is not
+//     contradiction, and a cited dislike is not proof either. contradictedByEvidence is where a real
+//     contradiction check (#278) will plug in;
+//   - areas the user excluded (#36) are taken off a carried pattern instead of failing it. A confirmed
+//     pattern with every area excluded is a scope correction, not an evidence failure: it is left out of
+//     the refresh entirely (not carried, not flagged, any model version of it dropped), and the client
+//     keeps it exactly as stored until the user includes an area again;
+//   - a confirmed pattern's identity, name and claim are frozen until the user changes or clears their
+//     answer, so a confirmation never transfers to a different interpretation. A model version of it
+//     (same id, or same name under a new id) is used only when it keeps the same id, name and claim,
+//     which is how the prompt asks for existing patterns back; then its evidence is checked against the
+//     confirmed claim like any proposal. Anything else is replaced by the stored version. There is no
+//     check of meaning here (#278, #318).
 export const MAX_PROFILE_HYPOTHESES = 12;
-const MISSES_TO_DROP = 2;
+
+// #278 decides what genuinely contradicts a pattern. Until then nothing retires one automatically.
+function contradictedByEvidence(_stored, _ctx) {
+  return false;
+}
 
 function storedToProposal(stored) {
   const level = String(stored.strength ?? stored.level ?? "emerging").toLowerCase();
@@ -138,34 +136,148 @@ function storedToProposal(stored) {
   };
 }
 
+const text = (value) => String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+const storedLabel = (stored) => text(stored?.title ?? stored?.label);
+const isStoredPattern = (stored) => Boolean(stored?.id && stored.claim && (stored.title ?? stored.label));
+
+function excludedAreas(stored, ctx) {
+  const label = storedLabel(stored);
+  return (ctx.statements ?? []).find((s) => (s.excludedDomains ?? []).length && (s.hypothesisId === stored.id || (s.label && text(s.label) === label)))?.excludedDomains ?? [];
+}
+
+function everyAreaExcluded(stored, ctx) {
+  const domains = stored.domains ?? [];
+  const excluded = excludedAreas(stored, ctx);
+  return domains.length > 0 && domains.every((d) => excluded.includes(d));
+}
+
+// Nov 4 (after #325): a stored pattern keeps its own areas (still capped to what its evidence supports).
+// The user's excluded areas are applied wherever the pattern is used, never written into it: removing
+// them here made "include this area again" come back as untested instead of supported.
+// src/model/area-scope.js restores areas already removed this way.
+function carryStored(stored, ctx) {
+  const [proposal] = normalizeHypothesisResponse({ hypotheses: [storedToProposal(stored)] }, ctx).hypotheses;
+  return proposal;
+}
+
+// A confirmed pattern's areas come from what was stored, plus any the model's identical version adds;
+// never narrowed by the user's exclusions (which the model was told about, so its copy may leave them out).
+function keepStoredAreas(h, stored, ctx) {
+  return { ...h, domains: [...new Set([...carryStored(stored, ctx).domains, ...(h.domains ?? [])])], carriedForward: true };
+}
+
 export function preserveExistingHypotheses(response, ctx, existing = []) {
   if (!response || !Array.isArray(response.hypotheses) || !Array.isArray(existing) || !existing.length) return response;
-  const proposed = response.hypotheses.filter((h) => h && typeof h === "object");
-  const proposedIds = new Set(proposed.map((h) => h.id).filter(Boolean));
-  const proposedLabels = new Set(proposed.map((h) => String(h.label ?? "").trim().toLowerCase()).filter(Boolean));
-  const misses = (ctx.evidence ?? []).filter((r) => r.class === "experienced" && r.polarity < 0);
   const rejectedByUser = new Set((ctx.statements ?? []).filter((s) => s.says === "not-me").map((s) => s.hypothesisId));
+  const confirmed = (h) => Boolean(confirmationFor(ctx.statements, h));
+  const confirmedStored = existing.filter((stored) => isStoredPattern(stored) && confirmed(stored));
+  const confirmedFor = (h) => confirmedStored.find((stored) => h?.id === stored.id || (text(h?.label) && text(h.label) === storedLabel(stored)));
 
+  // A model version of a confirmed pattern: kept only when it is the same pattern, word for word.
+  const answered = new Set();
+  const proposals = [];
+  for (const h of response.hypotheses) {
+    const stored = h && typeof h === "object" ? confirmedFor(h) : null;
+    if (!stored) { proposals.push(h); continue; }
+    if (answered.has(stored.id) || everyAreaExcluded(stored, ctx)) continue;
+    answered.add(stored.id);
+    const same = h.id === stored.id && text(h.label) === storedLabel(stored) && text(h.claim) === text(stored.claim);
+    proposals.push(same ? keepStoredAreas(h, stored, ctx) : carryStored(stored, ctx));
+  }
+
+  const proposed = proposals.filter((h) => h && typeof h === "object");
+  const proposedIds = new Set(proposed.map((h) => h.id).filter(Boolean));
+  const proposedLabels = new Set(proposed.map((h) => text(h.label)).filter(Boolean));
   const carried = [];
   for (const stored of existing) {
-    if (!stored?.id || !stored.claim || !(stored.title ?? stored.label)) continue;
-    if (proposedIds.has(stored.id) || proposedLabels.has(String(stored.title ?? stored.label).trim().toLowerCase())) continue;
+    if (!isStoredPattern(stored)) continue;
+    if (proposedIds.has(stored.id) || proposedLabels.has(storedLabel(stored))) continue;
     if (rejectedByUser.has(stored.id)) continue;
-    const domains = stored.domains ?? [];
-    const missesInArea = misses.filter((r) => (r.domains ?? []).some((d) => domains.includes(d))).length;
-    if (missesInArea >= MISSES_TO_DROP) continue;
-    carried.push(storedToProposal(stored));
+    if (confirmed(stored) ? everyAreaExcluded(stored, ctx) : contradictedByEvidence(stored, ctx)) continue;
+    carried.push(carryStored(stored, ctx));
   }
-  if (!carried.length) return response;
 
-  const normalizedCarried = normalizeHypothesisResponse({ hypotheses: carried }, ctx).hypotheses;
-  // Keep the profile within its usual size: brand-new proposals give way before earlier patterns do.
+  // Keep the profile within its usual size. Confirmed patterns never count against the cap; the rest
+  // of the room goes to earlier patterns first, then to brand-new proposals.
   const existingIds = new Set(existing.map((h) => h?.id).filter(Boolean));
-  let hypotheses = [...response.hypotheses, ...normalizedCarried];
-  for (let i = response.hypotheses.length - 1; hypotheses.length > MAX_PROFILE_HYPOTHESES && i >= 0; i -= 1) {
-    if (!existingIds.has(response.hypotheses[i]?.id)) hypotheses = hypotheses.filter((h) => h !== response.hypotheses[i]);
+  const hypotheses = [...proposals, ...carried];
+  const unconfirmed = hypotheses.filter((h) => !confirmed(h));
+  const room = Math.max(0, MAX_PROFILE_HYPOTHESES - (hypotheses.length - unconfirmed.length));
+  const kept = new Set([...unconfirmed.filter((h) => existingIds.has(h?.id)), ...unconfirmed.filter((h) => !existingIds.has(h?.id))].slice(0, room));
+  return { ...response, hypotheses: hypotheses.filter((h) => confirmed(h) || kept.has(h)) };
+}
+
+// #325: run after validateHypotheses. A pattern the user confirmed must come out of a refresh either
+// accepted or listed in needsReview, never silently dropped. When the model's own version of it failed
+// the check, the stored version is checked instead, so a bad revision cannot replace what the user
+// confirmed. When the stored version fails too (say a reaction it rested on was removed), it is not
+// presented as supported: its id goes in needsReview and the client keeps it, flagged, with the user's
+// answer untouched. A confirmed pattern with every area excluded is neither: the client keeps it as stored.
+//
+// Nov 4 (after #325): evidence a confirmed pattern cites is in one of three states.
+//   - validated: sent with this request (in ctx.evidence) and checked as usual;
+//   - not checked: the client still has it but didn't send it (ctx.presentRefs, payload limit);
+//   - invalid: neither, so the reaction was removed or no longer counts.
+// Only validated evidence is checked or counted.
+//   - Not-checked refs are kept on the pattern as they were, but never raise its level: when any are involved
+//     the level is capped at the stored one. Every confirmed pattern with not-checked evidence is listed in
+//     notChecked, accepted or not, and the client keeps an earlier "Needs another look" flag on it: only a
+//     check of all its evidence clears one. One that can't pass on its validated evidence alone, with nothing
+//     invalid, is not accepted either, so the client keeps it exactly as stored.
+//   - A supporting reaction that is invalid (removed) always means needsReview, even when the rest of the
+//     evidence still passes: the pattern may be accepted on what remains, but it is flagged, never silently
+//     treated as the same confirmed interpretation. A removed counter-example doesn't weaken it, so it
+//     doesn't count.
+//   - The removed reaction stays cited on the pattern, so a later refresh still finds it missing and the flag
+//     stays (Paige, PR #328 review). It clears only when the reaction is back and the check passes, or when
+//     the user confirms the pattern still fits without it (reconfirmPattern, src/model/statements.js, which
+//     drops the missing citation and makes no model call).
+// A client that sends no presentRefs has no not-checked evidence.
+function evidenceStates(stored, ctx) {
+  const sent = new Set((ctx.evidence ?? []).map((row) => row.ref));
+  const present = new Set(ctx.presentRefs ?? []);
+  const supports = stored.supports ?? stored.evidence ?? [];
+  const refs = [...supports, ...(stored.counters ?? stored.counter ?? [])];
+  return {
+    notChecked: refs.filter((ref) => !sent.has(ref) && present.has(ref)),
+    invalid: supports.filter((ref) => !sent.has(ref) && !present.has(ref))
+  };
+}
+
+// Puts back on an accepted confirmed pattern what the check couldn't use: not-checked refs, and removed
+// supporting reactions (so the flag holds). Neither counts toward its level, which is capped at the stored one.
+function keepStoredEvidence(h, stored, ctx) {
+  const { notChecked, invalid } = evidenceStates(stored, ctx);
+  const kept = [...notChecked, ...invalid];
+  if (!kept.length) return h;
+  const storedSupports = new Set(stored.supports ?? stored.evidence ?? []);
+  const add = (list, wanted) => [...list, ...kept.filter((ref) => wanted(ref) && !list.includes(ref))];
+  const storedLevel = String(stored.strength ?? stored.level ?? "emerging").toLowerCase();
+  return {
+    ...h,
+    evidence: add(h.evidence ?? [], (ref) => storedSupports.has(ref)),
+    counter: add(h.counter ?? [], (ref) => !storedSupports.has(ref)),
+    level: LEVELS.includes(storedLevel) ? capLevel(h.level, storedLevel) : h.level
+  };
+}
+
+export function settleConfirmedHypotheses(validated, ctx, existing = []) {
+  if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [], notChecked: [] };
+  const accepted = [...(validated.accepted ?? [])];
+  const needsReview = [];
+  const notChecked = [];
+  for (const stored of existing) {
+    if (!isStoredPattern(stored) || !confirmationFor(ctx.statements, stored) || everyAreaExcluded(stored, ctx)) continue;
+    const states = evidenceStates(stored, ctx);
+    if (states.notChecked.length) notChecked.push(stored.id);
+    if (states.invalid.length) needsReview.push(stored.id);
+    const at = accepted.findIndex((h) => h.id === stored.id || text(h.label) === storedLabel(stored));
+    if (at >= 0) { accepted[at] = keepStoredEvidence(accepted[at], stored, ctx); continue; }
+    const retry = validateHypotheses({ hypotheses: [carryStored(stored, ctx)] }, ctx);
+    if (retry.accepted.length) accepted.push(...retry.accepted.map((h) => keepStoredEvidence(h, stored, ctx)));
+    else if (!states.invalid.length && !states.notChecked.length) needsReview.push(stored.id);
   }
-  return { ...response, hypotheses: hypotheses.slice(0, MAX_PROFILE_HYPOTHESES) };
+  return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview, notChecked };
 }
 
 // #256: a pattern that talks about *why* something worked or failed must use the reasons the user actually
@@ -259,7 +371,9 @@ export function validateHypotheses(response, ctx) {
     // #36: a narrower "not in {domain}" correction outranks inference the same way a full "not me" does,
     // just scoped to that one domain rather than the whole pattern.
     const scopedStatement = (ctx.statements ?? []).find((s) => (s.excludedDomains ?? []).length && (s.hypothesisId === h.id || (s.label && s.label.toLowerCase() === h.label.toLowerCase())));
-    const excludedDomainsClaimed = scopedStatement ? h.domains.filter((d) => scopedStatement.excludedDomains.includes(d)) : [];
+    // A pattern carried forward from what was stored keeps its own areas; the exclusion is applied where it
+    // is used (Nov 4, carryStored). A new claim from the model still may not claim an excluded area.
+    const excludedDomainsClaimed = scopedStatement && !h.carriedForward ? h.domains.filter((d) => scopedStatement.excludedDomains.includes(d)) : [];
     if (excludedDomainsClaimed.length) reasons.push(`claims domains the user said this pattern is not them in: ${excludedDomainsClaimed.join(", ")}`);
     // #36 v1: "only applies in some contexts" caps confidence the same way the product caps it from
     // evidence alone (below) — the model cannot claim Strong for a pattern the user says isn't universal.

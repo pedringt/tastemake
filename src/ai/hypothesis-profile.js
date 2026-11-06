@@ -2,6 +2,7 @@ import { serializeAiState } from "./live-client.js";
 import { evidenceRecords } from "../model/evidence.js";
 import { recordRevisionIfChanged } from "../model/history.js";
 import { noteAiAnswer } from "./ai-status.js";
+import { NEEDS_REVIEW, confirmationFor } from "../model/statements.js";
 
 const slug = (text) => String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
@@ -34,6 +35,9 @@ export function normalizeHypothesis(h, index, state) {
   };
 }
 
+// #325: a pattern the user confirmed ("accurate" or "partly") is always kept, whatever the refresh
+// returned, and never counts against activeLimit (only the user can grow the confirmed set past it).
+// The rest of the room goes to earlier patterns first, then to new ones.
 export function mergeHypotheses(existing = [], incoming = [], { statements = [], activeLimit = 12, preserveExistingActive = true } = {}) {
   const correctedIds = new Set(
     (statements ?? []).filter((entry) => entry?.says === "not-me").map((entry) => entry.hypothesisId)
@@ -46,22 +50,85 @@ export function mergeHypotheses(existing = [], incoming = [], { statements = [],
     corrected.push(item);
   }
 
+  const confirmed = (item) => Boolean(confirmationFor(statements, item));
   const activeById = new Map();
   for (const item of incoming) if (item?.id && !correctedIds.has(item.id)) activeById.set(item.id, item);
-  if (preserveExistingActive) {
-    for (const item of existing) {
-      if (!item?.id || correctedIds.has(item.id) || activeById.has(item.id)) continue;
-      activeById.set(item.id, item);
-    }
+  for (const item of existing) {
+    if (!item?.id || correctedIds.has(item.id) || activeById.has(item.id)) continue;
+    if (preserveExistingActive || confirmed(item)) activeById.set(item.id, item);
   }
-  return [...activeById.values()].slice(0, activeLimit).concat(corrected);
+  const active = [...activeById.values()];
+  const existingIds = new Set(existing.map((item) => item?.id));
+  const unconfirmed = active.filter((item) => !confirmed(item));
+  const room = Math.max(0, activeLimit - (active.length - unconfirmed.length));
+  const kept = new Set([...unconfirmed.filter((item) => existingIds.has(item.id)), ...unconfirmed.filter((item) => !existingIds.has(item.id))].slice(0, room));
+  return active.filter((item) => confirmed(item) || kept.has(item)).concat(corrected);
 }
 
-export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, force = false } = {}) {
+// #325: a confirmed pattern whose evidence no longer passes the check (the server lists it in
+// meta.needsReview) is kept as stored, with the user's answer and history untouched, but marked so it
+// is not shown as supported. The mark is cleared only when a refresh accepts the pattern again: an
+// accepted pattern is rebuilt by normalizeHypothesis, which has no such field.
+const CHECKED_NEEDS_REVIEW = "Tastemake checked your profile. Some patterns need another look because their evidence is no longer available.";
+export function markNeedsReview(patterns = [], needsReview = []) {
+  const ids = new Set(needsReview ?? []);
+  if (!ids.size) return patterns;
+  return patterns.map((p) => (ids.has(p?.id) ? { ...p, evidenceStatus: NEEDS_REVIEW } : p));
+}
+
+// Nov 4 (after #325): the evidence the stored patterns rest on, which a refresh must send if it still
+// exists, so the server never mistakes "not sent" for "removed". Patterns the user confirmed come first,
+// then the rest; supports before counters.
+export function citedEvidenceRefs(state) {
+  const patterns = state.modelHypotheses ?? [];
+  const confirmed = (p) => Boolean(confirmationFor(state.patternStatements ?? [], p));
+  const tier = (list) => [...list.flatMap((p) => p.supports ?? []), ...list.flatMap((p) => p.counters ?? [])];
+  return [...new Set([...tier(patterns.filter(confirmed)), ...tier(patterns.filter((p) => !confirmed(p)))])];
+}
+
+// Nov 4 (after #325): why a profile answer no longer describes the user's current profile, or null.
+// Same idea as staleReason for picks (src/ai/requests.js, #42). hypothesisEvidenceKey already covers
+// every input the user can change while a refresh is in flight: their reactions and refinements, and
+// their pattern answers (says, weight, context, excluded areas). If the UI ever lets people edit a
+// pattern directly, add it to that key too or staleness will miss it.
+export function profileRefreshStaleReason(state, request) {
+  if (!request) return "no request";
+  if (state.hypothesisRequest !== request) return "a newer request replaced it";
+  if ((state.profileGeneration ?? 0) !== request.generation) return "the profile was replaced";
+  if (Boolean(state.viewingExample) !== request.viewingExample) return "the profile was replaced";
+  if (hypothesisEvidenceKey(state) !== request.key) return "your answers or reactions changed while it was checking";
+  return null;
+}
+
+// A stale answer changes nothing: no patterns, history, flags, key, message or announcement. When the same
+// profile changed underneath it, the status and message go back to what they were before the request, and
+// onStale lets the caller ask again through its normal refresh path (which keeps the Profile-screen,
+// deduplication and loading guards). A paused budget never asks again. When the profile was replaced
+// (Start over, a restored backup, the Example Profile), nothing is touched and nothing is asked.
+function settleStale(state, request, { payload = null, onStale, onUpdate }) {
+  if (state.hypothesisRequest === request) state.hypothesisRequest = null;
+  const sameProfile = (state.profileGeneration ?? 0) === request.generation && Boolean(state.viewingExample) === request.viewingExample;
+  if (!sameProfile) return;
+  state.hypothesisAiStatus = request.previousStatus;
+  state.hypothesisAiMessage = request.previousMessage;
+  onUpdate();
+  if (!payload?.meta?.budgetPaused && !state.aiPaused) onStale();
+}
+
+export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, onStale = () => {}, force = false } = {}) {
   if (state.viewingExample) return;   // the example's patterns are fixed; no model calls on its behalf
   const key = hypothesisEvidenceKey(state);
   if (state.hypothesisAiStatus === "loading" || (!force && state.hypothesisAiKey === key)) return;
 
+  const request = {
+    key,
+    generation: state.profileGeneration ?? 0,
+    viewingExample: Boolean(state.viewingExample),
+    previousStatus: state.hypothesisAiStatus,
+    previousMessage: state.hypothesisAiMessage ?? null,
+    controller: typeof AbortController === "function" ? new AbortController() : null
+  };
+  state.hypothesisRequest = request;
   state.hypothesisAiStatus = "loading";
   state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
     ? "Refreshing your Taste Profile…"
@@ -69,16 +136,21 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
   onUpdate();
 
   try {
-    const bodyState = { ...serializeAiState(state), modelHypotheses: state.modelHypotheses ?? [] };
+    const bodyState = { ...serializeAiState(state, { requiredRefs: citedEvidenceRefs(state) }), modelHypotheses: state.modelHypotheses ?? [] };
     const response = await fetch("/api/hypotheses", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ state: bodyState })
+      body: JSON.stringify({ state: bodyState }),
+      ...(request.controller ? { signal: request.controller.signal } : {})
     });
     const payload = await response.json().catch(() => null);
+    if (profileRefreshStaleReason(state, request)) return settleStale(state, request, { payload, onStale, onUpdate });
     if (!response.ok || !payload) throw new Error(payload?.error || "profile request failed");
 
+    request.settled = true;
+    state.hypothesisRequest = null;
     noteAiAnswer(state, { budgetPaused: Boolean(payload.meta?.budgetPaused), usedModel: payload.source === "model" });
+    const needsReview = Array.isArray(payload.meta?.needsReview) ? payload.meta.needsReview : [];
     if (payload.source === "model" && Array.isArray(payload.hypotheses) && payload.hypotheses.length) {
       const next = payload.hypotheses.map((h, index) => normalizeHypothesis(h, index, state));
       for (const h of next) {
@@ -94,15 +166,28 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         });
       }
       const rejected = Number(payload.meta?.rejected ?? 0);
-      state.modelHypotheses = mergeHypotheses(state.modelHypotheses ?? [], next, {
+      // Nov 4 (after #325): a pattern accepted while some of its evidence went unchecked (meta.notChecked)
+      // keeps an earlier "Needs another look" flag; rebuilding it must not clear one.
+      const notChecked = new Set(Array.isArray(payload.meta?.notChecked) ? payload.meta.notChecked : []);
+      const stillFlagged = (state.modelHypotheses ?? []).filter((p) => p?.evidenceStatus === NEEDS_REVIEW && notChecked.has(p.id)).map((p) => p.id);
+      state.modelHypotheses = markNeedsReview(mergeHypotheses(state.modelHypotheses ?? [], next, {
         statements: state.patternStatements ?? [],
         activeLimit: 12,
         preserveExistingActive: rejected > 0
-      });
-      state.hypothesisAiMessage = "Your Taste Profile is up to date.";
+      }), [...needsReview, ...stillFlagged]);
+      state.hypothesisAiMessage = needsReview.length ? CHECKED_NEEDS_REVIEW : "Your Taste Profile is up to date.";
       state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");
+    } else if (needsReview.length) {
+      // #325: nothing new was accepted, but the evidence check itself completed and found confirmed
+      // patterns it can't verify. That is a result, not a failed refresh: record it, say what changed,
+      // and don't ask again until the evidence changes.
+      state.modelHypotheses = markNeedsReview(state.modelHypotheses ?? [], needsReview);
+      state.hypothesisAiMessage = CHECKED_NEEDS_REVIEW;
+      state.hypothesisAiKey = key;
+      announce(CHECKED_NEEDS_REVIEW);
     } else {
+      // A failed, paused or empty answer leaves the saved profile exactly as it was.
       state.hypothesisAiKey = null;
       // The full explanation sits in the empty state (or the header badge) when AI is paused; this line stays short.
       state.hypothesisAiMessage = payload.meta?.budgetPaused
@@ -113,6 +198,10 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     }
     state.hypothesisAiStatus = "ready";
   } catch {
+    // An aborted or failed request for a profile that has since changed or been replaced is stale too.
+    // (Not one this request already accepted: an error after that point is an ordinary failure.)
+    if (!request.settled && profileRefreshStaleReason(state, request)) return settleStale(state, request, { onStale, onUpdate });
+    if (state.hypothesisRequest === request) state.hypothesisRequest = null;
     state.hypothesisAiStatus = "ready";
     state.hypothesisAiKey = null;
     state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
