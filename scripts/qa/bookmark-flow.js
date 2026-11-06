@@ -288,6 +288,10 @@ export async function run() {
     // Oct 23 smoke test: the second click unpinned it, but focus (and the pointer) kept it on screen over the reaction buttons.
     const shown=()=>getComputedStyle(whyCard.querySelector(".why-popover")).visibility==="visible";
     await until(()=>!shown());
+    // Nov 5: headless Chrome sometimes draws no frames for over a second, leaving the 0.12s fade stuck at
+    // 0ms with the popover still "visible" (7 of 350 runs; class state was correct every time). Finishing
+    // the fade reads where the CSS settles; a rule that kept it visible would still fail.
+    whyCard.querySelector(".why-popover").getAnimations().forEach((animation)=>animation.finish());
     check("a second click hides it even though the link still has focus",document.activeElement===whyCard.querySelector(".why-trigger")&&!shown(),getComputedStyle(whyCard.querySelector(".why-popover")).visibility);
     check("a preview that is not pinned never takes clicks",getComputedStyle(whyCard.querySelector(".why-popover")).pointerEvents==="none");
     // Headless pages are not the focused window, so focus events are sent by hand (a real browser sends them).
