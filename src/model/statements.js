@@ -33,6 +33,18 @@ export function statementFor(state, hypothesisId) {
   return (state.patternStatements ?? []).find((s) => same(s.hypothesisId, hypothesisId)) ?? null;
 }
 
+// #333: the context answer to show. Answers saved before the fix can still pair Yes with the Partly-only
+// "Not sure yet"; it is hidden here rather than rewritten, so the saved record and its history stay as they were.
+export function shownContext(said) {
+  if (said?.says === "accurate" && said.context === "unsure") return null;
+  return said?.context ?? null;
+}
+
+// The same answer as the AI should read it: a copy without the hidden qualifier; the saved entry is untouched.
+export function effectiveStatement(said) {
+  return said && shownContext(said) !== (said.context ?? null) ? { ...said, context: shownContext(said) } : said;
+}
+
 const MESSAGE = {
   says: (pattern, now) => (now ? `${pattern.title}: ${FIT[now]}.` : `${pattern.title}: your answer was cleared.`),
   weight: (pattern, now) => (now ? `${pattern.title}: ${WEIGHT[now]}.` : `${pattern.title}: how much it matters was cleared.`),
@@ -50,6 +62,7 @@ export function setStatement(state, hypothesisId, field, value) {
   if (field === "weight" && entry?.says !== "accurate") return null;
   if (field === "context" && !["accurate", "partial"].includes(entry?.says)) return null;
   if (field === "context" && entry?.says === "partial" && value === "broad") return null;
+  if (field === "context" && entry?.says === "accurate" && value === "unsure") return null;
 
   if (!entry) {
     entry = { hypothesisId, label: pattern.title, says: null, weight: null, context: null, authority: "user-confirmed" };
@@ -67,6 +80,10 @@ export function setStatement(state, hypothesisId, field, value) {
     } else if (next === "partial") {
       entry.weight = null;
       if (entry.context === "broad") entry.context = null;
+    } else if (next === "accurate") {
+      // #333: "Not sure yet" only exists under Partly; under Yes it was hidden but still shown as a line.
+      // "Depends" exists under both, so it stays (and shows as selected).
+      if (entry.context === "unsure") entry.context = null;
     }
   }
 

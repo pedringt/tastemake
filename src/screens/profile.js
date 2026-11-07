@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { canKeepDiscovering } from "../model/taste.js";
-import { CONTEXT, FIT, NEEDS_REVIEW_TEXT, RECONFIRM_LABEL, RECONFIRM_TEXT, WEIGHT, canReconfirm, patternDisplayStatus, statementFor } from "../model/statements.js";
+import { CONTEXT, FIT, NEEDS_REVIEW_TEXT, RECONFIRM_LABEL, RECONFIRM_TEXT, WEIGHT, canReconfirm, patternDisplayStatus, shownContext, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
@@ -171,7 +171,7 @@ function hypothesisCard(item, index, records = new Map()) {
         ${said?.says === "partial" ? `<div class="signal-said"><strong>You marked this pattern as partly accurate.</strong> Tastemake keeps it in your profile and tells its AI to treat it more cautiously. It doesn’t yet know which part doesn’t fit.</div>` : ""}
         ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake keeps the pattern tentative rather than treating your uncertainty as evidence.</div>` : ""}
         ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is.</div>` : ""}
-        ${["accurate", "partial"].includes(said?.says) && said?.context ? `<div class="signal-said">${CONTEXT[said.context] ?? "You refined when this applies."}.</div>` : ""}
+        ${["accurate", "partial"].includes(said?.says) && shownContext(said) ? `<div class="signal-said">${CONTEXT[shownContext(said)] ?? "You refined when this applies."}.</div>` : ""}
         ${sayControls(item, said, record)}
         ${statementConsequence(item, said)}
         ${blindLine}
