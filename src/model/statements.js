@@ -40,6 +40,11 @@ export function shownContext(said) {
   return said?.context ?? null;
 }
 
+// The same answer as the AI should read it: a copy without the hidden qualifier; the saved entry is untouched.
+export function effectiveStatement(said) {
+  return said && shownContext(said) !== (said.context ?? null) ? { ...said, context: shownContext(said) } : said;
+}
+
 const MESSAGE = {
   says: (pattern, now) => (now ? `${pattern.title}: ${FIT[now]}.` : `${pattern.title}: your answer was cleared.`),
   weight: (pattern, now) => (now ? `${pattern.title}: ${WEIGHT[now]}.` : `${pattern.title}: how much it matters was cleared.`),

@@ -74,6 +74,17 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   eq("or its history", JSON.stringify(state.hypothesisHistory), JSON.stringify(reloaded.hypothesisHistory));
   eq("Yes + Depends is still shown", shownContext({ says: "accurate", context: "some" }), "some");
   eq("Partly + Not sure yet is still shown", shownContext({ says: "partial", context: "unsure" }), "unsure");
+  // #333: live AI reads the same effective answer the person sees (recommendations and Taste Profile refresh).
+  const { buildContext } = await import("../../src/ai/context.js");
+  const { buildPickPrompt } = await import("../../api/recommendations.mjs");
+  const { buildHypothesisPrompt } = await import("../../api/hypotheses.mjs");
+  const ctx = buildContext(state);
+  eq("the AI context sends Yes without the hidden Not sure yet", ctx.statements[0]?.context, null);
+  eq("and still sends the Yes answer", ctx.statements[0]?.says, "accurate");
+  check("neither prompt carries it", !/"unsure"/.test(buildPickPrompt(ctx, 3)) && !/"unsure"/.test(buildHypothesisPrompt(ctx, [saved])), buildPickPrompt(ctx, 3).slice(-600));
+  eq("building the context doesn't rewrite the saved answer", state.patternStatements[0].context, "unsure");
+  state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "partial", context: "unsure" }];
+  eq("Partly + Not sure yet still reaches the AI", buildContext(state).statements[0]?.context, "unsure");
   state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "accurate", context: "some" }];
   check("a saved Yes + Depends line still renders", renderProfile().includes(CONTEXT.some) && renderMine().includes(CONTEXT.some));
 }
