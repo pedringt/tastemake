@@ -66,9 +66,9 @@ function lovedState() {
   check("each one says what it shares with which favorite", out.items[0].reason.includes("Arrival") && out.items[1].reason.includes("Severance") && out.items[2].reason.includes("Outer Wilds"), out.items.map((i) => i.reason).join(" / "));
   // Oct 27: release wording of its own, not the no-AI pick templates ("Another drama pick, linked to ...").
   check("the strip never uses retrieval words", out.items.every((i) => !/found through|linked to|shelf|\bAnother\b.*\bpick\b/i.test(i.reason)), out.items.map((i) => i.reason).join(" / "));
-  eq("movie wording", out.items[0].reason, "New sci-fi drama, sharing both with Arrival.");
+  eq("movie wording", out.items[0].reason, "A new film with sci-fi and drama, like Arrival.");
   eq("TV wording", out.items[1].reason, "A new series with mystery and drama, like Severance.");
-  eq("game wording", out.items[2].reason, "New puzzle adventure game, sharing both with Outer Wilds.");
+  eq("game wording", out.items[2].reason, "A new puzzle and adventure game, like Outer Wilds.");
   eq("one shared genre", out.items[3].reason, "A new sci-fi film, like Arrival.");
   check("each carries its release date", out.items.every((i) => /^\d{4}-\d{2}-\d{2}$/.test(i.releaseDate)));
   eq("release dates come through as the source gave them", out.items.map((i) => i.releaseDate).join(), "2026-10-24,2026-10-22,2026-10-27,2026-10-19");
@@ -191,7 +191,9 @@ eq("broad-only genres are not a match on their own", bestAnchor(movie(1, "X", [3
   const tv = (title, genres) => ({ provider: "tmdb", type: "tv", title, genres: genres.map(String) });
   eq("comedy and drama only: one plain line", newReleaseReason(tv("New Kitchen", [35, 18]), tv("The Bear", [35, 18]), { index: 1 }), "A new comedy-drama series, like The Bear.");
   eq("drama only says that's all it shares", newReleaseReason(tv("Office", [18]), tv("Severance", [18, 9648])), "A new drama series; it shares only that genre with Severance.");
-  eq("sci-fi action movie", newReleaseReason(movie(1, "Boom", [28, 878]), movie(2, "Everything Everywhere All at Once", [28, 878, 35])), "New sci-fi action, sharing both with Everything Everywhere All at Once.");
+  eq("sci-fi action movie", newReleaseReason(movie(1, "Boom", [28, 878]), movie(2, "Everything Everywhere All at Once", [28, 878, 35])), "A new film with sci-fi and action, like Everything Everywhere All at Once.");
+  // Nov 6: "sharing both with" is gone for every medium and either rotation index.
+  check("no reason says \"sharing both\"", [0, 1].every((index) => [newReleaseReason(movie(1, "Boom", [28, 878]), movie(2, "Arrival", [28, 878]), { index }), newReleaseReason(tv("Mystery Office", [9648, 18]), tv("Severance", [9648, 18]), { index }), newReleaseReason(game(1, "Tiny", ["Puzzle", "Adventure"]), game(2, "Outer Wilds", ["Puzzle", "Adventure"]), { index })].every((r) => !/sharing both/.test(r) && /^A new .+, like .+\.$/.test(r))));
   eq("sci-fi only", newReleaseReason(movie(1, "Vega", [878]), movie(2, "Arrival", [878, 18])), "New sci-fi this week, in the same genre as Arrival.");
   eq("an IGDB genre reads as a kind of game", newReleaseReason(game(1, "Rogue", ["Role-playing (RPG)"]), game(2, "Hades", ["Role-playing (RPG)", "Hack and slash/Beat 'em up"]), { index: 1 }), "A new role-playing game, like Hades.");
   eq("an IGDB theme can be named too", newReleaseReason({ ...game(1, "Dread", ["Adventure"]), providerMeta: { themes: ["Horror"] } }, { ...game(2, "Alan Wake", ["Shooter"]), providerMeta: { themes: ["Horror"] } }, { index: 1 }), "A new horror game, like Alan Wake.");
