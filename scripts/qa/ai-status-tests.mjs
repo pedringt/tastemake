@@ -94,11 +94,17 @@ for (const stale of [
   "Future picks will use the narrower interpretation",
   "more reason to test this pattern again in future picks",
   "apply it more selectively across books, movies, shows, and games",
-  "currently testing when it chooses recommendations"
+  "currently testing when it chooses recommendations",
+  // Nov 6 follow-up QA: Partly kept the same wording (frozen since #325) and had no free-text details.
+  "Tastemake treats it as a narrower pattern",
+  "uses the details you add below",
+  "Tastemake will use this pattern more selectively."
 ]) check(`profile copy no longer promises: "${stale}"`, !profile.includes(stale));
 for (const approved of [
   "Tastemake won’t use this pattern in your Taste Profile, and asks its AI not to lean on it when explaining picks.",
   "Tastemake will tell its AI this pattern matters more to you.",
+  "Tastemake keeps it in your profile and tells its AI to treat it more cautiously. It doesn’t yet know which part doesn’t fit.",
+  "Tastemake asks its AI to treat this pattern more cautiously when making recommendations.",
   "Tastemake will tell its AI this pattern matters less to you.",
   "Your Taste Profile won’t apply it to",
   "Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count.",

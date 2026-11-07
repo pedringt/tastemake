@@ -111,7 +111,7 @@ function statementConsequence(item, said) {
   let text = "";
   if (said.says === "not-me") text = "Tastemake won’t use this pattern in your Taste Profile, and asks its AI not to lean on it when explaining picks.";
   else if (said.says === "unsure") text = "Tastemake will keep this tentative instead of leaning on it.";
-  else if (said.says === "partial") text = "Tastemake will use this pattern more selectively.";
+  else if (said.says === "partial") text = "Tastemake asks its AI to treat this pattern more cautiously when making recommendations.";
   else if (said.weight === "lot") text = "Tastemake will tell its AI this pattern matters more to you.";
   else if (said.weight === "little") text = "Tastemake will tell its AI this pattern matters less to you.";
   else if (said.context === "some") text = "Tastemake will treat this as conditional rather than broadly true.";
@@ -168,7 +168,7 @@ function hypothesisCard(item, index, records = new Map()) {
         ${saidReasonsLine(item, records)}
         <div class="signal-provenance">${esc(update.provenance)}</div>
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count. The pattern stays here so you can change your mind.</div>` : ""}
-        ${said?.says === "partial" ? `<div class="signal-said"><strong>${FIT.partial}.</strong> Tastemake treats it as a narrower pattern and uses the details you add below.</div>` : ""}
+        ${said?.says === "partial" ? `<div class="signal-said"><strong>You marked this pattern as partly accurate.</strong> Tastemake keeps it in your profile and tells its AI to treat it more cautiously. It doesn’t yet know which part doesn’t fit.</div>` : ""}
         ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake keeps the pattern tentative rather than treating your uncertainty as evidence.</div>` : ""}
         ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is.</div>` : ""}
         ${["accurate", "partial"].includes(said?.says) && said?.context ? `<div class="signal-said">${CONTEXT[said.context] ?? "You refined when this applies."}.</div>` : ""}
