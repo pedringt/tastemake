@@ -29,6 +29,6 @@ export default async function handler(req, res) {
     const result = await newReleasesFor(hydrateState(body.state), { region: String(body.region ?? "US").toUpperCase() });
     return res.status(200).json(result);
   } catch {
-    return res.status(200).json({ items: [] });
+    return res.status(200).json({ items: [], outcome: "unavailable" });
   }
 }

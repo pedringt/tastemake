@@ -4,9 +4,9 @@
 //
 //   node scripts/qa/new-releases-tests.mjs
 
-import { bestAnchor, newReleasesFor, releaseWindow } from "../../src/catalog/new-releases.mjs";
+import { bestAnchor, newReleasesFor, releasesOutcome, releaseWindow } from "../../src/catalog/new-releases.mjs";
 import { newReleaseReason } from "../../src/catalog/fallback-reasons.mjs";
-import { actOnNewRelease, releaseLabel } from "../../src/ai/new-releases.js";
+import { actOnNewRelease, newReleasesFromPayload, releaseLabel } from "../../src/ai/new-releases.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
 import { makeExclusion } from "../../src/model/exclusions.js";
 import { emptyState, react } from "../evals/fixtures.mjs";
@@ -66,9 +66,9 @@ function lovedState() {
   check("each one says what it shares with which favorite", out.items[0].reason.includes("Arrival") && out.items[1].reason.includes("Severance") && out.items[2].reason.includes("Outer Wilds"), out.items.map((i) => i.reason).join(" / "));
   // Oct 27: release wording of its own, not the no-AI pick templates ("Another drama pick, linked to ...").
   check("the strip never uses retrieval words", out.items.every((i) => !/found through|linked to|shelf|\bAnother\b.*\bpick\b/i.test(i.reason)), out.items.map((i) => i.reason).join(" / "));
-  eq("movie wording", out.items[0].reason, "New sci-fi drama, sharing both with Arrival.");
+  eq("movie wording", out.items[0].reason, "A new film with sci-fi and drama, like Arrival.");
   eq("TV wording", out.items[1].reason, "A new series with mystery and drama, like Severance.");
-  eq("game wording", out.items[2].reason, "New puzzle adventure game, sharing both with Outer Wilds.");
+  eq("game wording", out.items[2].reason, "A new puzzle and adventure game, like Outer Wilds.");
   eq("one shared genre", out.items[3].reason, "A new sci-fi film, like Arrival.");
   check("each carries its release date", out.items.every((i) => /^\d{4}-\d{2}-\d{2}$/.test(i.releaseDate)));
   eq("release dates come through as the source gave them", out.items.map((i) => i.releaseDate).join(), "2026-10-24,2026-10-22,2026-10-27,2026-10-19");
@@ -116,13 +116,84 @@ eq("bestAnchor prefers more shared genres", bestAnchor(movie(1, "X", [878, 9648]
 eq("bestAnchor needs at least one shared genre", bestAnchor(movie(1, "X", [35]), [{ item: movie(2, "Two", [878]), weight: 1 }]), null);
 // Oct 27: sharing comedy and drama says less than sharing sci-fi, even with heavier evidence behind it.
 eq("bestAnchor prefers a specific shared genre over broad-only ones", bestAnchor(movie(1, "X", [35, 18, 878]), [{ item: movie(2, "Broad", [35, 18]), weight: 3 }, { item: movie(3, "Specific", [878]), weight: 1 }])?.item.title, "Specific");
-eq("broad-only still matches when nothing else does", bestAnchor(movie(1, "X", [35, 18]), [{ item: movie(2, "Broad", [35, 18]), weight: 1 }])?.item.title, "Broad");
+// Nov 2 (#317): this used to match ("broad-only still matches when nothing else does"). Broad genres alone
+// are no longer taste support, so the strip shows fewer picks instead.
+eq("broad-only genres are not a match on their own", bestAnchor(movie(1, "X", [35, 18]), [{ item: movie(2, "Broad", [35, 18]), weight: 1 }]), null);
+
+// ---- #317: The Cat in the Hat vs The Green Knight --------------------------------------------------------
+// Real metadata, read from the two public TMDb pages on Nov 2 2026 (ids, genres, US release date). The review
+// saw "A new film with fantasy and adventure, like The Green Knight." on New this week. The Green Knight is
+// not in the Example Profile file, so that session had it as tried evidence some other way (not recorded).
+{
+  const catInTheHat = { id: 1117898, title: "The Cat in the Hat", genre_ids: [12, 16, 35, 10751, 14], release_date: "2026-11-06", overview: "", popularity: 500 };
+  const greenKnight = movie(559907, "The Green Knight", [12, 18, 14]);
+  const nov = new Date("2026-11-02T15:00:00Z");
+  const releases = (rows, tvRows = []) => async (url) => {
+    const u = String(url);
+    if (u.includes("/discover/movie")) return { ok: true, json: async () => ({ results: rows }) };
+    if (u.includes("/discover/tv")) return { ok: true, json: async () => ({ results: tvRows }) };
+    throw new Error(`unexpected ${u}`);
+  };
+  const lovedOnly = (...items) => {
+    const s = emptyState([]);
+    s.recommendationSets = [];
+    s.areas.play = false;
+    for (const item of items) react(s, item, "loved");
+    return s;
+  };
+  const cat = { ...movie(1117898, "The Cat in the Hat", [12, 16, 35, 10751, 14]) };
+  eq("(fixture) the old rule matched it on fantasy and adventure", newReleaseReason(cat, greenKnight, { index: 1 }), "A new film with fantasy and adventure, like The Green Knight.");
+  eq("a family film is not matched to a favorite made for adults", bestAnchor(cat, [{ item: greenKnight, weight: 2 }]), null);
+  const out = await newReleasesFor(lovedOnly(greenKnight), { env, fetchImpl: releases([catInTheHat]), now: nov });
+  eq("so loving The Green Knight brings no Cat in the Hat, and no padding", out.items.length, 0);
+
+  // A clearly supported match still shows, with a truthful reason naming only what is shared.
+  const folk = { id: 990010, title: "Fixture Folk Fantasy", genre_ids: [14, 18, 27], release_date: "2026-11-01", overview: "", popularity: 40 };
+  const both = await newReleasesFor(lovedOnly(greenKnight), { env, fetchImpl: releases([catInTheHat, folk]), now: nov });
+  eq("a specific shared genre for the same audience still shows", both.items.map((i) => i.title).join(), "Fixture Folk Fantasy");
+  check("and its reason names fantasy and the favorite, nothing it doesn't share", /fantasy/.test(both.items[0]?.reason ?? "") && both.items[0].reason.includes("The Green Knight") && !/horror|adventure/.test(both.items[0].reason), both.items[0]?.reason);
+
+  // Family on both sides is the same audience.
+  const familyFavorite = movie(116149, "Fixture Family Fantasy Favorite", [10751, 14, 35]);
+  eq("a family release can match a family favorite on a specific genre", bestAnchor(cat, [{ item: familyFavorite, weight: 1 }])?.item.title, familyFavorite.title);
+  // TV Kids and IGDB's Kids theme are audience tags too.
+  const kidsShow = { id: "tmdb-tv-1", provider: "tmdb", type: "tv", title: "Kids Fantasy", genres: ["10762", "10765"] };
+  eq("a kids show is not matched to an adult sci-fi & fantasy favorite", bestAnchor(kidsShow, [{ item: { provider: "tmdb", type: "tv", title: "The Leftovers", genres: ["10765", "18"] }, weight: 1 }]), null);
+  eq("a Kids-themed game is not matched to a favorite without it", bestAnchor({ ...game(1, "Bouncy", ["Platform", "Puzzle"]), providerMeta: { themes: ["Kids"] } }, [{ item: game(72, "Portal 2", ["Platform", "Puzzle", "Adventure"]), weight: 1 }]), null);
+
+  // Thin metadata never becomes certainty either way.
+  eq("a release with no genres matches nothing", bestAnchor(movie(5, "No Tags", []), [{ item: greenKnight, weight: 1 }]), null);
+  eq("an anchor with no genres anchors nothing", bestAnchor(movie(5, "Folk", [14]), [{ item: movie(6, "Untagged", []), weight: 1 }]), null);
+  eq("a missing audience tag rules nothing out", bestAnchor(movie(5, "Folk", [14, 12]), [{ item: greenKnight, weight: 1 }])?.item.title, "The Green Knight");
+
+  // No eligible releases at all: an empty list, not an error.
+  eq("an empty week is an empty strip", (await newReleasesFor(lovedOnly(greenKnight), { env, fetchImpl: releases([]), now: nov })).items.length, 0);
+
+  // Areas stay separate: a loved film anchors films only, so a TV release sharing its genres is not matched.
+  const tvFantasy = { id: 880010, name: "Fixture Fantasy Series", genre_ids: [14, 18], first_air_date: "2026-11-01", overview: "", popularity: 10 };
+  const sTv = lovedOnly(greenKnight);
+  const crossArea = await newReleasesFor(sTv, { env, fetchImpl: releases([], [tvFantasy]), now: nov });
+  eq("a film favorite doesn't anchor a TV release", crossArea.items.length, 0);
+
+  // Untried reactions to The Green Knight are intent, never an anchor.
+  const saved = emptyState([]);
+  saved.recommendationSets = [];
+  saved.feedbackByRecommendation[greenKnight.id] = { item: greenKnight, rating: "not-tried", detail: "bookmarked" };
+  const skipped = emptyState([]);
+  skipped.recommendationSets = [];
+  skipped.feedbackByRecommendation[greenKnight.id] = { item: greenKnight, rating: "not-tried", detail: "not-interested" };
+  for (const [label, s] of [["saved", saved], ["not interested", skipped]]) {
+    eq(`a ${label} Green Knight anchors nothing`, (await newReleasesFor(s, { env, fetchImpl: releases([folk]), now: nov })).items.length, 0);
+  }
+}
 
 {
   const tv = (title, genres) => ({ provider: "tmdb", type: "tv", title, genres: genres.map(String) });
   eq("comedy and drama only: one plain line", newReleaseReason(tv("New Kitchen", [35, 18]), tv("The Bear", [35, 18]), { index: 1 }), "A new comedy-drama series, like The Bear.");
   eq("drama only says that's all it shares", newReleaseReason(tv("Office", [18]), tv("Severance", [18, 9648])), "A new drama series; it shares only that genre with Severance.");
-  eq("sci-fi action movie", newReleaseReason(movie(1, "Boom", [28, 878]), movie(2, "Everything Everywhere All at Once", [28, 878, 35])), "New sci-fi action, sharing both with Everything Everywhere All at Once.");
+  eq("sci-fi action movie", newReleaseReason(movie(1, "Boom", [28, 878]), movie(2, "Everything Everywhere All at Once", [28, 878, 35])), "A new film with sci-fi and action, like Everything Everywhere All at Once.");
+  // Nov 6: "sharing both with" is gone for every medium and either rotation index.
+  check("no reason says \"sharing both\"", [0, 1].every((index) => [newReleaseReason(movie(1, "Boom", [28, 878]), movie(2, "Arrival", [28, 878]), { index }), newReleaseReason(tv("Mystery Office", [9648, 18]), tv("Severance", [9648, 18]), { index }), newReleaseReason(game(1, "Tiny", ["Puzzle", "Adventure"]), game(2, "Outer Wilds", ["Puzzle", "Adventure"]), { index })].every((r) => !/sharing both/.test(r) && /^A new .+, like .+\.$/.test(r))));
   eq("sci-fi only", newReleaseReason(movie(1, "Vega", [878]), movie(2, "Arrival", [878, 18])), "New sci-fi this week, in the same genre as Arrival.");
   eq("an IGDB genre reads as a kind of game", newReleaseReason(game(1, "Rogue", ["Role-playing (RPG)"]), game(2, "Hades", ["Role-playing (RPG)", "Hack and slash/Beat 'em up"]), { index: 1 }), "A new role-playing game, like Hades.");
   eq("an IGDB theme can be named too", newReleaseReason({ ...game(1, "Dread", ["Adventure"]), providerMeta: { themes: ["Horror"] } }, { ...game(2, "Alan Wake", ["Shooter"]), providerMeta: { themes: ["Horror"] } }, { index: 1 }), "A new horror game, like Alan Wake.");
@@ -155,6 +226,89 @@ eq("bad date, no label", releaseLabel("soon", now), "");
   eq("saving is not taste", evidenceRecords(s).filter((r) => r.countsAsTaste).length, tasteBefore);
   check("Not interested works the same way", /Not interested/.test(actOnNewRelease(s, "tmdb-movie-904", "not-interested") ?? "") && s.newReleases.items.length === 0);
   eq("anything else is ignored", actOnNewRelease(s, "tmdb-movie-904", "loved"), null);
+}
+
+// ---- #317 empty state: "nothing qualified" vs "couldn't look" ---------------------------------------------
+// Nov 2: Paige chose fewer picks over weak ones, and a message when none qualify. That message must only
+// appear when the releases actually loaded; a failed or unconfigured source keeps the strip hidden.
+{
+  const nov = new Date("2026-11-02T15:00:00Z");
+  const greenKnight = movie(559907, "The Green Knight", [12, 18, 14]);
+  const catInTheHat = { id: 1117898, title: "The Cat in the Hat", genre_ids: [12, 16, 35, 10751, 14], release_date: "2026-11-06", overview: "", popularity: 500 };
+  const folk = { id: 990010, title: "Fixture Folk Fantasy", genre_ids: [14, 18, 27], release_date: "2026-11-01", overview: "", popularity: 40 };
+  const movieOnly = (rows, { ok = true, throws = false } = {}) => async (url) => {
+    if (throws) throw new Error("network down");
+    if (String(url).includes("/discover/movie")) return ok ? { ok: true, json: async () => ({ results: rows }) } : { ok: false, status: 503, json: async () => ({}) };
+    throw new Error(`unexpected ${url}`);
+  };
+  const lovedFilm = () => {
+    const s = emptyState([]);
+    s.recommendationSets = [];
+    s.areas.play = false;
+    s.areas.tv = false;
+    react(s, greenKnight, "loved");
+    return s;
+  };
+  const run = (fetchImpl, opts = {}) => newReleasesFor(lovedFilm(), { env, fetchImpl, now: nov, ...opts });
+  eq("a match is 'matched'", (await run(movieOnly([catInTheHat, folk]))).outcome, "matched");
+  eq("releases loaded, none qualified: 'no-strong-matches'", (await run(movieOnly([catInTheHat]))).outcome, "no-strong-matches");
+  eq("a source that answers with an error is 'unavailable', not no matches", (await run(movieOnly([], { ok: false }))).outcome, "unavailable");
+  eq("a network failure is 'unavailable'", (await run(movieOnly([], { throws: true }))).outcome, "unavailable");
+  eq("no TMDb token is 'unavailable' and asks nothing", (await run(movieOnly([], { throws: true }), { env: {} })).outcome, "unavailable");
+  eq("an empty release list is 'no-releases', not no matches", (await run(movieOnly([]))).outcome, "no-releases");
+  const nobody = emptyState([]);
+  nobody.recommendationSets = [];
+  eq("no experienced taste anywhere is 'no-anchors'", (await newReleasesFor(nobody, { env, fetchImpl: movieOnly([folk]), now: nov })).outcome, "no-anchors");
+  // Several areas: any area that couldn't look makes the empty result 'unavailable'.
+  eq("one area loaded with no match, another failed: 'unavailable'", releasesOutcome(0, [{ status: "loaded", considered: 3 }, { status: "failed", considered: 0 }]), "unavailable");
+  eq("one area loaded with no match, another unconfigured: 'unavailable'", releasesOutcome(0, [{ status: "loaded", considered: 3 }, { status: "unconfigured", considered: 0 }]), "unavailable");
+  eq("areas without taste don't count against it", releasesOutcome(0, [{ status: "loaded", considered: 3 }, { status: "no-anchors", considered: 0 }]), "no-strong-matches");
+  eq("a pick wins even if another area failed", releasesOutcome(1, [{ status: "loaded", considered: 3 }, { status: "failed", considered: 0 }]), "matched");
+
+  // The API handler's own failure path says 'unavailable' too.
+  const { default: handler } = await import("../../api/new-releases.mjs");
+  const reply = {};
+  const resStub = { setHeader() {}, status(code) { reply.code = code; return this; }, json(body) { reply.body = body; return this; } };
+  await handler({ method: "POST", headers: {}, body: { state: { get feedbackByRecommendation() { throw new Error("boom"); } } } }, resStub);
+  check("the endpoint's catch-all says 'unavailable'", reply.code === 200 && reply.body?.outcome === "unavailable" && reply.body.items.length === 0, JSON.stringify(reply));
+
+  // Client: only a stated 'no-strong-matches' is read as one.
+  eq("client keeps the server's outcome", newReleasesFromPayload({ items: [], outcome: "no-strong-matches" }).outcome, "no-strong-matches");
+  eq("a reply without an outcome and no items is 'unavailable'", newReleasesFromPayload({ items: [] }).outcome, "unavailable");
+  eq("an unknown outcome is not trusted", newReleasesFromPayload({ items: [], outcome: "whatever" }).outcome, "unavailable");
+  eq("a broken body is 'unavailable'", newReleasesFromPayload(null).outcome, "unavailable");
+  eq("items without an outcome are 'matched'", newReleasesFromPayload({ items: [{ id: "x" }] }).outcome, "matched");
+  {
+    let saved = null;
+    const { maybeLoadNewReleases } = await import("../../src/ai/new-releases.js");
+    globalThis.navigator ??= { language: "en-US" };
+    for (const [label, fetchStub] of [["HTTP error", async () => ({ ok: false, json: async () => ({}) })], ["network error", async () => { throw new Error("offline"); }]]) {
+      const s = emptyState([]);
+      s.recommendationSets = [];
+      await new Promise((done) => maybeLoadNewReleases(s, () => { saved = s.newReleases; done(); }, fetchStub));
+      check(`client ${label} is 'unavailable', never 'no-strong-matches'`, saved.status === "ready" && saved.outcome === "unavailable" && saved.items.length === 0, JSON.stringify(saved));
+    }
+  }
+
+  // Rendering (the Recommendations screen's slot).
+  globalThis.document ??= { documentElement: { dataset: {} }, querySelector: () => null };
+  const { renderNewThisWeek } = await import("../../src/screens/recommendations.js");
+  const { state: appState } = await import("../../src/state.js");
+  const message = "No strong matches among the current new releases.";
+  const renderWith = (newReleases, aiStatus = "ready") => { appState.aiStatus = aiStatus; appState.newReleases = newReleases; return renderNewThisWeek(); };
+  const empty = renderWith({ status: "ready", items: [], outcome: "no-strong-matches" });
+  check("no strong matches: the strip shows with the message as real text", empty.includes(`<p>${message}</p>`), empty);
+  check("under the strip's own heading, which labels the section", /<section class="new-this-week new-this-week-empty" aria-labelledby="new-this-week-title">/.test(empty) && /<h2 id="new-this-week-title">New this week for you<\/h2>/.test(empty), empty);
+  check("with no list, cards or buttons", !/<ul|<li|<button/.test(empty));
+  for (const outcome of ["unavailable", "no-releases", "no-anchors", undefined]) {
+    eq(`${outcome ?? "no outcome"}: hidden, no message`, renderWith({ status: "ready", items: [], outcome }), "");
+  }
+  eq("still loading: hidden", renderWith({ status: "loading", items: [] }), "");
+  eq("while the set is loading: hidden", renderWith({ status: "ready", items: [], outcome: "no-strong-matches" }, "loading"), "");
+  eq("emptied by Save or Not interested: hidden (those were matches)", renderWith({ status: "ready", items: [], outcome: "matched" }), "");
+  const full = renderWith({ status: "ready", items: [{ ...movie(901, "Signal From Vega", [878]), releaseDate: "2026-10-24", reason: "New sci-fi this week, in the same genre as Arrival." }], outcome: "matched" });
+  check("with picks, the list shows and the empty message doesn't", full.includes('data-new-release="tmdb-movie-901"') && !full.includes(message));
+  appState.newReleases = undefined;
 }
 
 finish();

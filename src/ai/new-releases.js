@@ -14,12 +14,21 @@ export function maybeLoadNewReleases(state, onUpdate, fetchImpl = fetch) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ state: serializeAiState(state), region: viewerRegion() })
   })
-    .then((response) => (response.ok ? response.json() : { items: [] }))
-    .catch(() => ({ items: [] }))
+    .then((response) => (response.ok ? response.json() : { items: [], outcome: "unavailable" }))
+    .catch(() => ({ items: [], outcome: "unavailable" }))
     .then((payload) => {
-      state.newReleases = { status: "ready", items: Array.isArray(payload?.items) ? payload.items : [] };
+      state.newReleases = newReleasesFromPayload(payload);
       onUpdate();
     });
+}
+
+// Nov 2 (#317): keep the server's outcome so the strip can tell "nothing qualified" from "couldn't load".
+// A reply without one (an older server, a broken body) is never read as "no strong matches".
+const OUTCOMES = new Set(["matched", "no-strong-matches", "no-releases", "no-anchors", "unavailable"]);
+export function newReleasesFromPayload(payload) {
+  const items = Array.isArray(payload?.items) ? payload.items : [];
+  const outcome = OUTCOMES.has(payload?.outcome) ? payload.outcome : (items.length ? "matched" : "unavailable");
+  return { status: "ready", items, outcome };
 }
 
 // "bookmark" (Save) or "not-interested". Returns the announcement, or null.

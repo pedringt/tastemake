@@ -5123,13 +5123,11 @@
     "id": "ai-genre-fantasy-mythic-worlds",
     "title": "Mythic and fantastical worlds",
     "claim": "Tends toward fantasy and mythic or uncanny settings, showing up in both books and games.",
-    "evidence": "Circe, Piranesi, The Song of Achilles, Resident Evil 7: Biohazard, BioShock, Return of the Obra Dinn",
+    "evidence": "Circe, Piranesi, The Song of Achilles, Return of the Obra Dinn",
     "supports": [
      "ev:openlibrary-book-OL18012166W",
      "ev:openlibrary-book-OL20893680W",
      "ev:openlibrary-book-OL16509148W",
-     "ev:igdb-game-19562",
-     "ev:igdb-game-20",
      "ev:igdb-game-9643"
     ],
     "counters": [
@@ -5141,7 +5139,7 @@
     ],
     "strength": "supported",
     "status": "supported",
-    "crossDomain": "supported",
+    "crossDomain": "tentative",
     "context": null,
     "aiGenerated": true,
     "provenance": "Based on your reactions so far."

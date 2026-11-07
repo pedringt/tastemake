@@ -98,8 +98,10 @@ export function newReleaseReason(item, anchor, { index = 0 } = {}) {
   }
   // Games name their genre as a kind of game ("a new role-playing game"), never "new role-playing".
   const name = (tags) => (item.type === "game" ? `${tags} game` : tags);
+  // Nov 6 (#317): two shared genres always use one form. "New fantasy action, sharing both with The
+  // Northman" left the noun out and "both" without a referent.
   const reasons = b
-    ? [() => `New ${name(`${a} ${b}`)}, sharing both with ${from}.`, () => (item.type === "game" ? `A new ${a} and ${b} game, like ${from}.` : `A new ${kind} with ${a} and ${b}, like ${from}.`)]
+    ? [() => (item.type === "game" ? `A new ${a} and ${b} game, like ${from}.` : `A new ${kind} with ${a} and ${b}, like ${from}.`)]
     : [() => `New ${name(a)} this week, in the same genre as ${from}.`, () => `A new ${a} ${kind}, like ${from}.`];
   return reasons[index % reasons.length]();
 }
