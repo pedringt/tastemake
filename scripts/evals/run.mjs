@@ -25,8 +25,8 @@
 // --auth ant is for runs on your own machine only and is refused when CI is set. --raw keeps the model's own
 // Taste Profile answer in the local report (off by default).
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, badResponses } from "./fixtures.mjs";
 import { scoreFixture } from "./scorers.mjs";
@@ -39,7 +39,7 @@ import { callAnthropic, thinkingTypeFor } from "../../src/server/anthropic.mjs";
 import { HYPOTHESES_OUTPUT_SCHEMA, PICKS_OUTPUT_SCHEMA } from "../../src/server/output-schemas.mjs";
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
-import { priceFor } from "./pricing.mjs";
+import { usageCostUsd, worstCaseUsd } from "./pricing.mjs";
 import { execFileSync } from "node:child_process";
 import { buildHypothesisRequest, PROFILE_MAX_OUTPUT_TOKENS } from "../../api/hypotheses.mjs";
 import { expandProfileRefs } from "../../src/ai/profile-context.js";
@@ -92,16 +92,50 @@ if (useAnt && inCI) refuse("--auth ant uses a personal login meant for runs on y
 if (paidRun && !(Number.isFinite(maxUsd) && maxUsd > 0)) refuse("a paid run needs a spend cap: --max-usd <dollars>");
 if (updateBaseline !== null && inCI) refuse("--update-baseline replaces a committed report; it isn't accepted when CI is set");
 if (updateBaseline !== null && (!updateBaseline || updateBaseline.startsWith("--"))) refuse("--update-baseline needs a destination, e.g. --update-baseline scripts/evals/reports/baseline-latest");
+// A committed report may only be replaced directly inside scripts/evals/reports: a plain file name, resolved
+// through real paths (so "..", absolute paths and symlinked folders can't lead elsewhere), and never through
+// a symlinked report file. Checked before anything runs.
+const reportsDir = join(here, "reports");
+const baselineTarget = updateBaseline ? (() => {
+  const target = resolve(updateBaseline.replace(/\.(md|json)$/, ""));
+  const name = basename(target);
+  const parent = dirname(target);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) refuse(`--update-baseline needs a plain file name: ${updateBaseline}`);
+  if (!existsSync(parent) || realpathSync(parent) !== realpathSync(reportsDir)) refuse(`--update-baseline must point directly inside scripts/evals/reports: ${updateBaseline}`);
+  for (const ext of ["md", "json"]) {
+    const file = join(realpathSync(reportsDir), `${name}.${ext}`);
+    if (existsSync(file) && lstatSync(file).isSymbolicLink()) refuse(`--update-baseline won't write through a symlink: ${name}.${ext}`);
+  }
+  return join(realpathSync(reportsDir), name);
+})() : null;
 let antTokenValue = null;
 const antToken = () => execFileSync("ant", ["auth", "print-credentials", "--access-token"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 async function liveFetch(url, init) {
-  if (spend.usd >= maxUsd) throw new Error(`spend cap $${maxUsd} reached`);
   if (!useAnt) return fetch(url, init);
   antTokenValue ??= antToken();
   const send = () => { const headers = { ...init.headers, authorization: `Bearer ${antTokenValue}`, "anthropic-beta": "oauth-2025-04-20" }; delete headers["x-api-key"]; return fetch(url, { ...init, headers }); };
   let response = await send();
   if (response.status === 401) { antTokenValue = antToken(); response = await send(); }
   return response;
+}
+// #341 step 2: the cap is checked before every paid call against that call's worst case (worstCaseUsd), so a run
+// stops short of the cap instead of crossing it. Costs are estimates from token counts and the pricing table.
+// Output caps mirror callAnthropic: the configured max tokens, plus its thinking headroom for always-thinking models.
+const THINKING_HEADROOM = 8000;
+const outputCap = (model, base) => Number(base) + (process.env.TASTEMAKE_AI_THINKING !== "enabled" && thinkingTypeFor(model, "between_tools") === null ? THINKING_HEADROOM : 0);
+const PICKS_MAX_OUTPUT = Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1000);
+// The endpoint's prompt and model aren't visible here: assume the code's default model, a 30k-token prompt and its cap.
+const ENDPOINT_WORST_CASE_USD = worstCaseUsd("claude-sonnet-5-5", 90_000, outputCap("claude-sonnet-5-5", PICKS_MAX_OUTPUT));
+function ensureBudget(worstCase) {
+  if (spend.usd + worstCase > maxUsd) {
+    throw new Error(`spend cap $${maxUsd}: the next call could cost up to $${Number.isFinite(worstCase) ? worstCase.toFixed(4) : "an unknown amount (no rates for this model)"} on top of $${spend.usd.toFixed(4)} spent, so it wasn't made`);
+  }
+}
+function recordSpend(model, usage) {
+  spend.calls += 1;
+  spend.inputTokens += (usage?.input_tokens ?? 0) + (usage?.cache_creation_input_tokens ?? 0) + (usage?.cache_read_input_tokens ?? 0);
+  spend.outputTokens += usage?.output_tokens ?? 0;
+  spend.usd += usageCostUsd(model, usage ?? {});
 }
 const liveEnv = () => ({ ...process.env, ANTHROPIC_API_KEY: useAnt ? "unused-oauth" : process.env.ANTHROPIC_API_KEY });
 const dryRunPlan = [];
@@ -122,7 +156,7 @@ const PRODUCERS = {
       if (!ctx.candidates.length) return { picks: [] };
       if (dryRun) { dryRunPlan.push({ fixture: ctx.__fixture, count: Math.min(5, ctx.candidates.length), promptChars: 0, estIn: 0, prompt: `(POST ${endpointUrl}/api/recommendations)` }); return { picks: [] }; }
       if (!confirmed) throw new Error("this spends money on the deployed endpoint: re-run with --yes");
-      if (spend.usd >= maxUsd) throw new Error(`spend cap $${maxUsd} reached`);
+      ensureBudget(ENDPOINT_WORST_CASE_USD);
       for (let attempt = 1; ; attempt += 1) {
         const response = await fetch(`${endpointUrl}/api/recommendations`, {
           method: "POST", headers: { "content-type": "application/json" },
@@ -132,12 +166,7 @@ const PRODUCERS = {
         if (!response.ok) throw new Error(`endpoint returned ${response.status}`);
         const payload = await response.json();
         endpointRuns.push({ fixture: ctx.__fixture, source: payload.source, reason: payload.reason, meta: payload.meta });
-        if (payload.meta?.usage) {
-          spend.calls += 1;
-          spend.inputTokens += payload.meta.usage.input_tokens ?? 0;
-          spend.outputTokens += payload.meta.usage.output_tokens ?? 0;
-          spend.usd += priceFor(payload.meta.model || "claude-sonnet-5-5", payload.meta.usage.input_tokens ?? 0, payload.meta.usage.output_tokens ?? 0);
-        }
+        if (payload.meta?.usage) recordSpend(payload.meta.model || "claude-sonnet-5-5", payload.meta.usage);
         await sleep(pauseMs);
         // A deterministic answer from the endpoint carries no citations: report it as a fallback, not as model output.
         if (payload.source !== "model") return { picks: [] };
@@ -159,11 +188,9 @@ const PRODUCERS = {
       }
       if (!useAnt && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run (or pass --auth ant)");
       if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
+      ensureBudget(worstCaseUsd(liveProfileModel, prompt.length, outputCap(liveProfileModel, PROFILE_MAX_OUTPUT_TOKENS)));
       const model = await callAnthropic({ prompt, env: liveEnv(), fetchImpl: liveFetch, model: liveProfileModel, maxTokens: PROFILE_MAX_OUTPUT_TOKENS, outputSchema: HYPOTHESES_OUTPUT_SCHEMA });
-      spend.calls += 1;
-      spend.inputTokens += model.usage?.input_tokens ?? 0;
-      spend.outputTokens += model.usage?.output_tokens ?? 0;
-      spend.usd += priceFor(liveProfileModel, model.usage?.input_tokens ?? 0, model.usage?.output_tokens ?? 0);
+      recordSpend(liveProfileModel, model.usage);
       // Same carry-forward as api/hypotheses.mjs (#228/#325): earlier patterns the model left out are carried forward.
       // #318 (Nov 6): with --raw, the model's own answer (refs expanded) is kept beside the reconciled result, so
       // a failure can be attributed to the model or to software without another paid run. Local reports only.
@@ -181,11 +208,9 @@ const PRODUCERS = {
       if (!useAnt && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run (or pass --auth ant)");
       if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
       // Same call shape as api/recommendations.mjs: model, effort and thinking mode.
+      ensureBudget(worstCaseUsd(liveModel, prompt.length, outputCap(liveModel, PICKS_MAX_OUTPUT)));
       const model = await callAnthropic({ prompt, env: liveEnv(), fetchImpl: liveFetch, model: liveModel, effort: liveEffort, thinkingMode: "between_tools", outputSchema: PICKS_OUTPUT_SCHEMA });
-      spend.calls += 1;
-      spend.inputTokens += model.usage?.input_tokens ?? 0;
-      spend.outputTokens += model.usage?.output_tokens ?? 0;
-      spend.usd += priceFor(liveModel, model.usage?.input_tokens ?? 0, model.usage?.output_tokens ?? 0);
+      recordSpend(liveModel, model.usage);
       // Production fills in each pick's kind/tests from the compact answer before validating; without
       // this every live pick was rejected (Oct 10 A/B: 0 kept on both Sonnet 5.5 and Haiku 5.5).
       return normalizeModelPicks(model.json);
@@ -224,7 +249,7 @@ if (paidRun && confirmed) {
     ? FIXTURES.length
     : FIXTURES.reduce((sum, f) => sum + (liveProfile ? (f.before ? 2 : 1) : 0) + 1, 0);
   const models = producerName === "endpoint" ? `whatever ${endpointUrl} is configured to use` : `profile ${liveProfile ? liveProfileModel : "baseline (no call)"}, picks ${liveModel}`;
-  console.log(`Plan: up to ${planned} paid call(s) over ${FIXTURES.length} fixture(s); ${models}; auth ${useAnt ? "ant login" : producerName === "endpoint" ? "none here" : "ANTHROPIC_API_KEY"}; stops before a call once spend reaches $${maxUsd}.`);
+  console.log(`Plan: up to ${planned} paid call(s) over ${FIXTURES.length} fixture(s); ${models}; auth ${useAnt ? "ant login" : producerName === "endpoint" ? "none here" : "ANTHROPIC_API_KEY"}; cap $${maxUsd}: before each call the runner assumes that call's worst case and skips it if the cap could be crossed (costs are estimates from token counts and the pricing table, including prompt caching).`);
 }
 
 const results = [];
@@ -259,11 +284,12 @@ for (const id of ["about-10", "intent-heavy", "single-miss"]) {
 if (dryRun) {
   const totalIn = dryRunPlan.reduce((sum, p) => sum + p.estIn, 0);
   const estOut = dryRunPlan.reduce((sum, p) => sum + (p.profile ? PROFILE_MAX_OUTPUT_TOKENS : Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200)), 0);
-  const estUsd = dryRunPlan.reduce((sum, p) => sum + priceFor(p.profile ? liveProfileModel : liveModel, p.estIn, p.profile ? PROFILE_MAX_OUTPUT_TOKENS : Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200)), 0);
+  // The same worst case the paid run checks against its cap, so --max-usd at or above this lets every call through.
+  const estUsd = dryRunPlan.reduce((sum, p) => sum + (p.profile ? worstCaseUsd(liveProfileModel, p.promptChars, outputCap(liveProfileModel, PROFILE_MAX_OUTPUT_TOKENS)) : worstCaseUsd(liveModel, p.promptChars, outputCap(liveModel, PICKS_MAX_OUTPUT))), 0);
   console.log(`DRY RUN: ${dryRunPlan.length} call(s) would be made (${dryRunPlan.filter((p) => p.profile).length} taste-profile, ${dryRunPlan.filter((p) => !p.profile).length} picks).`);
   dryRunPlan.forEach((p) => console.log(`  ${p.fixture}: ${p.count} picks asked for, prompt ~${p.estIn} tokens (${p.promptChars} chars)`));
   console.log(`Estimated input ~${totalIn} tokens; output capped at ${estOut} tokens across all calls.`);
-  console.log(`Estimated cost for ${liveModel}: about $${estUsd.toFixed(3)} (worst case; real output is usually far below the cap).`);
+  console.log(`Worst-case cost: $${estUsd.toFixed(4)} (prompts at the highest input rate, every output cap used); real runs usually cost far less. A paid run needs --max-usd at or above this to make every call.`);
   console.log(`Model: ${liveModel} (effort ${liveEffort}, thinking ${liveThinking}); key ${process.env.ANTHROPIC_API_KEY ? "present" : "absent"}.`);
   const first = dryRunPlan[0];
   if (first) console.log(`\nFirst prompt (${first.fixture}), truncated:\n${first.prompt.slice(0, 1200)}\n...`);
@@ -328,7 +354,6 @@ const reportJson = JSON.stringify({
   selfTest
 }, null, 2) + "\n";
 
-const reportsDir = join(here, "reports");
 const outDir = outArg ? resolve(outArg) : join(reportsDir, "runs");
 mkdirSync(outDir, { recursive: true });
 const reportName = `${suite === "default" ? "" : `${suite}-`}${producerName}${reportTag ? `-${reportTag}` : ""}-latest`;
@@ -338,13 +363,10 @@ writeFileSync(`${reportPath}.json`, reportJson);
 
 // The committed reference for the default run. Only --update-baseline replaces a committed report.
 let baselineDiffers = false;
-if (updateBaseline) {
-  const target = resolve(updateBaseline.replace(/\.(md|json)$/, ""));
-  const where = relative(reportsDir, target);
-  if (where.startsWith("..") || where.startsWith("runs")) refuse(`--update-baseline must point inside scripts/evals/reports (not runs/): ${updateBaseline}`);
-  writeFileSync(`${target}.md`, reportMd);
-  writeFileSync(`${target}.json`, reportJson);
-  console.log(`baseline updated: ${relative(process.cwd(), target)}.md and .json (review and commit deliberately)`);
+if (baselineTarget) {
+  writeFileSync(`${baselineTarget}.md`, reportMd);
+  writeFileSync(`${baselineTarget}.json`, reportJson);
+  console.log(`baseline updated: ${relative(process.cwd(), baselineTarget)}.md and .json (review and commit deliberately)`);
 } else if (suite === "default" && producerName === "baseline" && !reportTag) {
   const committed = (ext) => { try { return readFileSync(join(reportsDir, `baseline-latest.${ext}`), "utf8"); } catch { return null; } };
   baselineDiffers = committed("md") !== reportMd || committed("json") !== reportJson;

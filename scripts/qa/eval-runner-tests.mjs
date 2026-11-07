@@ -8,7 +8,7 @@
 //   node scripts/qa/eval-runner-tests.mjs
 
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -39,7 +39,7 @@ globalThis.fetch = async (url, init = {}) => {
   if (!String(url).startsWith("https://api.anthropic.com/")) throw new Error("unexpected network call: " + url);
   appendFileSync(${JSON.stringify(seen)}, String(init.headers?.authorization ?? "none") + "\\n");
   const text = JSON.stringify({ hypotheses: [{ id: "ai-stub", label: "Stub pattern", claim: "A stubbed claim.", evidence: [], counter: [], domains: ["play"], level: "emerging", crossDomain: "untested", conditional: false, context: null }], insufficientEvidence: false });
-  return new Response(JSON.stringify({ content: [{ type: "text", text }], usage: { input_tokens: 10, output_tokens: 10 }, stop_reason: "end_turn" }), { status: 200, headers: { "content-type": "application/json" } });
+  return new Response(JSON.stringify({ content: [{ type: "text", text }], usage: { input_tokens: 1000, cache_creation_input_tokens: 2000, cache_read_input_tokens: 0, output_tokens: 500 }, stop_reason: "end_turn" }), { status: 200, headers: { "content-type": "application/json" } });
 };
 `);
 
@@ -79,6 +79,29 @@ const before = sums();
   check("--update-baseline outside: nothing written there", !existsSync(join(tmp, "elsewhere.md")));
   r = run(["--out", join(tmp, "o5"), "--update-baseline", join(reports, "runs", "x")]);
   eq("--update-baseline into runs/: refused", r.code, 2);
+  r = run(["--out", join(tmp, "o5b"), "--update-baseline", join(reports, "..", "reports-escape")]);
+  eq("--update-baseline with ../ traversal: refused", r.code, 2);
+  check("traversal: nothing written next to reports/", !existsSync(join(reports, "..", "reports-escape.md")));
+  r = run(["--out", join(tmp, "o5c"), "--update-baseline", join(reports, "runs", "..", "..", "fixtures-escape")]);
+  eq("--update-baseline with runs/../../ traversal: refused", r.code, 2);
+  // A symlinked folder inside reports/ and a symlinked report file must not lead outside it.
+  const outside = join(tmp, "outside"); spawnSync("mkdir", ["-p", outside]);
+  const linkDir = join(reports, "tmp-test-linkdir");
+  const linkFile = join(reports, "tmp-test-link-latest.md");
+  try {
+    symlinkSync(outside, linkDir);
+    r = run(["--out", join(tmp, "o5d"), "--update-baseline", join(linkDir, "x")]);
+    eq("--update-baseline through a symlinked folder: refused", r.code, 2);
+    check("symlinked folder: nothing written outside", readdirSync(outside).length === 0);
+    writeFileSync(join(outside, "victim.md"), "untouched");
+    symlinkSync(join(outside, "victim.md"), linkFile);
+    r = run(["--out", join(tmp, "o5e"), "--update-baseline", join(reports, "tmp-test-link-latest")]);
+    eq("--update-baseline through a symlinked report file: refused", r.code, 2);
+    eq("symlinked file: its target is untouched", readFileSync(join(outside, "victim.md"), "utf8"), "untouched");
+  } finally {
+    rmSync(linkDir, { force: true });
+    rmSync(linkFile, { force: true });
+  }
   eq("after every refusal: committed baseline unchanged", sums(), before);
 }
 
@@ -120,6 +143,24 @@ const before = sums();
   const rawJson = JSON.parse(readFileSync(join(withRaw, "support-live-latest.json"), "utf8"));
   check("with --raw: the model's own answer is kept", rawJson.fixtures.some((f) => Array.isArray(f.raw) && f.raw.length));
   eq("local live runs: committed baseline unchanged", sums(), before);
+}
+
+// ---- 5. the cap is checked against each call's worst case before it's made; spend counts prompt caching ----------
+{
+  reset();
+  const out = join(tmp, "o13");
+  const r = spawnSync(process.execPath, ["--import", stub, runner, "--producer", "live", "--auth", "ant", "--yes", "--max-usd", "0.0001", "--suite", "support", "--out", out], { cwd: root, env: env(), encoding: "utf8" });
+  const text = `${r.stdout}${r.stderr}`;
+  check("a cap below one call's worst case: no call is made", !existsSync(seen), text);
+  check("it says why the call wasn't made", /could cost up to \$[\d.]+ on top of \$0\.0000 spent, so it wasn't made/.test(text), text);
+  const { usageCostUsd } = await import("../evals/pricing.mjs");
+  const ok = join(tmp, "o14");
+  reset();
+  spawnSync(process.execPath, ["--import", stub, runner, "--producer", "live", "--auth", "ant", "--yes", "--max-usd", "1", "--suite", "support", "--out", ok], { cwd: root, env: env(), encoding: "utf8" });
+  const spent = JSON.parse(readFileSync(join(ok, "support-live-latest.json"), "utf8")).spend;
+  const perCall = usageCostUsd("claude-sonnet-5-5", { input_tokens: 1000, cache_creation_input_tokens: 2000, output_tokens: 500 });
+  check("spend counts cache writes, not just input and output", spent.calls > 0 && Math.abs(spent.usd - perCall * spent.calls) < 1e-9 && spent.inputTokens === 3000 * spent.calls, JSON.stringify(spent));
+  check("and stays under the cap", spent.usd <= 1);
 }
 
 rmSync(tmp, { recursive: true, force: true });
