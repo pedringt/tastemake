@@ -133,7 +133,9 @@ function saidReasonsLine(item, records) {
     .filter((record) => record?.refinements?.length)
     .map((record) => `<span class="signal-said-reason"><em>${esc(record.title)}</em>: ${esc(record.refinements.map((r) => lowerFirst(r.label)).join(", "))}</span>`);
   if (!rows.length) return "";
-  return `<div class="signal-evidence signal-said-reasons"><span>You said</span> ${rows.join(" · ")}</div>`;
+  // Nov 6 (#318): these are the reasons given for each title, not for this pattern. "You said" under
+  // "Mythic and fantastical worlds" read as if atmosphere/exploration had been said about mythic settings.
+  return `<div class="signal-evidence signal-said-reasons"><span>Your reasons for these titles</span> ${rows.join(" · ")}</div>`;
 }
 
 function hypothesisCard(item, index, records = new Map()) {
