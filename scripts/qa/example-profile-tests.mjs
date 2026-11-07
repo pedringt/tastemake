@@ -109,6 +109,17 @@ check("it shows Paige's actual answer", panel.includes("Partly accurate.") && pa
 check("it says the example makes no AI calls and nothing was measured", panel.includes("no effect on recommendations has been measured"));
 check("it never claims recommendations improved", !/improv|better|more accurate/i.test(panel));
 check("it links to the full profile", panel.includes('data-profile-view="full"'));
+// Nov 7: it says whose answers these are, and describes the shortlist and live AI separately, as shipped.
+check("it introduces whose answer it is", panel.includes("You’re viewing Paige’s Example Profile, so this is her own answer"));
+check("Partly matches the shipped wording", panel.includes("Tastemake builds its shortlist without using her answer") && panel.includes("treat this pattern more cautiously") && !/narrow/i.test(panel));
+for (const says of ["partial", "not-me", "unsure"]) {
+  const saved = state.patternStatements;
+  state.patternStatements = saved.map((x) => (x.hypothesisId === "ai-quirky-character-comedy" ? { ...x, says } : x));
+  const copy = renderProfile().match(/<section class="profile-featured-correction"[\s\S]*?<\/section>/)?.[0] ?? "";
+  check(`${says}: the panel never says the ranking uses her answer`, copy.length > 0 && !/ranking/i.test(copy));
+  if (says === "not-me") check("not me: no claim that picks using it are rejected", copy.includes("keeps it out of her Taste Profile") && !/reject/i.test(copy));
+  state.patternStatements = saved;
+}
 const sixIds = [...overview.matchAll(/class="signal-row signal-row-\d+" data-profile-pattern="([^"]+)"/g)].map((m) => m[1]);
 eq("the strongest six are unchanged", sixIds.join(","), state.modelHypotheses.slice(0, 6).map((p) => p.id).join(","));
 check("the corrected pattern is not forced into the six", !sixIds.includes("ai-quirky-character-comedy"));

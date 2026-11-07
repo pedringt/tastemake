@@ -85,7 +85,7 @@
   box-shadow:calc(5px * var(--hard)) calc(5px * var(--hard)) 0 var(--shadow-ink,rgb(var(--ink-rgb,17 26 75) / .1));
 }
 .profile-featured-correction h2 { margin:2px 0 4px; font-size:clamp(22px,2.6vw,30px); overflow-wrap:anywhere; }
-.featured-correction-where { margin:0; color:var(--muted); font-size:13px; line-height:1.45; }
+.featured-correction-intro, .featured-correction-where { margin:0; color:var(--muted); font-size:13px; line-height:1.45; }
 .featured-correction-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:14px 0; }
 .featured-correction-steps > div {
   display:grid;

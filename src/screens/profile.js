@@ -287,10 +287,13 @@ function learningPanel(patterns = []) {
 // the example makes no AI calls and no effect on recommendations has been measured. Example-only, so
 // nobody else's profile is ever shown a sample.
 const SAID = { partial: "partly accurate", "not-me": "not her", unsure: "not sure yet" };
+// Nov 7: separate the shortlist (built in software, which doesn't read pattern answers; #334) from what live AI
+// is told. Partly matches the shipped "more cautiously" wording. A pick's validator check for "not me" isn't
+// claimed: live picks arrive without a tested pattern, so it doesn't run on them.
 const USE = {
-  partial: "Her answer doesn't change how much Tastemake's own ranking leans on this pattern. When live AI picks recommendations or refreshes the profile, her answer goes with it, with the rule to treat the pattern as narrow.",
-  "not-me": "Tastemake's ranking leaves this pattern out, and live AI is told not to use it.",
-  unsure: "Her answer doesn't change how much Tastemake's own ranking leans on this pattern. Live AI is told it isn't a confirmed preference."
+  partial: "Tastemake builds its shortlist without using her answer. When AI chooses and explains picks, it's told to treat this pattern more cautiously.",
+  "not-me": "Her answer doesn't change Tastemake's shortlist. Live AI is told not to use the pattern, and Tastemake keeps it out of her Taste Profile when the profile is refreshed.",
+  unsure: "Her answer doesn't change Tastemake's shortlist. Live AI is told it isn't a confirmed preference."
 };
 const shortDate = (iso) => {
   const date = new Date(iso ?? "");
@@ -321,6 +324,7 @@ function featuredCorrectionPanel(activeHypotheses) {
     <section class="profile-featured-correction" aria-labelledby="featured-correction-title" data-featured-correction="${esc(pattern.id)}">
       <p class="kicker">A correction Paige made</p>
       <h2 id="featured-correction-title">She said “${esc(pattern.title)}” is ${SAID[said.says]}.</h2>
+      <p class="featured-correction-intro">You’re viewing Paige’s Example Profile, so this is her own answer, taken from her saved profile.</p>
       <p class="featured-correction-where">${esc(where)}</p>
       <dl class="featured-correction-steps">
         <div>
