@@ -5,6 +5,8 @@
 
 import { favorites, followUpPool, hypotheses, recommendations } from "../qa/fixtures/catalog.js";
 import { typeById, visibleDomains } from "../../src/data/domains.js";
+import { readFileSync } from "node:fs";
+import { hydrateState } from "../../src/server/request-state.mjs";
 
 const catalogItems = [...recommendations, ...followUpPool];
 const byId = (id) => catalogItems.find((item) => item.id === id);
@@ -258,3 +260,43 @@ export const REASON_FIXTURES = SCENARIOS.flatMap((scenario) => [
   { id: `${scenario.id}-directional`, title: `${scenario.title}: reasons with direction`, purpose: "Reasons with a direction; picks should move with it, and one miss must not rule out a theme.", candidates: REASON_POOL, build: () => reasonState(scenario.directional, scenario.directionalMiss), expect: {} }
 ]);
 
+
+// ---- #318: does each cited support fit its pattern? (node scripts/evals/run.mjs --suite support) -----------
+// Paige's Example Profile (data/example-profile.json, her real and confirmed reactions) listed Resident Evil 7
+// under "Mythic and fantastical worlds". The validator checks a citation's structure (it exists, was tried,
+// was liked, sits in a claimed area), not whether the item shows the pattern, so this is measured here.
+// Two fixtures, one Taste Profile call each, no picks: a refresh that carries the stored patterns (as
+// production sends them), and a fresh profile from the same evidence (does the model attach it on its own?).
+// Labels: `fits: false` only where Paige reported it (#318); the positives are the item's own metadata and
+// reasons. Pairs nobody has judged (BioShock or Return of the Obra Dinn under the same pattern) are not
+// labelled.
+const exampleBackup = JSON.parse(readFileSync(new URL("../../data/example-profile.json", import.meta.url), "utf8")).state;
+const RE7 = "ev:igdb-game-19562";
+const BIOSHOCK = "ev:igdb-game-20";
+// Nov 6: the Example Profile itself no longer cites RE7 or BioShock under "Mythic and fantastical worlds"
+// (2cdd9fc, 5cb61a7). Production profiles refreshed before that can still carry such supports, so the refresh
+// fixture restores the uncorrected supports to test whether a refresh keeps them.
+const MYTHIC = "ai-genre-fantasy-mythic-worlds";
+const uncorrected = (patterns) => patterns.map((p) => (p.id === MYTHIC ? { ...p, supports: [...new Set([...p.supports, RE7, BIOSHOCK])] } : p));
+const exampleState = ({ keepPatterns }) => ({ ...hydrateState(exampleBackup), recommendationSets: [], modelHypotheses: keepPatterns ? uncorrected(exampleBackup.modelHypotheses) : [] });
+const confirmedState = ({ says, context = null, excludedDomains = [] }) => {
+  const state = exampleState({ keepPatterns: true });
+  const mythic = state.modelHypotheses.find((p) => p.id === MYTHIC);
+  return { ...state, patternStatements: [{ hypothesisId: MYTHIC, label: mythic.title, says, weight: null, context, authority: "user-confirmed", excludedDomains }] };
+};
+export const SUPPORT_FIT = [
+  { name: "Resident Evil 7 is not support for a mythic / fantasy pattern", pattern: /myth|fantas/i, ref: RE7, fits: false, basis: "#318: Paige; IGDB genres Shooter, Puzzle, Adventure; her reasons are atmosphere and exploration" },
+  { name: "Resident Evil 7 still supports an atmosphere / horror pattern", pattern: /atmospher|horror/i, ref: RE7, fits: true, basis: "her reason atmosphere-style" },
+  { name: "Resident Evil 7 still supports an exploration pattern", pattern: /explor/i, ref: RE7, fits: true, basis: "her reason exploration" },
+  { name: "BioShock is not support for a mythic / fantasy pattern", pattern: /myth|fantas/i, ref: BIOSHOCK, fits: false, basis: "Paige, Nov 6; IGDB genres Shooter, Puzzle, RPG, Adventure; a horror-themed shooter in a steampunk underwater dystopia" },
+  { name: "BioShock still supports an exploration pattern", pattern: /explor/i, ref: BIOSHOCK, fits: true, basis: "her reason exploration; Exploration-heavy games with puzzles cites it" },
+  { name: "Circe still supports a mythic / fantasy pattern", pattern: /myth|fantas/i, ref: "ev:openlibrary-book-OL18012166W", fits: true, basis: "Open Library subjects Fantasy, Mythology, Retellings" }
+];
+export const SUPPORT_FIXTURES = [
+  { id: "example-refresh", title: "Example Profile, refreshed with its stored patterns", purpose: "Does a refresh keep a support that doesn't fit its pattern, and keep the ones that do?", candidates: [], build: () => exampleState({ keepPatterns: true }), expect: { supportFit: SUPPORT_FIT } },
+  { id: "example-fresh", title: "Example Profile evidence, no earlier patterns", purpose: "Does the model attach an unfitting support on its own?", candidates: [], build: () => exampleState({ keepPatterns: false }), expect: { supportFit: SUPPORT_FIT } },
+  // Nov 6 (#318 before/after): the same refresh with the mythic pattern confirmed. Its wording, the user's
+  // answer and the pattern itself must survive whatever happens to its evidence.
+  { id: "example-refresh-confirmed", title: "Example Profile refresh, mythic pattern confirmed (Yes)", purpose: "Do unfitting supports leave a confirmed pattern while it, its wording and the answer stay?", candidates: [], build: () => confirmedState({ says: "accurate" }), expect: { supportFit: SUPPORT_FIT, keepsConfirmed: [MYTHIC] } },
+  { id: "example-refresh-partly", title: "Example Profile refresh, mythic pattern Partly, depends on context, not in games", purpose: "Same, with Partly, a context answer and an excluded area", candidates: [], build: () => confirmedState({ says: "partial", context: "some", excludedDomains: ["play"] }), expect: { supportFit: SUPPORT_FIT, keepsConfirmed: [MYTHIC] } }
+];

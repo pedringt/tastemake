@@ -57,6 +57,35 @@ export function scoreFixture(fixture, run) {
     const share = beforeIds.size ? kept / beforeIds.size : 1;
     out.push({ kind: "rule", name: "one miss does not rewrite the profile", pass: share >= e.stableAfterMiss, detail: `${kept} of ${beforeIds.size} hypotheses kept after the miss` });
   }
+  // #318: labelled (pattern, item) pairs. A support can be structurally valid and still not show its pattern.
+  // Quality findings, never a failed run: the labels are few, and matching patterns by words is rough.
+  for (const pair of e.supportFit ?? []) {
+    const matching = hyp.accepted.filter((h) => pair.pattern.test(`${h.label} ${h.claim}`));
+    const citing = matching.filter((h) => h.evidence.includes(pair.ref));
+    if (pair.fits === false) {
+      out.push({ kind: "quality", name: pair.name, pass: citing.length === 0, detail: citing.length ? `cited by ${citing.map((h) => h.label).join("; ")}` : `${matching.length} matching pattern(s), none cite it` });
+    } else {
+      out.push({ kind: "quality", name: pair.name, pass: matching.length ? citing.length > 0 : null, detail: matching.length ? `${citing.length} of ${matching.length} matching pattern(s) cite it` : "no matching pattern this run" });
+    }
+  }
+  // #318 (Nov 6) before/after: a confirmed pattern, its wording and the user's answer survive the refresh,
+  // whatever happens to its evidence. Rule checks: these are product guarantees, not judgement calls.
+  for (const id of e.keepsConfirmed ?? []) {
+    const stored = (run.state?.modelHypotheses ?? []).find((h) => h.id === id);
+    const kept = hyp.accepted.find((h) => h.id === id);
+    out.push({ kind: "rule", name: `confirmed "${stored?.title ?? id}" is kept`, pass: Boolean(kept), detail: kept ? `level ${kept.level}${(hyp.needsReview ?? []).includes(id) ? `, needs another look (${hyp.reviewReasons?.[id] ?? "?"})` : ""}` : "dropped" });
+    out.push({ kind: "rule", name: `confirmed "${stored?.title ?? id}" keeps its wording`, pass: Boolean(kept) && kept.claim === stored?.claim, detail: kept?.claim ?? "-" });
+  }
+  // What the refresh did to each earlier pattern's evidence: kept, newly cited (for human review: is the new
+  // citation any better?) and not re-cited. Reported, not scored.
+  for (const stored of e.supportFit ? (run.state?.modelHypotheses ?? []) : []) {
+    const now = hyp.accepted.find((h) => h.id === stored.id);
+    if (!now) { out.push({ kind: "quality", name: `evidence: ${stored.title}`, pass: null, detail: "pattern not in this refresh" }); continue; }
+    const before = new Set(stored.supports ?? []);
+    const added = now.evidence.filter((ref) => !before.has(ref));
+    const dropped = [...before].filter((ref) => !now.evidence.includes(ref));
+    out.push({ kind: "quality", name: `evidence: ${stored.title}`, pass: null, detail: `${now.evidenceSource === "carried" ? "carried (not re-checked)" : "re-cited"}; kept ${before.size - dropped.length}/${before.size}${dropped.length ? `; not re-cited ${dropped.join(", ")}` : ""}${added.length ? `; newly cited ${added.join(", ")}` : ""}` });
+  }
   const grounded = hyp.accepted.length;
   out.push({ kind: "quality", name: "grounding coverage", pass: null, detail: `${grounded} hypothesis(es) could cite this user's own evidence; fallback ${hyp.fallback ? "used" : "not needed"}` });
   return out;

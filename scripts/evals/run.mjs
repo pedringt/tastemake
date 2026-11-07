@@ -4,8 +4,8 @@
 //
 //   node scripts/evals/run.mjs                        # the deterministic baseline (free, no model)
 //   node scripts/evals/run.mjs --producer live --dry-run   # the exact prompts + a cost estimate, no call
-//   node scripts/evals/run.mjs --producer live            # PAID: one Anthropic call per fixture
-//   node scripts/evals/run.mjs --producer endpoint --yes  # PAID: sends each fixture to the deployed
+//   node scripts/evals/run.mjs --producer live --yes --max-usd 0.10   # PAID: one Anthropic call per fixture
+//   node scripts/evals/run.mjs --producer endpoint --yes --max-usd 0.10  # PAID: sends each fixture to the deployed
 //                                                         # endpoint, so the API key stays in Vercel
 //
 // The live producer uses the same prompt builder and transport as the production endpoint
@@ -13,13 +13,22 @@
 // would send. It needs ANTHROPIC_API_KEY and TASTEMAKE_AI_MODEL in the environment, and --yes to
 // actually spend.
 //
-// Output: scripts/evals/reports/<producer>-latest.md (+ .json). Exit code 1 if a hard check fails or the
-// validator lets a deliberately bad answer through.
+// Output (#341 step 2): scripts/evals/reports/runs/[<suite>-]<producer>[-<tag>]-latest.md (+ .json), an ignored
+// folder, or --out <dir>. A run never overwrites a committed report. The default run (deterministic baseline,
+// what `npm test` runs) is compared byte for byte with the committed scripts/evals/reports/baseline-latest.*
+// and fails if it differs. Replacing a committed report is a deliberate act: --update-baseline <path>, which
+// is refused when CI is set. Exit code 1 if a hard check fails, the validator lets a deliberately bad answer
+// through, or the baseline differs.
+//
+// Paid runs (--producer live or endpoint without --dry-run) also need --yes and --max-usd <dollars>, print
+// their plan (calls, models, cap) before the first call, and stop before a call once spend reaches the cap.
+// --auth ant is for runs on your own machine only and is refused when CI is set. --raw keeps the model's own
+// Taste Profile answer in the local report (off by default).
 
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, badResponses } from "./fixtures.mjs";
+import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, badResponses } from "./fixtures.mjs";
 import { scoreFixture } from "./scorers.mjs";
 import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
@@ -31,17 +40,19 @@ import { HYPOTHESES_OUTPUT_SCHEMA, PICKS_OUTPUT_SCHEMA } from "../../src/server/
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { priceFor } from "./pricing.mjs";
+import { execFileSync } from "node:child_process";
 import { buildHypothesisRequest, PROFILE_MAX_OUTPUT_TOKENS } from "../../api/hypotheses.mjs";
 import { expandProfileRefs } from "../../src/ai/profile-context.js";
-import { normalizeHypothesisResponse, preserveExistingHypotheses } from "../../src/ai/validate.js";
+import { normalizeHypothesisResponse, preserveExistingHypotheses, settleConfirmedHypotheses } from "../../src/ai/validate.js";
 import { normalizeHypothesis } from "../../src/ai/hypothesis-profile.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 // --suite reasons runs the #250 PR 2 comparison (three book scenarios x three reason versions) instead of
-// the default fixtures; nothing else about the run changes.
+// the default fixtures; nothing else about the run changes. --suite support runs the #318 support-fit check
+// on Paige's Example Profile (two Taste Profile calls, no picks).
 const suite = args.includes("--suite") ? args[args.indexOf("--suite") + 1] : "default";
-const FIXTURES = suite === "reasons" ? REASON_FIXTURES : DEFAULT_FIXTURES;
+const FIXTURES = suite === "reasons" ? REASON_FIXTURES : suite === "support" ? SUPPORT_FIXTURES : DEFAULT_FIXTURES;
 const producerName = args.includes("--producer") ? args[args.indexOf("--producer") + 1] : "baseline";
 const dryRun = args.includes("--dry-run");
 const confirmed = args.includes("--yes");
@@ -65,6 +76,34 @@ const liveProfile = !(args.includes("--profile") && args[args.indexOf("--profile
 // --tag names the report files (e.g. live-claude-haiku-5-5-run1-latest.json) so runs don't overwrite each other.
 const reportTag = args.includes("--tag") ? args[args.indexOf("--tag") + 1].replace(/[^a-zA-Z0-9._-]/g, "-") : "";
 const spend = { calls: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
+// Nov 6 (#318): --auth ant uses Paige's `ant auth login` (as select-n.mjs does, Nov 4): a short-lived access
+// token from `ant auth print-credentials`, held in memory only, sent as a Bearer token with the oauth beta
+// header in place of x-api-key. --max-usd stops before a call once recorded spend reaches the cap.
+const useAnt = args.includes("--auth") && args[args.indexOf("--auth") + 1] === "ant";
+const maxUsd = args.includes("--max-usd") ? Number(args[args.indexOf("--max-usd") + 1]) : Infinity;
+const keepRaw = args.includes("--raw");
+const outArg = args.includes("--out") ? args[args.indexOf("--out") + 1] : null;
+const updateBaseline = args.includes("--update-baseline") ? (args[args.indexOf("--update-baseline") + 1] ?? "") : null;
+const inCI = Boolean(process.env.CI);
+const paidRun = (producerName === "live" || producerName === "endpoint") && !dryRun;
+const refuse = (message) => { console.error(`refused: ${message}`); process.exit(2); };
+// #341 step 2 (Paige, Nov 7): checked before anything runs or any credential is read.
+if (useAnt && inCI) refuse("--auth ant uses a personal login meant for runs on your own machine, not CI (CI is set)");
+if (paidRun && !(Number.isFinite(maxUsd) && maxUsd > 0)) refuse("a paid run needs a spend cap: --max-usd <dollars>");
+if (updateBaseline !== null && inCI) refuse("--update-baseline replaces a committed report; it isn't accepted when CI is set");
+if (updateBaseline !== null && (!updateBaseline || updateBaseline.startsWith("--"))) refuse("--update-baseline needs a destination, e.g. --update-baseline scripts/evals/reports/baseline-latest");
+let antTokenValue = null;
+const antToken = () => execFileSync("ant", ["auth", "print-credentials", "--access-token"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+async function liveFetch(url, init) {
+  if (spend.usd >= maxUsd) throw new Error(`spend cap $${maxUsd} reached`);
+  if (!useAnt) return fetch(url, init);
+  antTokenValue ??= antToken();
+  const send = () => { const headers = { ...init.headers, authorization: `Bearer ${antTokenValue}`, "anthropic-beta": "oauth-2025-04-20" }; delete headers["x-api-key"]; return fetch(url, { ...init, headers }); };
+  let response = await send();
+  if (response.status === 401) { antTokenValue = antToken(); response = await send(); }
+  return response;
+}
+const liveEnv = () => ({ ...process.env, ANTHROPIC_API_KEY: useAnt ? "unused-oauth" : process.env.ANTHROPIC_API_KEY });
 const dryRunPlan = [];
 const estimateTokens = (text) => Math.ceil(String(text).length / 4);   // ~4 characters per token
 
@@ -83,6 +122,7 @@ const PRODUCERS = {
       if (!ctx.candidates.length) return { picks: [] };
       if (dryRun) { dryRunPlan.push({ fixture: ctx.__fixture, count: Math.min(5, ctx.candidates.length), promptChars: 0, estIn: 0, prompt: `(POST ${endpointUrl}/api/recommendations)` }); return { picks: [] }; }
       if (!confirmed) throw new Error("this spends money on the deployed endpoint: re-run with --yes");
+      if (spend.usd >= maxUsd) throw new Error(`spend cap $${maxUsd} reached`);
       for (let attempt = 1; ; attempt += 1) {
         const response = await fetch(`${endpointUrl}/api/recommendations`, {
           method: "POST", headers: { "content-type": "application/json" },
@@ -117,15 +157,18 @@ const PRODUCERS = {
         dryRunPlan.push({ fixture: "(profile)", count: 0, promptChars: prompt.length, estIn: estimateTokens(prompt), prompt, profile: true });
         return { hypotheses: [] };
       }
-      if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run");
+      if (!useAnt && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run (or pass --auth ant)");
       if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
-      const model = await callAnthropic({ prompt, model: liveProfileModel, maxTokens: PROFILE_MAX_OUTPUT_TOKENS, outputSchema: HYPOTHESES_OUTPUT_SCHEMA });
+      const model = await callAnthropic({ prompt, env: liveEnv(), fetchImpl: liveFetch, model: liveProfileModel, maxTokens: PROFILE_MAX_OUTPUT_TOKENS, outputSchema: HYPOTHESES_OUTPUT_SCHEMA });
       spend.calls += 1;
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;
       spend.usd += priceFor(liveProfileModel, model.usage?.input_tokens ?? 0, model.usage?.output_tokens ?? 0);
       // Same carry-forward as api/hypotheses.mjs (#228/#325): earlier patterns the model left out are carried forward.
-      return preserveExistingHypotheses(normalizeHypothesisResponse(expandProfileRefs(model.json, refs), pctx), pctx, state.modelHypotheses);
+      // #318 (Nov 6): with --raw, the model's own answer (refs expanded) is kept beside the reconciled result, so
+      // a failure can be attributed to the model or to software without another paid run. Local reports only.
+      const raw = expandProfileRefs(model.json, refs);
+      return { ...preserveExistingHypotheses(normalizeHypothesisResponse(raw, pctx), pctx, state.modelHypotheses), ...(keepRaw ? { __raw: raw } : {}) };
     },
     pick: async (state, ctx) => {
       const count = Math.min(5, ctx.candidates.length);
@@ -135,10 +178,10 @@ const PRODUCERS = {
         dryRunPlan.push({ fixture: ctx.__fixture, count, promptChars: prompt.length, estIn: estimateTokens(prompt), prompt });
         return { picks: [] };   // nothing is called; the fixture will report the fallback
       }
-      if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run");
+      if (!useAnt && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run (or pass --auth ant)");
       if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
       // Same call shape as api/recommendations.mjs: model, effort and thinking mode.
-      const model = await callAnthropic({ prompt, model: liveModel, effort: liveEffort, thinkingMode: "between_tools", outputSchema: PICKS_OUTPUT_SCHEMA });
+      const model = await callAnthropic({ prompt, env: liveEnv(), fetchImpl: liveFetch, model: liveModel, effort: liveEffort, thinkingMode: "between_tools", outputSchema: PICKS_OUTPUT_SCHEMA });
       spend.calls += 1;
       spend.inputTokens += model.usage?.input_tokens ?? 0;
       spend.outputTokens += model.usage?.output_tokens ?? 0;
@@ -168,9 +211,20 @@ async function runOne(fixture) {
   if (beforeProfile.length) state.modelHypotheses = beforeProfile;
   const ctx = buildContext(state, fixture.candidates ?? EVAL_CANDIDATES);
   ctx.__fixture = fixture.id;
-  const hyp = validateHypotheses(await producer.infer(state, ctx), ctx);
+  const inferred = await producer.infer(state, ctx);
+  // Production order (api/hypotheses.mjs): validate, then settle confirmed patterns (#325, #318).
+  const hyp = { ...settleConfirmedHypotheses(validateHypotheses(inferred, ctx), ctx, state.modelHypotheses ?? []), raw: inferred?.__raw ?? null };
   const picks = validatePicks(await producer.pick(state, ctx), ctx);
   return { state, ctx, hyp, picks, before };
+}
+
+// A paid run says what it will do before the first call (#341 step 2).
+if (paidRun && confirmed) {
+  const planned = producerName === "endpoint"
+    ? FIXTURES.length
+    : FIXTURES.reduce((sum, f) => sum + (liveProfile ? (f.before ? 2 : 1) : 0) + 1, 0);
+  const models = producerName === "endpoint" ? `whatever ${endpointUrl} is configured to use` : `profile ${liveProfile ? liveProfileModel : "baseline (no call)"}, picks ${liveModel}`;
+  console.log(`Plan: up to ${planned} paid call(s) over ${FIXTURES.length} fixture(s); ${models}; auth ${useAnt ? "ant login" : producerName === "endpoint" ? "none here" : "ANTHROPIC_API_KEY"}; stops before a call once spend reaches $${maxUsd}.`);
 }
 
 const results = [];
@@ -213,7 +267,7 @@ if (dryRun) {
   console.log(`Model: ${liveModel} (effort ${liveEffort}, thinking ${liveThinking}); key ${process.env.ANTHROPIC_API_KEY ? "present" : "absent"}.`);
   const first = dryRunPlan[0];
   if (first) console.log(`\nFirst prompt (${first.fixture}), truncated:\n${first.prompt.slice(0, 1200)}\n...`);
-  console.log("\nNo call was made. Re-run with --producer live --yes to spend.");
+  console.log("\nNo call was made. Re-run with --producer live --yes --max-usd <dollars> to spend (each paid run needs Paige's approval).");
 }
 
 // ---- report ----
@@ -259,20 +313,45 @@ for (const r of results) {
 lines.push("## Validator self-test (deliberately bad answers)", "", "| Fixture | Bad answer | Caught | Reason given |", "|---|---|---|---|");
 selfTest.forEach((t) => lines.push(`| ${t.fixture} | ${t.name} | ${t.caught ? "yes" : "**NO**"} | ${t.reasons.join("; ").replace(/\|/g, "/")} |`));
 
-const outDir = join(here, "reports");
-mkdirSync(outDir, { recursive: true });
-const reportName = `${producerName}${reportTag ? `-${reportTag}` : ""}-latest`;
-writeFileSync(join(outDir, `${reportName}.md`), lines.join("\n") + "\n");
-writeFileSync(join(outDir, `${reportName}.json`), JSON.stringify({
+const reportMd = lines.join("\n") + "\n";
+const reportJson = JSON.stringify({
   producer: producerName, contract: CONTRACT_VERSION,
   models: producerName === "live" ? { picks: liveModel, profile: liveProfile ? liveProfileModel : "baseline" } : null,
   spend,
   fixtures: results.map((r) => ({ id: r.fixture.id, error: r.error ?? null, scores: r.scores,
-    hypotheses: r.run?.hyp.accepted.map(({ label, level, crossDomain, evidence, counter, summary, statement }) => ({ label, level, crossDomain, evidence, counter, summary: summary ?? statement ?? null })) ?? [],
+    hypotheses: r.run?.hyp.accepted.map(({ id, label, claim, level, crossDomain, evidence, counter, summary, statement, evidenceSource }) => ({ id, label, claim: claim ?? null, level, crossDomain, evidence, counter, evidenceSource: evidenceSource ?? "recited", summary: summary ?? statement ?? null })) ?? [],
+    needsReview: r.run?.hyp.needsReview ?? [], reviewReasons: r.run?.hyp.reviewReasons ?? {},
+    // The model's answer before software reconciled it (--raw with the live producer only; null otherwise).
+    raw: keepRaw && r.run?.hyp.raw ? (r.run.hyp.raw.hypotheses ?? []).map(({ id, label, claim, evidence, counter, level, crossDomain }) => ({ id, label, claim, evidence, counter, level, crossDomain })) : null,
     rejected: r.run?.hyp.rejected.map((x) => ({ label: x.proposal?.label, claim: x.proposal?.claim ?? null, evidence: x.proposal?.evidence ?? [], counter: x.proposal?.counter ?? [], reasons: x.reasons })) ?? [],
     picks: r.run?.picks.accepted.map((p) => ({ itemId: p.itemId, title: p.item?.title ?? null, kind: p.kind, why: p.why ?? null, cites: p.cites })) ?? [] })),
   selfTest
-}, null, 2) + "\n");
+}, null, 2) + "\n";
+
+const reportsDir = join(here, "reports");
+const outDir = outArg ? resolve(outArg) : join(reportsDir, "runs");
+mkdirSync(outDir, { recursive: true });
+const reportName = `${suite === "default" ? "" : `${suite}-`}${producerName}${reportTag ? `-${reportTag}` : ""}-latest`;
+const reportPath = join(outDir, reportName);
+writeFileSync(`${reportPath}.md`, reportMd);
+writeFileSync(`${reportPath}.json`, reportJson);
+
+// The committed reference for the default run. Only --update-baseline replaces a committed report.
+let baselineDiffers = false;
+if (updateBaseline) {
+  const target = resolve(updateBaseline.replace(/\.(md|json)$/, ""));
+  const where = relative(reportsDir, target);
+  if (where.startsWith("..") || where.startsWith("runs")) refuse(`--update-baseline must point inside scripts/evals/reports (not runs/): ${updateBaseline}`);
+  writeFileSync(`${target}.md`, reportMd);
+  writeFileSync(`${target}.json`, reportJson);
+  console.log(`baseline updated: ${relative(process.cwd(), target)}.md and .json (review and commit deliberately)`);
+} else if (suite === "default" && producerName === "baseline" && !reportTag) {
+  const committed = (ext) => { try { return readFileSync(join(reportsDir, `baseline-latest.${ext}`), "utf8"); } catch { return null; } };
+  baselineDiffers = committed("md") !== reportMd || committed("json") !== reportJson;
+  console.log(baselineDiffers
+    ? "baseline: DIFFERS from the committed scripts/evals/reports/baseline-latest.* (if the change is intended, review it and run with --update-baseline scripts/evals/reports/baseline-latest)"
+    : "baseline: matches the committed scripts/evals/reports/baseline-latest.* byte for byte");
+}
 
 console.log(`${producer.label}: ${hardFails.length ? `${hardFails.length} rule check(s) FAILED` : "all rule checks passed"}; ${quality.length} quality finding(s); validator caught ${selfTest.length - missed.length}/${selfTest.length} bad answers`);
 hardFails.forEach((f) => console.log(`  x ${f.fixture}: ${f.name} (${f.detail})`));
@@ -283,5 +362,5 @@ if (endpointRuns.length) {
   endpointRuns.forEach((r) => console.log(`  ${r.fixture}: ${r.source}${r.reason ? ` (${r.reason})` : ""}`));
 }
 if (spend.calls) console.log(`paid calls: ${spend.calls}; tokens in ${spend.inputTokens}, out ${spend.outputTokens}; estimated cost $${spend.usd.toFixed(3)}`);
-console.log(`report: scripts/evals/reports/${producerName}-latest.md`);
-process.exit(hardFails.length || missed.length ? 1 : 0);
+console.log(`report: ${relative(process.cwd(), reportPath)}.md`);
+process.exit(hardFails.length || missed.length || baselineDiffers ? 1 : 0);

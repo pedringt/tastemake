@@ -11,3 +11,6 @@ node_modules/
 
 # Stress-eval (#28) run output: JSONL from paid runs lives in workflow artifacts, not in git.
 scripts/evals/stress/results/
+
+# #341 step 2: eval run reports (committed references are replaced only with --update-baseline)
+scripts/evals/reports/runs/
