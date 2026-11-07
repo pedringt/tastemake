@@ -35,7 +35,20 @@ const seen = join(tmp, "auth-seen");
 const stub = join(tmp, "stub-fetch.mjs");
 writeFileSync(stub, `
 import { appendFileSync } from "node:fs";
+// The deployed endpoint, when a test sets STUB_ENDPOINT to a sequence of answers (429, 500, usage, nousage,
+// nopaid); the last one repeats. Each request is logged, so tests can count attempts.
+const endpointAnswers = (process.env.STUB_ENDPOINT ?? "").split(",").filter(Boolean);
+let endpointCalls = 0;
 globalThis.fetch = async (url, init = {}) => {
+  if (String(url).startsWith("https://endpoint.test/")) {
+    appendFileSync(${JSON.stringify(join(tmp, "endpoint-attempts"))}, "x\\n");
+    const kind = endpointAnswers[Math.min(endpointCalls++, endpointAnswers.length - 1)];
+    const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+    if (kind === "429") return json(429, { error: "too many requests" });
+    if (kind === "500") return json(500, { error: "boom" });
+    const meta = kind === "usage" ? { model: "claude-sonnet-5-5", usage: { input_tokens: 1000, output_tokens: 100 } } : kind === "nopaid" ? { paidCallMade: false } : {};
+    return json(200, { source: "baseline", picks: [], meta });
+  }
   if (!String(url).startsWith("https://api.anthropic.com/")) throw new Error("unexpected network call: " + url);
   appendFileSync(${JSON.stringify(seen)}, String(init.headers?.authorization ?? "none") + "\\n");
   const text = JSON.stringify({ hypotheses: [{ id: "ai-stub", label: "Stub pattern", claim: "A stubbed claim.", evidence: [], counter: [], domains: ["play"], level: "emerging", crossDomain: "untested", conditional: false, context: null }], insufficientEvidence: false });
@@ -145,6 +158,29 @@ const before = sums();
   eq("local live runs: committed baseline unchanged", sums(), before);
 }
 
+// ---- 2b. --out can't be used to write committed reports ------------------------------------------------------
+{
+  let r = run(["--out", reports]);
+  eq("--out scripts/evals/reports: refused", r.code, 2);
+  check("--out scripts/evals/reports: says to use --update-baseline", /--update-baseline/.test(r.out), r.out);
+  r = run(["--out", join(reports, "runs", "..")]);
+  eq("--out spelled with runs/..: refused", r.code, 2);
+  const alias = join(tmp, "reports-alias");
+  symlinkSync(reports, alias);
+  r = run(["--out", alias]);
+  eq("--out through a symlink to reports/: refused", r.code, 2);
+  // A git-tracked file anywhere else is protected too.
+  const repo = join(tmp, "tracked-repo");
+  spawnSync("mkdir", ["-p", repo]);
+  spawnSync("git", ["init", "-q"], { cwd: repo });
+  writeFileSync(join(repo, "baseline-latest.md"), "committed");
+  spawnSync("git", ["add", "baseline-latest.md"], { cwd: repo });
+  r = run(["--out", repo]);
+  eq("--out over a git-tracked file elsewhere: refused", r.code, 2);
+  eq("the tracked file is untouched", readFileSync(join(repo, "baseline-latest.md"), "utf8"), "committed");
+  eq("after every --out refusal: committed baseline unchanged", sums(), before);
+}
+
 // ---- 5. the cap is checked against each call's worst case before it's made; spend counts prompt caching ----------
 {
   reset();
@@ -161,6 +197,39 @@ const before = sums();
   const perCall = usageCostUsd("claude-sonnet-5-5", { input_tokens: 1000, cache_creation_input_tokens: 2000, output_tokens: 500 });
   check("spend counts cache writes, not just input and output", spent.calls > 0 && Math.abs(spent.usd - perCall * spent.calls) < 1e-9 && spent.inputTokens === 3000 * spent.calls, JSON.stringify(spent));
   check("and stays under the cap", spent.usd <= 1);
+}
+
+// ---- 6. the endpoint producer: cap before every attempt, conservative accounting ---------------------------------
+{
+  const { worstCaseUsd } = await import("../evals/pricing.mjs");
+  const { thinkingTypeFor } = await import("../../src/server/anthropic.mjs");
+  const cap = 1000 + (thinkingTypeFor("claude-sonnet-5-5", "between_tools") === null ? 8000 : 0);
+  const worst = worstCaseUsd("claude-sonnet-5-5", 90_000, cap);
+  const attempts = join(tmp, "endpoint-attempts");
+  const endpoint = (answers, maxUsd, name) => {
+    rmSync(attempts, { force: true });
+    const out = join(tmp, name);
+    const r = spawnSync(process.execPath, ["--import", stub, runner, "--producer", "endpoint", "--url", "https://endpoint.test", "--pause", "0", "--yes", "--max-usd", String(maxUsd), "--out", out], { cwd: root, env: env({ STUB_ENDPOINT: answers }), encoding: "utf8" });
+    const report = existsSync(join(out, "endpoint-latest.json")) ? JSON.parse(readFileSync(join(out, "endpoint-latest.json"), "utf8")) : null;
+    return { out: `${r.stdout}${r.stderr}`, spend: report?.spend ?? {}, attempts: existsSync(attempts) ? readFileSync(attempts, "utf8").trim().split("\n").length : 0 };
+  };
+  let e = endpoint("429,429,usage", 50, "e1");
+  check("rate-limited retries cost nothing; the measured answer is counted", e.spend.unmeasuredCalls === undefined && e.spend.calls >= 1 && e.attempts >= 3, JSON.stringify(e));
+  e = endpoint("500", 50, "e2");
+  check("an error answer is counted at the worst case", e.spend.unmeasuredCalls >= 1 && Math.abs(e.spend.usd - worst * e.spend.unmeasuredCalls) < 1e-9, JSON.stringify(e.spend));
+  e = endpoint("nousage", 50, "e3");
+  check("an answer without usage is counted at the worst case", e.spend.unmeasuredCalls >= 1 && Math.abs(e.spend.usd - worst * e.spend.unmeasuredCalls) < 1e-9, JSON.stringify(e.spend));
+  check("and the summary says so", /without usage, counted at their worst case/.test(e.out), e.out);
+  e = endpoint("nopaid", 50, "e4");
+  check("an answer that says no paid call was made isn't counted", !e.spend.calls, JSON.stringify(e.spend));
+  e = endpoint("nousage", worst * 1.5, "e5");
+  eq("with room for one worst case: exactly one attempt is made", e.attempts, 1);
+  check("the next attempt is refused before it's sent", /so it wasn't made/.test(e.out), e.out);
+  check("spend stays under the cap", e.spend.usd <= worst * 1.5);
+  e = endpoint("429,429,429,nousage", worst * 1.5, "e6");
+  eq("retries after 429s still respect the cap: one billable attempt, then refused", e.attempts, 4);
+  e = endpoint("usage", worst * 0.5, "e7");
+  eq("a cap below one worst case: no attempt at all", e.attempts, 0);
 }
 
 rmSync(tmp, { recursive: true, force: true });

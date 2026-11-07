@@ -108,6 +108,21 @@ const baselineTarget = updateBaseline ? (() => {
   }
   return join(realpathSync(reportsDir), name);
 })() : null;
+// Where this run's report goes (#343 review): never the committed reports folder itself (however it's spelled:
+// "..", absolute or through a symlink), and never over a file git tracks. Only --update-baseline writes there.
+const outDir = outArg ? resolve(outArg) : join(reportsDir, "runs");
+const reportName = `${suite === "default" ? "" : `${suite}-`}${producerName}${reportTag ? `-${reportTag}` : ""}-latest`;
+mkdirSync(outDir, { recursive: true });
+if (realpathSync(outDir) === realpathSync(reportsDir)) refuse(`--out can't be scripts/evals/reports, where committed reports live; use --update-baseline to replace one: ${outArg}`);
+const reportPath = join(realpathSync(outDir), reportName);
+for (const ext of ["md", "json"]) {
+  const file = `${reportPath}.${ext}`;
+  if (!existsSync(file)) continue;
+  if (lstatSync(file).isSymbolicLink()) refuse(`won't write a report through a symlink: ${file}`);
+  let tracked = false;
+  try { execFileSync("git", ["ls-files", "--error-unmatch", file], { cwd: dirname(file), stdio: "ignore" }); tracked = true; } catch { /* not tracked, or not a git checkout */ }
+  if (tracked) refuse(`--out would overwrite a committed file (${file}); use --update-baseline to replace a committed report`);
+}
 let antTokenValue = null;
 const antToken = () => execFileSync("ant", ["auth", "print-credentials", "--access-token"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 async function liveFetch(url, init) {
@@ -130,6 +145,12 @@ function ensureBudget(worstCase) {
   if (spend.usd + worstCase > maxUsd) {
     throw new Error(`spend cap $${maxUsd}: the next call could cost up to $${Number.isFinite(worstCase) ? worstCase.toFixed(4) : "an unknown amount (no rates for this model)"} on top of $${spend.usd.toFixed(4)} spent, so it wasn't made`);
   }
+}
+// A call that may have been billed but reported no usage counts at its worst case, and is listed as unmeasured.
+function recordUnmeasured(worstCase) {
+  spend.calls += 1;
+  spend.unmeasuredCalls = (spend.unmeasuredCalls ?? 0) + 1;
+  spend.usd += worstCase;
 }
 function recordSpend(model, usage) {
   spend.calls += 1;
@@ -156,17 +177,23 @@ const PRODUCERS = {
       if (!ctx.candidates.length) return { picks: [] };
       if (dryRun) { dryRunPlan.push({ fixture: ctx.__fixture, count: Math.min(5, ctx.candidates.length), promptChars: 0, estIn: 0, prompt: `(POST ${endpointUrl}/api/recommendations)` }); return { picks: [] }; }
       if (!confirmed) throw new Error("this spends money on the deployed endpoint: re-run with --yes");
-      ensureBudget(ENDPOINT_WORST_CASE_USD);
       for (let attempt = 1; ; attempt += 1) {
+        // Checked before every attempt, retries included (#343 review).
+        ensureBudget(ENDPOINT_WORST_CASE_USD);
         const response = await fetch(`${endpointUrl}/api/recommendations`, {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ state: serializeAiState(state) })
         });
+        // The endpoint's rate limiter answers 429 before any model call (api/recommendations.mjs), so this costs nothing.
         if (response.status === 429 && attempt <= 5) { await sleep(pauseMs); continue; }
+        const payload = response.ok ? await response.json().catch(() => null) : null;
+        // Any other answer without usage (an error, unreadable JSON, or no meta.usage) may still have paid for a
+        // model call, so it's counted at the worst case unless the endpoint says no paid call was made.
+        if (payload?.meta?.usage) recordSpend(payload.meta.model || "claude-sonnet-5-5", payload.meta.usage);
+        else if (response.status !== 429 && payload?.meta?.paidCallMade !== false) recordUnmeasured(ENDPOINT_WORST_CASE_USD);
         if (!response.ok) throw new Error(`endpoint returned ${response.status}`);
-        const payload = await response.json();
+        if (!payload) throw new Error("endpoint returned unreadable JSON");
         endpointRuns.push({ fixture: ctx.__fixture, source: payload.source, reason: payload.reason, meta: payload.meta });
-        if (payload.meta?.usage) recordSpend(payload.meta.model || "claude-sonnet-5-5", payload.meta.usage);
         await sleep(pauseMs);
         // A deterministic answer from the endpoint carries no citations: report it as a fallback, not as model output.
         if (payload.source !== "model") return { picks: [] };
@@ -354,10 +381,6 @@ const reportJson = JSON.stringify({
   selfTest
 }, null, 2) + "\n";
 
-const outDir = outArg ? resolve(outArg) : join(reportsDir, "runs");
-mkdirSync(outDir, { recursive: true });
-const reportName = `${suite === "default" ? "" : `${suite}-`}${producerName}${reportTag ? `-${reportTag}` : ""}-latest`;
-const reportPath = join(outDir, reportName);
 writeFileSync(`${reportPath}.md`, reportMd);
 writeFileSync(`${reportPath}.json`, reportJson);
 
@@ -383,6 +406,6 @@ if (endpointRuns.length) {
   console.log("endpoint answers:");
   endpointRuns.forEach((r) => console.log(`  ${r.fixture}: ${r.source}${r.reason ? ` (${r.reason})` : ""}`));
 }
-if (spend.calls) console.log(`paid calls: ${spend.calls}; tokens in ${spend.inputTokens}, out ${spend.outputTokens}; estimated cost $${spend.usd.toFixed(3)}`);
+if (spend.calls) console.log(`paid calls: ${spend.calls}${spend.unmeasuredCalls ? ` (${spend.unmeasuredCalls} without usage, counted at their worst case)` : ""}; tokens in ${spend.inputTokens}, out ${spend.outputTokens}; estimated cost $${spend.usd.toFixed(3)}`);
 console.log(`report: ${relative(process.cwd(), reportPath)}.md`);
 process.exit(hardFails.length || missed.length || baselineDiffers ? 1 : 0);
