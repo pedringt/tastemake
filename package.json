@@ -12,7 +12,7 @@
     "test:browse-ui": "scripts/qa/headless.sh layout 390 && scripts/qa/headless.sh a11y 390 && LOOK=graphic scripts/qa/headless.sh layout 390 && LOOK=graphic scripts/qa/headless.sh a11y 390 && LOOK=analog scripts/qa/headless.sh layout 1440 390 && LOOK=analog scripts/qa/headless.sh a11y 1440 390",
     "test:eval": "node scripts/evals/run.mjs",
     "test:full": "node scripts/qa/full-sweep.mjs",
-    "test:corrections": "node scripts/qa/correction-eval-arms-tests.mjs && node scripts/evals/corrections/run.mjs && node scripts/evals/corrections/run3.mjs && node scripts/evals/corrections/run4.mjs",
+    "test:corrections": "node scripts/evals/corrections/arms-check.mjs && node scripts/evals/corrections/run.mjs && node scripts/evals/corrections/run3.mjs && node scripts/evals/corrections/run4.mjs",
     "test:eval:endpoint": "node scripts/evals/run.mjs --producer endpoint --yes",
     "test:eval:endpoint:dry-run": "node scripts/evals/run.mjs --producer endpoint --dry-run"
   },

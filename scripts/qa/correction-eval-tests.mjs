@@ -106,7 +106,7 @@ const key = (list) => list.map((c) => `${c.id}:${c.tasteScore}:${c.edge ? 1 : 0}
 // ---- round 2: structural options ---------------------------------------------------------------------------
 {
   // The arm-by-arm neutrality and set-size sweep (~30 s) runs with `npm run test:corrections`
-  // (correction-eval-arms-tests.mjs), not in npm test.
+  // (scripts/evals/corrections/arms-check.mjs), not in npm test.
 
   // A medium's turn yields only to a clearly better title from another medium.
   const rec = (id, domain, genre) => ({ ref: `ev:${id}`, itemId: id, title: id, class: "experienced", polarity: 1, weight: 2, kind: "experienced-strong-positive", domains: [domain], genres: [genre], refinements: [] });

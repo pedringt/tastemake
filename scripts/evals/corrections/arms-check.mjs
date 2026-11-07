@@ -1,23 +1,18 @@
 // Correction-aware ranking eval, slow part (#341 step 2, PR B): every round-2 structural arm must offer
 // production's exact six when no correction (or only an ambiguous one) applies, and as many titles as
-// production. Split out of correction-eval-tests.mjs because it takes ~30 s; run with `npm run test:corrections`.
+// production. Split out of scripts/qa/correction-eval-tests.mjs (npm test) because it takes ~30 s; run with
+// `npm run test:corrections`.
 // Free: no network, no model.
-import { createSuite } from "./lib/assert.mjs";
-import { offeredCandidates } from "../../api/recommendations.mjs";
-import { buildContext } from "../../src/ai/context.js";
-import { serializeAiState } from "../../src/ai/live-client.js";
-import { chooseCandidates, tasteScore, featureRarity } from "../../src/ai/taste-score.js";
-import { hydrateState } from "../../src/server/request-state.mjs";
-import { ROUNDS, loadCases, wireRecords } from "../evals/corrections/fixtures.mjs";
-import { armSelection, chooseWith, correctedScorer, patternFactor, productionScorer, withAnchors } from "../evals/corrections/rank.mjs";
-import { ROUND2_ARMS, scenariosFor } from "../evals/corrections/run.mjs";
-import { catalogIndex, evidenceItems, retrieve, seedFor } from "../evals/corrections/retrieval.mjs";
-import { rejectedFn } from "../evals/corrections/run3.mjs";
-import { loadSnapshot } from "../evals/stress/profiles.mjs";
-import { primaryDomain } from "../evals/corrections/rank.mjs";
-import { patternLabels, rejectionProfile } from "../evals/corrections/patterns.mjs";
+import { createSuite } from "../../qa/lib/assert.mjs";
+import { buildContext } from "../../../src/ai/context.js";
+import { serializeAiState } from "../../../src/ai/live-client.js";
+import { chooseCandidates } from "../../../src/ai/taste-score.js";
+import { hydrateState } from "../../../src/server/request-state.mjs";
+import { ROUNDS, loadCases, wireRecords } from "./fixtures.mjs";
+import { armSelection, withAnchors } from "./rank.mjs";
+import { ROUND2_ARMS, scenariosFor } from "./run.mjs";
 
-const { check, eq, finish } = createSuite("correction-eval arms");
+const { eq, finish } = createSuite("correction-eval arms");
 
 const cases = loadCases();
 const contexts = [];
