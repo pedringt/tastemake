@@ -33,6 +33,22 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
 }
 
 {
+  // #333: a Partly-only "Not sure yet" doesn't survive a switch to Yes; "Depends" (offered under both) does.
+  const state = fresh();
+  setStatement(state, pattern.id, "says", "partial");
+  setStatement(state, pattern.id, "context", "unsure");
+  setStatement(state, pattern.id, "says", "accurate");
+  eq("partly + not sure yet, then yes: no hidden context", state.patternStatements[0].context, null);
+  eq("yes refuses not sure yet", setStatement(state, pattern.id, "context", "unsure"), null);
+  const kept = fresh();
+  setStatement(kept, pattern.id, "says", "partial");
+  setStatement(kept, pattern.id, "context", "some");
+  setStatement(kept, pattern.id, "says", "accurate");
+  eq("partly + depends, then yes: depends stays", kept.patternStatements[0].context, "some");
+  check("each answer change is still recorded", (kept.hypothesisHistory ?? []).filter((r) => r.hypothesisId === pattern.id).length >= 3);
+}
+
+{
   const state = fresh();
   setStatement(state, pattern.id, "says", "partial");
   check("partly allows domain refinement", Boolean(toggleDomainExclusion(state, pattern.id, "movies")));

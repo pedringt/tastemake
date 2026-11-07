@@ -50,6 +50,7 @@ export function setStatement(state, hypothesisId, field, value) {
   if (field === "weight" && entry?.says !== "accurate") return null;
   if (field === "context" && !["accurate", "partial"].includes(entry?.says)) return null;
   if (field === "context" && entry?.says === "partial" && value === "broad") return null;
+  if (field === "context" && entry?.says === "accurate" && value === "unsure") return null;
 
   if (!entry) {
     entry = { hypothesisId, label: pattern.title, says: null, weight: null, context: null, authority: "user-confirmed" };
@@ -67,6 +68,10 @@ export function setStatement(state, hypothesisId, field, value) {
     } else if (next === "partial") {
       entry.weight = null;
       if (entry.context === "broad") entry.context = null;
+    } else if (next === "accurate") {
+      // #333: "Not sure yet" only exists under Partly; under Yes it was hidden but still shown as a line.
+      // "Depends" exists under both, so it stays (and shows as selected).
+      if (entry.context === "unsure") entry.context = null;
     }
   }
 
