@@ -14,3 +14,6 @@ scripts/evals/stress/results/
 
 # #341 step 2: eval run reports (committed references are replaced only with --update-baseline)
 scripts/evals/reports/runs/
+
+# #341 step 2 (PR B): correction eval reports (offline, regenerated on demand; nothing committed)
+scripts/evals/corrections/reports/

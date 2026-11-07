@@ -105,21 +105,8 @@ const key = (list) => list.map((c) => `${c.id}:${c.tasteScore}:${c.edge ? 1 : 0}
 
 // ---- round 2: structural options ---------------------------------------------------------------------------
 {
-  const neutralDiffs = {}, sizeDiffs = {};
-  // Three arms cover all three structural options at the strongest strength (run.mjs checks every arm).
-  for (const arm of ROUND2_ARMS.filter((a) => ["notMe 0.25 / A global order", "notMe 0.25 / B one medium", "notMe 0.25 / C local + one medium"].includes(a.id))) {
-    neutralDiffs[arm.id] = 0; sizeDiffs[arm.id] = 0;
-    for (const { kase, ctx } of contexts) {
-      const base = chooseCandidates(ctx.candidates, ctx.evidence, opts(ctx));
-      for (const scenario of scenariosFor(kase)) {
-        const six = armSelection(ctx.evidence, ctx.candidates, kase.patterns, scenario.statements, arm, { mode: ctx.recommendationFilter, curveball: ctx.curveball }).proto.chosen;
-        if (!scenario.statements.some((x) => x.says === "not-me" || x.excludedDomains?.length) && ["none", "ambiguous"].includes(scenario.cls) && key(six) !== key(base)) neutralDiffs[arm.id] += 1;
-        if (six.length !== base.length) sizeDiffs[arm.id] += 1;
-      }
-    }
-  }
-  eq("every structural arm offers production's exact six when no correction or only an ambiguous one applies", Object.values(neutralDiffs).reduce((a, b) => a + b, 0), 0);
-  eq("every structural arm offers as many titles as production, every case, round and scenario (incl. the last round's six-title pool)", Object.values(sizeDiffs).reduce((a, b) => a + b, 0), 0);
+  // The arm-by-arm neutrality and set-size sweep (~30 s) runs with `npm run test:corrections`
+  // (correction-eval-arms-tests.mjs), not in npm test.
 
   // A medium's turn yields only to a clearly better title from another medium.
   const rec = (id, domain, genre) => ({ ref: `ev:${id}`, itemId: id, title: id, class: "experienced", polarity: 1, weight: 2, kind: "experienced-strong-positive", domains: [domain], genres: [genre], refinements: [] });

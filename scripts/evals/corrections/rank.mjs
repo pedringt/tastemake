@@ -39,7 +39,8 @@ const MIXED_DOMAINS = ["movies", "tv", "read", "play"];
 
 export const primaryDomain = (item) => MIXED_DOMAINS.find((domain) => item?.domains?.includes(domain)) ?? "other";
 const experienced = (records) => (records ?? []).filter((record) => record?.class === "experienced" && record.polarity);
-const reasonFactor = (record) => ((record.refinements ?? []).length ? REASON_BOOST : 1);
+// Parity with taste-score.js since #322 (4dc360e): reasons boost liked/loved ratings only, never a dislike.
+const reasonFactor = (record) => (record.polarity > 0 && (record.refinements ?? []).length ? REASON_BOOST : 1);
 const round3 = (value) => Math.round(value * 1000) / 1000;
 
 // ---- Stand-in retrieval anchors -----------------------------------------------------------------------

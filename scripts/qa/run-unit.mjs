@@ -66,7 +66,8 @@ const SUITES = [
   "ai-status-tests.mjs",
   "learning-panel-tests.mjs",
   "support-fit-tests.mjs",
-  "eval-runner-tests.mjs"
+  "eval-runner-tests.mjs",
+  "correction-eval-tests.mjs"
 ];
 
 // A new *-tests.mjs file that is not listed above would otherwise never run.
