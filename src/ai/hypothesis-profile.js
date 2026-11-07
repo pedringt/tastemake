@@ -175,7 +175,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         activeLimit: 12,
         preserveExistingActive: rejected > 0
       }), [...needsReview, ...stillFlagged]);
-      state.hypothesisAiMessage = needsReview.length ? CHECKED_NEEDS_REVIEW : "Your Taste Profile is up to date.";
+      state.hypothesisAiMessage = needsReview.length ? CHECKED_NEEDS_REVIEW : "Updated using your latest reactions.";
       state.hypothesisAiKey = key;
       announce("Taste Profile refreshed from your current evidence.");
     } else if (needsReview.length) {

@@ -46,7 +46,7 @@ function seed(s) {
   s.patternStatements = [{ hypothesisId: "ai-worlds", label: WORLDS.title, says: "accurate", weight: "lot", context: null, authority: "user-confirmed" }];
   s.hypothesisHistory = [{ id: "rev-1", hypothesisId: "ai-worlds", claim: WORLDS.claim, origin: "model", reason: "earlier refresh" }];
   s.hypothesisAiStatus = "ready";
-  s.hypothesisAiMessage = "Your Taste Profile is up to date.";
+  s.hypothesisAiMessage = "Updated using your latest reactions.";
   return s;
 }
 const profileState = () => seed(emptyState());
@@ -89,7 +89,7 @@ async function raceWith(change, { payload = ANSWER, s = profileState() } = {}) {
   check("unchanged profile: the new pattern is applied", s.modelHypotheses.some((p) => p.id === "ai-comedy"));
   check("unchanged profile: history records the new pattern", s.hypothesisHistory.some((r) => r.hypothesisId === "ai-comedy"));
   check("unchanged profile: recorded as a completed check", typeof s.hypothesisAiKey === "string" && s.hypothesisAiKey.length > 0);
-  eq("unchanged profile: says it is up to date", s.hypothesisAiMessage, "Your Taste Profile is up to date.");
+  eq("unchanged profile: says it was updated from the latest reactions", s.hypothesisAiMessage, "Updated using your latest reactions.");
   eq("unchanged profile: status is ready", s.hypothesisAiStatus, "ready");
   eq("unchanged profile: no second request", stale, 0);
   eq("unchanged profile: announced once", announced.length, 1);
@@ -106,11 +106,11 @@ for (const [name, change] of [
   ["a reason added to a rating", (s) => { s.feedbackByRecommendation.outerwilds.refinements = ["pacing"]; }]
 ]) {
   const { s, stale, announced, before, after, calls } = await raceWith(change);
-  eq(`${name}: the stale answer changes nothing (patterns, history, answers, key, flags, message)`, after, before.replace(/"status":"loading"/, '"status":"ready"').replace(/"message":"Refreshing your Taste Profile…"/, '"message":"Your Taste Profile is up to date."'));
+  eq(`${name}: the stale answer changes nothing (patterns, history, answers, key, flags, message)`, after, before.replace(/"status":"loading"/, '"status":"ready"').replace(/"message":"Refreshing your Taste Profile…"/, '"message":"Updated using your latest reactions."'));
   check(`${name}: the new pattern from the stale answer is not added`, !s.modelHypotheses.some((p) => p.id === "ai-comedy"));
   check(`${name}: no history entry from the stale answer`, !s.hypothesisHistory.some((r) => r.hypothesisId === "ai-comedy"));
   eq(`${name}: the status goes back to what it was`, s.hypothesisAiStatus, "ready");
-  eq(`${name}: the message goes back to what it was`, s.hypothesisAiMessage, "Your Taste Profile is up to date.");
+  eq(`${name}: the message goes back to what it was`, s.hypothesisAiMessage, "Updated using your latest reactions.");
   eq(`${name}: asks again once, through the normal path`, stale, 1);
   eq(`${name}: nothing announced`, announced.length, 0);
   eq(`${name}: only the one request was sent by the refresh itself`, calls.length, 1);
@@ -175,7 +175,7 @@ for (const [name, change] of [
   setStatement(s, "ai-worlds", "says", "not-me");
   calls[0].fail(new Error("offline"));
   await running;
-  eq("failure after a change: no 'couldn't update' message", s.hypothesisAiMessage, "Your Taste Profile is up to date.");
+  eq("failure after a change: no 'couldn't update' message", s.hypothesisAiMessage, "Updated using your latest reactions.");
   eq("failure after a change: asks again with the new answer", stale, 1);
 }
 {
