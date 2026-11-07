@@ -27,6 +27,7 @@ const SUITES = [
   "profile-rules-tests.mjs",
   "confirmed-patterns-tests.mjs",
   "profile-refresh-race-tests.mjs",
+  "profile-refresh-reload-tests.mjs",
   "evidence-selection-tests.mjs",
   "area-scope-tests.mjs",
   "reconfirm-recompute-tests.mjs",
