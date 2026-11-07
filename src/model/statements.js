@@ -9,8 +9,9 @@ import { CROSS_DOMAIN, LEVELS } from "../ai/contract.js";
 //   - It is NOT taste evidence: saying "that's me" is not an experience of anything, so it never raises a
 //     confidence level (confidence is about what you tried) and it is not in evidenceRecords.
 //   - Two independent answers per pattern, each reversible (choose again to clear):
-//       fit     "accurate" (a "You confirmed this" badge) | "not-me" (left out of ranking and of what a model may use)
-//       weight  "lot" (x1.5 in ranking) | "little" (x0.5 in ranking)
+//       fit     "accurate" (a "You confirmed this" badge) | "not-me" (left out of the Taste Profile; live AI is told not to use it)
+//       weight  "lot" | "little" (passed to live AI as how much it matters)
+//     None of these reach the shortlist or the catalog fallback: ranking doesn't read pattern answers (#334).
 //   - The original pattern and its history stay visible; nothing is deleted.
 // Stored as state.patternStatements = [{ hypothesisId, label, says, weight, authority }]; `says` is the fit
 // answer (the name the AI validator reads).

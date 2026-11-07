@@ -11,7 +11,8 @@ import { evidenceRecords } from "../model/evidence.js";
 import { renderTasteMap } from "./tastemap.js";
 import { AI_PAUSED_EXPLAINER } from "../ai/ai-status.js";
 import { levelChangeConsequence } from "../model/history.js";
-import { exampleLinkHtml } from "../example-profile.js";
+import { exampleLinkHtml, isViewingExample } from "../example-profile.js";
+import { featuredCorrection } from "../model/featured-correction.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -280,6 +281,71 @@ function learningPanel(patterns = []) {
     </section>`;
 }
 
+// #319: in Paige's Example Profile, one real correction gets its own panel on the Overview, apart from the
+// strongest six (their selection is unchanged). Every line comes from the saved record: what was inferred
+// before her answer, the answer itself, and what the code does with it. Nothing claims picks got better:
+// the example makes no AI calls and no effect on recommendations has been measured. Example-only, so
+// nobody else's profile is ever shown a sample.
+const SAID = { partial: "partly accurate", "not-me": "not her", unsure: "not sure yet" };
+// Nov 7: separate the shortlist (built in software, which doesn't read pattern answers; #334) from what live AI
+// is told. Partly matches the shipped "more cautiously" wording. A pick's validator check for "not me" isn't
+// claimed: live picks arrive without a tested pattern, so it doesn't run on them.
+const USE = {
+  partial: "Tastemake builds its shortlist without using her answer. When AI chooses and explains picks, it's told to treat this pattern more cautiously.",
+  "not-me": "Her answer doesn't change Tastemake's shortlist. Live AI is told not to use the pattern, and Tastemake keeps it out of her Taste Profile when the profile is refreshed.",
+  unsure: "Her answer doesn't change Tastemake's shortlist. Live AI is told it isn't a confirmed preference."
+};
+const shortDate = (iso) => {
+  const date = new Date(iso ?? "");
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+};
+
+function featuredCorrectionPanel(activeHypotheses) {
+  if (!isViewingExample()) return "";
+  const featured = featuredCorrection(state);
+  if (!featured) return "";
+  const { pattern, said, answer, inferred, later } = featured;
+  const titles = new Map(evidenceRecords(state).map((row) => [row.ref, row.title]));
+  const inferredFrom = (inferred?.supports ?? []).map((ref) => titles.get(ref)).filter(Boolean);
+  const position = activeHypotheses.findIndex((item) => item.id === pattern.id);
+  const where = position < 0
+    ? "It is listed under Corrected patterns."
+    : position < 6
+      ? "It is also one of the patterns below."
+      : `It is pattern ${position + 1} of ${activeHypotheses.length} in her full profile, so it isn't one of the strongest six below.`;
+  const details = [
+    said.context ? `${CONTEXT[said.context] ?? "She refined when it applies"}.` : "",
+    said.excludedDomains?.length ? `Not for ${said.excludedDomains.map((id) => domainById(id)?.label ?? id).join(", ")}.` : ""
+  ].filter(Boolean).join(" ") || "No further detail was recorded with it.";
+  const since = later.length
+    ? `Tastemake has revised the pattern ${later.length === 1 ? "once" : `${later.length} times`} since; the Full profile shows the current version.`
+    : "No change to the pattern has been recorded since her answer: its wording, evidence and level are the same.";
+  return `
+    <section class="profile-featured-correction" aria-labelledby="featured-correction-title" data-featured-correction="${esc(pattern.id)}">
+      <p class="kicker">A correction Paige made</p>
+      <h2 id="featured-correction-title">She said “${esc(pattern.title)}” is ${SAID[said.says]}.</h2>
+      <p class="featured-correction-intro">You’re viewing Paige’s Example Profile, so this is her own answer, taken from her saved profile.</p>
+      <p class="featured-correction-where">${esc(where)}</p>
+      <dl class="featured-correction-steps">
+        <div>
+          <dt>What Tastemake inferred</dt>
+          <dd>${inferred
+            ? `“${esc(inferred.claim)}”${inferred.level ? ` <span class="featured-correction-meta">${esc(inferred.level.charAt(0).toUpperCase() + inferred.level.slice(1))}${inferredFrom.length ? `, from ${inferredFrom.length} thing${inferredFrom.length === 1 ? "" : "s"} she tried: ${inferredFrom.map((title) => esc(title)).join(", ")}` : ""}.</span>` : ""}`
+            : "The pattern as Tastemake had it before her answer wasn't saved."}</dd>
+        </div>
+        <div>
+          <dt>What Paige said${shortDate(answer.createdAt) ? ` <span class="featured-correction-meta">${esc(shortDate(answer.createdAt))}</span>` : ""}</dt>
+          <dd>${esc(`${SAID[said.says].charAt(0).toUpperCase()}${SAID[said.says].slice(1)}.`)} ${esc(details)}</dd>
+        </div>
+        <div>
+          <dt>What it changes</dt>
+          <dd>${esc(since)} ${esc(USE[said.says])} This example makes no AI calls, and no effect on recommendations has been measured.</dd>
+        </div>
+      </dl>
+      <button class="button button-secondary" type="button" data-profile-view="full">See it in the full profile</button>
+    </section>`;
+}
+
 function blindSpotSection() {
   const spots = activeBlindSpots(state);
   if (!spots.length) return "";
@@ -355,6 +421,7 @@ export function renderProfile() {
         profileView === "map"
           ? renderTasteMap(activeHypotheses, state.patternStatements)
           : `
+            ${profileView === "list" ? featuredCorrectionPanel(activeHypotheses) : ""}
             <div class="profile-depth-head">
               <div>
                 <p class="kicker">${profileView === "full" ? "Full profile" : "Current read"}</p>

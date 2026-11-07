@@ -8,7 +8,7 @@
 // non-framework guide uses a plain `<script defer src="/_vercel/insights/script.js">` tag instead,
 // which needs no module resolution. #100 does exactly that, in src/lib/vercel-insights.js (its own
 // module in index.html, so it can never stop this one from running).
-import { exampleBannerHtml, exampleRequestedAtBoot, forgetViewingExample, isViewingExample, loadExampleProfile } from "./example-profile.js";
+import { exampleBannerHtml, exampleRequestedAtBoot, exampleScreenFromPath, forgetViewingExample, isViewingExample, loadExampleProfile } from "./example-profile.js";
 import { state } from "./state.js";
 import { normalizedRefinements } from "./model/refinements.js";
 import { trackReasonChanged, trackReasonsOpened } from "./lib/reason-events.js";
@@ -89,12 +89,15 @@ const candidatePrefetcher = createCandidatePrefetcher({ getState: () => state })
 
 // Paige's Example Profile: loaded on request, or from /?example=paige (linked from the portfolio case study).
 // Oct 27: loadExampleProfile also sets the sessionStorage flag, so a refresh comes back here.
-async function openExampleProfile() {
+// #320: at boot it opens on the page the address asked for and replaces that history entry (Back must not
+// land on the visitor's own setup screen in example mode); the in-app link adds a Taste Profile entry.
+async function openExampleProfile({ screen = "model", replace = false } = {}) {
   try {
-    await loadExampleProfile();
-    writeRoute(state.screen, { replace: false });
+    await loadExampleProfile({ screen });
+    writeRoute(state.screen, { replace });
     render();
     updateStepper();
+    maybeLoadBrowse();   // catalog browsing only, never a model call
     announce("Showing Paige's Example Profile. Nothing you change is saved.");
     window.scrollTo(0, 0);
   } catch {
@@ -1253,6 +1256,8 @@ initSearch({
 // Read before writeRoute below replaces the address (it drops the query string).
 // Oct 27: the sessionStorage flag counts too, so a refresh while viewing stays in the example.
 const wantsExampleProfile = exampleRequestedAtBoot(window.location.search);
+// #320: read before the visitor's own state decides (and rewrites) the route below.
+const exampleScreen = exampleScreenFromPath(window.location.pathname);
 const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
 state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "setup");
 if (state.screen === "library") state.libraryView = "saved";
@@ -1268,4 +1273,4 @@ if (!wantsExampleProfile) {
   void resolveExistingCustomItems();
 }
 maybeLoadBrowse();
-if (wantsExampleProfile) void openExampleProfile();
+if (wantsExampleProfile) void openExampleProfile({ screen: exampleScreen, replace: true });
