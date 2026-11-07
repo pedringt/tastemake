@@ -7,7 +7,7 @@ const FIELDS = [
   "tastebreaks", "hypothesisHistory", "modelHypotheses", "profileView", "mapPattern", "mapItem",
   "mapFilter", "favoriteFilter", "recommendationFilter", "libraryFilter", "expandedFeedback",
   "areas", "curveball", "displayName", "setupAreas", "recommendationStyle", "setupComplete",
-  "setupReturn", "onboarded", "libraryView", "look"
+  "setupReturn", "onboarded", "libraryView", "look", "hypothesisAiChecked"
 ];
 
 function storage() {

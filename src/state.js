@@ -38,6 +38,9 @@ function fresh() {
     modelHypotheses: [],
     hypothesisAiStatus: "idle",
     hypothesisAiKey: null,
+    // #340: a short, saved record of the last completed refresh ({ hash, version }), so a page load with the
+    // same evidence doesn't pay for the same refresh again. hypothesisAiKey itself stays transient.
+    hypothesisAiChecked: null,
     hypothesisAiMessage: null,
     // Transient live-AI UI state (#42). None of this is taste evidence and none of it is persisted.
     // aiRequest is the in-flight request: its id, the evidence fingerprint it was computed from, and its

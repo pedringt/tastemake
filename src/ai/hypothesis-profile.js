@@ -3,6 +3,7 @@ import { evidenceRecords } from "../model/evidence.js";
 import { recordRevisionIfChanged } from "../model/history.js";
 import { noteAiAnswer } from "./ai-status.js";
 import { NEEDS_REVIEW, confirmationFor } from "../model/statements.js";
+import { CONTRACT_VERSION } from "./contract.js";
 
 const slug = (text) => String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
@@ -10,6 +11,38 @@ export function hypothesisEvidenceKey(state) {
   const evidence = evidenceRecords(state).map(({ ref, kind, polarity, weight, facts, refinements }) => ({ ref, kind, polarity, weight, facts, refinements }));
   const statements = (state.patternStatements ?? []).map(({ hypothesisId, says, weight, context, excludedDomains }) => ({ hypothesisId, says, weight, context, excludedDomains }));
   return JSON.stringify({ evidence, statements });
+}
+
+// #340: hypothesisAiKey isn't saved (it's about 14 KB for a real profile), so every page load used to pay for a
+// refresh of evidence that had already been checked. A completed refresh now also saves a short hash of the key
+// and a version. Bump PROFILE_REFRESH_VERSION when the refresh prompt or how patterns are built changes, so an
+// unchanged profile is refreshed once. (A model swapped in Vercel's settings isn't visible here; that refresh
+// waits for the next evidence change or a manual Refresh.)
+export const PROFILE_REFRESH_VERSION = 1;
+const refreshVersion = () => `${CONTRACT_VERSION}:${PROFILE_REFRESH_VERSION}`;
+
+function hashKey(text) {
+  // FNV-1a, 32-bit, plus the length: a cache check, not security.
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+  return `${(hash >>> 0).toString(16)}:${text.length}`;
+}
+
+function markChecked(state, key) {
+  state.hypothesisAiKey = key;
+  state.hypothesisAiChecked = key ? { hash: hashKey(key), version: refreshVersion() } : null;
+}
+
+// Trust a saved check only while the profile it produced is there and usable; otherwise refresh as before.
+function usableProfile(state) {
+  const patterns = state.modelHypotheses;
+  return Array.isArray(patterns) && patterns.length > 0
+    && patterns.every((p) => p && typeof p.id === "string" && typeof p.claim === "string" && p.claim.trim());
+}
+
+export function savedCheckApplies(state, key = hypothesisEvidenceKey(state)) {
+  const saved = state.hypothesisAiChecked;
+  return Boolean(saved && saved.version === refreshVersion() && saved.hash === hashKey(key) && usableProfile(state));
 }
 
 // The shape a live hypothesis is stored in (state.modelHypotheses). Exported so the eval harness can
@@ -69,6 +102,7 @@ export function mergeHypotheses(existing = [], incoming = [], { statements = [],
 // meta.needsReview) is kept as stored, with the user's answer and history untouched, but marked so it
 // is not shown as supported. The mark is cleared only when a refresh accepts the pattern again: an
 // accepted pattern is rebuilt by normalizeHypothesis, which has no such field.
+const UPDATED_MESSAGE = "Updated using your latest reactions.";
 const CHECKED_NEEDS_REVIEW = "Tastemake checked your profile. Some patterns need another look because their evidence is no longer available.";
 export function markNeedsReview(patterns = [], needsReview = []) {
   const ids = new Set(needsReview ?? []);
@@ -119,6 +153,14 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
   if (state.viewingExample) return;   // the example's patterns are fixed; no model calls on its behalf
   const key = hypothesisEvidenceKey(state);
   if (state.hypothesisAiStatus === "loading" || (!force && state.hypothesisAiKey === key)) return;
+  if (!force && savedCheckApplies(state, key)) {
+    // #340: this evidence was already checked before the page loaded. Show the result, keep Refresh, don't call.
+    state.hypothesisAiKey = key;
+    state.hypothesisAiStatus = "ready";
+    state.hypothesisAiMessage = state.modelHypotheses.some((p) => p?.evidenceStatus === NEEDS_REVIEW) ? CHECKED_NEEDS_REVIEW : UPDATED_MESSAGE;
+    onUpdate();
+    return;
+  }
 
   const request = {
     key,
@@ -175,8 +217,8 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         activeLimit: 12,
         preserveExistingActive: rejected > 0
       }), [...needsReview, ...stillFlagged]);
-      state.hypothesisAiMessage = needsReview.length ? CHECKED_NEEDS_REVIEW : "Updated using your latest reactions.";
-      state.hypothesisAiKey = key;
+      state.hypothesisAiMessage = needsReview.length ? CHECKED_NEEDS_REVIEW : UPDATED_MESSAGE;
+      markChecked(state, key);
       announce("Taste Profile refreshed from your current evidence.");
     } else if (needsReview.length) {
       // #325: nothing new was accepted, but the evidence check itself completed and found confirmed
@@ -184,11 +226,11 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
       // and don't ask again until the evidence changes.
       state.modelHypotheses = markNeedsReview(state.modelHypotheses ?? [], needsReview);
       state.hypothesisAiMessage = CHECKED_NEEDS_REVIEW;
-      state.hypothesisAiKey = key;
+      markChecked(state, key);
       announce(CHECKED_NEEDS_REVIEW);
     } else {
       // A failed, paused or empty answer leaves the saved profile exactly as it was.
-      state.hypothesisAiKey = null;
+      markChecked(state, null);
       // The full explanation sits in the empty state (or the header badge) when AI is paused; this line stays short.
       state.hypothesisAiMessage = payload.meta?.budgetPaused
         ? ((state.modelHypotheses ?? []).length ? "AI is paused, so your patterns can’t update right now. They’re still here." : "AI is paused, so patterns can’t be built right now.")
@@ -203,7 +245,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     if (!request.settled && profileRefreshStaleReason(state, request)) return settleStale(state, request, { onStale, onUpdate });
     if (state.hypothesisRequest === request) state.hypothesisRequest = null;
     state.hypothesisAiStatus = "ready";
-    state.hypothesisAiKey = null;
+    markChecked(state, null);
     state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
       ? "Tastemake couldn’t update your profile this time. Your existing patterns are unchanged."
       : "Tastemake couldn’t build your profile this time. You can try again.";
