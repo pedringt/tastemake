@@ -49,6 +49,36 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
 }
 
 {
+  // #333: a profile saved before the fix (Yes + the Partly-only "Not sure yet") is shown without the stale
+  // line, on the Taste Profile and in My Tastemake, while the saved record and its history stay as they were.
+  const stored = new Map();
+  globalThis.localStorage = { getItem: (k) => stored.get(k) ?? null, setItem: (k, v) => stored.set(k, String(v)), removeItem: (k) => stored.delete(k) };
+  globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
+  const { state } = await import("../../src/state.js");
+  const { persistState, loadPersistedState } = await import("../../src/persistence.js");
+  const { renderProfile } = await import("../../src/screens/profile.js");
+  const { renderMine } = await import("../../src/screens/mine.js");
+  const { CONTEXT, shownContext } = await import("../../src/model/statements.js");
+  const saved = { id: "ai-saved", title: "Saved pattern", claim: "A claim saved before the fix.", supports: [], counters: [], domains: ["movies"], strength: "supported", status: "supported" };
+  const history = [{ hypothesisId: "ai-saved", field: "context", from: null, to: "unsure" }];
+  persistState({ ...state, onboarded: true, modelHypotheses: [saved], patternStatements: [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "accurate", context: "unsure" }], hypothesisHistory: history });
+  const reloaded = loadPersistedState();
+  eq("the inconsistent answer is still saved as it was", reloaded.patternStatements?.[0]?.context, "unsure");
+  Object.assign(state, reloaded, { profileView: "list" });
+  const profile = renderProfile();
+  const row = profile.slice(profile.indexOf('data-profile-pattern="ai-saved"'));
+  check("the Taste Profile row still shows the Yes answer", row.length > 0 && row.includes("accurate"));
+  check("the Taste Profile hides the stale Not sure yet line", !profile.includes(CONTEXT.unsure));
+  check("My Tastemake hides it too", !renderMine().includes(CONTEXT.unsure));
+  eq("displaying it doesn't rewrite the saved answer", state.patternStatements[0].context, "unsure");
+  eq("or its history", JSON.stringify(state.hypothesisHistory), JSON.stringify(reloaded.hypothesisHistory));
+  eq("Yes + Depends is still shown", shownContext({ says: "accurate", context: "some" }), "some");
+  eq("Partly + Not sure yet is still shown", shownContext({ says: "partial", context: "unsure" }), "unsure");
+  state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "accurate", context: "some" }];
+  check("a saved Yes + Depends line still renders", renderProfile().includes(CONTEXT.some) && renderMine().includes(CONTEXT.some));
+}
+
+{
   const state = fresh();
   setStatement(state, pattern.id, "says", "partial");
   check("partly allows domain refinement", Boolean(toggleDomainExclusion(state, pattern.id, "movies")));

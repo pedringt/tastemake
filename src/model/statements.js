@@ -33,6 +33,13 @@ export function statementFor(state, hypothesisId) {
   return (state.patternStatements ?? []).find((s) => same(s.hypothesisId, hypothesisId)) ?? null;
 }
 
+// #333: the context answer to show. Answers saved before the fix can still pair Yes with the Partly-only
+// "Not sure yet"; it is hidden here rather than rewritten, so the saved record and its history stay as they were.
+export function shownContext(said) {
+  if (said?.says === "accurate" && said.context === "unsure") return null;
+  return said?.context ?? null;
+}
+
 const MESSAGE = {
   says: (pattern, now) => (now ? `${pattern.title}: ${FIT[now]}.` : `${pattern.title}: your answer was cleared.`),
   weight: (pattern, now) => (now ? `${pattern.title}: ${WEIGHT[now]}.` : `${pattern.title}: how much it matters was cleared.`),

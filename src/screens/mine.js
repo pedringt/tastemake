@@ -2,7 +2,7 @@ import { state } from "../state.js";
 import { AREAS } from "../model/taste.js";
 import { toldItems } from "../model/mine.js";
 import { reasonLabel } from "../model/blindspots.js";
-import { CONTEXT, FIT, WEIGHT, activeStatements } from "../model/statements.js";
+import { CONTEXT, FIT, WEIGHT, activeStatements, shownContext } from "../model/statements.js";
 import { displayLabel } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { EXCLUDABLE_GENRES } from "../model/exclusions.js";
@@ -114,7 +114,7 @@ function statementList() {
               <span class="mine-status">${[
                 s.says ? FIT[s.says] : "",
                 s.weight ? WEIGHT[s.weight] : "",
-                s.context ? CONTEXT[s.context] : "",
+                shownContext(s) ? CONTEXT[shownContext(s)] : "",
                 s.excludedDomains?.length ? `Not in ${s.excludedDomains.join(", ")}` : ""
               ].filter(Boolean).join(" \u00b7 ")}</span>
               <span class="mine-source">Said on the Taste Profile</span>
