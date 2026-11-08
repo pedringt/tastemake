@@ -12,6 +12,10 @@
 //   removed from the env retrieval sees, so its direct write-behind (canonicalizeWriteBehind) is a no-op.
 // Retrieval catches lookup errors itself, so a stop can't end the call early; instead every later
 // attempt is refused too, and the recording is marked stopped and incomplete, never used as a pool.
+// Timing (Nov 8): retrieval races some lookups against timers (a 400 ms wait for the Wikidata year check,
+// 100 ms and 750 ms store-read timeouts, provider abort timeouts), and lets some finish in the background.
+// So every request and store read records how long it took, and whether it was still in flight when
+// retrieval returned; replay honours both, so the same races come out the same way.
 import { createHash } from "node:crypto";
 import { retrieveCatalogCandidates } from "../../../src/catalog/related.mjs";
 import { hydrateState } from "../../../src/server/request-state.mjs";
@@ -25,9 +29,12 @@ const WRITE_SQL = /\b(insert|update|delete|merge|upsert|truncate|alter|drop|crea
 
 export class CaptureStop extends Error {}
 
-export function createRecorder({ maxRequests, realFetch = fetch, realQuery = null, allowedHosts = ALLOWED_HOSTS }) {
+export function createRecorder({ maxRequests, realFetch = fetch, realQuery = null, allowedHosts = ALLOWED_HOSTS, clock = () => performance.now() }) {
   if (!Number.isInteger(maxRequests) || maxRequests < 1) throw new Error("maxRequests must be a positive whole number; there is no default");
   const log = { attempts: 0, requests: [], queries: [], failures: [], stopped: null };
+  const started = clock();
+  const begin = (list, entry) => { const timed = { ...entry, startMs: Math.round(clock() - started), ms: null, done: false }; list.push(timed); return timed; };
+  const end = (entry, fields) => Object.assign(entry, fields, { ms: Math.round(clock() - started) - entry.startMs, done: true });
   const stop = (reason) => {
     log.stopped ??= reason;
     throw new CaptureStop(log.stopped);
@@ -42,16 +49,16 @@ export function createRecorder({ maxRequests, realFetch = fetch, realQuery = nul
     const host = new URL(String(url)).hostname;
     if (!allowedHosts.includes(host)) stop(`unexpected host ${host}`);
     charge(host);
-    const entry = { method: (init.method ?? "GET").toUpperCase(), url: redactUrl(url), body: typeof init.body === "string" ? init.body : null };
+    const entry = begin(log.requests, { method: (init.method ?? "GET").toUpperCase(), url: redactUrl(url), body: typeof init.body === "string" ? init.body : null });
     try {
       const response = await realFetch(url, init);
       const text = await response.text();
-      log.requests.push({ ...entry, status: response.status, response: redactBody(url, text) });
+      end(entry, { status: response.status, response: redactBody(url, text) });
       if (!response.ok) log.failures.push({ url: entry.url, status: response.status, kind: response.status === 429 ? "rate-limited" : "http-error" });
       return new Response(text, { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "application/json" } });
     } catch (error) {
       if (error instanceof CaptureStop) throw error;
-      log.requests.push({ ...entry, error: error?.name ?? "Error" });
+      end(entry, { error: error?.name ?? "Error" });
       log.failures.push({ url: entry.url, kind: error?.name === "AbortError" ? "timeout" : "network" });
       throw error;
     }
@@ -60,19 +67,30 @@ export function createRecorder({ maxRequests, realFetch = fetch, realQuery = nul
   const query = realQuery ? async (text, params = []) => {
     if (!/^\s*(select|with)\b/i.test(text) || WRITE_SQL.test(text)) stop("a catalog-store query that isn't a read");
     charge("catalog store");
+    const entry = begin(log.queries, { text, params });
     try {
       const rows = await realQuery(text, params);
-      log.queries.push({ text, params, rows });
+      end(entry, { rows });
       return rows;
     } catch (error) {
       if (error instanceof CaptureStop) throw error;
-      log.queries.push({ text, params, error: error?.name ?? "Error" });
+      end(entry, { error: error?.name ?? "Error" });
       log.failures.push({ query: text.slice(0, 60), kind: "store-error" });
       throw error;
     }
   } : null;
 
-  return { fetchImpl, query, log };
+  // The log as it stood when retrieval returned: anything not yet finished is marked in flight (replay never
+  // answers it), and later completions can't change the recording.
+  const snapshot = () => {
+    const freeze = (entry) => {
+      const { done, ...rest } = entry;
+      return done ? structuredClone(rest) : { ...structuredClone({ ...rest, ms: null }), inFlight: true, status: undefined, response: undefined, rows: undefined };
+    };
+    return { attempts: log.attempts, stopped: log.stopped, failures: structuredClone(log.failures), requests: log.requests.map(freeze), queries: log.queries.map(freeze) };
+  };
+
+  return { fetchImpl, query, log, snapshot };
 }
 
 export const profileHash = (feedbackByRecommendation) => createHash("sha256").update(JSON.stringify(feedbackByRecommendation)).digest("hex");
@@ -97,7 +115,7 @@ export async function captureRetrieval({ profile, round, maxRequests, env = proc
   } finally {
     Math.random = original;
   }
-  const { log } = recorder;
+  const log = recorder.snapshot();
   return {
     version: 1,
     profileId: profile.id,

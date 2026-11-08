@@ -3,6 +3,9 @@
 // retrieveCatalogCandidates and check that it rebuilds the recorded pool exactly: the same candidates, in
 // the same order, with the same metadata. Local, offline: every provider response, catalog-store row and
 // random draw comes from the recording; a request the recording doesn't have fails the replay.
+// Timing: each answer is delayed by its recorded duration, and anything that was still in flight when the
+// live retrieval returned is never answered (an abort still rejects it), so retrieval's timer races (the
+// 400 ms year-check wait, store-read and provider timeouts) come out as they did live.
 //
 //   node scripts/evals/capture/replay.mjs <recording.json> [more.json ...]
 import { readFileSync } from "node:fs";
@@ -11,8 +14,18 @@ import { PROVIDER_ENV, profileState } from "./recorder.mjs";
 import { findSecrets, redactUrl } from "./redact.mjs";
 
 const requestKey = (method, url, body) => `${method} ${url} ${body ?? ""}`;
+const abortError = () => Object.assign(new Error("This operation was aborted"), { name: "AbortError" });
 
-export async function replayRetrieval(recording, { profile, retrieve = retrieveCatalogCandidates } = {}) {
+// Wait `ms`, or forever when `ms` is null (in flight at return); reject early if the caller aborts.
+function after(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(abortError());
+    const timer = ms == null ? null : setTimeout(resolve, ms);
+    signal?.addEventListener?.("abort", () => { if (timer) clearTimeout(timer); reject(abortError()); }, { once: true });
+  });
+}
+
+export async function replayRetrieval(recording, { profile, retrieve = retrieveCatalogCandidates, timing = true } = {}) {
   const responses = new Map();
   for (const r of recording.requests) {
     const key = requestKey(r.method, r.url, r.body);
@@ -30,12 +43,15 @@ export async function replayRetrieval(recording, { profile, retrieve = retrieveC
     const key = requestKey((init.method ?? "GET").toUpperCase(), redactUrl(url), typeof init.body === "string" ? init.body : null);
     const next = responses.get(key)?.shift();
     if (!next) { missing.push(key.slice(0, 160)); throw new Error("not in recording"); }
+    if (timing) await after(next.inFlight ? null : next.ms ?? 0, init.signal);
+    else if (next.inFlight) await after(null, init.signal);
     if (next.error) throw Object.assign(new Error(next.error), { name: next.error });
     return new Response(next.response, { status: next.status, headers: { "content-type": "application/json" } });
   };
   const query = recording.config.store ? async (text, params = []) => {
     const next = rows.get(`${text}\n${JSON.stringify(params)}`)?.shift();
     if (!next) { missing.push(`query ${text.slice(0, 80)}`); throw new Error("not in recording"); }
+    if (timing || next.inFlight) await after(next.inFlight ? null : next.ms ?? 0);
     if (next.error) throw new Error(next.error);
     return next.rows;
   } : undefined;

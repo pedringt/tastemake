@@ -143,6 +143,42 @@ const providerStub = async (url, init = {}) => {
   check("and is never usable as a pool", !checkRecording(stopped, await replayRetrieval(stopped, { profile: fixture }), env).usable);
 }
 
+// ---- 5b. timing races replay the way they ran live (Nov 8 diagnostic) ---------------------------------------
+// A stand-in for retrieval's real patterns: a 400 ms wait (the Wikidata year check), a store read raced against
+// a 100 ms timer (the anchor-metadata lookup), a provider abort timeout (fetchWithTimeout), a request left
+// running in the background, and an ordinary fast lookup.
+{
+  const { fetchWithTimeout } = await import("../../src/lib/fetch-timeout.mjs");
+  const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+  const raceRetrieve = async (state, { fetchImpl, query }) => {
+    const year = await Promise.race([fetchImpl("https://query.wikidata.org/sparql?q=year").then((r) => r.json()).then((j) => j.year), wait(400, "waited")]);
+    const meta = await Promise.race([query("select meta", []).then((rows) => rows.length), wait(100, "timed-out")]);
+    let aborted = "no";
+    try { await fetchWithTimeout(fetchImpl, "https://openlibrary.org/search.json?q=slow", {}, 150); } catch (error) { aborted = error.name; }
+    fetchImpl("https://query.wikidata.org/sparql?q=background").catch(() => {});
+    const fast = await (await fetchImpl("https://api.themoviedb.org/3/movie/1/recommendations")).json();
+    return [{ id: "race", year, meta, aborted, fast: fast.n }];
+  };
+  const delays = { year: 600, slow: 400, background: 300, recommendations: 10 };
+  const slowStub = (url, init = {}) => new Promise((resolve, reject) => {
+    const u = String(url);
+    const key = Object.keys(delays).find((k) => u.includes(k));
+    const timer = setTimeout(() => resolve(ok(key === "year" ? { year: 1999 } : { n: 7 })), delays[key]);
+    init.signal?.addEventListener("abort", () => { clearTimeout(timer); reject(Object.assign(new Error("aborted"), { name: "AbortError" })); }, { once: true });
+  });
+  const recording = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 10, env: {}, realFetch: slowStub, realQuery: () => wait(200, [{ a: 1 }]), retrieve: raceRetrieve });
+  const live = recording.pool[0];
+  check("live: the 400 ms wait won over a 600 ms lookup", live.year === "waited", JSON.stringify(live));
+  check("live: the 100 ms timer won over a 200 ms store read", live.meta === "timed-out");
+  check("live: the 150 ms provider timeout aborted a 400 ms lookup", live.aborted === "AbortError");
+  check("the background request is recorded as in flight", recording.requests.some((r) => r.url.includes("background") && r.inFlight));
+  check("finished requests carry their duration", recording.requests.filter((r) => !r.inFlight).every((r) => Number.isInteger(r.ms)));
+  const replay = await replayRetrieval(recording, { profile: fixture, retrieve: raceRetrieve });
+  check("replay with recorded timing reproduces every race exactly", replay.exact, JSON.stringify({ pool: replay.pool, missing: replay.missing }));
+  const instant = await replayRetrieval(recording, { profile: fixture, retrieve: raceRetrieve, timing: false });
+  check("instant replay (the old behaviour) would get the races wrong", !instant.samePool, JSON.stringify(instant.pool));
+}
+
 // ---- 6. the capture route's guards ------------------------------------------------------------------------
 {
   const call = async (handler, body, method = "POST") => {
