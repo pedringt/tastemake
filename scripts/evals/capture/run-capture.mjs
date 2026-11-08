@@ -20,9 +20,11 @@
 // - per call: --max-requests for every call, or --caps with one limit per profile (each 1-80); the server
 //   enforces it inside each call;
 // - global: at most --max-total-requests external requests across the whole experiment, retries and
-//   token requests included. Each call is given min(per-call cap, budget left), so the total can't be
-//   exceeded; a call that fails without a recording is charged its full allowance, since its real
+//   token requests included. A call starts only if the budget left covers its full cap (Nov 8 review):
+//   otherwise the run stops there, a planned stopping point, rather than spending what's left on a call
+//   that can't finish. A call that fails without a recording is charged its full cap, since its real
 //   count is unknown.
+// A profile:round already in the run's ledger is refused: one attempt per call per run.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -80,14 +82,18 @@ const remaining = maxCalls - ledger.calls.length;
 const spent = () => ledger.calls.reduce((sum, call) => sum + (call.charged ?? 0), 0);
 const planMax = plan.reduce((sum, p) => sum + capFor(p.profileId), 0);
 console.log(`Plan: ${plan.length} capture call(s) in this order: ${plan.map((p) => `${p.profileId}:${p.round} (cap ${capFor(p.profileId)})`).join(", ")}.`);
-console.log(`Budget: the calls' caps add up to ${planMax}; the approved global budget is ${maxTotal}${planMax > maxTotal ? `, so the run may stop before every call (each call gets min(its cap, budget left))` : ""}. ${ledger.calls.length} of ${maxCalls} approved calls and ${spent()} of ${maxTotal} approved external requests already used; output ${outDir}.`);
+console.log(`Budget: the calls' caps add up to ${planMax}; the approved global budget is ${maxTotal}${planMax > maxTotal ? `, so the run may stop before every call (a call starts only if the budget left covers its full cap)` : ""}. ${ledger.calls.length} of ${maxCalls} approved calls and ${spent()} of ${maxTotal} approved external requests already used; output ${outDir}.`);
 if (plan.length > remaining) refuse(`only ${remaining} approved call(s) left; this run needs ${plan.length}`);
+const attempted = new Set(ledger.calls.map((c) => `${c.profileId}:${c.round}`));
+const repeats = plan.filter((p) => attempted.has(`${p.profileId}:${p.round}`)).map((p) => `${p.profileId}:${p.round}`);
+if (repeats.length) refuse(`already attempted in this run (one attempt per call per run; a re-capture needs its own run): ${repeats.join(", ")}`);
 if (dryRun) { plan.forEach((p) => console.log(`  would capture ${p.profileId} round ${p.round}`)); process.exit(0); }
 
 let usable = 0;
 for (const { profileId, round } of plan) {
-  const allowance = Math.min(capFor(profileId), maxTotal - spent());
-  if (allowance < 1) { console.log(`Stopped: the global budget of ${maxTotal} external requests is used up.`); break; }
+  const allowance = capFor(profileId);
+  const left = maxTotal - spent();
+  if (left < allowance) { console.log(`Stopped before ${profileId} round ${round}: ${left} of the ${maxTotal}-request budget left, and its cap is ${allowance}.`); break; }
   // Charged in full before the call, so a crash can't hide requests; corrected to the real count after.
   const entry = { profileId, round, at: new Date().toISOString(), allowance, charged: allowance };
   ledger.calls.push(entry);

@@ -247,12 +247,15 @@ const providerStub = async (url, init = {}) => {
   const run2 = (extra) => spawnSync(process.execPath, ["--import", stub2, runner, "--url", "https://x-preview.vercel.app", "--out", tmp, ...extra], { encoding: "utf8", env: { ...process.env, VERCEL_AUTOMATION_BYPASS_SECRET: "test-secret-value" } });
   const capsRun = run2(["--run", "caps", "--max-calls", "3", "--max-total-requests", "100", "--caps", "rosa=60,theo=61,mara=54", "--only", "rosa:1,theo:1,mara:1"]);
   const given = readFileSync(seen, "utf8").trim().split("\n");
-  eq("each call gets its own profile's cap, in the listed order, until the budget runs short", given.join(" "), "rosa:1=60 theo:1=40");
-  check("the global budget stops the run before the third call", /Stopped: the global budget of 100 external requests is used up/.test(capsRun.stdout), capsRun.stdout);
+  eq("each call gets its profile's full cap; none starts on a partial budget", given.join(" "), "rosa:1=60");
+  check("the run stops at a planned point: before theo, whose 61 cap the 40 left can't cover", /Stopped before theo round 1: 40 of the 100-request budget left, and its cap is 61/.test(capsRun.stdout), capsRun.stdout);
   const capsLedger = JSON.parse(readFileSync(join(tmp, "caps", "ledger.json"), "utf8"));
-  eq("a recording stopped by the recorder isn't retried: two calls in the ledger", capsLedger.calls.length, 2);
+  eq("a recording stopped by the recorder isn't retried: one call in the ledger", capsLedger.calls.length, 1);
   check("and it's reported as stopped", /rosa round 1: STOPPED by the recorder/.test(capsRun.stdout));
   check("the run states that its caps exceed the budget", /caps add up to 175; the approved global budget is 100, so the run may stop before every call/.test(capsRun.stdout));
+  const again = run2(["--run", "caps", "--max-calls", "3", "--max-total-requests", "100", "--caps", "rosa=60", "--only", "rosa:1"]);
+  check("a call already in the run's ledger is refused", again.status === 2 && /already attempted in this run.*rosa:1/.test(again.stderr), again.stderr);
+  eq("and nothing is sent", readFileSync(seen, "utf8").trim().split("\n").length, 1);
   eq("--caps and --max-requests together: refused", run2(["--run", "x1", "--max-calls", "1", "--max-total-requests", "50", "--caps", "rosa=60", "--max-requests", "30", "--only", "rosa:1"]).status, 2);
   eq("--caps missing a listed profile: refused", run2(["--run", "x2", "--max-calls", "2", "--max-total-requests", "50", "--caps", "rosa=60", "--only", "rosa:1,theo:1"]).status, 2);
   eq("a cap over 80: refused", run2(["--run", "x3", "--max-calls", "1", "--max-total-requests", "50", "--caps", "rosa=81", "--only", "rosa:1"]).status, 2);
