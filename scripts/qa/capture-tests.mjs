@@ -156,7 +156,7 @@ const providerStub = async (url, init = {}) => {
   eq("no VERCEL_ENV (local or unknown): not found", (await call(createHandler({ env: {}, capture: fakeCapture }), { profileId: "example-profile", round: 1, maxRequests: 10 })).code, 404);
   eq("GET: refused", (await call(preview, {}, "GET")).code, 405);
   eq("an unknown profile: refused", (await call(preview, { profileId: "someone-else", round: 1, maxRequests: 10 })).code, 400);
-  eq("an unapproved persona: refused", (await call(preview, { profileId: "rosa", round: 1, maxRequests: 10 })).code, 400);
+  eq("an approved but unresolved persona: refused", (await call(preview, { profileId: "rosa", round: 1, maxRequests: 10 })).code, 400);
   eq("a prototype key as profile id: refused", (await call(preview, { profileId: "__proto__", round: 1, maxRequests: 10 })).code, 400);
   eq("no maxRequests: refused", (await call(preview, { profileId: "example-profile", round: 1 })).code, 400);
   eq("maxRequests over the ceiling: refused", (await call(preview, { profileId: "example-profile", round: 1, maxRequests: 500 })).code, 400);
@@ -172,7 +172,7 @@ const providerStub = async (url, init = {}) => {
   eq("a second capture while one runs: refused", (await call(slow, { profileId: "example-profile", round: 2, maxRequests: 10 })).code, 409);
   release();
   eq("the first capture still completes", (await first).code, 200);
-  check("only the Example Profile is usable today (personas need approval and resolving)", usableProfile("example-profile") && ["rosa", "theo", "mara", "dev"].every((id) => !usableProfile(id)));
+  check("the personas are approved but not usable until their titles are resolved", ["rosa", "theo", "mara", "dev"].every((id) => PROFILES[id].approved && !usableProfile(id)) && usableProfile("example-profile"));
 }
 
 finish();
