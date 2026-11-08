@@ -27,7 +27,7 @@ export const PROFILES = {
   ]),
   mara: persona("mara", "Mara: dislikes and an exception", [
     ["The Haunting of Hill House", "tv", "loved", ["atmosphere", "characters"]], ["The Witch", "movie", "loved", ["atmosphere", "style"]],
-    ["Annihilation", "movie", "loved", ["atmosphere", "ideas"]], ["Silent Hill 2", "game", "loved", ["atmosphere", "story"]],
+    ["Annihilation", "movie", "loved", ["atmosphere", "ideas"]], ["Dredge", "game", "loved", ["atmosphere", "unease"]],
     ["Mexican Gothic", "book", "liked", ["atmosphere"]], ["The Exorcist", "movie", "loved", ["craft", "dread"]],
     ["The Conjuring 2", "movie", "disliked", ["jump scares", "possession"]], ["Annabelle", "movie", "disliked", ["jump scares"]],
     ["Saw", "movie", "disliked", ["too gory"]], ["Inside", "game", "liked", ["atmosphere"]]
