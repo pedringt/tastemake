@@ -260,6 +260,21 @@ const providerStub = async (url, init = {}) => {
   eq("--caps missing a listed profile: refused", run2(["--run", "x2", "--max-calls", "2", "--max-total-requests", "50", "--caps", "rosa=60", "--only", "rosa:1,theo:1"]).status, 2);
   eq("a cap over 80: refused", run2(["--run", "x3", "--max-calls", "1", "--max-total-requests", "50", "--caps", "rosa=81", "--only", "rosa:1"]).status, 2);
   eq("a call listed twice: refused", run2(["--run", "x4", "--max-calls", "2", "--max-total-requests", "50", "--caps", "rosa=60", "--only", "rosa:1,rosa:1"]).status, 2);
+  // Pacing (Nov 8): a quiet interval before every call, and an early stop when a provider is struggling.
+  const times = join(tmp, "times.txt");
+  const stub3 = join(tmp, "stub3.mjs");
+  writeFileSync(stub3, `import { appendFileSync } from "node:fs"; globalThis.fetch = async (url, init) => { const b = JSON.parse(init.body); appendFileSync(${JSON.stringify(times)}, b.profileId + ":" + b.round + "@" + Date.now() + "\\n"); const failing = b.profileId === "rosa"; return new Response(JSON.stringify({ complete: !failing, attempts: 10, maxRequests: b.maxRequests, pool: [], requests: Array.from({ length: 10 }, () => ({})), failures: failing ? Array.from({ length: 4 }, () => ({ kind: "timeout" })) : [], stopped: null }), { status: 200 }); };`);
+  const run3 = (extra) => spawnSync(process.execPath, ["--import", stub3, runner, "--url", "https://x-preview.vercel.app", "--out", tmp, ...extra], { encoding: "utf8", env: { ...process.env, VERCEL_AUTOMATION_BYPASS_SECRET: "test-secret-value" } });
+  const started = Date.now();
+  const paced = run3(["--run", "paced", "--max-calls", "2", "--max-total-requests", "200", "--caps", "theo=61,mara=54", "--only", "theo:1,mara:1", "--quiet-seconds", "1"]);
+  const stamps = readFileSync(times, "utf8").trim().split("\n").map((line) => Number(line.split("@")[1]));
+  check("the runner waits the quiet interval before the first call", stamps[0] - started >= 1000, `${stamps[0] - started} ms`);
+  check("and between calls", stamps[1] - stamps[0] >= 1000, `${stamps[1] - stamps[0]} ms`);
+  check("it states the pacing", /Pacing: 1 s quiet before every call/.test(paced.stdout));
+  const stopping = run3(["--run", "stopping", "--max-calls", "2", "--max-total-requests", "200", "--caps", "rosa=60,theo=61", "--only", "rosa:1,theo:1", "--stop-if-failures", "0.25"]);
+  check("a call over the failure share stops the run", /Stopped: 40% of rosa round 1's provider lookups failed \(over 25%\)/.test(stopping.stdout), stopping.stdout);
+  eq("so the next call isn't made", JSON.parse(readFileSync(join(tmp, "stopping", "ledger.json"), "utf8")).calls.length, 1);
+  check("round 4 of the Example Profile can be planned (a distinct label for a re-capture)", run3(["--run", "r4", "--max-calls", "1", "--max-total-requests", "80", "--caps", "example-profile=80", "--only", "example-profile:4", "--dry-run"]).status === 0);
   const { summarizeVerdicts } = await import("../evals/capture/replay.mjs");
   eq("the run summary counts clean, degraded and unusable pools", JSON.stringify(summarizeVerdicts([{ usable: true, degraded: false }, { usable: true, degraded: true }, { usable: false }, { usable: false }])), JSON.stringify({ clean: 1, degraded: 1, unusable: 2 }));
   rmSync(tmp, { recursive: true, force: true });

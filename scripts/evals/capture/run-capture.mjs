@@ -25,6 +25,10 @@
 //   that can't finish. A call that fails without a recording is charged its full cap, since its real
 //   count is unknown.
 // A profile:round already in the run's ledger is refused: one attempt per call per run.
+// Pacing (Nov 8, after Stage 3's timeouts rose under a burst): --quiet-seconds N waits N seconds before
+// every call, the first included, so runs never overlap or burst. --stop-if-failures S stops the run
+// after any call whose share of failed provider lookups exceeds S (e.g. 0.25), instead of continuing
+// into a provider that's struggling.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -44,6 +48,10 @@ const outDir = join(arg("--out") ?? join(homedir(), "tastemake-research-local", 
 const only = arg("--only");
 const secret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "";
 const dryRun = args.includes("--dry-run");
+const quietSeconds = arg("--quiet-seconds") == null ? 0 : Number(arg("--quiet-seconds"));
+const stopShare = arg("--stop-if-failures") == null ? null : Number(arg("--stop-if-failures"));
+if (!Number.isFinite(quietSeconds) || quietSeconds < 0 || quietSeconds > 900) refuse("--quiet-seconds must be 0-900");
+if (stopShare != null && !(stopShare >= 0 && stopShare <= 1)) refuse("--stop-if-failures must be a share between 0 and 1");
 
 if (!/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(base)) refuse("--url must be the preview's https://….vercel.app address");
 if (base === "https://tastemake.vercel.app") refuse("that's production; use the preview address");
@@ -63,7 +71,9 @@ if (!Number.isInteger(maxTotal) || maxTotal < 1 || maxTotal > 700) refuse("--max
 if (!dryRun && !secret) refuse("set VERCEL_AUTOMATION_BYPASS_SECRET in your shell first");
 
 const PLAN = [
-  ...[1, 2, 3].map((round) => ({ profileId: "example-profile", round })),
+  // Round 4 (Nov 8): a separate, spaced re-capture of the Example Profile. A distinct label, so a new
+  // recording is never mistaken for, or silently swapped in for, rounds 1-3.
+  ...[1, 2, 3, 4].map((round) => ({ profileId: "example-profile", round })),
   ...["rosa", "theo", "mara", "dev"].flatMap((profileId) => [1, 2].map((round) => ({ profileId, round })))
 ];
 let plan = PLAN;
@@ -82,6 +92,7 @@ const remaining = maxCalls - ledger.calls.length;
 const spent = () => ledger.calls.reduce((sum, call) => sum + (call.charged ?? 0), 0);
 const planMax = plan.reduce((sum, p) => sum + capFor(p.profileId), 0);
 console.log(`Plan: ${plan.length} capture call(s) in this order: ${plan.map((p) => `${p.profileId}:${p.round} (cap ${capFor(p.profileId)})`).join(", ")}.`);
+if (quietSeconds || stopShare != null) console.log(`Pacing: ${quietSeconds} s quiet before every call${stopShare != null ? `; stop after any call with more than ${Math.round(stopShare * 100)}% of provider lookups failing` : ""}.`);
 console.log(`Budget: the calls' caps add up to ${planMax}; the approved global budget is ${maxTotal}${planMax > maxTotal ? `, so the run may stop before every call (a call starts only if the budget left covers its full cap)` : ""}. ${ledger.calls.length} of ${maxCalls} approved calls and ${spent()} of ${maxTotal} approved external requests already used; output ${outDir}.`);
 if (plan.length > remaining) refuse(`only ${remaining} approved call(s) left; this run needs ${plan.length}`);
 const attempted = new Set(ledger.calls.map((c) => `${c.profileId}:${c.round}`));
@@ -94,6 +105,7 @@ for (const { profileId, round } of plan) {
   const allowance = capFor(profileId);
   const left = maxTotal - spent();
   if (left < allowance) { console.log(`Stopped before ${profileId} round ${round}: ${left} of the ${maxTotal}-request budget left, and its cap is ${allowance}.`); break; }
+  if (quietSeconds) { console.log(`Waiting ${quietSeconds} s before ${profileId} round ${round}...`); await new Promise((resolve) => setTimeout(resolve, quietSeconds * 1000)); }
   // Charged in full before the call, so a crash can't hide requests; corrected to the real count after.
   const entry = { profileId, round, at: new Date().toISOString(), allowance, charged: allowance };
   ledger.calls.push(entry);
@@ -124,6 +136,8 @@ for (const { profileId, round } of plan) {
     if (!recording.stopped) usable += 1;
     // Usability (clean, degraded or unusable) is decided by the offline replay check, not here.
     console.log(`${profileId} round ${round}: ${recording.stopped ? `STOPPED by the recorder: ${recording.stopped}` : "recorded"}; ${recording.attempts}/${recording.maxRequests} requests; pool ${recording.pool.length}${recording.failures.length ? `; ${recording.failures.length} provider failure(s)` : ""} -> ${file}`);
+    const share = recording.requests?.length ? recording.failures.length / recording.requests.length : 0;
+    if (stopShare != null && share > stopShare) { console.log(`Stopped: ${Math.round(share * 100)}% of ${profileId} round ${round}'s provider lookups failed (over ${Math.round(stopShare * 100)}%).`); break; }
   } else {
     console.log(`${profileId} round ${round}: FAILED (HTTP ${status}) ${note.replace(secret || "\u0000", "[secret]")}`);
   }
