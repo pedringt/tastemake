@@ -4,7 +4,12 @@
 // shell (VERCEL_AUTOMATION_BYPASS_SECRET) and is never printed or saved.
 //
 //   VERCEL_AUTOMATION_BYPASS_SECRET=... node scripts/evals/capture/run-capture.mjs \
-//     --run <name> --url https://<preview>.vercel.app --max-calls <N> --max-requests <N> --max-total-requests <N> [--only rosa:2]
+//     --run <name> --url https://<preview>.vercel.app --max-calls <N> --max-total-requests <N> \
+//     (--max-requests <N> | --caps example-profile=80,rosa=60,...) [--only rosa:1,theo:1,...]
+//
+// --only takes a comma-separated list of profile:round and runs it in that order, so a budget that may not
+// cover every call stops at a planned point. The runner never retries: a rejected or failed recording is
+// reported, and a re-capture needs its own approved run.
 //
 // Each --run gets its own folder and ledger under ~/tastemake-research-local/step4/, so an approved budget
 // can't borrow from another run's, and earlier ledgers stay as they were for audit (the first, 150-request
@@ -12,7 +17,8 @@
 //
 // Three limits, all enforced here and recorded in a ledger in the output folder, across runs:
 // - calls: at most --max-calls capture calls in total;
-// - per call: at most --max-requests external requests (1-80; the server enforces it inside each call);
+// - per call: --max-requests for every call, or --caps with one limit per profile (each 1-80); the server
+//   enforces it inside each call;
 // - global: at most --max-total-requests external requests across the whole experiment, retries and
 //   token requests included. Each call is given min(per-call cap, budget left), so the total can't be
 //   exceeded; a call that fails without a recording is charged its full allowance, since its real
@@ -27,7 +33,8 @@ const refuse = (message) => { console.error(`refused: ${message}`); process.exit
 
 const base = String(arg("--url") ?? "").replace(/\/$/, "");
 const maxCalls = Number(arg("--max-calls"));
-const maxRequests = Number(arg("--max-requests"));
+const maxRequests = arg("--max-requests") == null ? null : Number(arg("--max-requests"));
+const capsArg = arg("--caps");
 const maxTotal = Number(arg("--max-total-requests"));
 const run = arg("--run");
 if (!run || !/^[a-z0-9][a-z0-9-]{0,40}$/.test(run)) refuse("--run <name> is required (lowercase letters, digits, dashes): each run gets its own folder and ledger");
@@ -39,29 +46,47 @@ const dryRun = args.includes("--dry-run");
 if (!/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(base)) refuse("--url must be the preview's https://….vercel.app address");
 if (base === "https://tastemake.vercel.app") refuse("that's production; use the preview address");
 if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > 15) refuse("--max-calls is required (1-15, the approved total)");
-if (!Number.isInteger(maxRequests) || maxRequests < 1 || maxRequests > 80) refuse("--max-requests is required (1-80, the approved per-call cap)");
-if (!Number.isInteger(maxTotal) || maxTotal < 1 || maxTotal > 450) refuse("--max-total-requests is required: the approved global budget of external requests (no default)");
+if ((maxRequests == null) === (capsArg == null)) refuse("give either --max-requests (one cap for every call) or --caps (one per profile), not both or neither");
+if (maxRequests != null && (!Number.isInteger(maxRequests) || maxRequests < 1 || maxRequests > 80)) refuse("--max-requests must be 1-80, the approved per-call cap");
+const caps = {};
+if (capsArg != null) {
+  for (const part of capsArg.split(",")) {
+    const [id, value] = part.split("=");
+    const cap = Number(value);
+    if (!id || !Number.isInteger(cap) || cap < 1 || cap > 80) refuse(`--caps entries look like profile=N with N 1-80 (got "${part}")`);
+    caps[id] = cap;
+  }
+}
+if (!Number.isInteger(maxTotal) || maxTotal < 1 || maxTotal > 700) refuse("--max-total-requests is required: the approved global budget of external requests (no default)");
 if (!dryRun && !secret) refuse("set VERCEL_AUTOMATION_BYPASS_SECRET in your shell first");
 
 const PLAN = [
   ...[1, 2, 3].map((round) => ({ profileId: "example-profile", round })),
   ...["rosa", "theo", "mara", "dev"].flatMap((profileId) => [1, 2].map((round) => ({ profileId, round })))
 ];
-const plan = only ? PLAN.filter((p) => `${p.profileId}:${p.round}` === only) : PLAN;
-if (only && !plan.length) refuse(`--only ${only} isn't in the plan`);
+let plan = PLAN;
+if (only) {
+  plan = only.split(",").map((key) => PLAN.find((p) => `${p.profileId}:${p.round}` === key.trim()) ?? refuse(`--only ${key} isn't in the plan`));
+  if (new Set(plan).size !== plan.length) refuse("--only lists a call twice");
+}
+const capFor = (profileId) => (maxRequests ?? caps[profileId]);
+const uncapped = [...new Set(plan.map((p) => p.profileId))].filter((id) => !capFor(id));
+if (uncapped.length) refuse(`--caps has no limit for: ${uncapped.join(", ")}`);
 
 mkdirSync(outDir, { recursive: true });
 const ledgerPath = join(outDir, "ledger.json");
 const ledger = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")) : { calls: [] };
 const remaining = maxCalls - ledger.calls.length;
 const spent = () => ledger.calls.reduce((sum, call) => sum + (call.charged ?? 0), 0);
-console.log(`Plan: ${plan.length} capture call(s), at most ${maxRequests} external requests each; ${ledger.calls.length} of ${maxCalls} approved calls and ${spent()} of ${maxTotal} approved external requests already used; output ${outDir}.`);
+const planMax = plan.reduce((sum, p) => sum + capFor(p.profileId), 0);
+console.log(`Plan: ${plan.length} capture call(s) in this order: ${plan.map((p) => `${p.profileId}:${p.round} (cap ${capFor(p.profileId)})`).join(", ")}.`);
+console.log(`Budget: the calls' caps add up to ${planMax}; the approved global budget is ${maxTotal}${planMax > maxTotal ? `, so the run may stop before every call (each call gets min(its cap, budget left))` : ""}. ${ledger.calls.length} of ${maxCalls} approved calls and ${spent()} of ${maxTotal} approved external requests already used; output ${outDir}.`);
 if (plan.length > remaining) refuse(`only ${remaining} approved call(s) left; this run needs ${plan.length}`);
 if (dryRun) { plan.forEach((p) => console.log(`  would capture ${p.profileId} round ${p.round}`)); process.exit(0); }
 
 let usable = 0;
 for (const { profileId, round } of plan) {
-  const allowance = Math.min(maxRequests, maxTotal - spent());
+  const allowance = Math.min(capFor(profileId), maxTotal - spent());
   if (allowance < 1) { console.log(`Stopped: the global budget of ${maxTotal} external requests is used up.`); break; }
   // Charged in full before the call, so a crash can't hide requests; corrected to the real count after.
   const entry = { profileId, round, at: new Date().toISOString(), allowance, charged: allowance };
@@ -90,11 +115,12 @@ for (const { profileId, round } of plan) {
   if (recording) {
     const file = join(outDir, `${profileId}-round${round}.json`);
     writeFileSync(file, JSON.stringify(recording, null, 1));
-    if (recording.complete) usable += 1;
-    console.log(`${profileId} round ${round}: ${recording.complete ? "complete" : "INCOMPLETE"}; ${recording.attempts}/${recording.maxRequests} requests; pool ${recording.pool.length}${recording.stopped ? `; stopped: ${recording.stopped}` : ""}${recording.failures.length ? `; ${recording.failures.length} failure(s)` : ""} -> ${file}`);
+    if (!recording.stopped) usable += 1;
+    // Usability (clean, degraded or unusable) is decided by the offline replay check, not here.
+    console.log(`${profileId} round ${round}: ${recording.stopped ? `STOPPED by the recorder: ${recording.stopped}` : "recorded"}; ${recording.attempts}/${recording.maxRequests} requests; pool ${recording.pool.length}${recording.failures.length ? `; ${recording.failures.length} provider failure(s)` : ""} -> ${file}`);
   } else {
     console.log(`${profileId} round ${round}: FAILED (HTTP ${status}) ${note.replace(secret || "\u0000", "[secret]")}`);
   }
   await new Promise((resolve) => setTimeout(resolve, 1500));
 }
-console.log(`Done: ${usable} of ${plan.length} complete; ${ledger.calls.length} of ${maxCalls} approved calls and ${spent()} of ${maxTotal} approved external requests used.`);
+console.log(`Done: ${usable} of ${plan.length} recorded without a recorder stop (run the replay check for clean / degraded / unusable); ${ledger.calls.length} of ${maxCalls} approved calls and ${spent()} of ${maxTotal} approved external requests used. Nothing is retried automatically.`);

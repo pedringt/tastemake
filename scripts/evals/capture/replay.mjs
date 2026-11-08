@@ -120,17 +120,42 @@ export function checkRecording(recording, replay, env = {}) {
   };
 }
 
+// CLI: replay recordings, or a whole run folder, and summarize: clean, degraded and unusable pools, and the
+// requests the run's ledger records.
+//   node scripts/evals/capture/replay.mjs <recording.json | run folder> [...]
+export function summarizeVerdicts(verdicts) {
+  return {
+    clean: verdicts.filter((v) => v.usable && !v.degraded).length,
+    degraded: verdicts.filter((v) => v.usable && v.degraded).length,
+    unusable: verdicts.filter((v) => !v.usable).length
+  };
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const { statSync, readdirSync, existsSync } = await import("node:fs");
+  const { join } = await import("node:path");
   const { PROFILES } = await import("./profiles.mjs");
-  let failed = 0;
-  for (const file of process.argv.slice(2)) {
-    const recording = JSON.parse(readFileSync(file, "utf8"));
-    const profile = PROFILES[recording.profileId];
-    if (!profile) { console.log(`${file}: unknown profile ${recording.profileId}`); failed += 1; continue; }
-    const replay = await replayRetrieval(recording, { profile });
-    const verdict = checkRecording(recording, replay, process.env);
-    if (!verdict.usable) failed += 1;
-    console.log(`${file}: ${verdict.usable ? `usable (exact replay${verdict.degraded ? `; DEGRADED: ${verdict.unavailable.length} provider lookup(s) unavailable (${verdict.unavailable.map((u) => u.status ?? u.kind).join(", ")})` : ""})` : `NOT usable: ${verdict.problems.join("; ")}`}`);
+  const verdicts = [];
+  let requests = null;
+  for (const target of process.argv.slice(2)) {
+    const files = statSync(target).isDirectory()
+      ? readdirSync(target).filter((f) => f.endsWith(".json") && f !== "ledger.json").sort().map((f) => join(target, f))
+      : [target];
+    if (statSync(target).isDirectory() && existsSync(join(target, "ledger.json"))) {
+      const ledger = JSON.parse(readFileSync(join(target, "ledger.json"), "utf8"));
+      requests = (requests ?? 0) + ledger.calls.reduce((sum, call) => sum + (call.charged ?? 0), 0);
+    }
+    for (const file of files) {
+      const recording = JSON.parse(readFileSync(file, "utf8"));
+      const profile = PROFILES[recording.profileId];
+      if (!profile) { console.log(`${file}: unknown profile ${recording.profileId}`); verdicts.push({ usable: false }); continue; }
+      const replay = await replayRetrieval(recording, { profile });
+      const verdict = checkRecording(recording, replay, process.env);
+      verdicts.push(verdict);
+      console.log(`${file}: ${verdict.usable ? `usable (exact replay${verdict.degraded ? `; DEGRADED: ${verdict.unavailable.length} provider lookup(s) unavailable (${verdict.unavailable.map((u) => u.status ?? u.kind).join(", ")})` : "; clean"})` : `NOT usable: ${verdict.problems.join("; ")}`}`);
+    }
   }
-  process.exit(failed ? 1 : 0);
+  const counts = summarizeVerdicts(verdicts);
+  console.log(`Summary: ${counts.clean} clean, ${counts.degraded} degraded, ${counts.unusable} unusable${requests == null ? "" : `; ${requests} external requests recorded in the ledger(s)`}.`);
+  process.exit(counts.unusable ? 1 : 0);
 }

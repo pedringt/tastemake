@@ -240,6 +240,25 @@ const providerStub = async (url, init = {}) => {
   check("the first run's ledger is untouched", JSON.parse(readFileSync(join(tmp, "ledger.json"), "utf8")).calls[0].charged === 150);
   check("the recording lands in the run's folder", existsSync(join(tmp, "stage2", "example-profile-round1.json")));
   check("the secret is never printed", !accepted.stdout.includes("test-secret-value") && !accepted.stderr.includes("test-secret-value"));
+  // Per-profile caps, an ordered call list, no automatic retries, and the global budget stopping the run.
+  const seen = join(tmp, "allowances.txt");
+  const stub2 = join(tmp, "stub2.mjs");
+  writeFileSync(stub2, `import { appendFileSync } from "node:fs"; globalThis.fetch = async (url, init) => { const b = JSON.parse(init.body); appendFileSync(${JSON.stringify(seen)}, b.profileId + ":" + b.round + "=" + b.maxRequests + "\\n"); const stopped = b.profileId === "rosa" ? "request cap reached" : null; return new Response(JSON.stringify({ complete: !stopped, attempts: b.maxRequests, maxRequests: b.maxRequests, pool: [], failures: [], stopped }), { status: 200 }); };`);
+  const run2 = (extra) => spawnSync(process.execPath, ["--import", stub2, runner, "--url", "https://x-preview.vercel.app", "--out", tmp, ...extra], { encoding: "utf8", env: { ...process.env, VERCEL_AUTOMATION_BYPASS_SECRET: "test-secret-value" } });
+  const capsRun = run2(["--run", "caps", "--max-calls", "3", "--max-total-requests", "100", "--caps", "rosa=60,theo=61,mara=54", "--only", "rosa:1,theo:1,mara:1"]);
+  const given = readFileSync(seen, "utf8").trim().split("\n");
+  eq("each call gets its own profile's cap, in the listed order, until the budget runs short", given.join(" "), "rosa:1=60 theo:1=40");
+  check("the global budget stops the run before the third call", /Stopped: the global budget of 100 external requests is used up/.test(capsRun.stdout), capsRun.stdout);
+  const capsLedger = JSON.parse(readFileSync(join(tmp, "caps", "ledger.json"), "utf8"));
+  eq("a recording stopped by the recorder isn't retried: two calls in the ledger", capsLedger.calls.length, 2);
+  check("and it's reported as stopped", /rosa round 1: STOPPED by the recorder/.test(capsRun.stdout));
+  check("the run states that its caps exceed the budget", /caps add up to 175; the approved global budget is 100, so the run may stop before every call/.test(capsRun.stdout));
+  eq("--caps and --max-requests together: refused", run2(["--run", "x1", "--max-calls", "1", "--max-total-requests", "50", "--caps", "rosa=60", "--max-requests", "30", "--only", "rosa:1"]).status, 2);
+  eq("--caps missing a listed profile: refused", run2(["--run", "x2", "--max-calls", "2", "--max-total-requests", "50", "--caps", "rosa=60", "--only", "rosa:1,theo:1"]).status, 2);
+  eq("a cap over 80: refused", run2(["--run", "x3", "--max-calls", "1", "--max-total-requests", "50", "--caps", "rosa=81", "--only", "rosa:1"]).status, 2);
+  eq("a call listed twice: refused", run2(["--run", "x4", "--max-calls", "2", "--max-total-requests", "50", "--caps", "rosa=60", "--only", "rosa:1,rosa:1"]).status, 2);
+  const { summarizeVerdicts } = await import("../evals/capture/replay.mjs");
+  eq("the run summary counts clean, degraded and unusable pools", JSON.stringify(summarizeVerdicts([{ usable: true, degraded: false }, { usable: true, degraded: true }, { usable: false }, { usable: false }])), JSON.stringify({ clean: 1, degraded: 1, unusable: 2 }));
   rmSync(tmp, { recursive: true, force: true });
 }
 
