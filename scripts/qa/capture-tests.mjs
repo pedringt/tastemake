@@ -179,6 +179,53 @@ const providerStub = async (url, init = {}) => {
   check("instant replay (the old behaviour) would get the races wrong", !instant.samePool, JSON.stringify(instant.pool));
 }
 
+// ---- 5c. the usability rule: natural timeouts can qualify; recorder stops and other failures can't (Nov 8) -----
+{
+  const env = { TASTEMAKE_TMDB_TOKEN: "stub-tmdb", IGDB_CLIENT_ID: "stub-client-id", IGDB_CLIENT_SECRET: "stub-client-secret" };
+  const abort = () => Promise.reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+  const timingOut = (urls) => async (url, init) => (urls.some((u) => String(url).includes(u)) ? abort() : providerStub(url, init));
+  const one = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 40, env, realFetch: timingOut(["/movie/200/"]), realQuery: async () => [] });
+  const oneVerdict = checkRecording(one, await replayRetrieval(one, { profile: fixture }), env);
+  check("a production timeout, faithfully replayed, is usable", oneVerdict.usable && oneVerdict.replayExact, JSON.stringify(oneVerdict.problems));
+  eq("and the timed-out lookup is listed as unavailable", oneVerdict.unavailable.length, 1);
+  check("its pool still came from the other anchors", one.pool.length > 0);
+  const two = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 40, env, realFetch: timingOut(["/movie/100/", "/movie/200/"]), realQuery: async () => [] });
+  const twoVerdict = checkRecording(two, await replayRetrieval(two, { profile: fixture }), env);
+  check("over 25% of lookups failing is unrepresentative, even with an exact replay", !twoVerdict.usable && twoVerdict.replayExact && !twoVerdict.representative, JSON.stringify(twoVerdict));
+  const limited = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 40, env, realFetch: async (url, init) => (String(url).includes("/movie/200/") ? new Response("{}", { status: 429 }) : providerStub(url, init)), realQuery: async () => [] });
+  const limitedVerdict = checkRecording(limited, await replayRetrieval(limited, { profile: fixture }), env);
+  check("a rate-limited response disqualifies", !limitedVerdict.usable && limitedVerdict.problems.some((p) => /rate-limited/.test(p)));
+  const capped = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 2, env, realFetch: providerStub, realQuery: async () => [] });
+  const cappedVerdict = checkRecording(capped, await replayRetrieval(capped, { profile: fixture }), env);
+  check("a recording stopped by the request cap is never usable, whatever its replay", !cappedVerdict.usable && cappedVerdict.stopped && cappedVerdict.problems.some((p) => /stopped by the recorder: request cap/.test(p)));
+}
+
+// ---- 5d. the capture runner: the approved 80-request cap, and a fresh ledger per run ---------------------------
+{
+  const { spawnSync } = await import("node:child_process");
+  const { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const runner = new URL("../evals/capture/run-capture.mjs", import.meta.url).pathname;
+  const tmp = mkdtempSync(join(tmpdir(), "tastemake-run-capture-"));
+  writeFileSync(join(tmp, "ledger.json"), JSON.stringify({ calls: [{ profileId: "example-profile", round: 1, charged: 150 }] }));
+  const stub = join(tmp, "stub.mjs");
+  writeFileSync(stub, `globalThis.fetch = async (url, init) => { const b = JSON.parse(init.body); return new Response(JSON.stringify({ complete: true, attempts: Math.min(b.maxRequests, 61), maxRequests: b.maxRequests, pool: [1], failures: [], stopped: null }), { status: 200 }); };`);
+  const run = (extra) => spawnSync(process.execPath, ["--import", stub, runner, "--url", "https://x-preview.vercel.app", "--out", tmp, ...extra], { encoding: "utf8", env: { ...process.env, VERCEL_AUTOMATION_BYPASS_SECRET: "test-secret-value" } });
+  const stage2 = ["--run", "stage2", "--only", "example-profile:1", "--max-calls", "1", "--max-total-requests", "80"];
+  const accepted = run([...stage2, "--max-requests", "80"]);
+  eq("--max-requests 80 is accepted", accepted.status, 0);
+  check("the call is given the full 80 (budget allows it)", /1 of 1 approved calls and 61 of 80 approved external requests used/.test(accepted.stdout), accepted.stdout + accepted.stderr);
+  eq("--max-requests 81 is refused", run([...stage2.map((v) => (v === "stage2" ? "stage2b" : v)), "--max-requests", "81"]).status, 2);
+  eq("--run is required", run(["--only", "example-profile:1", "--max-calls", "1", "--max-total-requests", "80", "--max-requests", "80"]).status, 2);
+  const fresh = JSON.parse(readFileSync(join(tmp, "stage2", "ledger.json"), "utf8"));
+  check("the run's ledger is its own, starting from zero", fresh.calls.length === 1 && fresh.calls[0].charged === 61);
+  check("the first run's ledger is untouched", JSON.parse(readFileSync(join(tmp, "ledger.json"), "utf8")).calls[0].charged === 150);
+  check("the recording lands in the run's folder", existsSync(join(tmp, "stage2", "example-profile-round1.json")));
+  check("the secret is never printed", !accepted.stdout.includes("test-secret-value") && !accepted.stderr.includes("test-secret-value"));
+  rmSync(tmp, { recursive: true, force: true });
+}
+
 // ---- 6. the capture route's guards ------------------------------------------------------------------------
 {
   const call = async (handler, body, method = "POST") => {

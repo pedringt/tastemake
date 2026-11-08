@@ -79,15 +79,35 @@ export async function replayRetrieval(recording, { profile, retrieve = retrieveC
   };
 }
 
-// A recording is usable as a frozen pool only if it's complete, replays exactly and holds no secrets.
+// Whether a recording can be a frozen pool (Paige's rule, Nov 8). Replay fidelity, completeness and
+// provider availability are judged separately:
+// - stopped (the request cap or an unexpected host) always disqualifies: that's the recorder, not production;
+// - a timeout is production's own limit (an abort from fetchWithTimeout), so it's allowed when replay
+//   reproduces the pool exactly; it's listed as unavailable provider data;
+// - any other failure (HTTP errors, rate limits, network errors) disqualifies;
+// - more than DEGRADED_SHARE of provider lookups failing makes the pool unrepresentative, even if exact.
+export const DEGRADED_SHARE = 0.25;
 export function checkRecording(recording, replay, env = {}) {
   const problems = [];
-  if (recording.stopped) problems.push(`stopped: ${recording.stopped}`);
-  if (recording.failures.length) problems.push(`${recording.failures.length} failed or incomplete response(s)`);
+  if (recording.stopped) problems.push(`stopped by the recorder: ${recording.stopped}`);
+  const timeouts = recording.failures.filter((f) => f.kind === "timeout");
+  const otherFailures = recording.failures.filter((f) => f.kind !== "timeout");
+  if (otherFailures.length) problems.push(`${otherFailures.length} failure(s) other than timeouts: ${[...new Set(otherFailures.map((f) => f.kind))].join(", ")}`);
   if (!replay.exact) problems.push(`replay not exact (pool ${replay.samePool ? "same" : "different"}, ${replay.missing.length} missing, ${replay.unusedRandom} unused / ${replay.extraRandom} extra random draws)`);
+  const lookups = recording.requests.length;
+  const failedShare = lookups ? recording.failures.length / lookups : 0;
+  const representative = failedShare <= DEGRADED_SHARE;
+  if (!representative) problems.push(`degraded: ${recording.failures.length} of ${lookups} provider lookups failed (over ${DEGRADED_SHARE * 100}%)`);
   const secrets = findSecrets(JSON.stringify(recording), env);
   if (secrets.length) problems.push(`secret-like content: ${secrets.join(", ")}`);
-  return { usable: problems.length === 0, problems };
+  return {
+    usable: problems.length === 0,
+    problems,
+    replayExact: replay.exact,
+    stopped: Boolean(recording.stopped),
+    representative,
+    unavailable: timeouts.map((f) => f.url)
+  };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -100,7 +120,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const replay = await replayRetrieval(recording, { profile });
     const verdict = checkRecording(recording, replay, process.env);
     if (!verdict.usable) failed += 1;
-    console.log(`${file}: ${verdict.usable ? "usable (exact replay)" : `NOT usable: ${verdict.problems.join("; ")}`}`);
+    console.log(`${file}: ${verdict.usable ? `usable (exact replay${verdict.unavailable.length ? `; ${verdict.unavailable.length} provider lookup(s) timed out in production and are listed as unavailable` : ""})` : `NOT usable: ${verdict.problems.join("; ")}`}`);
   }
   process.exit(failed ? 1 : 0);
 }

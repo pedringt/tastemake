@@ -4,11 +4,15 @@
 // shell (VERCEL_AUTOMATION_BYPASS_SECRET) and is never printed or saved.
 //
 //   VERCEL_AUTOMATION_BYPASS_SECRET=... node scripts/evals/capture/run-capture.mjs \
-//     --url https://<preview>.vercel.app --max-calls 15 --max-requests 30 --max-total-requests <N> [--only rosa:2]
+//     --run <name> --url https://<preview>.vercel.app --max-calls <N> --max-requests <N> --max-total-requests <N> [--only rosa:2]
+//
+// Each --run gets its own folder and ledger under ~/tastemake-research-local/step4/, so an approved budget
+// can't borrow from another run's, and earlier ledgers stay as they were for audit (the first, 150-request
+// run's ledger is step4/ledger.json).
 //
 // Three limits, all enforced here and recorded in a ledger in the output folder, across runs:
 // - calls: at most --max-calls capture calls in total;
-// - per call: at most --max-requests external requests (the server enforces it inside each call);
+// - per call: at most --max-requests external requests (1-80; the server enforces it inside each call);
 // - global: at most --max-total-requests external requests across the whole experiment, retries and
 //   token requests included. Each call is given min(per-call cap, budget left), so the total can't be
 //   exceeded; a call that fails without a recording is charged its full allowance, since its real
@@ -25,7 +29,9 @@ const base = String(arg("--url") ?? "").replace(/\/$/, "");
 const maxCalls = Number(arg("--max-calls"));
 const maxRequests = Number(arg("--max-requests"));
 const maxTotal = Number(arg("--max-total-requests"));
-const outDir = arg("--out") ?? join(homedir(), "tastemake-research-local", "step4");
+const run = arg("--run");
+if (!run || !/^[a-z0-9][a-z0-9-]{0,40}$/.test(run)) refuse("--run <name> is required (lowercase letters, digits, dashes): each run gets its own folder and ledger");
+const outDir = join(arg("--out") ?? join(homedir(), "tastemake-research-local", "step4"), run);
 const only = arg("--only");
 const secret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "";
 const dryRun = args.includes("--dry-run");
@@ -33,7 +39,7 @@ const dryRun = args.includes("--dry-run");
 if (!/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(base)) refuse("--url must be the preview's https://….vercel.app address");
 if (base === "https://tastemake.vercel.app") refuse("that's production; use the preview address");
 if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > 15) refuse("--max-calls is required (1-15, the approved total)");
-if (!Number.isInteger(maxRequests) || maxRequests < 1 || maxRequests > 30) refuse("--max-requests is required (1-30, the approved per-call cap)");
+if (!Number.isInteger(maxRequests) || maxRequests < 1 || maxRequests > 80) refuse("--max-requests is required (1-80, the approved per-call cap)");
 if (!Number.isInteger(maxTotal) || maxTotal < 1 || maxTotal > 450) refuse("--max-total-requests is required: the approved global budget of external requests (no default)");
 if (!dryRun && !secret) refuse("set VERCEL_AUTOMATION_BYPASS_SECRET in your shell first");
 
