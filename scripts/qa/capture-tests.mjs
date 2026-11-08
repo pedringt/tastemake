@@ -156,7 +156,7 @@ const providerStub = async (url, init = {}) => {
   eq("no VERCEL_ENV (local or unknown): not found", (await call(createHandler({ env: {}, capture: fakeCapture }), { profileId: "example-profile", round: 1, maxRequests: 10 })).code, 404);
   eq("GET: refused", (await call(preview, {}, "GET")).code, 405);
   eq("an unknown profile: refused", (await call(preview, { profileId: "someone-else", round: 1, maxRequests: 10 })).code, 400);
-  eq("an approved but unresolved persona: refused", (await call(preview, { profileId: "rosa", round: 1, maxRequests: 10 })).code, 400);
+  eq("an approved, resolved persona: captured", (await call(preview, { profileId: "rosa", round: 1, maxRequests: 10 })).code, 200);
   eq("a prototype key as profile id: refused", (await call(preview, { profileId: "__proto__", round: 1, maxRequests: 10 })).code, 400);
   eq("no maxRequests: refused", (await call(preview, { profileId: "example-profile", round: 1 })).code, 400);
   eq("maxRequests over the ceiling: refused", (await call(preview, { profileId: "example-profile", round: 1, maxRequests: 500 })).code, 400);
@@ -172,7 +172,23 @@ const providerStub = async (url, init = {}) => {
   eq("a second capture while one runs: refused", (await call(slow, { profileId: "example-profile", round: 2, maxRequests: 10 })).code, 409);
   release();
   eq("the first capture still completes", (await first).code, 200);
-  check("the personas are approved but not usable until their titles are resolved", ["rosa", "theo", "mara", "dev"].every((id) => PROFILES[id].approved && !usableProfile(id)) && usableProfile("example-profile"));
+  check("all five profiles are usable: the Example Profile and the four approved, resolved personas", ["example-profile", "rosa", "theo", "mara", "dev"].every((id) => usableProfile(id)));
+}
+
+// ---- 7. the personas exercise retrieval across media (stubbed providers, so only anchor choice is tested) ------
+{
+  const { retrieveCatalogCandidates } = await import("../../src/catalog/related.mjs");
+  const { profileState } = await import("../evals/capture/recorder.mjs");
+  const empty = async () => ok({ results: [], docs: [], works: [] });
+  for (const id of ["rosa", "theo", "mara", "dev"]) {
+    const profile = PROFILES[id];
+    eq(`${id}: 10 rated titles`, Object.keys(profile.feedbackByRecommendation).length, 10);
+    check(`${id}: every title has a provider id`, Object.values(profile.feedbackByRecommendation).every((f) => f.item.provider && f.item.providerId));
+    const trace = {};
+    await retrieveCatalogCandidates(profileState(profile), { env: {}, fetchImpl: empty, trace });
+    const media = new Set((trace.retrieval?.anchors ?? []).map((a) => a.medium));
+    check(`${id}: retrieval anchors reach all four media`, ["movies", "tv", "read", "play"].every((m) => media.has(m)), [...media].join(","));
+  }
 }
 
 finish();

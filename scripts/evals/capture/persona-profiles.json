@@ -1,0 +1,1695 @@
+{
+ "note": "#341 step 4 personas, approved by Paige Nov 8, 2026; titles matched through /api/catalog and confirmed by Paige; reasons translated to the app reason chips.",
+ "personas": {
+  "rosa": {
+   "openlibrary-book-OL471576W": {
+    "item": {
+     "id": "openlibrary-book-OL471576W",
+     "provider": "openlibrary",
+     "providerId": "OL471576W",
+     "title": "Murder on the Orient Express",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Agatha Christie",
+     "about": "First published 1934.",
+     "year": "1934",
+     "artwork": "https://covers.openlibrary.org/b/id/11100465-L.jpg?default=false",
+     "genres": [
+      "Agatha Christie",
+      "Private investigator",
+      "P.I.",
+      "Hercule Poirot",
+      "Detective",
+      "Murder",
+      "Mystery",
+      "Juvenile",
+      "Humour",
+      "Fiction",
+      "Literature",
+      "Stories"
+     ],
+     "providerMeta": {
+      "seriesKey": "OL337952L",
+      "seriesKeys": [
+       "OL337952L"
+      ],
+      "seriesNames": [
+       "hercule poirot"
+      ],
+      "seriesPosition": 10,
+      "isbns": [
+       "9780008268879",
+       "9786041015708",
+       "9781724929716",
+       "9781978383401",
+       "1546434267",
+       "0671468944",
+       "2013215800",
+       "8478718583",
+       "9785041012779",
+       "1538520842",
+       "9789630722148",
+       "9780007246588",
+       "1983911054",
+       "0671784749",
+       "9781975764685",
+       "9780613096720",
+       "9781987697636",
+       "9781408294390",
+       "8477511209",
+       "9788804519041",
+       "1726420132",
+       "9788595086784",
+       "702005630X",
+       "9781987443707"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL471576W"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "story"
+    ]
+   },
+   "tmdb-movie-546554": {
+    "item": {
+     "id": "tmdb-movie-546554",
+     "provider": "tmdb",
+     "providerId": "546554",
+     "title": "Knives Out",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "When renowned crime novelist Harlan Thrombey is found dead at his estate just after his 85th birthday, the inquisitive and debonair Detective Benoit Blanc is mysteriously enlisted to investigate. From Harlan's dysfunctional family to his devoted staff, Blanc sifts through a web o",
+     "year": "2019",
+     "artwork": "https://image.tmdb.org/t/p/w780/pThyQovXQrw2m0s9x82twj48Jq4.jpg",
+     "genres": [
+      "35",
+      "80",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35,
+       80,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/546554"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "story",
+     "characters"
+    ]
+   },
+   "tmdb-tv-107113": {
+    "item": {
+     "id": "tmdb-tv-107113",
+     "provider": "tmdb",
+     "providerId": "107113",
+     "title": "Only Murders in the Building",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Three strangers share an obsession with true crime and suddenly find themselves wrapped up in one.",
+     "year": "2021",
+     "artwork": "https://image.tmdb.org/t/p/w780/1yjFVQZuW8aofZ5Cgol8iImsVFp.jpg",
+     "genres": [
+      "35",
+      "9648",
+      "80"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35,
+       9648,
+       80
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/107113"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "characters",
+     "humor"
+    ]
+   },
+   "openlibrary-book-OL20878311W": {
+    "item": {
+     "id": "openlibrary-book-OL20878311W",
+     "provider": "openlibrary",
+     "providerId": "OL20878311W",
+     "title": "Thursday Murder Club : (the Thursday Murder Club 1)",
+     "originalTitle": "The Thursday Murder Club",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Richard Osman",
+     "about": "First published 2020.",
+     "year": "2020",
+     "artwork": "https://covers.openlibrary.org/b/id/10201431-L.jpg?default=false",
+     "genres": [
+      "Series:Thursday-Murder-Club",
+      "Mystery",
+      "Fiction",
+      "Crime",
+      "Mystery Thriller",
+      "Thriller",
+      "Contemporary",
+      "Murder Mystery",
+      "Cozy Mystery",
+      "English literature",
+      "nyt:trade-fiction-paperback=2021-08-22",
+      "New York Times bestseller"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [
+       "thursday murder club"
+      ],
+      "seriesPosition": null,
+      "isbns": [
+       "6180145350",
+       "9780241988268",
+       "9789508523273",
+       "2702449417",
+       "8328714531",
+       "024142545X",
+       "9780593410257",
+       "0241991021",
+       "9780241425459",
+       "1984880969",
+       "9786070772740",
+       "0241425441",
+       "8467065605",
+       "9781984880970",
+       "9780241988275",
+       "1984880985",
+       "8466427503",
+       "9789403197401",
+       "9788467060225",
+       "9782253107651",
+       "0593410254",
+       "1984880977",
+       "9780241991022",
+       "9788466427500"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL20878311W"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "characters",
+     "humor"
+    ]
+   },
+   "tmdb-movie-661374": {
+    "item": {
+     "id": "tmdb-movie-661374",
+     "provider": "tmdb",
+     "providerId": "661374",
+     "title": "Glass Onion: A Knives Out Mystery",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "World-famous detective Benoit Blanc heads to Greece to peel back the layers of a mystery surrounding a tech billionaire and his eclectic crew of friends.",
+     "year": "2022",
+     "artwork": "https://image.tmdb.org/t/p/w780/vDGr1YdrlfbU9wxTOdpf3zChmv9.jpg",
+     "genres": [
+      "35",
+      "80",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35,
+       80,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/661374"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "story"
+    ]
+   },
+   "tmdb-tv-41956": {
+    "item": {
+     "id": "tmdb-tv-41956",
+     "provider": "tmdb",
+     "providerId": "41956",
+     "title": "Death in Paradise",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "A brilliant but idiosyncratic British detective and his resourceful local team solve baffling murder mysteries on the fictional Caribbean island of Saint Marie.",
+     "year": "2011",
+     "artwork": "https://image.tmdb.org/t/p/w780/u7t6vCyqAdD5hE4eEfTrZmVljDi.jpg",
+     "genres": [
+      "35",
+      "80",
+      "18",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35,
+       80,
+       18,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/41956"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "story"
+    ]
+   },
+   "igdb-game-166722": {
+    "item": {
+     "id": "igdb-game-166722",
+     "provider": "igdb",
+     "providerId": "166722",
+     "title": "The Case of the Golden Idol",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "A new kind of detective game that allows you to think and investigate freely. Discover clues surrounding 12 strange and gruesome deaths and build your own theory. Pick your suspect, deduce the motive, unmask the awful truth.",
+     "year": "2022",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co9tog.jpg",
+     "genres": [
+      "Point-and-click",
+      "Puzzle",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       2,
+       9,
+       31,
+       32
+      ],
+      "themes": [
+       "Thriller",
+       "Historical",
+       "Mystery"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/the-case-of-the-golden-idol"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "gameplay",
+     "story"
+    ]
+   },
+   "igdb-game-9643": {
+    "item": {
+     "id": "igdb-game-9643",
+     "provider": "igdb",
+     "providerId": "9643",
+     "title": "Return of the Obra Dinn",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "In this 1-bit first-person mystery game, a merchant ship called the Obra Dinn has appeared at a London harbor, years after being declared lost at sea. As an insurance adjuster, the player must examine the ship for clues.",
+     "year": "2018",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co27j9.jpg",
+     "genres": [
+      "Puzzle",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9,
+       31,
+       32
+      ],
+      "themes": [
+       "Fantasy",
+       "Historical",
+       "Mystery"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/return-of-the-obra-dinn"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "gameplay",
+     "atmosphere-style"
+    ]
+   },
+   "tmdb-movie-65754": {
+    "item": {
+     "id": "tmdb-movie-65754",
+     "provider": "tmdb",
+     "providerId": "65754",
+     "title": "The Girl with the Dragon Tattoo",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Disgraced journalist Mikael Blomkvist investigates the disappearance of a weary patriarch's niece from 40 years ago. He is aided by the pierced, tattooed, punk computer hacker named Lisbeth Salander. As they work together in the investigation, Blomkvist and Salander uncover immen",
+     "year": "2011",
+     "artwork": "https://image.tmdb.org/t/p/w780/8bokS83zGdhaXgN9tjidUKmAftW.jpg",
+     "genres": [
+      "53",
+      "80",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       53,
+       80,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/65754"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   },
+   "tmdb-tv-67744": {
+    "item": {
+     "id": "tmdb-tv-67744",
+     "provider": "tmdb",
+     "providerId": "67744",
+     "title": "MINDHUNTER",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Drama / Crime · 2017",
+     "year": "2017",
+     "artwork": "https://image.tmdb.org/t/p/w780/fbKE87mojpIETWepSbD5Qt741fp.jpg",
+     "genres": [
+      "18",
+      "80"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       18,
+       80
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/67744",
+     "aboutFlag": "sensitive-term"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "refinements": [
+     "atmosphere-style",
+     "pacing"
+    ]
+   }
+  },
+  "theo": {
+   "openlibrary-book-OL17716925W": {
+    "item": {
+     "id": "openlibrary-book-OL17716925W",
+     "provider": "openlibrary",
+     "providerId": "OL17716925W",
+     "title": "The Long Way to a Small, Angry Planet",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Becky Chambers",
+     "about": "First published 2014.",
+     "year": "2014",
+     "artwork": "https://covers.openlibrary.org/b/id/8902659-L.jpg?default=false",
+     "genres": [
+      "Fiction",
+      "Science fiction",
+      "Extraterrestrial beings",
+      "Interplanetary voyages",
+      "Fiction, science fiction, general",
+      "LGBTQ science fiction & fantasy",
+      "Space warfare",
+      "Action & Adventure",
+      "Romance",
+      "LGBT",
+      "Space Opera"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "9783104037103",
+       "2253260592",
+       "8494702041",
+       "1473619793",
+       "1500453307",
+       "9783596035687",
+       "9780062444134",
+       "2841727661",
+       "1094002127",
+       "0062444131",
+       "9788494702044",
+       "9781473619814",
+       "9781473619807",
+       "9781473619791",
+       "6052221542",
+       "3596035686",
+       "1473619777",
+       "1473619807",
+       "8594540507",
+       "9788594540508",
+       "0062444123",
+       "9782841727667",
+       "9781473619777",
+       "1094002135"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL17716925W"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "characters",
+     "atmosphere-style"
+    ]
+   },
+   "tmdb-tv-97546": {
+    "item": {
+     "id": "tmdb-tv-97546",
+     "provider": "tmdb",
+     "providerId": "97546",
+     "title": "Ted Lasso",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Ted Lasso, an American football coach, moves to England when he's hired to manage a soccer team—despite having no experience. With cynical players and a doubtful town, will he get them to see the Ted Lasso Way?",
+     "year": "2020",
+     "artwork": "https://image.tmdb.org/t/p/w780/uRHsiw1wLxPHFXkkv4Ix1s0O6f4.jpg",
+     "genres": [
+      "18",
+      "35"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       18,
+       35
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/97546"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "characters",
+     "atmosphere-style",
+     "humor"
+    ]
+   },
+   "tmdb-movie-346648": {
+    "item": {
+     "id": "tmdb-movie-346648",
+     "provider": "tmdb",
+     "providerId": "346648",
+     "title": "Paddington 2",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Paddington, now happily settled with the Browns, picks up a series of odd jobs to buy the perfect present for his Aunt Lucy, but it is stolen.",
+     "year": "2017",
+     "artwork": "https://image.tmdb.org/t/p/w780/1OJ9vkD5xPt3skC6KguyXAgagRZ.jpg",
+     "genres": [
+      "12",
+      "35",
+      "10751"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       12,
+       35,
+       10751
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/346648"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "atmosphere-style",
+     "humor"
+    ]
+   },
+   "igdb-game-17000": {
+    "item": {
+     "id": "igdb-game-17000",
+     "provider": "igdb",
+     "providerId": "17000",
+     "title": "Stardew Valley",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Stardew Valley is an open-ended country-life RPG! You’ve inherited your grandfather’s old farm plot in Stardew Valley. Armed with hand-me-down tools and a few coins, you set out to begin your new life. Can you learn to live off the land and turn these overgrown fields into a thri",
+     "year": "2016",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coa93h.jpg",
+     "genres": [
+      "Role-playing (RPG)",
+      "Simulator",
+      "Strategy",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       12,
+       13,
+       15,
+       31,
+       32
+      ],
+      "themes": [
+       "Fantasy",
+       "Business",
+       "Sandbox",
+       "Romance"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/stardew-valley"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   },
+   "openlibrary-book-OL20656224W": {
+    "item": {
+     "id": "openlibrary-book-OL20656224W",
+     "provider": "openlibrary",
+     "providerId": "OL20656224W",
+     "title": "House in the Cerulean Sea",
+     "originalTitle": "The House in the Cerulean Sea",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "T. J. Klune",
+     "about": "First published 2019.",
+     "year": "2019",
+     "artwork": "https://covers.openlibrary.org/b/id/9312772-L.jpg?default=false",
+     "genres": [
+      "Serie:Cerulean_Chronicles",
+      "American literature",
+      "nyt:trade-fiction-paperback=2021-01-17",
+      "New York Times bestseller",
+      "LGBTQ science fiction & fantasy",
+      "LGBTQ young adult",
+      "Fiction, fantasy, paranormal",
+      "Fiction, occult & supernatural",
+      "Magic",
+      "Fiction",
+      "Orphans",
+      "Children"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [
+       "cerulean chronicles"
+      ],
+      "seriesPosition": null,
+      "isbns": [
+       "9781250891884",
+       "9781250217325",
+       "9781250394545",
+       "9781250264299",
+       "9782378761110",
+       "9781250778871",
+       "9781250771308",
+       "9781035087518",
+       "1250357241",
+       "9788328724952",
+       "3453321367",
+       "9783453321366",
+       "1250771307",
+       "9781250217318",
+       "9781250217288",
+       "1250264294",
+       "1250394546",
+       "8408253891",
+       "1250778875",
+       "1663624119",
+       "1250217326",
+       "9798891642577",
+       "9781663624116",
+       "9781250357243"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL20656224W"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "characters",
+     "atmosphere-style"
+    ]
+   },
+   "tmdb-tv-125935": {
+    "item": {
+     "id": "tmdb-tv-125935",
+     "provider": "tmdb",
+     "providerId": "125935",
+     "title": "Abbott Elementary",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "In this workplace comedy, a group of dedicated, passionate teachers — and a slightly tone-deaf principal — are brought together in a Philadelphia public school where, despite the odds stacked against them, they are determined to help their students succeed in life. Though these i",
+     "year": "2021",
+     "artwork": "https://image.tmdb.org/t/p/w780/zk2aNVIHoapdWKOcaYp7PhX9SxD.jpg",
+     "genres": [
+      "35"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/125935"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "characters",
+     "humor"
+    ]
+   },
+   "igdb-game-116753": {
+    "item": {
+     "id": "igdb-game-116753",
+     "provider": "igdb",
+     "providerId": "116753",
+     "title": "A Short Hike",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "A Short Hike is an exploration adventure game set in Hawk Peak Provincial Park. Players control Claire, a young bird who sets out to reach the summit of Hawk Peak while waiting for an important phone call. The game allows players to climb, glide and explore the park at their own ",
+     "year": "2019",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co6e83.jpg",
+     "genres": [
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       31,
+       32
+      ],
+      "themes": [
+       "Fantasy",
+       "Open world"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/a-short-hike"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "atmosphere-style",
+     "exploration"
+    ]
+   },
+   "igdb-game-119304": {
+    "item": {
+     "id": "igdb-game-119304",
+     "provider": "igdb",
+     "providerId": "119304",
+     "title": "Spiritfarer",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Spiritfarer is a cozy management game about dying. You play Stella, ferrymaster to the deceased, a Spiritfarer. Build a boat to explore the world, then befriend and care for spirits before finally releasing them into the afterlife. Farm, mine, fish, harvest, cook, and craft your ",
+     "year": "2020",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2fe7.jpg",
+     "genres": [
+      "Platform",
+      "Simulator",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       8,
+       13,
+       31,
+       32
+      ],
+      "themes": [
+       "Action",
+       "Fantasy"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/spiritfarer"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "characters",
+     "story"
+    ]
+   },
+   "tmdb-tv-1399": {
+    "item": {
+     "id": "tmdb-tv-1399",
+     "provider": "tmdb",
+     "providerId": "1399",
+     "title": "Game of Thrones",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Seven noble families fight for control of the mythical land of Westeros. Friction between the houses leads to full-scale war. All while a very ancient evil awakens in the farthest north. Amidst the war, a neglected military order of misfits, the Night's Watch, is all that stands ",
+     "year": "2011",
+     "artwork": "https://image.tmdb.org/t/p/w780/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+     "genres": [
+      "10765",
+      "18",
+      "10759"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       10765,
+       18,
+       10759
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/1399"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "refinements": [
+     "atmosphere-style",
+     "characters"
+    ]
+   },
+   "tmdb-tv-2316": {
+    "item": {
+     "id": "tmdb-tv-2316",
+     "provider": "tmdb",
+     "providerId": "2316",
+     "title": "The Office",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "The everyday lives of office employees in the Scranton, Pennsylvania branch of the fictional Dunder Mifflin Paper Company.",
+     "year": "2005",
+     "artwork": "https://image.tmdb.org/t/p/w780/7DJKHzAi83BmQrWLrYYOqcoKfhR.jpg",
+     "genres": [
+      "35"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       35
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/2316"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "refinements": [
+     "humor"
+    ]
+   }
+  },
+  "mara": {
+   "tmdb-tv-72844": {
+    "item": {
+     "id": "tmdb-tv-72844",
+     "provider": "tmdb",
+     "providerId": "72844",
+     "title": "The Haunting of Hill House",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Flashing between past and present, a fractured family confronts haunting memories of their old home and the terrifying events that drove them from it.",
+     "year": "2018",
+     "artwork": "https://image.tmdb.org/t/p/w780/nWPZb800NCGiDPNGsKCfY0w44Z2.jpg",
+     "genres": [
+      "9648",
+      "18"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9648,
+       18
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/72844"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "atmosphere-style",
+     "characters"
+    ]
+   },
+   "tmdb-movie-310131": {
+    "item": {
+     "id": "tmdb-movie-310131",
+     "provider": "tmdb",
+     "providerId": "310131",
+     "title": "The Witch",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "In 1630, a farmer relocates his family to a remote plot of land on the edge of a forest where strange, unsettling things happen. With suspicion and paranoia mounting, each family member's faith, loyalty and love are tested in shocking ways.",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/zap5hpFCWSvdWSuPGAQyjUv2wAC.jpg",
+     "genres": [
+      "27",
+      "14",
+      "9648"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       27,
+       14,
+       9648
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/310131"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   },
+   "tmdb-movie-300668": {
+    "item": {
+     "id": "tmdb-movie-300668",
+     "provider": "tmdb",
+     "providerId": "300668",
+     "title": "Annihilation",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "A biologist signs up for a dangerous, secret expedition into a mysterious zone where the laws of nature don't apply.",
+     "year": "2018",
+     "artwork": "https://image.tmdb.org/t/p/w780/4YRplSk6BhH6PRuE9gfyw9byUJ6.jpg",
+     "genres": [
+      "878",
+      "27"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       878,
+       27
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/300668"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "atmosphere-style",
+     "world-setting"
+    ]
+   },
+   "igdb-game-164867": {
+    "item": {
+     "id": "igdb-game-164867",
+     "provider": "igdb",
+     "providerId": "164867",
+     "title": "Dredge",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Dredge is a fishing adventure with a sinister undercurrent. Sell your catch, upgrade your vessel and dredge the depths for long-buried relics. Explore the stories of the strange locals and discover why some things are best left forgotten. Captain your fishing trawler across a col",
+     "year": "2023",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co9kyk.jpg",
+     "genres": [
+      "Role-playing (RPG)",
+      "Simulator",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       12,
+       13,
+       31,
+       32
+      ],
+      "themes": [
+       "Action",
+       "Horror",
+       "Open world",
+       "Mystery"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/dredge"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   },
+   "openlibrary-book-OL20759125W": {
+    "item": {
+     "id": "openlibrary-book-OL20759125W",
+     "provider": "openlibrary",
+     "providerId": "OL20759125W",
+     "title": "Mexican Gothic",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Silvia Moreno-Garcia",
+     "about": "First published 2020.",
+     "year": "2020",
+     "artwork": "https://covers.openlibrary.org/b/id/10239163-L.jpg?default=false",
+     "genres": [
+      "English literature",
+      "nyt:combined-print-and-e-book-fiction=2020-07-19",
+      "New York Times bestseller",
+      "Fiction, gothic",
+      "Fiction, historical",
+      "Mexico, fiction",
+      "Fiction, historical, general",
+      "nyt:trade-fiction-paperback=2021-07-11",
+      "Haunted houses",
+      "Fiction",
+      "Families",
+      "Family secrets"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "1432885383",
+       "9781529402674",
+       "9781663634269",
+       "9780525620792",
+       "9791028112486",
+       "052562080X",
+       "1529402654",
+       "9788445009819",
+       "9781432892043",
+       "1663634262",
+       "9786070778018",
+       "1529402670",
+       "9781529402681",
+       "1432892045",
+       "0525620796",
+       "8445009818",
+       "0593213874",
+       "6070778014",
+       "9781529402650",
+       "9788445014318",
+       "1529402689",
+       "0525620788",
+       "9780525620785",
+       "9781529427097"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL20759125W"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   },
+   "tmdb-movie-9552": {
+    "item": {
+     "id": "tmdb-movie-9552",
+     "provider": "tmdb",
+     "providerId": "9552",
+     "title": "The Exorcist",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "When a mysterious entity possesses a young girl, her mother seeks the help of two Catholic priests to save her life.",
+     "year": "1973",
+     "artwork": "https://image.tmdb.org/t/p/w780/5x0CeVHJI8tcDx8tUUwYHQSNILq.jpg",
+     "genres": [
+      "27"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       27
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/9552"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "visual-style",
+     "atmosphere-style"
+    ]
+   },
+   "tmdb-movie-259693": {
+    "item": {
+     "id": "tmdb-movie-259693",
+     "provider": "tmdb",
+     "providerId": "259693",
+     "title": "The Conjuring 2",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Lorraine and Ed Warren travel to north London to help a single mother raising four children alone in a house plagued by malicious spirits.",
+     "year": "2016",
+     "artwork": "https://image.tmdb.org/t/p/w780/zEqyD0SBt6HL7W9JQoWwtd5Do1T.jpg",
+     "genres": [
+      "27"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       27
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/259693"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "refinements": [
+     "atmosphere-style",
+     "story"
+    ]
+   },
+   "tmdb-movie-250546": {
+    "item": {
+     "id": "tmdb-movie-250546",
+     "provider": "tmdb",
+     "providerId": "250546",
+     "title": "Annabelle",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "A couple begins to experience terrifying supernatural occurrences involving a vintage doll shortly after their home is invaded by satanic cultists.",
+     "year": "2014",
+     "artwork": "https://image.tmdb.org/t/p/w780/yLsuU2P2SpDYFwtZQ7dtfVAf6TE.jpg",
+     "genres": [
+      "27"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       27
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/250546"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   },
+   "tmdb-movie-176": {
+    "item": {
+     "id": "tmdb-movie-176",
+     "provider": "tmdb",
+     "providerId": "176",
+     "title": "Saw",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "Two men wake up to find themselves shackled in a grimy, abandoned bathroom. As they struggle to comprehend their predicament, they discover a disturbing tape left behind by the sadistic mastermind known as Jigsaw. With a chilling voice and cryptic instructions, Jigsaw informs the",
+     "year": "2004",
+     "artwork": "https://image.tmdb.org/t/p/w780/rLNSOudrayDBo1uqXjrhxcjODIC.jpg",
+     "genres": [
+      "27",
+      "9648",
+      "80"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       27,
+       9648,
+       80
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/176"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   },
+   "igdb-game-7342": {
+    "item": {
+     "id": "igdb-game-7342",
+     "provider": "igdb",
+     "providerId": "7342",
+     "title": "Inside",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Inside is a puzzle-platformer developed by Playdead, presented in a 2.5D side-scrolling format with a dark, predominantly monochromatic visual style. The player controls an unnamed boy navigating a dystopian environment, solving environmental puzzles, avoiding hostile guards and ",
+     "year": "2016",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co2fca.jpg",
+     "genres": [
+      "Platform",
+      "Puzzle",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       8,
+       9,
+       31,
+       32
+      ],
+      "themes": [
+       "Action",
+       "Science fiction",
+       "Horror",
+       "Stealth",
+       "Drama"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/inside"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "atmosphere-style"
+    ]
+   }
+  },
+  "dev": {
+   "igdb-game-11737": {
+    "item": {
+     "id": "igdb-game-11737",
+     "provider": "igdb",
+     "providerId": "11737",
+     "title": "Outer Wilds",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Outer Wilds is a critically-acclaimed and award-winning open world mystery about a solar system trapped in an endless time loop. The newest member of the space program in a small village on the planet Timber Hearth, the player navigates a space shuttle and travels across their so",
+     "year": "2019",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co65ac.jpg",
+     "genres": [
+      "Puzzle",
+      "Simulator",
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       9,
+       13,
+       31,
+       32
+      ],
+      "themes": [
+       "Action",
+       "Science fiction",
+       "Open world",
+       "Mystery"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/outer-wilds"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "exploration",
+     "gameplay",
+     "story"
+    ]
+   },
+   "igdb-game-9254": {
+    "item": {
+     "id": "igdb-game-9254",
+     "provider": "igdb",
+     "providerId": "9254",
+     "title": "Subnautica",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Descend into the depths of an alien underwater world filled with wonder and peril. Craft equipment, pilot submarines and out-smart wildlife to explore lush coral reefs, volcanoes, cave systems, and more, all while trying to survive.",
+     "year": "2018",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coa938.jpg",
+     "genres": [
+      "Adventure",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       31,
+       32
+      ],
+      "themes": [
+       "Science fiction",
+       "Survival",
+       "Open world"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/subnautica"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "exploration",
+     "gameplay"
+    ]
+   },
+   "igdb-game-7046": {
+    "item": {
+     "id": "igdb-game-7046",
+     "provider": "igdb",
+     "providerId": "7046",
+     "title": "Factorio",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "You will be mining resources, researching technologies, building infrastructure, automating production and fighting enemies. Use your imagination to design your factory, combine simple elements into ingenious structures, apply management skills to keep it working and finally prot",
+     "year": "2020",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1tfy.jpg",
+     "genres": [
+      "Real Time Strategy (RTS)",
+      "Simulator",
+      "Strategy",
+      "Indie"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       11,
+       13,
+       15,
+       32
+      ],
+      "themes": [
+       "Science fiction",
+       "Survival",
+       "Sandbox"
+      ],
+      "collectionId": null,
+      "franchiseId": null
+     },
+     "sourceUrl": "https://www.igdb.com/games/factorio"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "gameplay"
+    ]
+   },
+   "openlibrary-book-OL21745884W": {
+    "item": {
+     "id": "openlibrary-book-OL21745884W",
+     "provider": "openlibrary",
+     "providerId": "OL21745884W",
+     "title": "Project Hail Mary",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Andy Weir",
+     "about": "First published 2021.",
+     "year": "2021",
+     "artwork": "https://covers.openlibrary.org/b/id/11200092-L.jpg?default=false",
+     "genres": [
+      "hard science-fiction",
+      "science-fiction",
+      "sci-fi",
+      "hard sci-fi",
+      "nyt:hardcover-fiction=2021-05-23",
+      "New York Times bestseller",
+      "New York Times reviewed",
+      "Fiction, science fiction, action & adventure",
+      "Fiction, science fiction, hard science fiction",
+      "End of the world",
+      "Fiction",
+      "Astronauts"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "8328716801",
+       "0593135210",
+       "9523930001",
+       "8925588730",
+       "9401614075",
+       "9783453321342",
+       "9786257442398",
+       "9781529100631",
+       "8413148464",
+       "059335527X",
+       "9788925588735",
+       "1529100615",
+       "1529100623",
+       "9781713630296",
+       "0593395565",
+       "9781529100617",
+       "9787544787352",
+       "0593135202",
+       "9791028119676",
+       "6064310995",
+       "9780593135211",
+       "9780593135228",
+       "0593135229",
+       "9781529100624"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL21745884W"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "story",
+     "humor"
+    ]
+   },
+   "tmdb-movie-286217": {
+    "item": {
+     "id": "tmdb-movie-286217",
+     "provider": "tmdb",
+     "providerId": "286217",
+     "title": "The Martian",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "During a manned mission to Mars, Astronaut Mark Watney is presumed dead after a fierce storm and left behind by his crew. But Watney has survived and finds himself stranded and alone on the hostile planet. With only meager supplies, he must draw upon his ingenuity, wit and spirit",
+     "year": "2015",
+     "artwork": "https://image.tmdb.org/t/p/w780/5BHuvQ6p9kfc091Z8RiFNhCwL4b.jpg",
+     "genres": [
+      "878",
+      "18",
+      "12"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       878,
+       18,
+       12
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/286217"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "story"
+    ]
+   },
+   "tmdb-tv-63639": {
+    "item": {
+     "id": "tmdb-tv-63639",
+     "provider": "tmdb",
+     "providerId": "63639",
+     "title": "The Expanse",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "A thriller set two hundred years in the future following the case of a missing young woman who brings a hardened detective and a rogue ship's captain together in a race across the solar system to expose the greatest conspiracy in human history.",
+     "year": "2015",
+     "artwork": "https://image.tmdb.org/t/p/w780/5vQlVWkIMPhZ88OWchJsgwGEK9.jpg",
+     "genres": [
+      "18",
+      "9648",
+      "10765"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       18,
+       9648,
+       10765
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/63639"
+    },
+    "rating": "more",
+    "detail": "loved-before",
+    "refinements": [
+     "world-setting"
+    ]
+   },
+   "tmdb-tv-87917": {
+    "item": {
+     "id": "tmdb-tv-87917",
+     "provider": "tmdb",
+     "providerId": "87917",
+     "title": "For All Mankind",
+     "type": "tv",
+     "domains": [
+      "tv"
+     ],
+     "about": "Explore an aspirational world where NASA and the space program remained a priority and a focal point of our hopes and dreams as told through the lives of NASA astronauts, engineers, and their families.",
+     "year": "2019",
+     "artwork": "https://image.tmdb.org/t/p/w780/JP3DItWMbrrLiKR5AYUfpsNf2b.jpg",
+     "genres": [
+      "18",
+      "10765",
+      "10768"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       18,
+       10765,
+       10768
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/tv/87917"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "world-setting",
+     "characters"
+    ]
+   },
+   "igdb-game-200165": {
+    "item": {
+     "id": "igdb-game-200165",
+     "provider": "igdb",
+     "providerId": "200165",
+     "title": "Call of Duty: Modern Warfare II",
+     "type": "game",
+     "domains": [
+      "play"
+     ],
+     "about": "Call of Duty: Modern Warfare II drops players into an unprecedented global conflict that features the return of the iconic Operators of Task Force 141.",
+     "year": "2022",
+     "artwork": "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co4sbw.jpg",
+     "genres": [
+      "Shooter"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       5
+      ],
+      "themes": [
+       "Action",
+       "Warfare"
+      ],
+      "collectionId": null,
+      "franchiseId": 726
+     },
+     "sourceUrl": "https://www.igdb.com/games/call-of-duty-modern-warfare-ii"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "refinements": [
+     "gameplay"
+    ]
+   },
+   "tmdb-movie-181812": {
+    "item": {
+     "id": "tmdb-movie-181812",
+     "provider": "tmdb",
+     "providerId": "181812",
+     "title": "Star Wars: The Rise of Skywalker",
+     "type": "movie",
+     "domains": [
+      "movies"
+     ],
+     "about": "The surviving Resistance faces the First Order once again as the journey of Rey, Finn and Poe Dameron continues. With the power and knowledge of generations behind them, the final battle begins.",
+     "year": "2019",
+     "artwork": "https://image.tmdb.org/t/p/w780/db32LaOibwEliAmSL2jjDF6oDdj.jpg",
+     "genres": [
+      "12",
+      "28",
+      "878"
+     ],
+     "providerMeta": {
+      "genreIds": [
+       12,
+       28,
+       878
+      ],
+      "collectionId": null
+     },
+     "sourceUrl": "https://www.themoviedb.org/movie/181812"
+    },
+    "rating": "less",
+    "detail": "tried-disliked",
+    "refinements": [
+     "story"
+    ]
+   },
+   "openlibrary-book-OL17829905W": {
+    "item": {
+     "id": "openlibrary-book-OL17829905W",
+     "provider": "openlibrary",
+     "providerId": "OL17829905W",
+     "title": "Seveneves",
+     "type": "book",
+     "domains": [
+      "read"
+     ],
+     "by": "Neal Stephenson",
+     "about": "First published 2015.",
+     "year": "2015",
+     "artwork": "https://covers.openlibrary.org/b/id/9295719-L.jpg?default=false",
+     "genres": [
+      "Survival",
+      "Exploration",
+      "Disasters",
+      "Fiction",
+      "Fiction, science fiction, general",
+      "nyt:hardcover-fiction=2015-06-07",
+      "New York Times bestseller",
+      "New York Times reviewed",
+      "Space colonies",
+      "Pioneers",
+      "End of the world",
+      "American Science fiction"
+     ],
+     "providerMeta": {
+      "seriesKey": null,
+      "seriesKeys": [],
+      "seriesNames": [],
+      "seriesPosition": null,
+      "isbns": [
+       "9788466659413",
+       "0062334514",
+       "0008148104",
+       "0062190415",
+       "9788490694350",
+       "0008132534",
+       "0008132542",
+       "9780008148102",
+       "1501220233",
+       "8466658955",
+       "9781501220234",
+       "9780062396075",
+       "0062190377",
+       "3442486424",
+       "9780062334510",
+       "9788466658959",
+       "9780008132521",
+       "8490694354",
+       "8466659412",
+       "9781469230962",
+       "9781469246864",
+       "9780008132514",
+       "0062457780",
+       "9783442486427"
+      ]
+     },
+     "sourceUrl": "https://openlibrary.org/works/OL17829905W"
+    },
+    "rating": "more",
+    "detail": "liked-before",
+    "refinements": [
+     "world-setting"
+    ]
+   }
+  }
+ }
+}

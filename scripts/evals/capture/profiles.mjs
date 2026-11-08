@@ -2,13 +2,19 @@
 // can't be used to retrieve for arbitrary or someone else's data.
 // - example-profile: Paige's published Example Profile (data/example-profile.json).
 // - rosa / theo / mara / dev: the four personas, approved by Paige on Nov 8 (Mara's Silent Hill 2 swapped
-//   for Dredge). Not usable yet: their titles still need resolving to provider ids (a counted, separately
-//   approved step).
+//   for Dredge). Their titles were matched through /api/catalog (resolve-titles.mjs, 40 requests of an
+//   approved 45) and the matches confirmed by Paige; persona-profiles.json holds the resulting ratings,
+//   with reasons translated to the app's reason chips.
 import { readFileSync } from "node:fs";
 
 const example = JSON.parse(readFileSync(new URL("../../../data/example-profile.json", import.meta.url), "utf8"));
+const resolved = JSON.parse(readFileSync(new URL("./persona-profiles.json", import.meta.url), "utf8")).personas;
 
-const persona = (id, label, rows) => ({ id, label, approved: true, resolved: false, titles: rows.map(([title, type, rating, reasons]) => ({ title, type, rating, reasons })) });
+const persona = (id, label, rows) => ({
+  id, label, approved: true, resolved: Boolean(resolved[id]),
+  titles: rows.map(([title, type, rating, reasons]) => ({ title, type, rating, reasons })),
+  ...(resolved[id] ? { feedbackByRecommendation: resolved[id] } : {})
+});
 
 export const PROFILES = {
   "example-profile": { id: "example-profile", label: "Paige's Example Profile", approved: true, resolved: true, feedbackByRecommendation: (example.state ?? example).feedbackByRecommendation },
