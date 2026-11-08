@@ -4,10 +4,15 @@
 // shell (VERCEL_AUTOMATION_BYPASS_SECRET) and is never printed or saved.
 //
 //   VERCEL_AUTOMATION_BYPASS_SECRET=... node scripts/evals/capture/run-capture.mjs \
-//     --url https://<preview>.vercel.app --max-calls 15 --max-requests 30 [--only rosa:2]
+//     --url https://<preview>.vercel.app --max-calls 15 --max-requests 30 --max-total-requests <N> [--only rosa:2]
 //
-// Approved Nov 8, 2026: up to 15 capture calls in total, each capped at 30 external requests (hard total
-// 450). A ledger in the output folder counts calls across runs, so re-captures can't exceed the total.
+// Three limits, all enforced here and recorded in a ledger in the output folder, across runs:
+// - calls: at most --max-calls capture calls in total;
+// - per call: at most --max-requests external requests (the server enforces it inside each call);
+// - global: at most --max-total-requests external requests across the whole experiment, retries and
+//   token requests included. Each call is given min(per-call cap, budget left), so the total can't be
+//   exceeded; a call that fails without a recording is charged its full allowance, since its real
+//   count is unknown.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -19,6 +24,7 @@ const refuse = (message) => { console.error(`refused: ${message}`); process.exit
 const base = String(arg("--url") ?? "").replace(/\/$/, "");
 const maxCalls = Number(arg("--max-calls"));
 const maxRequests = Number(arg("--max-requests"));
+const maxTotal = Number(arg("--max-total-requests"));
 const outDir = arg("--out") ?? join(homedir(), "tastemake-research-local", "step4");
 const only = arg("--only");
 const secret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "";
@@ -28,6 +34,7 @@ if (!/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(base)) refuse("--url must be the
 if (base === "https://tastemake.vercel.app") refuse("that's production; use the preview address");
 if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > 15) refuse("--max-calls is required (1-15, the approved total)");
 if (!Number.isInteger(maxRequests) || maxRequests < 1 || maxRequests > 30) refuse("--max-requests is required (1-30, the approved per-call cap)");
+if (!Number.isInteger(maxTotal) || maxTotal < 1 || maxTotal > 450) refuse("--max-total-requests is required: the approved global budget of external requests (no default)");
 if (!dryRun && !secret) refuse("set VERCEL_AUTOMATION_BYPASS_SECRET in your shell first");
 
 const PLAN = [
@@ -41,14 +48,19 @@ mkdirSync(outDir, { recursive: true });
 const ledgerPath = join(outDir, "ledger.json");
 const ledger = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")) : { calls: [] };
 const remaining = maxCalls - ledger.calls.length;
-console.log(`Plan: ${plan.length} capture call(s), at most ${maxRequests} external requests each; ${ledger.calls.length} of ${maxCalls} approved calls already used; output ${outDir}.`);
+const spent = () => ledger.calls.reduce((sum, call) => sum + (call.charged ?? 0), 0);
+console.log(`Plan: ${plan.length} capture call(s), at most ${maxRequests} external requests each; ${ledger.calls.length} of ${maxCalls} approved calls and ${spent()} of ${maxTotal} approved external requests already used; output ${outDir}.`);
 if (plan.length > remaining) refuse(`only ${remaining} approved call(s) left; this run needs ${plan.length}`);
 if (dryRun) { plan.forEach((p) => console.log(`  would capture ${p.profileId} round ${p.round}`)); process.exit(0); }
 
 let usable = 0;
 for (const { profileId, round } of plan) {
-  ledger.calls.push({ profileId, round, at: new Date().toISOString() });
-  writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2));   // counted before the call, so a crash can't hide one
+  const allowance = Math.min(maxRequests, maxTotal - spent());
+  if (allowance < 1) { console.log(`Stopped: the global budget of ${maxTotal} external requests is used up.`); break; }
+  // Charged in full before the call, so a crash can't hide requests; corrected to the real count after.
+  const entry = { profileId, round, at: new Date().toISOString(), allowance, charged: allowance };
+  ledger.calls.push(entry);
+  writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2));
   let status = 0;
   let recording = null;
   let note = "";
@@ -56,7 +68,7 @@ for (const { profileId, round } of plan) {
     const response = await fetch(`${base}/api/eval-capture`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-vercel-protection-bypass": secret },
-      body: JSON.stringify({ profileId, round, maxRequests })
+      body: JSON.stringify({ profileId, round, maxRequests: allowance })
     });
     status = response.status;
     const text = await response.text();
@@ -64,6 +76,10 @@ for (const { profileId, round } of plan) {
     else note = text.slice(0, 200);
   } catch (error) {
     note = error?.name ?? "error";
+  }
+  if (recording && Number.isInteger(recording.attempts) && recording.attempts <= allowance) {
+    entry.charged = recording.attempts;
+    writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2));
   }
   if (recording) {
     const file = join(outDir, `${profileId}-round${round}.json`);
@@ -75,4 +91,4 @@ for (const { profileId, round } of plan) {
   }
   await new Promise((resolve) => setTimeout(resolve, 1500));
 }
-console.log(`Done: ${usable} of ${plan.length} complete; ${ledger.calls.length} of ${maxCalls} approved calls used.`);
+console.log(`Done: ${usable} of ${plan.length} complete; ${ledger.calls.length} of ${maxCalls} approved calls and ${spent()} of ${maxTotal} approved external requests used.`);
