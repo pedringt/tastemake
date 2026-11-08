@@ -17,7 +17,8 @@ import { retrieveCatalogCandidates } from "../../../src/catalog/related.mjs";
 import { hydrateState } from "../../../src/server/request-state.mjs";
 import { redactBody, redactUrl } from "./redact.mjs";
 
-export const ALLOWED_HOSTS = ["api.themoviedb.org", "openlibrary.org", "api.igdb.com", "id.twitch.tv", "www.googleapis.com"];
+// Every host retrieval can call (all of src/catalog, scanned Nov 8 after Wikidata was missed in the first scan).
+export const ALLOWED_HOSTS = ["api.themoviedb.org", "openlibrary.org", "api.igdb.com", "id.twitch.tv", "www.googleapis.com", "query.wikidata.org"];
 // Provider settings retrieval reads. Replay gives the same names placeholder values; values are never kept.
 export const PROVIDER_ENV = ["TASTEMAKE_TMDB_TOKEN", "IGDB_CLIENT_ID", "IGDB_CLIENT_SECRET", "TASTEMAKE_GOOGLE_BOOKS_API_KEY"];
 const WRITE_SQL = /\b(insert|update|delete|merge|upsert|truncate|alter|drop|create|grant)\b/i;
