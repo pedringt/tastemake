@@ -195,6 +195,23 @@ const providerStub = async (url, init = {}) => {
   const limited = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 40, env, realFetch: async (url, init) => (String(url).includes("/movie/200/") ? new Response("{}", { status: 429 }) : providerStub(url, init)), realQuery: async () => [] });
   const limitedVerdict = checkRecording(limited, await replayRetrieval(limited, { profile: fixture }), env);
   check("a rate-limited response disqualifies", !limitedVerdict.usable && limitedVerdict.problems.some((p) => /rate-limited/.test(p)));
+  // Revised Nov 8 after Stage 2: a provider 5xx is handled by production like a timeout.
+  const status = (code, urls) => async (url, init) => (urls.some((u) => String(url).includes(u)) ? new Response("{}", { status: code }) : providerStub(url, init));
+  const bad = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 40, env, realFetch: status(502, ["/movie/200/"]), realQuery: async () => [] });
+  const badVerdict = checkRecording(bad, await replayRetrieval(bad, { profile: fixture }), env);
+  check("a provider 502, faithfully replayed, is usable", badVerdict.usable && badVerdict.replayExact, JSON.stringify(badVerdict.problems));
+  check("and the pool is marked degraded, with the 502 listed as unavailable", badVerdict.degraded && badVerdict.unavailable.some((u) => u.status === 502));
+  const clean = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 40, env, realFetch: providerStub, realQuery: async () => [] });
+  const cleanVerdict = checkRecording(clean, await replayRetrieval(clean, { profile: fixture }), env);
+  check("a clean recording is usable and not marked degraded", cleanVerdict.usable && !cleanVerdict.degraded);
+  const many5xx = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 40, env, realFetch: status(503, ["/movie/100/", "/movie/200/"]), realQuery: async () => [] });
+  const manyVerdict = checkRecording(many5xx, await replayRetrieval(many5xx, { profile: fixture }), env);
+  check("too many provider 5xx responses are unrepresentative", !manyVerdict.usable && !manyVerdict.representative);
+  const missingPage = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 40, env, realFetch: status(404, ["/movie/200/"]), realQuery: async () => [] });
+  check("a 404 (not a provider outage) disqualifies", !checkRecording(missingPage, await replayRetrieval(missingPage, { profile: fixture }), env).usable);
+  const dropped = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 40, env, realFetch: async (url, init) => (String(url).includes("/movie/200/") ? Promise.reject(new TypeError("fetch failed")) : providerStub(url, init)), realQuery: async () => [] });
+  const droppedVerdict = checkRecording(dropped, await replayRetrieval(dropped, { profile: fixture }), env);
+  check("a network error isn't usable automatically: it needs human review", !droppedVerdict.usable && droppedVerdict.needsReview);
   const capped = await captureRetrieval({ profile: fixture, round: 1, maxRequests: 2, env, realFetch: providerStub, realQuery: async () => [] });
   const cappedVerdict = checkRecording(capped, await replayRetrieval(capped, { profile: fixture }), env);
   check("a recording stopped by the request cap is never usable, whatever its replay", !cappedVerdict.usable && cappedVerdict.stopped && cappedVerdict.problems.some((p) => /stopped by the recorder: request cap/.test(p)));

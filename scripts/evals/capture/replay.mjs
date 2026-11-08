@@ -79,25 +79,33 @@ export async function replayRetrieval(recording, { profile, retrieve = retrieveC
   };
 }
 
-// Whether a recording can be a frozen pool (Paige's rule, Nov 8). Replay fidelity, completeness and
-// provider availability are judged separately:
+// Whether a recording can be a frozen pool (Paige's rule, revised Nov 8 after Stage 2). Replay fidelity,
+// completeness and provider availability are judged separately:
 // - stopped (the request cap or an unexpected host) always disqualifies: that's the recorder, not production;
-// - a timeout is production's own limit (an abort from fetchWithTimeout), so it's allowed when replay
-//   reproduces the pool exactly; it's listed as unavailable provider data;
-// - any other failure (HTTP errors, rate limits, network errors) disqualifies;
+// - a provider failure that production handles on its own is allowed when replay reproduces the pool
+//   exactly: a timeout (production's own abort) or a provider HTTP 5xx; each is listed as unavailable;
+// - a 429 rate limit disqualifies (our own capture volume could cause it), as does any other HTTP error;
+// - a network error (no response at all) needs human review, so it isn't usable automatically;
 // - more than DEGRADED_SHARE of provider lookups failing makes the pool unrepresentative, even if exact.
+//   Below that, an accepted pool with any provider failure is still marked degraded: the threshold is a
+//   screen, not proof that the missing data didn't matter.
 export const DEGRADED_SHARE = 0.25;
+const providerFailure = (f) => f.kind === "timeout" || (f.kind === "http-error" && f.status >= 500 && f.status <= 599);
 export function checkRecording(recording, replay, env = {}) {
   const problems = [];
   if (recording.stopped) problems.push(`stopped by the recorder: ${recording.stopped}`);
-  const timeouts = recording.failures.filter((f) => f.kind === "timeout");
-  const otherFailures = recording.failures.filter((f) => f.kind !== "timeout");
-  if (otherFailures.length) problems.push(`${otherFailures.length} failure(s) other than timeouts: ${[...new Set(otherFailures.map((f) => f.kind))].join(", ")}`);
+  const allowed = recording.failures.filter(providerFailure);
+  const rateLimited = recording.failures.filter((f) => f.kind === "rate-limited");
+  const network = recording.failures.filter((f) => f.kind === "network");
+  const otherFailures = recording.failures.filter((f) => !providerFailure(f) && f.kind !== "rate-limited" && f.kind !== "network");
+  if (rateLimited.length) problems.push(`${rateLimited.length} rate-limited response(s)`);
+  if (otherFailures.length) problems.push(`${otherFailures.length} other failure(s): ${[...new Set(otherFailures.map((f) => f.status ?? f.kind))].join(", ")}`);
+  if (network.length) problems.push(`${network.length} network error(s): needs human review`);
   if (!replay.exact) problems.push(`replay not exact (pool ${replay.samePool ? "same" : "different"}, ${replay.missing.length} missing, ${replay.unusedRandom} unused / ${replay.extraRandom} extra random draws)`);
   const lookups = recording.requests.length;
   const failedShare = lookups ? recording.failures.length / lookups : 0;
   const representative = failedShare <= DEGRADED_SHARE;
-  if (!representative) problems.push(`degraded: ${recording.failures.length} of ${lookups} provider lookups failed (over ${DEGRADED_SHARE * 100}%)`);
+  if (!representative) problems.push(`degraded beyond the screen: ${recording.failures.length} of ${lookups} provider lookups failed (over ${DEGRADED_SHARE * 100}%)`);
   const secrets = findSecrets(JSON.stringify(recording), env);
   if (secrets.length) problems.push(`secret-like content: ${secrets.join(", ")}`);
   return {
@@ -106,7 +114,9 @@ export function checkRecording(recording, replay, env = {}) {
     replayExact: replay.exact,
     stopped: Boolean(recording.stopped),
     representative,
-    unavailable: timeouts.map((f) => f.url)
+    degraded: recording.failures.length > 0,
+    needsReview: network.length > 0,
+    unavailable: allowed.map((f) => ({ url: f.url, kind: f.kind, ...(f.status ? { status: f.status } : {}) }))
   };
 }
 
@@ -120,7 +130,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const replay = await replayRetrieval(recording, { profile });
     const verdict = checkRecording(recording, replay, process.env);
     if (!verdict.usable) failed += 1;
-    console.log(`${file}: ${verdict.usable ? `usable (exact replay${verdict.unavailable.length ? `; ${verdict.unavailable.length} provider lookup(s) timed out in production and are listed as unavailable` : ""})` : `NOT usable: ${verdict.problems.join("; ")}`}`);
+    console.log(`${file}: ${verdict.usable ? `usable (exact replay${verdict.degraded ? `; DEGRADED: ${verdict.unavailable.length} provider lookup(s) unavailable (${verdict.unavailable.map((u) => u.status ?? u.kind).join(", ")})` : ""})` : `NOT usable: ${verdict.problems.join("; ")}`}`);
   }
   process.exit(failed ? 1 : 0);
 }
