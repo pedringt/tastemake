@@ -2,7 +2,8 @@
   "git": {
     "deploymentEnabled": {
       "**": false,
-      "main": true
+      "main": true,
+      "eval/step4-capture": true
     }
   },
   "functions": {
@@ -17,6 +18,9 @@
     },
     "api/similar.mjs": {
       "maxDuration": 30
+    },
+    "api/eval-capture.mjs": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
