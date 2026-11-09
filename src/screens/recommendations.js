@@ -7,7 +7,7 @@ import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
-import { safeAbout } from "../catalog/synopsis.mjs";
+import { safeAbout, storedSynopsis } from "../catalog/synopsis.mjs";
 import { readableRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
@@ -268,12 +268,16 @@ function whyContent(item) {
 
   // The card already shows the reason; repeat it here only when the card had to cut it short.
   const truncated = truncateCopy(rationale, RATIONALE_MAX_CHARS) !== rationale;
+  // #321: the card shows about 90 characters of synopsis; here the stored text (which ingestion may already
+  // have shortened), so the context behind a pitch is one tap away. Left out when there is none.
+  const synopsis = storedSynopsis(item);
   return `
     <span class="why-kicker">${label}</span>
     ${truncated ? `<p><strong>Why this might work:</strong> ${esc(rationale)}</p>` : ""}
     ${foundFrom ? `<p><strong>Found from:</strong> ${esc(groundingText([foundFrom]))}, through the catalog's related titles.</p>` : ""}
     ${closest.length ? `<p><strong>Closest things you rated:</strong> ${esc(groundingText(closest))}</p>` : ""}
     ${pattern ? `<p><strong>Pattern being tested:</strong> ${esc(pattern.claim)}</p>` : ""}
+    ${synopsis ? `<p class="why-synopsis"><strong>Synopsis:</strong> ${esc(synopsis)}</p>` : ""}
     <p class="why-caveat"><strong>What could miss:</strong> ${esc(uncertainty)}</p>`;
 }
 
