@@ -111,7 +111,9 @@ function statementConsequence(item, said) {
   // scoring or the catalog fallback. So no line here promises that future picks will change.
   let text = "";
   if (said.says === "not-me") text = "Tastemake won’t use this pattern in your Taste Profile, and asks its AI not to lean on it when explaining picks.";
-  else if (said.says === "unsure") text = "Tastemake will keep this tentative instead of leaning on it.";
+  // Nov 9 (feedback semantics D6): "Not sure" means unconfirmed, not weaker. Nothing caps the level, so the copy
+  // no longer says Tastemake keeps the pattern "tentative".
+  else if (said.says === "unsure") text = "Tastemake won’t present this pattern to its AI as something you agreed with. Its level still reflects the evidence.";
   else if (said.says === "partial") text = "Tastemake asks its AI to treat this pattern more cautiously when making recommendations.";
   else if (said.weight === "lot") text = "Tastemake will tell its AI this pattern matters more to you.";
   else if (said.weight === "little") text = "Tastemake will tell its AI this pattern matters less to you.";
@@ -170,7 +172,7 @@ function hypothesisCard(item, index, records = new Map()) {
         <div class="signal-provenance">${esc(update.provenance)}</div>
         ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count. The pattern stays here so you can change your mind.</div>` : ""}
         ${said?.says === "partial" ? `<div class="signal-said"><strong>You marked this pattern as partly accurate.</strong> Tastemake keeps it in your profile and tells its AI to treat it more cautiously. It doesn’t yet know which part doesn’t fit.</div>` : ""}
-        ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake keeps the pattern tentative rather than treating your uncertainty as evidence.</div>` : ""}
+        ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake treats it as unconfirmed: it won’t present it to its AI as something you agreed with. How strong the evidence looks doesn’t change.</div>` : ""}
         ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is.</div>` : ""}
         ${["accurate", "partial"].includes(said?.says) && shownContext(said) ? `<div class="signal-said">${CONTEXT[shownContext(said)] ?? "You refined when this applies."}.</div>` : ""}
         ${sayControls(item, said, record)}

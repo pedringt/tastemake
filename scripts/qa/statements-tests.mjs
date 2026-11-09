@@ -87,6 +87,11 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   eq("Partly + Not sure yet still reaches the AI", buildContext(state).statements[0]?.context, "unsure");
   state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "accurate", context: "some" }];
   check("a saved Yes + Depends line still renders", renderProfile().includes(CONTEXT.some) && renderMine().includes(CONTEXT.some));
+  // Nov 9 (feedback semantics D6): "Not sure" means unconfirmed. The level isn't capped, so the copy can't say "tentative".
+  state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "unsure", context: null }];
+  const unsure = renderProfile();
+  check("Not sure is described as unconfirmed", unsure.includes("treats it as unconfirmed") && unsure.includes("Its level still reflects the evidence"));
+  check("and never as tentative", !/tentative/i.test(unsure));
 }
 
 {
