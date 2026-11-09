@@ -94,7 +94,20 @@ const PLACEHOLDER_ABOUT = /^(?:first published \d{3,4}\.|book from (?:open libra
 export function storedSynopsis(item) {
   const text = String(item?.about ?? "").replace(/\s+/g, " ").trim();
   if (!text || item?.aboutFlag || PLACEHOLDER_ABOUT.test(text)) return null;
-  return assessSynopsis({ about: text }).ok ? text : null;
+  return assessSynopsis({ about: text }).ok ? endCleanly(text) : null;
+}
+
+// Ingestion keeps the first 280 characters (clean() in providers.mjs), so a long synopsis can be stored
+// ending mid-word ("...at your disposal. Pu"). Text that long without closing punctuation was cut: end it
+// at its last full sentence when that keeps most of it, otherwise at the last whole word with an ellipsis.
+const INGESTED_ABOUT_MAX = 280;
+
+function endCleanly(text) {
+  if (text.length < INGESTED_ABOUT_MAX || /[.!?…]["”’)]?$/.test(text)) return text;
+  const sentenceEnd = Math.max(text.lastIndexOf(". "), text.lastIndexOf("! "), text.lastIndexOf("? "));
+  if (sentenceEnd > text.length * 0.5) return text.slice(0, sentenceEnd + 1);
+  const lastSpace = text.lastIndexOf(" ");
+  return `${(lastSpace > 0 ? text.slice(0, lastSpace) : text).replace(/[,;:.\-\s]+$/, "")}…`;
 }
 
 // "about, else the user's own note, else a default" -- the pattern several screens already use --

@@ -130,7 +130,7 @@ const cardSynopsis = (it) => truncateCopy(safeAbout(it), 90);   // ABOUT_MAX_CHA
   eq("the collapsed card still shows only the first sentence", about(mist.id), "A small town family is torn apart by a brutal crime.");
   check("More about why shows the stored synopsis, labelled Synopsis", synopsisLine(mist.id)?.includes("<strong>Synopsis:</strong>") && synopsisLine(mist.id).includes("an eerie mist rolls in"), synopsisLine(mist.id));
   check("never called a full synopsis", !/full synopsis/i.test(html));
-  check("a long stored synopsis is shown as stored, cut and all", synopsisLine(lake.id)?.includes("Pam Voorhees") && synopsisLine(lake.id).includes("leaving the to"), synopsisLine(lake.id));
+  check("a synopsis cut at ingestion ends at its last full sentence, not mid-word", synopsisLine(lake.id)?.includes("Pam Voorhees") && synopsisLine(lake.id).endsWith("almost a year before.") && !synopsisLine(lake.id).includes("leaving the to"), synopsisLine(lake.id));
   check("Crystal Lake's card is unchanged too", about(lake.id).startsWith("Single mother Pam Voorhees") && about(lake.id).length <= 95, about(lake.id));
   eq("a provider placeholder gets no Synopsis line", synopsisLine(bare.id), null);
   eq("nor does a book's 'First published' placeholder", synopsisLine(book.id), null);
@@ -138,6 +138,14 @@ const cardSynopsis = (it) => truncateCopy(safeAbout(it), 90);   // ABOUT_MAX_CHA
   eq("nor an item with no stored text", synopsisLine(none.id), null);
   check("and those cards still render their what-could-miss line", [bare, book, flagged, none].every((i) => card(i.id).includes("What could miss")));
   eq("storedSynopsis trims spacing and keeps the text", storedSynopsis({ about: "  Two  lines\nof text.  " }), "Two lines of text.");
+  // Dishonored's stored overview (Nov 9, production): 280 characters ending "...at your disposal. Pu".
+  const dishonored = "Dishonored is an immersive first-person action game that casts you as a supernatural assassin driven by revenge. With Dishonored’s flexible combat system, creatively eliminate your targets as you combine the supernatural abilities, weapons and unusual gadgets at your disposal. Pu";
+  eq("the ingestion cap is what marks a synopsis as cut", dishonored.length, 280);
+  check("Dishonored's ends at 'at your disposal.'", storedSynopsis({ about: dishonored }).endsWith("weapons and unusual gadgets at your disposal."), storedSynopsis({ about: dishonored }));
+  const oneSentence = `${"A long and winding description of a quiet coastal town ".repeat(5)}where nobody leaves and nobody arr`.slice(0, 280);
+  check("with no sentence end late enough, it stops at the last whole word with an ellipsis", /\b[a-z]+…$/.test(storedSynopsis({ about: oneSentence })) && !storedSynopsis({ about: oneSentence }).endsWith("arr…"), storedSynopsis({ about: oneSentence }));
+  eq("a short synopsis without a closing period is left alone", storedSynopsis({ about: "A heist gone wrong in Lisbon" }), "A heist gone wrong in Lisbon");
+  check("a 280-character synopsis that already ends a sentence is left alone", storedSynopsis({ about: `${"x".repeat(279)}.` }).length === 280);
   check("the pitch is left exactly as the model wrote it (this shows context, it doesn't grade the pitch)", card(mist.id).includes("Isolating supernatural fog"));
 }
 
