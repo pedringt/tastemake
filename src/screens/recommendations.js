@@ -10,6 +10,7 @@ import { hasSeriesSignal } from "../catalog/novelty.mjs";
 import { safeAbout, storedSynopsis } from "../catalog/synopsis.mjs";
 import { readableRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
+import { renderPathSwitch } from "../components/path-switch.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { basisSentence, recommendationBasis } from "../model/loading-basis.js";
 import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE, CATALOG_SET_LINE, setSource } from "../ai/ai-status.js";
@@ -295,6 +296,7 @@ function feedbackPopover(item, saved) {
         </div>
         <button type="button" class="rec-feedback-close" data-feedback-close="${item.id}" aria-label="Close feedback">×</button>
       </div>
+      ${saved ? renderPathSwitch(item, path) : ""}
       ${experienceChoices(item.id, saved)}
       ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
       ${saved ? seriesExperienceFeedback(item, saved) : ""}

@@ -66,6 +66,20 @@
   font-weight:800;
 }
 .library-tab[aria-selected="false"] .library-tab-count { background:var(--pink-soft); }
+/* #336: Dismissed is secondary: a quiet link under the tabs, not a third tab. */
+.library-dismissed-link {
+  appearance:none; border:0; background:none; padding:4px 0; margin:0 0 12px; cursor:pointer;
+  min-height:44px; color:var(--navy); font-size:13px; font-weight:700; text-decoration:underline; text-underline-offset:3px;
+}
+.library-dismissed-link span { color:var(--muted); font-weight:400; margin-left:4px; }
+.library-dismissed-link[aria-pressed="true"] { text-decoration:none; }
+.library-dismissed-heading { margin:0 0 6px; font-size:20px; }
+.library-dismissed-heading:focus { outline:none; }
+.library-dismissed-list { list-style:none; margin:0; padding:0; display:grid; gap:10px; max-width:760px; }
+.library-dismissed-item { padding:10px 14px; border:1px solid rgb(var(--ink-rgb,17 26 75) / .18); border-radius:12px; background:rgba(255,255,255,.85); color:var(--text2,#3f4774); }
+.library-dismissed-item em { color:var(--muted); font-style:normal; font-size:12px; margin-left:6px; }
+.library-dismissed-options { display:grid; gap:8px; margin-top:10px; }
+.library-dismissed-options .feedback-detail-prompt { min-width:64px; }
 .library-view-lede { margin:0 0 18px; color:var(--muted); font-size:14px; line-height:1.5; max-width:760px; }
 
 .library-section { margin-top:26px; }

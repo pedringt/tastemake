@@ -25,6 +25,7 @@ const SUITES = [
   "async-tests.mjs",
   "validate-tests.mjs",
   "pitch-provenance-tests.mjs",
+  "dismissed-tests.mjs",
   "profile-rules-tests.mjs",
   "confirmed-patterns-tests.mjs",
   "profile-refresh-race-tests.mjs",
