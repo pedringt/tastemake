@@ -8,6 +8,7 @@ import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-me
 import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
 import { PICKS_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState } from "../src/server/request-state.mjs";
+import { clientIp, underBestEffortRateLimit } from "../src/server/rate-limit.mjs";
 import { domainById } from "../src/data/domains.js";
 import { isAdultTagged, triedAdultTagged } from "../src/catalog/adult-content.mjs";
 import { evidenceRecords } from "../src/model/evidence.js";
@@ -17,33 +18,12 @@ import { excludedBy } from "../src/model/exclusions.js";
 import { chooseCandidates, closestRatings, featureRarity, selectionBasis } from "../src/ai/taste-score.js";
 
 const MAX_BODY_BYTES = 160_000;
-const DEFAULT_VISITOR_LIMIT = 6;
-const DEFAULT_WINDOW_MS = 60_000;
 const MAX_PROMPT_EVIDENCE = 18;
-const rateBuckets = globalThis.__tastemakeAiRateBuckets ??= new Map();
 
 function parseBody(body) {
   if (body && typeof body === "object") return body;
   if (typeof body === "string") return JSON.parse(body);
   return {};
-}
-
-function clientIp(req) {
-  const forwarded = req.headers?.["x-forwarded-for"] ?? req.headers?.get?.("x-forwarded-for");
-  return String(forwarded || "unknown").split(",")[0].trim();
-}
-
-function underBestEffortRateLimit(ip, now = Date.now()) {
-  const limit = Number(process.env.TASTEMAKE_AI_VISITOR_LIMIT || DEFAULT_VISITOR_LIMIT);
-  const windowMs = Number(process.env.TASTEMAKE_AI_RATE_WINDOW_MS || DEFAULT_WINDOW_MS);
-  const bucket = rateBuckets.get(ip);
-  if (!bucket || now - bucket.started >= windowMs) {
-    rateBuckets.set(ip, { started: now, count: 1 });
-    return true;
-  }
-  if (bucket.count >= limit) return false;
-  bucket.count += 1;
-  return true;
 }
 
 function compactEvidenceRecord(record) {
