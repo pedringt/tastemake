@@ -153,7 +153,7 @@ export async function requestRecommendations(state, { signal } = {}) {
 
   let payload = null;
   try { payload = await response.json(); } catch { /* handled below */ }
-  if (!response.ok) throw new Error(payload?.error || `recommendation request failed (${response.status})`);
+  if (!response.ok) throw Object.assign(new Error(payload?.error || `recommendation request failed (${response.status})`), { status: response.status });
   if (!payload || !Array.isArray(payload.picks)) throw new Error("recommendation response was missing picks");
   return payload;
 }

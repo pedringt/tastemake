@@ -41,6 +41,7 @@ const SUITES = [
   "persistence-tests.mjs",
   "state-shape-tests.mjs",
   "profile-gate-tests.mjs",
+  "request-failure-tests.mjs",
   "export-tests.mjs",
   "example-profile-tests.mjs",
   "refinement-tests.mjs",

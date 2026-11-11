@@ -418,6 +418,9 @@ function renderCardArea(items) {
     return Array.from({ length: 6 }, (_, index) => skeletonCard(index)).join("");
   }
   if (items.length) return items.map((item, index) => recommendationCard(item, index, items.length)).join("");
+  // #350: after a failed request the status above says what happened and offers Try again; this line is
+  // about the evidence, which isn't the problem.
+  if (state.aiSource === "error") return "";
   return `<div class="filter-empty recommendation-empty">No real catalog recommendations are available yet. Change your favorites or try another category.</div>`;
 }
 
@@ -473,7 +476,18 @@ function renderAiStatus() {
       <p>${AI_PAUSED_EXPLAINER} These picks come straight from the catalog, matched to your favorites. Your ratings still count, and they’ll shape AI picks when it’s back.</p>
     </aside>`;
   if (state.aiSource === "catalog") return `<p class="ai-inline-status">Using catalog matches for this set.</p>`;
-  return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> Tastemake could not build a trustworthy set.</p>`;
+  // #350: a request that failed (an outage, a timeout or the per-visitor limit), not a judgment on the evidence.
+  const kept = activeRecommendations(state).length ? " The set below is the one you already had." : "";
+  return `
+    <div class="refresh-banner is-finished recommendation-request-error">
+      <div>
+        <span class="refresh-kicker">Recommendations didn’t load</span>
+        <p>${esc(state.aiMessage || "Tastemake couldn’t reach its recommendations just now.")}${kept}</p>
+      </div>
+      <div class="action-group">
+        <button class="button button-primary" type="button" data-action="retry-recommendations">Try again</button>
+      </div>
+    </div>`;
 }
 // #93/2026-09-28: the ongoing-loop action. Available as soon as a set exists — not gated behind
 // rating any card, let alone every card, in the current set (see canKeepDiscovering).

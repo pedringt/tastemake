@@ -45,7 +45,7 @@ import { handleMineChange, handleMineClick, handleMineSubmit, openMine } from ".
 import { renderRecovery } from "./components/recovery.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { finishSavedTried, keepOnSavedList, saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite } from "./actions/recommendations.js";
+import { announceReaction, chooseExperiencePath, retryRecommendations, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
@@ -1164,6 +1164,9 @@ app.addEventListener("click", async (event) => {
 
   if (action === "keep-discovering" && canKeepDiscovering(state) && state.aiStatus !== AI_LOADING) {
     await runKeepDiscovering({ render, updateStepper, announce, navigate });
+  }
+  if (action === "retry-recommendations" && state.aiStatus !== AI_LOADING) {
+    await retryRecommendations({ render, updateStepper, announce, navigate });
   }
 });
 
