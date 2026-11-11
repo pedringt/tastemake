@@ -1,6 +1,7 @@
 import { displayLabel } from "../data/domains.js";
 import { refinementRecords } from "./refinements.js";
 import { patternDisplayStatus, statementFor } from "./statements.js";
+import { checkStateShape } from "./state-shape.js";
 
 export const BACKUP_VERSION = 1;
 
@@ -37,6 +38,8 @@ export function parseBackupText(text) {
   if (!parsed || parsed.format !== "tastemake-backup") throw new Error("That is not a Tastemake backup.");
   if (parsed.version !== BACKUP_VERSION) throw new Error("That Tastemake backup version is not supported.");
   if (!parsed.state || typeof parsed.state !== "object" || Array.isArray(parsed.state)) throw new Error("That backup is missing its Tastemake data.");
+  // #348: refuse a backup with data Tastemake can't read, rather than restore it and break every screen.
+  if (checkStateShape(parsed.state).dropped.length) throw new Error("That backup has data Tastemake can't read, so nothing was restored.");
 
   const state = {};
   for (const field of BACKUP_FIELDS) {

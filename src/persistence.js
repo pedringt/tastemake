@@ -1,3 +1,5 @@
+import { checkStateShape } from "./model/state-shape.js";
+
 const KEY = "tastemake:test-state:v1";
 
 const SET_FIELDS = ["selectedFavorites", "libraryFavorites", "blindSpotDismissed", "setupAreas"];
@@ -20,7 +22,9 @@ export function loadPersistedState() {
   try {
     const parsed = JSON.parse(store.getItem(KEY) || "null");
     if (!parsed || typeof parsed !== "object" || parsed.version !== 1) return {};
-    const value = parsed.state ?? {};
+    // #348: keep what is usable. A field or entry with the wrong shape is left out (and the next save
+    // overwrites it) instead of throwing on every screen that reads it.
+    const value = checkStateShape(parsed.state ?? {}).state;
     for (const field of SET_FIELDS) {
       if (Array.isArray(value[field])) value[field] = new Set(value[field]);
     }

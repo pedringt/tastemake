@@ -5,11 +5,16 @@ import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-me
 import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
 import { HYPOTHESES_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState as hydrateBaseState } from "../src/server/request-state.mjs";
+import { clientIp, underBestEffortRateLimit } from "../src/server/rate-limit.mjs";
 import { visibleDomains } from "../src/data/domains.js";
 import { compactProfileContext, expandProfileRefs } from "../src/ai/profile-context.js";
 
 const MAX_BODY_BYTES = 160_000;
 export const PROFILE_MAX_OUTPUT_TOKENS = 3200;
+// #349: with nothing the person has tried there is nothing a pattern could cite, so answer without a paid
+// call. (One or two tried items can still support an "emerging" pattern, so the bar stays at one; the
+// per-visitor limit in the handler is what bounds spend.)
+export const MIN_EXPERIENCED_FOR_PROFILE = 1;
 
 // QA sweep real bug (fixed here): this used to be a second, hand-maintained copy of the shared
 // hydrateState (now in src/server/request-state.mjs) -- it had already drifted (missing blindSpots,
@@ -96,6 +101,15 @@ function rejectionCategoryCounts(rejected = []) {
 export async function produceHypotheses({ rawState, env = process.env, fetchImpl = fetch } = {}) {
   const state = hydrateState(rawState);
   const ctx = { ...buildContext(state), presentRefs: state.presentRefs };
+  const experienced = (ctx.evidence ?? []).filter((record) => record.class === "experienced").length;
+  if (experienced < MIN_EXPERIENCED_FOR_PROFILE) {
+    return {
+      source: "insufficient-evidence",
+      reason: "a Taste Profile needs at least one thing you've tried",
+      hypotheses: [],
+      meta: { paidCallMade: false, insufficientEvidence: true, experienced }
+    };
+  }
   const config = hypothesisConfig(env);
   if (!config.enabled) {
     // #86: this gate was failing silently in production with no way to tell which of the six
@@ -192,6 +206,9 @@ export default async function handler(req, res) {
   try {
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
     if (!body.state || typeof body.state !== "object") return res.status(400).json({ error: "state is required" });
+    // #349: the same best-effort per-visitor limit as /api/recommendations, in its own bucket. Checked after
+    // the request is known to be valid, so a malformed request doesn't use up the allowance.
+    if (!underBestEffortRateLimit(`profile:${clientIp(req)}`)) return res.status(429).json({ error: "too many requests" });
     const started = Date.now();
     const payload = await produceHypotheses({ rawState: body.state });
     console.info("[tastemake-profile]", JSON.stringify({

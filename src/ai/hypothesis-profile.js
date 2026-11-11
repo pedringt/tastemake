@@ -228,6 +228,13 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
       state.hypothesisAiMessage = CHECKED_NEEDS_REVIEW;
       markChecked(state, key);
       announce(CHECKED_NEEDS_REVIEW);
+    } else if (payload.meta?.insufficientEvidence) {
+      // #349: too few tried things for a pattern yet; the server answered without a paid call. Not a failure,
+      // so no "couldn't" message, and no asking again until the evidence changes.
+      markChecked(state, key);
+      state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
+        ? UPDATED_MESSAGE
+        : "Tastemake needs at least one thing you’ve tried before it can suggest patterns.";
     } else {
       // A failed, paused or empty answer leaves the saved profile exactly as it was.
       markChecked(state, null);

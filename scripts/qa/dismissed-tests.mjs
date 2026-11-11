@@ -65,6 +65,29 @@ const popover = (html) => html.match(/<div class="rec-feedback-popover[\s\S]*?<\
   eq("the title itself is kept", after.item.title, pick.title);
 }
 
+// ---- 2b. While Change shows Not tried, the Tried-only questions are hidden (QA, Nov 11) ---------------
+{
+  setup();
+  const pick = { ...show(4, "Series Show"), providerMeta: { collectionId: 99 } };
+  state.recommendationSets = [[pick]];
+  state.screen = "recommendations";
+  saveExperienceOutcome(pick.id, "liked");
+  state.recommendationFeedbackItemId = pick.id;
+  const triedEditor = popover(renderRecommendations());
+  check("on its own path, Liked it shows What worked for you?", /What worked for you\?/.test(triedEditor));
+  check("...and the series question", /Seen more from this series\?/.test(triedEditor));
+
+  chooseExperiencePath(pick.id, "not-tried");
+  const switched = popover(renderRecommendations());
+  check("after switching to Not tried, Save / Not interested show", /data-experience-outcome="save"/.test(switched) && /data-experience-outcome="not-interested"/.test(switched));
+  check("...and What worked for you? is hidden", !/What worked for you\?/.test(switched));
+  check("...and so is the series question", !/Seen more from this series\?|data-series-experience/.test(switched));
+  check("...while the saved reaction is unchanged until a new answer", isExperienced(state.feedbackByRecommendation[pick.id]));
+
+  chooseExperiencePath(pick.id, "tried");
+  check("switching back to Tried shows its questions again", /What worked for you\?/.test(popover(renderRecommendations())));
+}
+
 // ---- 3. Browse's Change offers the same switch ---------------------------------------------------------
 {
   setup();

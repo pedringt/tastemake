@@ -42,9 +42,10 @@ import { createCandidatePrefetcher } from "./ai/prefetch.js";
 import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, handleMineSubmit, openMine } from "./actions/mine.js";
+import { renderRecovery } from "./components/recovery.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { finishSavedTried, keepOnSavedList, saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite } from "./actions/recommendations.js";
+import { announceReaction, chooseExperiencePath, retryRecommendations, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
@@ -109,7 +110,16 @@ async function openExampleProfile({ screen = "model", replace = false } = {}) {
 function render() {
   persistState(state);
   syncAiBadge(state);
-  app.innerHTML = exampleBannerHtml() + views[state.screen]();
+  // #348: a screen that throws shows a way out instead of a blank page.
+  let screenHtml;
+  try {
+    screenHtml = views[state.screen]();
+  } catch (error) {
+    console.error("[tastemake-render]", state.screen, error);
+    app.innerHTML = exampleBannerHtml() + renderRecovery(state);
+    return;
+  }
+  app.innerHTML = exampleBannerHtml() + screenHtml;
   candidatePrefetcher.schedule(state);
   // #6: fetched once per visit, after the first set exists (not for the example profile); only its own
   // slot is redrawn when it arrives.
@@ -192,8 +202,11 @@ function setLook(id) {
 
 const mineCtx = { render, updateStepper, restoreFocus, announce, navigate: (screen) => navigate(screen), canAccess };
 
+// #348: the recovery panel (components/recovery.js) reuses My Tastemake's controls on any screen.
+const mineControlsShown = () => state.screen === "mine" || Boolean(app.querySelector("[data-render-recovery]"));
+
 app.addEventListener("click", (event) => {
-  if (state.screen !== "mine") return;
+  if (!mineControlsShown()) return;
   handleMineClick(event, mineCtx);
 });
 
@@ -228,7 +241,7 @@ app.addEventListener("change", (event) => {
       return;
     }
   }
-  if (state.screen !== "mine") return;
+  if (!mineControlsShown()) return;
   handleMineChange(event, mineCtx);
 });
 
@@ -1151,6 +1164,9 @@ app.addEventListener("click", async (event) => {
 
   if (action === "keep-discovering" && canKeepDiscovering(state) && state.aiStatus !== AI_LOADING) {
     await runKeepDiscovering({ render, updateStepper, announce, navigate });
+  }
+  if (action === "retry-recommendations" && state.aiStatus !== AI_LOADING) {
+    await retryRecommendations({ render, updateStepper, announce, navigate });
   }
 });
 
