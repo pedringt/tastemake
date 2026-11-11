@@ -285,6 +285,10 @@ function whyContent(item) {
 function feedbackPopover(item, saved) {
   const path = experiencePath(item.id, saved);
   if (state.recommendationFeedbackItemId !== item.id || !path) return "";
+  // The saved reaction's follow-up questions belong to its own path. While Change shows the other path
+  // (Not tried on a Tried reaction, say), they're hidden until a new answer replaces the reaction; the
+  // saved answers stay until then, as in Browse.
+  const followUps = Boolean(saved) && path === pathForFeedback(saved);
 
 
   return `
@@ -298,9 +302,9 @@ function feedbackPopover(item, saved) {
       </div>
       ${saved ? renderPathSwitch(item, path) : ""}
       ${experienceChoices(item.id, saved)}
-      ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
-      ${saved ? seriesExperienceFeedback(item, saved) : ""}
-      ${saved ? renderBlindSpotPanel(item.id) : ""}
+      ${followUps ? renderExperienceRefinement(item.id, item, saved) : ""}
+      ${followUps ? seriesExperienceFeedback(item, saved) : ""}
+      ${followUps ? renderBlindSpotPanel(item.id) : ""}
     </div>`;
 }
 
