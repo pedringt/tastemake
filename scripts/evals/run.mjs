@@ -28,7 +28,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, badResponses } from "./fixtures.mjs";
+import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, DISLIKE_DIRECTION_FIXTURES, badResponses } from "./fixtures.mjs";
 import { scoreFixture } from "./scorers.mjs";
 import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
@@ -52,7 +52,9 @@ const args = process.argv.slice(2);
 // the default fixtures; nothing else about the run changes. --suite support runs the #318 support-fit check
 // on Paige's Example Profile (two Taste Profile calls, no picks).
 const suite = args.includes("--suite") ? args[args.indexOf("--suite") + 1] : "default";
-const FIXTURES = suite === "reasons" ? REASON_FIXTURES : suite === "support" ? SUPPORT_FIXTURES : DEFAULT_FIXTURES;
+// --suite dislike-directions is the #335 before/after: Friends disliked for plain "Humor" vs "Humor: not my style
+// of humor", five Taste Profile calls each, no picks.
+const FIXTURES = suite === "reasons" ? REASON_FIXTURES : suite === "support" ? SUPPORT_FIXTURES : suite === "dislike-directions" ? DISLIKE_DIRECTION_FIXTURES : DEFAULT_FIXTURES;
 const producerName = args.includes("--producer") ? args[args.indexOf("--producer") + 1] : "baseline";
 const dryRun = args.includes("--dry-run");
 const confirmed = args.includes("--yes");
@@ -81,6 +83,8 @@ const spend = { calls: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
 // header in place of x-api-key. --max-usd stops before a call once recorded spend reaches the cap.
 const useAnt = args.includes("--auth") && args[args.indexOf("--auth") + 1] === "ant";
 const maxUsd = args.includes("--max-usd") ? Number(args[args.indexOf("--max-usd") + 1]) : Infinity;
+// --max-calls: an approved call count, enforced before every call next to the spend cap (Nov 11).
+const maxCalls = args.includes("--max-calls") ? Number(args[args.indexOf("--max-calls") + 1]) : Infinity;
 const keepRaw = args.includes("--raw");
 const outArg = args.includes("--out") ? args[args.indexOf("--out") + 1] : null;
 const updateBaseline = args.includes("--update-baseline") ? (args[args.indexOf("--update-baseline") + 1] ?? "") : null;
@@ -142,6 +146,7 @@ const PICKS_MAX_OUTPUT = Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1000);
 // The endpoint's prompt and model aren't visible here: assume the code's default model, a 30k-token prompt and its cap.
 const ENDPOINT_WORST_CASE_USD = worstCaseUsd("claude-sonnet-5-5", 90_000, outputCap("claude-sonnet-5-5", PICKS_MAX_OUTPUT));
 function ensureBudget(worstCase) {
+  if (spend.calls >= maxCalls) throw new Error(`call cap ${maxCalls}: ${spend.calls} call(s) made, so the next one wasn't`);
   if (spend.usd + worstCase > maxUsd) {
     throw new Error(`spend cap $${maxUsd}: the next call could cost up to $${Number.isFinite(worstCase) ? worstCase.toFixed(4) : "an unknown amount (no rates for this model)"} on top of $${spend.usd.toFixed(4)} spent, so it wasn't made`);
   }
@@ -274,8 +279,9 @@ async function runOne(fixture) {
 if (paidRun && confirmed) {
   const planned = producerName === "endpoint"
     ? FIXTURES.length
-    : FIXTURES.reduce((sum, f) => sum + (liveProfile ? (f.before ? 2 : 1) : 0) + 1, 0);
+    : FIXTURES.reduce((sum, f) => sum + (liveProfile ? (f.before ? 2 : 1) : 0) + ((f.candidates ?? EVAL_CANDIDATES).length ? 1 : 0), 0);
   const models = producerName === "endpoint" ? `whatever ${endpointUrl} is configured to use` : `profile ${liveProfile ? liveProfileModel : "baseline (no call)"}, picks ${liveModel}`;
+  if (planned > maxCalls) refuse(`the plan needs up to ${planned} call(s), more than --max-calls ${maxCalls}`);
   console.log(`Plan: up to ${planned} paid call(s) over ${FIXTURES.length} fixture(s); ${models}; auth ${useAnt ? "ant login" : producerName === "endpoint" ? "none here" : "ANTHROPIC_API_KEY"}; cap $${maxUsd}: before each call the runner assumes that call's worst case and skips it if the cap could be crossed (costs are estimates from token counts and the pricing table, including prompt caching).`);
 }
 

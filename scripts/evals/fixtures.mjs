@@ -300,3 +300,23 @@ export const SUPPORT_FIXTURES = [
   { id: "example-refresh-confirmed", title: "Example Profile refresh, mythic pattern confirmed (Yes)", purpose: "Do unfitting supports leave a confirmed pattern while it, its wording and the answer stay?", candidates: [], build: () => confirmedState({ says: "accurate" }), expect: { supportFit: SUPPORT_FIT, keepsConfirmed: [MYTHIC] } },
   { id: "example-refresh-partly", title: "Example Profile refresh, mythic pattern Partly, depends on context, not in games", purpose: "Same, with Partly, a context answer and an excluded area", candidates: [], build: () => confirmedState({ says: "partial", context: "some", excludedDomains: ["play"] }), expect: { supportFit: SUPPORT_FIT, keepsConfirmed: [MYTHIC] } }
 ];
+
+
+// #335 before/after (Nov 11): Paige disliked Friends because its style of humor isn't hers. Her Example Profile
+// (loved Detroiters, Nathan for You, The Rehearsal; liked The Office, Curb) plus Friends as a dislike, fresh (no
+// earlier patterns, so a refresh can't just repeat them). The arms differ only in Friends' reason: the plain
+// "Humor" today's vocabulary allows, or the new direction "Humor: not my style of humor". Five runs each.
+const FRIENDS = {
+  id: "tmdb-tv-1668", provider: "tmdb", providerId: "1668", title: "Friends", type: "tv", domains: ["tv"], year: "1994", genres: ["35"],
+  about: "Six young people from New York City, on their own and struggling to survive in the real world, find the companionship, comfort and support they get from each other to be the perfect antidote to the pressures of life.",
+  providerMeta: { genreIds: [35], collectionId: null }, sourceUrl: "https://www.themoviedb.org/tv/1668"
+};
+const friendsState = (refinements) => {
+  const state = exampleState({ keepPatterns: false });
+  state.feedbackByRecommendation = { ...state.feedbackByRecommendation, [FRIENDS.id]: { item: FRIENDS, rating: "less", detail: "tried-disliked", quality: null, source: "search", refinements } };
+  return state;
+};
+export const DISLIKE_DIRECTION_FIXTURES = [1, 2, 3, 4, 5].flatMap((n) => [
+  { id: `friends-plain-${n}`, arm: "plain", title: `Friends disliked for "Humor" (run ${n})`, purpose: "Today's vocabulary", candidates: [], build: () => friendsState(["humor"]), expect: { friendsScope: true } },
+  { id: `friends-direction-${n}`, arm: "direction", title: `Friends disliked for "Humor: not my style of humor" (run ${n})`, purpose: "The #335 direction", candidates: [], build: () => friendsState(["humor:not-my-style"]), expect: { friendsScope: true } }
+]);
