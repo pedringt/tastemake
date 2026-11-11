@@ -866,6 +866,9 @@ app.addEventListener("click", async (event) => {
   if (feedbackClose) {
     const itemId = feedbackClose.dataset.feedbackClose;
     state.recommendationFeedbackItemId = null;
+    // #336: switching Tried it / Not tried in Change without picking an answer changes nothing; the next
+    // Change opens on the saved reaction's own path.
+    if (state.feedbackByRecommendation[itemId]) delete state.recommendationExperienceChoice[itemId];
     renderPreservingCardPosition(itemId, state.feedbackByRecommendation[itemId]
       ? `[data-feedback-edit="${itemId}"]`
       : `[data-feedback-item="${itemId}"][data-experience-path]`);
@@ -1081,6 +1084,30 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  // #336: the Dismissed view, and changing a dismissed title from it. The answer goes through the same
+  // saveExperienceOutcome as a pick's own Change, so the reaction is replaced the same way everywhere.
+  if (event.target.closest("[data-library-dismissed]")) {
+    state.libraryView = "dismissed";
+    state.savedJustTried = [];
+    render();
+    restoreFocus("[data-dismissed-heading]");
+    announce("Showing Dismissed.");
+    return;
+  }
+  const dismissedChange = event.target.closest("[data-dismissed-outcome][data-dismissed-item]");
+  if (dismissedChange) {
+    const itemId = dismissedChange.dataset.dismissedItem;
+    const outcome = dismissedChange.dataset.dismissedOutcome;
+    const title = state.feedbackByRecommendation[itemId]?.item?.title ?? "Item";
+    if (outcome === "not-interested") { dismissedChange.closest("details")?.removeAttribute("open"); return; }
+    if (saveExperienceOutcome(itemId, outcome)) {
+      render();
+      restoreFocus("[data-dismissed-heading]");
+      announce(outcome === "save" ? `${title} moved to Saved.` : `${title} moved to Tried.`);
+    }
+    return;
+  }
+
   const libraryTab = event.target.closest("[data-library-tab]");
   if (libraryTab) {
     state.libraryView = libraryTab.dataset.libraryTab === "tried" ? "tried" : "saved";
@@ -1169,7 +1196,10 @@ document.addEventListener("keydown", (event) => {
   if (state.recommendationFeedbackItemId) {
     const itemId = state.recommendationFeedbackItemId;
     state.recommendationFeedbackItemId = null;
-    renderPreservingCardPosition(itemId, `[data-feedback-item="${itemId}"][data-experience-path]`);
+    if (state.feedbackByRecommendation[itemId]) delete state.recommendationExperienceChoice[itemId];   // #336, as the close button
+    renderPreservingCardPosition(itemId, state.feedbackByRecommendation[itemId]
+      ? `[data-feedback-edit="${itemId}"]`
+      : `[data-feedback-item="${itemId}"][data-experience-path]`);
     return;
   }
   const open = document.querySelector(".editorial-why.is-pinned") ?? document.activeElement?.closest?.(".editorial-why");

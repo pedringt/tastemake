@@ -9,6 +9,7 @@ import { blurbOf } from "../catalog/synopsis.mjs";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { starIcon } from "../components/star.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
+import { renderPathSwitch } from "../components/path-switch.js";
 import { isExperienced } from "../model/evidence.js";
 import { bridgeTargetNoun } from "../catalog/bridges.mjs";
 
@@ -61,6 +62,7 @@ function feedbackPanel(item, feedback) {
         </div>
         <button type="button" class="rec-feedback-close" data-feedback-close="${item.id}" aria-label="Close feedback">×</button>
       </div>
+      ${feedback ? renderPathSwitch(item, path) : ""}
       <div class="feedback-details experience-outcomes">
         <span class="feedback-detail-prompt">${path === "tried" ? "How did it land?" : "Want to keep it around?"}</span>
         <div class="detail-chip-row" role="group" aria-label="${path === "tried" ? "How did it land?" : "What do you want to do with this untried item?"}">
