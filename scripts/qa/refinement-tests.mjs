@@ -32,7 +32,7 @@ assert.deepEqual(normalizedRefinements(positive), ["characters", "humor", "pacin
 
 assert.equal(toggleRefinement(positive, "humor"), true, "selected refinement can be removed");
 assert.deepEqual(normalizedRefinements(positive), ["characters", "pacing", "story", "world-setting"]);
-assert.equal(toggleRefinement(positive, "pacing:too-slow"), false, "directions are books only");
+assert.equal(toggleRefinement(positive, "pacing:too-slow"), false, "pacing directions are books only");
 
 const negative = { item: game, rating: "less", detail: "tried-disliked", refinements: ["gameplay", "difficulty-challenge"] };
 assert.deepEqual(normalizedRefinements(negative), ["gameplay", "difficulty-challenge"]);
@@ -217,6 +217,45 @@ assert.equal(trackReasonsOpened("library", { va: undefined }), null, "nothing is
   const picked = selectPromptEvidence({ evidence: [rec("ev:plain1", []), rec("ev:plain2", []), rec("ev:reasoned", [{ id: "pacing", label: "Pacing" }])], candidates: [{ domains: ["read"] }] }, 1);
   eq2("among equals, the item with reasons wins the slot", picked.map((r) => r.ref).join(), "ev:reasoned");
   eq2("...and the count does not grow", selectPromptEvidence({ evidence: [rec("ev:a", [{ id: "x", label: "X" }]), rec("ev:b", [])], candidates: [{ domains: ["read"] }] }, 1).length, 1);
+}
+
+// ---- #335: Humor and Characters directions on movies and TV ------------------------------------------------
+// Paige disliked Friends because its style of humor isn't hers, next to loved The Office and Detroiters. A
+// plain "Humor" couldn't say which humor; the direction can, and the "worked" styles give it something to
+// be read against.
+{
+  const show = (id, title) => ({ id, title, type: "tv", domains: ["tv"], provider: "tmdb", providerId: id, genres: ["35"] });
+  const ids = (item, dimension, polarity) => directionOptionsFor(item, dimension, polarity).map((d) => d.id).join();
+  const friends = show("tmdb-tv-1668", "Friends");
+  eq2("TV humor that didn't work", ids(friends, "humor", "negative"), "not-my-style,too-broad,too-mean,trying-too-hard");
+  eq2("TV humor that worked", ids(friends, "humor", "positive"), "dry-deadpan,awkward-cringe,absurd,warm");
+  eq2("TV characters that didn't work", ids(friends, "characters", "negative"), "hard-to-care,too-cartoonish,too-many");
+  eq2("movies get the same directions", ids(movie, "humor", "negative"), ids(friends, "humor", "negative"));
+  eq2("games don't, yet", ids(game, "humor", "negative"), "");
+  eq2("nor books (their own directions are unchanged)", ids({ type: "book" }, "humor", "negative"), "");
+  eq2("other screen dimensions stay plain", ids(friends, "pacing", "negative"), "");
+
+  const disliked = { item: friends, rating: "less", detail: "tried-disliked", refinements: [] };
+  assert.equal(toggleRefinement(disliked, "humor"), true);
+  assert.equal(toggleRefinement(disliked, "humor:not-my-style"), true, "a disliked show can say which humor");
+  eq2("the direction replaces its plain dimension", normalizedRefinements(disliked), ["humor:not-my-style"]);
+  assert.equal(toggleRefinement(disliked, "humor:dry-deadpan"), false, "a 'worked' style isn't offered on a dislike");
+  eq2("the record carries the readable label", refinementRecords(disliked).map((r) => r.label), ["Humor: not my style of humor"]);
+
+  const flipped = { ...disliked, refinements: ["humor:not-my-style", "characters"], rating: "more", detail: "liked-before" };
+  clearInvalidRefinements(flipped, "negative");
+  eq2("switching to liked clears its reasons, direction included, as for books", flipped.refinements, []);
+
+  const office = show("tmdb-tv-2316", "The Office");
+  const state = { selectedFavorites: new Set(), libraryFavorites: new Set(), feedbackByRecommendation: {
+    [office.id]: { item: office, rating: "more", detail: "loved-before", refinements: ["humor:awkward-cringe"] },
+    [friends.id]: { item: friends, rating: "less", detail: "tried-disliked", refinements: ["humor:not-my-style"] }
+  }, recommendationSets: [], customItems: {}, patternStatements: [], areas: { tv: true }, curveball: true };
+  const prompt = buildPickPrompt(buildContext(state, [show("tmdb-tv-8592", "Parks and Recreation")]), 1);
+  assert(prompt.includes('"refinements":["Humor: not my style of humor"]'), "Friends' reason reaches the picks prompt as its label");
+  assert(prompt.includes('"refinements":["Humor: awkward / cringe"]'), "and so does The Office's");
+  const records = evidenceRecords(state);
+  eq2("the Taste Profile evidence keeps the direction id", records.find((r) => r.itemId === friends.id)?.refinements.map((r) => r.id), ["humor:not-my-style"]);
 }
 function eq2(name, actual, expected) { assert.deepEqual(actual, expected, name); }
 

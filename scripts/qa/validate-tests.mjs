@@ -148,6 +148,47 @@ function proposal(refs) {
 }
 
 
+// ---- #335: screen humor and character directions, with Friends as the test case -----------------------------
+{
+  const show = (id, title) => ({ id, title, type: "tv", domains: ["tv"], provider: "tmdb", providerId: id, genres: ["35"] });
+  const items = { office: show("tmdb-tv-2316", "The Office"), detroiters: show("tmdb-tv-68595", "Detroiters"), friends: show("tmdb-tv-1668", "Friends") };
+  const s = emptyState();
+  react(s, items.office, "loved"); s.feedbackByRecommendation[items.office.id].refinements = ["humor:awkward-cringe"];
+  react(s, items.detroiters, "loved"); s.feedbackByRecommendation[items.detroiters.id].refinements = ["humor:dry-deadpan"];
+  react(s, items.friends, "disliked"); s.feedbackByRecommendation[items.friends.id].refinements = ["humor:not-my-style"];
+  const ctx = buildContext(s);
+  const ref = (key) => `ev:${items[key].id}`;
+  const hyp = (label, claim, evidence, counter = []) => ({ label, claim, evidence, counter, domains: ["tv"], crossDomain: "untested", level: "emerging", conditional: false, context: null });
+
+  const faithful = validateHypotheses({ hypotheses: [hyp("Dry, awkward ensemble comedy",
+    "Enjoys dry, awkward ensemble comedies; a sitcom whose humor was not her style of humor was a miss.",
+    [ref("office"), ref("detroiters")], [ref("friends")])] }, ctx);
+  check("a pattern that keeps Friends' reason, and cites Friends, is accepted", faithful.accepted.length === 1, JSON.stringify(faithful.rejected[0]?.reasons));
+
+  const uncited = validateHypotheses({ hypotheses: [hyp("Dry, awkward ensemble comedy",
+    "Enjoys dry, awkward ensemble comedies, though a sitcom that was not her style of humor was a miss.",
+    [ref("office"), ref("detroiters")])] }, ctx);
+  eq("the same reason without Friends cited is rejected", uncited.accepted.length, 0);
+
+  const invented = validateHypotheses({ hypotheses: [hyp("Avoids broad sitcoms",
+    "Prefers awkward workplace comedy; sitcom humor that felt too broad has been a miss.",
+    [ref("office")], [ref("friends")])] }, ctx);
+  eq("'too broad' is rejected: Paige said 'not my style', not 'too broad'", invented.accepted.length, 0);
+  check("because no cited item carries it", invented.rejected[0]?.reasons.some((r) => /"too broad"\) that no cited item carries/.test(r)), invented.rejected[0]?.reasons);
+
+  s.feedbackByRecommendation[items.friends.id].refinements = ["humor:trying-too-hard"];
+  const moved = validateHypotheses({ hypotheses: [hyp("Grounded characters",
+    "Likes grounded ensembles; a sitcom where the characters were trying too hard was a miss.",
+    [ref("office")], [ref("friends")])] }, buildContext(s));
+  check("a humor reason moved onto characters is rejected", moved.rejected[0]?.reasons.some((r) => /pairs "trying too hard" with characters, but the user said it about humor/.test(r)), moved.rejected[0]?.reasons);
+
+  const described = validateHypotheses({ hypotheses: [hyp("Deadpan workplace comedy",
+    "Gravitates toward deadpan, absurd workplace comedies with broad comedy set pieces and cartoonish side characters.",
+    [ref("office"), ref("detroiters")])] }, ctx);
+  check("style words that describe a title are not treated as the user's reasons", described.accepted.length === 1, JSON.stringify(described.rejected[0]?.reasons));
+}
+
+
 // ---- #257: a curveball lands on explicitly adult-tagged content only if the user has tried that kind ----
 {
   const { produceRecommendations } = await import("../../api/recommendations.mjs");
