@@ -292,7 +292,16 @@ const REASON_TERMS = [
   { re: /\buneven\b/i, ids: ["pacing:uneven"] },
   { re: /\bthin\b/i, ids: ["world-setting:too-thin"] },
   { re: /\bexposition\b|\binfo[- ]?dump/i, ids: ["world-setting:too-much-exposition"] },
-  { re: /\bhard to follow\b|\bconfusing structure\b/i, ids: ["structure:hard-to-follow"] }
+  { re: /\bhard to follow\b|\bconfusing structure\b/i, ids: ["structure:hard-to-follow"] },
+  // #335, movies and TV. Only the complaints, worded as complaints: "deadpan", "broad comedy" or "cartoonish"
+  // also describe what a title is, which a pattern may say from its facts, so they are not the user's reasons.
+  { re: /\bnot (?:my|their|her|his) (?:style|kind|type) of (?:humou?r|comedy)\b/i, ids: ["humor:not-my-style"] },
+  { re: /\btoo broad\b/i, ids: ["humor:too-broad"] },
+  { re: /\btoo mean\b/i, ids: ["humor:too-mean"] },
+  { re: /\btr(?:ying|ies|ied) too hard\b/i, ids: ["humor:trying-too-hard"] },
+  { re: /\bhard to care about\b/i, ids: ["characters:hard-to-care"] },
+  { re: /\btoo cartoonish\b/i, ids: ["characters:too-cartoonish"] },
+  { re: /\btoo many (?:characters|to follow)\b/i, ids: ["characters:too-many"] }
 ];
 const DIMENSION_TERMS = [
   { dimension: "characters", re: /^(?:characters?|cast|protagonists?)$/i },

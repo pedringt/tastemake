@@ -57,6 +57,17 @@ export function scoreFixture(fixture, run) {
     const share = beforeIds.size ? kept / beforeIds.size : 1;
     out.push({ kind: "rule", name: "one miss does not rewrite the profile", pass: share >= e.stableAfterMiss, detail: `${kept} of ${beforeIds.size} hypotheses kept after the miss` });
   }
+  // #335: what one disliked Friends did to the profile. Overreach is any accepted pattern that turns it into a
+  // general rule against ensembles, sitcoms or comedy (Paige loves several). Quality findings, judged by hand too.
+  if (e.friendsScope) {
+    const FRIENDS = "ev:tmdb-tv-1668";
+    const OVERREACH = /\b(?:avoid|avoids|dislike|dislikes|not drawn to|steers? clear of|turned off by|less interested in|rejects?)\b[^.;]*\b(?:ensemble|sitcom|comed|friend group|hangout)/i;
+    const citing = hyp.accepted.filter((h) => h.evidence.includes(FRIENDS) || (h.counter ?? []).includes(FRIENDS));
+    const overreach = hyp.accepted.filter((h) => OVERREACH.test(`${h.label} ${h.claim}`));
+    out.push({ kind: "quality", name: "no pattern turns Friends into a rule against ensembles, sitcoms or comedy", pass: overreach.length === 0, detail: overreach.map((h) => h.claim).join(" | ") || "none" });
+    out.push({ kind: "quality", name: "patterns citing Friends", pass: null, detail: citing.map((h) => `${h.label}: ${h.claim}`).join(" | ") || "none" });
+  }
+
   // #318: labelled (pattern, item) pairs. A support can be structurally valid and still not show its pattern.
   // Quality findings, never a failed run: the labels are few, and matching patterns by words is rough.
   for (const pair of e.supportFit ?? []) {

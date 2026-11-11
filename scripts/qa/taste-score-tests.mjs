@@ -54,6 +54,10 @@ const game = (title, genres, extra = {}) => ({ id: `igdb-game-${++n}`, provider:
   const dislikedWithReason = rec("experienced-negative", disliked, { refinements: [{ id: "characters", label: "Characters" }] });
   eq("a dislike with a reason weighs the same as one without",
     tasteScore(scary, [...records, dislikedWithReason]), tasteScore(scary, [...records, rec("experienced-negative", disliked)]));
+  // #335: the same with a direction ("Humor: not my style of humor"). It informs the profile and the AI only.
+  eq("a dislike with a humor direction weighs the same as one without",
+    tasteScore(scary, [...records, rec("experienced-negative", disliked, { refinements: [{ id: "humor:not-my-style", label: "Humor: not my style of humor" }] })]),
+    tasteScore(scary, [...records, rec("experienced-negative", disliked)]));
   const parts = tasteScoreParts(scary, [...records, dislikedWithReason]);
   check("the trace's dislike contribution is similarity x weight, with no boost",
     parts.negatives.length > 0 && parts.negatives.every((p) => p.contribution === p.similarity * p.weight));
