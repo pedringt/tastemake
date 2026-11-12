@@ -1,5 +1,6 @@
 import { waitUntil } from "@vercel/functions";
 import { query as defaultQuery, isConfigured } from "./db.mjs";
+import { isAiBudgetExhausted } from "./anthropic.mjs";
 
 // Verified against platform.claude.com/docs/en/about-claude/pricing on 2026-10-10 ($ per million
 // tokens; cache writes at the 5-minute rate, which is what cache_control "ephemeral" uses).
@@ -17,9 +18,12 @@ const OPUS_55 = { input: 4, output: 20, cacheWrite: 5, cacheRead: 0.20 };
 const HAIKU_55_LONG_PROMPT_TOKENS = 100_000;
 
 const KNOWN_OPERATIONS = new Set(["recommendations", "taste_profile"]);
+// budget_paused (Nov 12): the account's spend limit turned the call away. That's the designed pause, not a
+// failure, so it counts as an attempt but not in failures or the success and fallback rates.
 const KNOWN_OUTCOMES = new Set([
   "success",
   "validation_fallback",
+  "budget_paused",
   "malformed_response",
   "timeout",
   "provider_error",
@@ -67,6 +71,7 @@ export function aiErrorFields(error) {
 }
 
 export function aiOutcomeForError(error) {
+  if (isAiBudgetExhausted(error)) return "budget_paused";
   if (error?.name === "AbortError") return "timeout";
   if (error?.anthropicType === "malformed-response" || error?.anthropicType === "no-text-block") return "malformed_response";
   if (error?.status) return "provider_error";
@@ -145,13 +150,17 @@ function normalizeSummary(row = {}) {
   const successes = Number(row.successes || 0);
   const fallbacks = Number(row.fallbacks || 0);
   const failures = Number(row.failures || 0);
+  const paused = Number(row.paused || 0);
+  // Rates are over the calls the budget allowed, so a spend-limit pause doesn't read as the AI failing.
+  const reached = attempts - paused;
   return {
     attempts,
     successes,
     fallbacks,
     failures,
-    success_rate: rate(successes, attempts),
-    fallback_rate: rate(fallbacks, attempts),
+    budget_paused: paused,
+    success_rate: rate(successes, reached),
+    fallback_rate: rate(fallbacks, reached),
     latency_ms: {
       p50: row.p50_ms == null ? null : Math.round(Number(row.p50_ms)),
       p95: row.p95_ms == null ? null : Math.round(Number(row.p95_ms))
@@ -212,7 +221,8 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
        count(*)::int as attempts,
        count(*) filter (where ${outcomeExpr} = 'success')::int as successes,
        count(*) filter (where ${outcomeExpr} = 'validation_fallback')::int as fallbacks,
-       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback'))::int as failures,
+       count(*) filter (where ${outcomeExpr} = 'budget_paused')::int as paused,
+       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback','budget_paused'))::int as failures,
        percentile_cont(0.5) within group (order by duration_ms)
          filter (where ${outcomeExpr} = 'success')::double precision as p50_ms,
        percentile_cont(0.95) within group (order by duration_ms)
@@ -233,7 +243,8 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
        count(*)::int as attempts,
        count(*) filter (where ${outcomeExpr} = 'success')::int as successes,
        count(*) filter (where ${outcomeExpr} = 'validation_fallback')::int as fallbacks,
-       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback'))::int as failures,
+       count(*) filter (where ${outcomeExpr} = 'budget_paused')::int as paused,
+       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback','budget_paused'))::int as failures,
        percentile_cont(0.5) within group (order by duration_ms)
          filter (where ${outcomeExpr} = 'success')::double precision as p50_ms,
        percentile_cont(0.95) within group (order by duration_ms)
@@ -281,7 +292,7 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
               count(*)::int as count, max(occurred_at) as last_at
          from ai_call_metrics
         where occurred_at >= now() - ($1::int * interval '1 day')
-          and ${outcomeExpr} not in ('success','validation_fallback')
+          and ${outcomeExpr} not in ('success','validation_fallback','budget_paused')
         group by ${operationExpr}, ${outcomeExpr}, error_status, error_type
         order by last_at desc`,
       [days]
@@ -316,6 +327,7 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
     successes: summary.successes,
     fallbacks: summary.fallbacks,
     failures: summary.failures,
+    budget_paused: summary.budget_paused,
     success_rate: summary.success_rate,
     fallback_rate: summary.fallback_rate,
     latency_scope: "successful model calls only",
