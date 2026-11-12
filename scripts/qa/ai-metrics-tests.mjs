@@ -199,4 +199,34 @@ assert.equal(aiOutcomeForError(new Error("socket")),"transport_error");
   assert.ok(statements.every((text)=>!/create table|alter table|create index/i.test(text)),"aggregate must stay read-only");
 }
 
+// Nov 12: a spend-limit rejection is budget_paused, not a failure, and the rates are over calls the budget allowed.
+{
+  const spendCap=Object.assign(new Error("Anthropic returned 400 (invalid_request_error)"),{status:400,anthropicType:"invalid_request_error",anthropicDetail:"You have reached your API usage limits: enforced_spend_limit_reached"});
+  assert.equal(aiOutcomeForError(spendCap),"budget_paused");
+  assert.equal(aiOutcomeForError(Object.assign(new Error("x"),{status:529,anthropicType:"overloaded_error"})),"provider_error","other provider errors are unchanged");
+  const rows=[];
+  await recordAiCall({operation:"recommendations",outcome:"budget_paused",model:"claude-haiku-5-5",durationMs:200,...aiErrorFields(spendCap)},{query:async(text,params=[])=>{ if (/insert into/i.test(text)) rows.push(params); return []; }});
+  assert.equal(rows[0][1],"budget_paused","budget_paused is a known outcome");
+  assert.equal(rows[0][10],400);
+
+  const statements=[];
+  const query=async(text)=>{
+    statements.push(text);
+    if (/information_schema\.columns/i.test(text)) return [{column_name:"operation"},{column_name:"outcome"}];
+    if (/group by coalesce\(outcome/i.test(text)) return [{outcome:"budget_paused",count:18},{outcome:"provider_error",count:1},{outcome:"success",count:90}];
+    if (/group by coalesce\(operation/i.test(text) && /model,/i.test(text)) return [];
+    if (/group by coalesce\(operation/i.test(text)) return [{operation:"recommendations",attempts:58,successes:45,fallbacks:0,paused:12,failures:1}];
+    if (/select\s+count\(\*\)::int as attempts/i.test(text)) return [{attempts:109,successes:90,fallbacks:0,paused:18,failures:1}];
+    throw new Error("unexpected aggregate query: "+text);
+  };
+  const aggregate=await aggregateAiMetrics({query});
+  assert.equal(aggregate.attempts,109,"attempts still count every call");
+  assert.equal(aggregate.budget_paused,18);
+  assert.equal(aggregate.failures,1);
+  assert.equal(aggregate.success_rate,Number((90/91).toFixed(4)),"success rate leaves out spend-limit pauses");
+  assert.equal(aggregate.operations.recommendations.budget_paused,12);
+  assert.equal(aggregate.operations.recommendations.success_rate,Number((45/46).toFixed(4)));
+  assert.ok(statements.some((text)=>/not in \('success','validation_fallback','budget_paused'\)/.test(text)),"failures exclude pauses");
+}
+
 console.log("AI metrics tests passed");
