@@ -304,11 +304,20 @@ function markOnboarded(screen) {
   }
 }
 
-function maybeRefreshProfile({ force = false } = {}) {
+// Nov 12 (QA): Refresh disappears while the profile loads, so focus fell to the page. After a Refresh click,
+// focus waits on the status line and returns to Refresh when it's back -- unless the person has moved
+// focus somewhere else in the meantime.
+function keepProfileRefreshFocus() {
+  const active = document.activeElement;
+  if (active && active !== document.body && active !== app && !active.closest?.(".profile-ai-status")) return;
+  restoreFocus('[data-action="retry-profile"]', app.querySelector(".profile-ai-status") ?? app);
+}
+
+function maybeRefreshProfile({ force = false, keepFocus = false } = {}) {
   if (state.screen !== "model") return;
   void refreshProfileHypotheses(state, {
     force,
-    onUpdate() { render(); updateStepper(); },
+    onUpdate() { render(); updateStepper(); if (keepFocus) keepProfileRefreshFocus(); },
     announce,
     // Nov 4: the answer was dropped because the user changed something while it was loading. Ask again the
     // normal way (never forced), so this screen, the evidence-key check and the loading guard all still apply.
@@ -1170,7 +1179,7 @@ app.addEventListener("click", async (event) => {
     navigate(destination.screen, destination.libraryView ? { libraryView: destination.libraryView } : {});
   }
   if (action === "view-model") navigate("model");
-  if (action === "retry-profile") maybeRefreshProfile({ force: true });
+  if (action === "retry-profile") maybeRefreshProfile({ force: true, keepFocus: true });
   if (action === "show-recs") {
     if (state.recommendationSets.length) navigate("recommendations");
     else if (state.aiStatus !== AI_LOADING) await runInitialRecommendations({ render, updateStepper, announce, navigate, prefetch: candidatePrefetcher });
