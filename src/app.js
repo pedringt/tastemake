@@ -108,7 +108,22 @@ async function openExampleProfile({ screen = "model", replace = false } = {}) {
   }
 }
 
+// Nov 12 (QA): a re-render rebuilds every <details> closed, so choosing a reason inside an open Library card
+// or "Things you didn't like" collapsed it. Open sections with a stable key stay open across a re-render of
+// the same screen; moving to another screen starts closed as before.
+const KEEP_OPEN_KEYS = ["data-library-id", "data-bookmark-id", "data-keep-open"];
+let lastRenderedScreen = null;
+
+function openDetailsSelectors() {
+  return [...app.querySelectorAll("details[open]")].flatMap((details) => {
+    const key = KEEP_OPEN_KEYS.find((name) => details.hasAttribute(name));
+    return key ? [`details[${key}="${CSS.escape(details.getAttribute(key))}"]`] : [];
+  });
+}
+
 function render() {
+  const keepOpen = state.screen === lastRenderedScreen ? openDetailsSelectors() : [];
+  lastRenderedScreen = state.screen;
   persistState(state);
   syncAiBadge(state);
   // #348: a screen that throws shows a way out instead of a blank page.
@@ -123,6 +138,7 @@ function render() {
   // #348 follow-up: opening My Tastemake (where the set-aside data is) answers the notice.
   if (state.screen === "mine") state.setAsideNotice = false;
   app.innerHTML = exampleBannerHtml() + setAsideNoticeHtml(state) + screenHtml;
+  for (const selector of keepOpen) app.querySelector(selector)?.setAttribute("open", "");
   candidatePrefetcher.schedule(state);
   // #6: fetched once per visit, after the first set exists (not for the example profile); only its own
   // slot is redrawn when it arrives.

@@ -333,7 +333,7 @@ function section(title, note, entries, emptyText, key = title.toLowerCase()) {
 function dislikedBlock(items) {
   if (!items.length) return "";
   return `
-    <details class="library-disliked">
+    <details class="library-disliked" data-keep-open="library-disliked">
       <summary>Things you didn't like (${items.length})</summary>
       <p>These stay out of your Tried list. Tastemake keeps them in the background so it can learn from them, and you can correct any that you got wrong.</p>
       <ul>
