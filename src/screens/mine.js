@@ -1,4 +1,6 @@
 import { state } from "../state.js";
+import { setAsideBlock } from "../components/set-aside.js";
+import { readSetAsideCopy } from "../persistence.js";
 import { AREAS } from "../model/taste.js";
 import { toldItems } from "../model/mine.js";
 import { reasonLabel } from "../model/blindspots.js";
@@ -272,6 +274,8 @@ export function renderMine() {
       </div>
 
       ${neverBlock()}
+
+      ${setAsideBlock(readSetAsideCopy(), { armed: state.setAsideDiscardArmed })}
 
       <section class="mine-data-summary" aria-labelledby="mine-data-summary-title">
         <div>

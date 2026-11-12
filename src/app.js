@@ -43,6 +43,7 @@ import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, handleMineSubmit, openMine } from "./actions/mine.js";
 import { renderRecovery } from "./components/recovery.js";
+import { setAsideNoticeHtml } from "./components/set-aside.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { finishSavedTried, keepOnSavedList, saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
 import { announceReaction, chooseExperiencePath, retryRecommendations, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite } from "./actions/recommendations.js";
@@ -119,7 +120,9 @@ function render() {
     app.innerHTML = exampleBannerHtml() + renderRecovery(state);
     return;
   }
-  app.innerHTML = exampleBannerHtml() + screenHtml;
+  // #348 follow-up: opening My Tastemake (where the set-aside data is) answers the notice.
+  if (state.screen === "mine") state.setAsideNotice = false;
+  app.innerHTML = exampleBannerHtml() + setAsideNoticeHtml(state) + screenHtml;
   candidatePrefetcher.schedule(state);
   // #6: fetched once per visit, after the first set exists (not for the example profile); only its own
   // slot is redrawn when it arrives.
@@ -1173,6 +1176,13 @@ app.addEventListener("click", async (event) => {
 document.addEventListener("click", (event) => {
   if (event.target.closest("[data-open-look]")) { openLookPicker(); return; }
   if (event.target.closest("[data-open-mine]")) { openMine(navigate); return; }
+  if (event.target.closest("[data-set-aside-notice-close]")) {
+    state.setAsideNotice = false;
+    render();
+    restoreFocus(null, app);
+    announce("Notice closed. The set-aside data is still in My Tastemake.");
+    return;
+  }
   if (event.target.closest('[data-action="look-done"]')) { finishLookPicker(); return; }
   if (!event.target.closest(".editorial-why")) closeWhyPopovers();
 
