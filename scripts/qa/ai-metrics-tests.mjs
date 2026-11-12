@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import {
   aggregateAiMetrics,
+  aiErrorFields,
   aiOutcomeForError,
   estimateCostUsd,
   PRICING_AS_OF,
@@ -145,6 +146,57 @@ assert.equal(aiOutcomeForError(new Error("socket")),"transport_error");
   assert.equal(aggregate.operations.recommendations.successes,4);
   assert.ok(aggregate.estimated_cost_usd>0,"Sonnet 5 historical usage should now have an estimated cost");
   assert.ok(statements.every((text)=>!/create table|alter table|create index/i.test(text)),"legacy aggregate must also stay read-only");
+}
+
+// Nov 12: a failure records the provider's status and error type, never the message.
+{
+  const rows=[];
+  const statements=[];
+  const query=async(text,params=[])=>{ statements.push(text); if (/insert into ai_call_metrics/i.test(text)) rows.push(params); return []; };
+  const overloaded=Object.assign(new Error("Anthropic returned 529 (overloaded_error)"),{status:529,anthropicType:"overloaded_error",anthropicDetail:"Overloaded: the prompt said <secret>"});
+  assert.deepEqual(aiErrorFields(overloaded),{errorStatus:529,errorType:"overloaded_error"});
+  assert.deepEqual(aiErrorFields(Object.assign(new Error("x"),{name:"AbortError"})),{errorStatus:null,errorType:"timeout"});
+  assert.deepEqual(aiErrorFields(new Error("socket")),{errorStatus:null,errorType:"transport"});
+  assert.equal(aiErrorFields({status:400,anthropicType:"Bad thing: quoted user text"}).errorType,"other","free text is never stored");
+  assert.equal(aiErrorFields({status:"abc"}).errorStatus,null);
+
+  await recordAiCall({operation:"recommendations",outcome:aiOutcomeForError(overloaded),model:"claude-haiku-5-5",durationMs:900,...aiErrorFields(overloaded)},{query});
+  assert.equal(rows[0][1],"provider_error");
+  assert.equal(rows[0][10],529);
+  assert.equal(rows[0][11],"overloaded_error");
+  assert.equal(JSON.stringify(rows).includes("secret"),false,"the error message never reaches the database");
+  assert.ok(statements.some((text)=>/add column if not exists error_status/i.test(text)) && statements.some((text)=>/add column if not exists error_type/i.test(text)));
+
+  await recordAiCall({operation:"recommendations",outcome:"success",model:"claude-haiku-5-5",durationMs:900,errorStatus:529,errorType:"overloaded_error"},{query});
+  assert.equal(rows[1][10],null,"a success stores no error status");
+  assert.equal(rows[1][11],null);
+  await recordAiCall({operation:"taste_profile",outcome:"provider_error",model:"claude-haiku-5-5",durationMs:900,errorStatus:99999,errorType:"has spaces"},{query});
+  assert.equal(rows[2][10],null,"an impossible status is dropped");
+  assert.equal(rows[2][11],"other");
+}
+
+// Nov 12: the aggregate adds failure_reasons when the columns exist; older rows read as "not recorded".
+{
+  const statements=[];
+  const query=async(text,params=[])=>{
+    statements.push(text);
+    if (/information_schema\.columns/i.test(text)) return [{column_name:"operation"},{column_name:"outcome"},{column_name:"error_type"},{column_name:"error_status"}];
+    if (/error_status, error_type/i.test(text)) return [
+      {operation:"recommendations",outcome:"provider_error",error_status:529,error_type:"overloaded_error",count:2,last_at:"2026-11-12T10:00:00Z"},
+      {operation:"taste_profile",outcome:"provider_error",error_status:null,error_type:null,count:6,last_at:"2026-11-01T10:00:00Z"}
+    ];
+    if (/group by coalesce\(outcome/i.test(text)) return [{outcome:"provider_error",count:8}];
+    if (/group by coalesce\(operation/i.test(text) && /model,/i.test(text)) return [];
+    if (/group by coalesce\(operation/i.test(text)) return [];
+    if (/select\s+count\(\*\)::int as attempts/i.test(text)) return [{attempts:8,successes:0,fallbacks:0,failures:8,input_tokens:0,output_tokens:0,cache_read_tokens:0}];
+    throw new Error("unexpected aggregate query: "+text);
+  };
+  const aggregate=await aggregateAiMetrics({query});
+  assert.deepEqual(aggregate.failure_reasons[0],{operation:"recommendations",outcome:"provider_error",status:529,type:"overloaded_error",count:2,last_at:"2026-11-12T10:00:00Z"});
+  assert.equal(aggregate.failure_reasons[1].type,"not recorded");
+  assert.equal(aggregate.failure_reasons[1].status,null);
+  assert.equal(aggregate.failures,8,"existing fields are unchanged");
+  assert.ok(statements.every((text)=>!/create table|alter table|create index/i.test(text)),"aggregate must stay read-only");
 }
 
 console.log("AI metrics tests passed");

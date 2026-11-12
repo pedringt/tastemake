@@ -4,7 +4,7 @@ import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 import { applyTaglineFallback } from "../src/catalog/providers.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
-import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
+import { aiErrorFields, aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
 import { PICKS_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState } from "../src/server/request-state.mjs";
@@ -474,7 +474,8 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
       inputTokens: error?.usage?.input_tokens ?? null,
       outputTokens: error?.usage?.output_tokens ?? null,
       cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null,
-      cacheWriteTokens: error?.usage?.cache_creation_input_tokens ?? null
+      cacheWriteTokens: error?.usage?.cache_creation_input_tokens ?? null,
+      ...aiErrorFields(error)
     }, { env });
     console.error("[tastemake-ai]", reason, error?.status ?? "", error?.anthropicType ?? "", error?.anthropicDetail ?? error?.message ?? "");
     return fallbackPayload(candidates, state, reason, {
