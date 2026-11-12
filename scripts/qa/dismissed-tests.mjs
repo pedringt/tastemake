@@ -138,6 +138,26 @@ const popover = (html) => html.match(/<div class="rec-feedback-popover[\s\S]*?<\
   state.libraryFilter = "all";
 }
 
+// ---- 4b. Star buttons name their title (QA, Nov 12) ---------------------------------------------------
+{
+  setup();
+  const pick = show(30, "Star Pick");
+  state.recommendationSets = [[pick]];
+  state.screen = "recommendations";
+  check("a recommendation's star says which title", renderRecommendations().includes('aria-label="Add Star Pick to Favorites"'));
+  state.screen = "browse";
+  state.browseItems = [show(31, "Browse Star")];
+  check("a Browse star says which title", renderBrowse().includes('aria-label="Add Browse Star to Favorites"'));
+  saveExperienceOutcome(pick.id, "loved");
+  state.screen = "library";
+  state.libraryView = "tried";
+  check("a Library star says which title", renderLibrary().includes('aria-label="Add Star Pick to Favorites"'));
+  const odd = show(32, 'Quote "Title" & Co');
+  state.browseItems = [odd];
+  state.screen = "browse";
+  check("...escaped", renderBrowse().includes("Add Quote &quot;Title&quot; &amp; Co to Favorites"));
+}
+
 // ---- 5. No dismissals, no link ---------------------------------------------------------------------------
 {
   setup();

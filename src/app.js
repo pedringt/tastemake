@@ -108,7 +108,22 @@ async function openExampleProfile({ screen = "model", replace = false } = {}) {
   }
 }
 
+// Nov 12 (QA): a re-render rebuilds every <details> closed, so choosing a reason inside an open Library card
+// or "Things you didn't like" collapsed it. Open sections with a stable key stay open across a re-render of
+// the same screen; moving to another screen starts closed as before.
+const KEEP_OPEN_KEYS = ["data-library-id", "data-bookmark-id", "data-keep-open"];
+let lastRenderedScreen = null;
+
+function openDetailsSelectors() {
+  return [...app.querySelectorAll("details[open]")].flatMap((details) => {
+    const key = KEEP_OPEN_KEYS.find((name) => details.hasAttribute(name));
+    return key ? [`details[${key}="${CSS.escape(details.getAttribute(key))}"]`] : [];
+  });
+}
+
 function render() {
+  const keepOpen = state.screen === lastRenderedScreen ? openDetailsSelectors() : [];
+  lastRenderedScreen = state.screen;
   persistState(state);
   syncAiBadge(state);
   // #348: a screen that throws shows a way out instead of a blank page.
@@ -123,6 +138,7 @@ function render() {
   // #348 follow-up: opening My Tastemake (where the set-aside data is) answers the notice.
   if (state.screen === "mine") state.setAsideNotice = false;
   app.innerHTML = exampleBannerHtml() + setAsideNoticeHtml(state) + screenHtml;
+  for (const selector of keepOpen) app.querySelector(selector)?.setAttribute("open", "");
   candidatePrefetcher.schedule(state);
   // #6: fetched once per visit, after the first set exists (not for the example profile); only its own
   // slot is redrawn when it arrives.
@@ -288,11 +304,20 @@ function markOnboarded(screen) {
   }
 }
 
-function maybeRefreshProfile({ force = false } = {}) {
+// Nov 12 (QA): Refresh disappears while the profile loads, so focus fell to the page. After a Refresh click,
+// focus waits on the status line and returns to Refresh when it's back -- unless the person has moved
+// focus somewhere else in the meantime.
+function keepProfileRefreshFocus() {
+  const active = document.activeElement;
+  if (active && active !== document.body && active !== app && !active.closest?.(".profile-ai-status")) return;
+  restoreFocus('[data-action="retry-profile"]', app.querySelector(".profile-ai-status") ?? app);
+}
+
+function maybeRefreshProfile({ force = false, keepFocus = false } = {}) {
   if (state.screen !== "model") return;
   void refreshProfileHypotheses(state, {
     force,
-    onUpdate() { render(); updateStepper(); },
+    onUpdate() { render(); updateStepper(); if (keepFocus) keepProfileRefreshFocus(); },
     announce,
     // Nov 4: the answer was dropped because the user changed something while it was loading. Ask again the
     // normal way (never forced), so this screen, the evidence-key check and the loading guard all still apply.
@@ -1154,7 +1179,7 @@ app.addEventListener("click", async (event) => {
     navigate(destination.screen, destination.libraryView ? { libraryView: destination.libraryView } : {});
   }
   if (action === "view-model") navigate("model");
-  if (action === "retry-profile") maybeRefreshProfile({ force: true });
+  if (action === "retry-profile") maybeRefreshProfile({ force: true, keepFocus: true });
   if (action === "show-recs") {
     if (state.recommendationSets.length) navigate("recommendations");
     else if (state.aiStatus !== AI_LOADING) await runInitialRecommendations({ render, updateStepper, announce, navigate, prefetch: candidatePrefetcher });

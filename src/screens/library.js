@@ -159,7 +159,7 @@ function savedCard(feedback) {
             type="button"
             data-library-item="${item.id}"
             data-library-action="favorite"
-            aria-label="Add to Favorites"
+            aria-label="Add ${esc(item.title)} to Favorites"
             title="Add to Favorites"
             aria-pressed="false"
           >${starIcon(false)}</button>
@@ -270,7 +270,7 @@ function triedCard(entry) {
           type="button"
           data-library-item="${id}"
           data-library-action="${entry.isFavorite ? "unfavorite" : "favorite"}"
-          aria-label="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
+          aria-label="${entry.isFavorite ? `Remove ${esc(item.title)} from Favorites` : `Add ${esc(item.title)} to Favorites`}"
           title="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
           aria-pressed="${entry.isFavorite}"
         >${starIcon(entry.isFavorite)}</button>
@@ -333,7 +333,7 @@ function section(title, note, entries, emptyText, key = title.toLowerCase()) {
 function dislikedBlock(items) {
   if (!items.length) return "";
   return `
-    <details class="library-disliked">
+    <details class="library-disliked" data-keep-open="library-disliked">
       <summary>Things you didn't like (${items.length})</summary>
       <p>These stay out of your Tried list. Tastemake keeps them in the background so it can learn from them, and you can correct any that you got wrong.</p>
       <ul>
@@ -342,7 +342,7 @@ function dislikedBlock(items) {
             <div class="library-disliked-row">
               <span>${esc(item.title)} <em>${esc(displayLabel(item))}</em></span>
               <span class="library-restore" role="group" aria-label="Correct ${esc(item.title)}">
-                <button class="rec-favorite-star library-action" type="button" data-library-item="${id}" data-library-action="favorite" aria-label="Add to Favorites" title="Add to Favorites" aria-pressed="false">${starIcon(false)}</button>
+                <button class="rec-favorite-star library-action" type="button" data-library-item="${id}" data-library-action="favorite" aria-label="Add ${esc(item.title)} to Favorites" title="Add to Favorites" aria-pressed="false">${starIcon(false)}</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="liked">Actually, I liked it</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>
               </span>

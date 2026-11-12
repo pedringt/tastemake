@@ -403,7 +403,7 @@ export function renderProfile() {
           <p class="kicker">Taste Profile</p>
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede profile-compact-lede">Working patterns based on what you’ve actually tried. Refine them when Tastemake gets you wrong.</p>
-          ${state.hypothesisAiMessage ? `<div class="profile-ai-status profile-ai-status-compact ${state.hypothesisAiStatus === "loading" ? "is-loading" : ""}" role="status" aria-busy="${state.hypothesisAiStatus === "loading"}"><span class="profile-ai-status-dot" aria-hidden="true"></span><span>${esc(state.hypothesisAiMessage)}</span>${state.hypothesisAiStatus !== "loading" ? `<button class="button button-quiet profile-retry" type="button" data-action="retry-profile">${liveProfile ? "Refresh" : "Try again"}</button>` : ""}</div>` : ""}
+          ${state.hypothesisAiMessage ? `<div class="profile-ai-status profile-ai-status-compact ${state.hypothesisAiStatus === "loading" ? "is-loading" : ""}" role="status" tabindex="-1" aria-busy="${state.hypothesisAiStatus === "loading"}"><span class="profile-ai-status-dot" aria-hidden="true"></span><span>${esc(state.hypothesisAiMessage)}</span>${state.hypothesisAiStatus !== "loading" ? `<button class="button button-quiet profile-retry" type="button" data-action="retry-profile">${liveProfile ? "Refresh" : "Try again"}</button>` : ""}</div>` : ""}
         </div>
         <div class="profile-stamp" aria-hidden="true">
           <strong>WORKING</strong>

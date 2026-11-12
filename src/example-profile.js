@@ -52,11 +52,19 @@ export function isViewingExample(target = state) {
   return Boolean(target?.viewingExample);
 }
 
+// Nov 12 (QA): someone who already has a profile leaves the example to go back to it, not to start one.
+const hasOwnProfile = (target) => Boolean(target.onboarded
+  || Object.keys(target.feedbackByRecommendation ?? {}).length
+  || target.selectedFavorites?.size);
+
 export async function loadExampleProfile({ fetchImpl = fetch, screen = "model" } = {}) {
   const response = await fetchImpl(EXAMPLE_URL, { headers: { accept: "application/json" } });
   if (!response.ok) throw new Error(`example profile failed to load: ${response.status}`);
+  // Read before the example replaces state; opening it again from inside the example keeps the first answer.
+  const returnsToOwn = state.viewingExample ? Boolean(state.exampleReturnsToOwn) : hasOwnProfile(state);
   restoreStateFromBackupText(await response.text());
   state.viewingExample = true;
+  state.exampleReturnsToOwn = returnsToOwn;
   state.screen = EXAMPLE_SCREENS.has(screen) ? screen : "model";
   if (state.screen === "library") state.libraryView = "saved";
   // Opened directly on Look or My Tastemake there is no previous page, so Done and Back return to the Taste Profile.
@@ -68,5 +76,5 @@ export async function loadExampleProfile({ fetchImpl = fetch, screen = "model" }
 
 export function exampleBannerHtml() {
   if (!isViewingExample()) return "";
-  return `<div class="example-banner" role="note"><p><strong>You're viewing ${EXAMPLE_NAME}.</strong> These are real reactions Paige gave, and the patterns Tastemake inferred from them, including two she corrected. Nothing you change here is saved.</p><button class="button button-primary" type="button" data-action="exit-example">Start my own</button></div>`;
+  return `<div class="example-banner" role="note"><p><strong>You're viewing ${EXAMPLE_NAME}.</strong> These are real reactions Paige gave, and the patterns Tastemake inferred from them, including two she corrected. Nothing you change here is saved.</p><button class="button button-primary" type="button" data-action="exit-example">${state.exampleReturnsToOwn ? "Back to my profile" : "Start my own"}</button></div>`;
 }

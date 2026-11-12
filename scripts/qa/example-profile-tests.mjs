@@ -55,6 +55,9 @@ eq("it is fetched from the static data file", requested[0], EXAMPLE_URL);
 check("the state is flagged as the example", isViewingExample());
 eq("it opens on the Taste Profile", state.screen, "model");
 check("the banner shows while viewing", exampleBannerHtml().includes("Paige's Example Profile") && exampleBannerHtml().includes('data-action="exit-example"'));
+check("someone with a profile is offered Back to my profile", exampleBannerHtml().includes("Back to my profile") && !exampleBannerHtml().includes("Start my own"));
+await loadExampleProfile({ fetchImpl });
+check("...still, after opening the example again from inside it", exampleBannerHtml().includes("Back to my profile"));
 eq("opening it sets the session flag", session.get(EXAMPLE_SESSION_KEY), "paige");
 check("the link hides while viewing the example", !renderMine().includes(LINK));
 
@@ -171,4 +174,10 @@ Object.defineProperty(globalThis, "sessionStorage", { configurable: true, writab
 state.viewingExample = false;
 persistState(state);
 check("outside the example, saving works as before", stored.get(KEY) !== mine);
+// Nov 12: a first-time visitor with nothing of their own is offered Start my own.
+state.viewingExample = false;
+resetState();
+await loadExampleProfile({ fetchImpl });
+check("a new visitor is offered Start my own", exampleBannerHtml().includes("Start my own"));
+
 finish();

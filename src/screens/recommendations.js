@@ -152,15 +152,17 @@ function seriesExperienceFeedback(item, feedback) {
 
 // Favorite is always available on a recommendation. Choosing it is shorthand for
 // “I know this and love it”: the action records Tried + Loved + Favorite in one step.
-function favoriteToggle(itemId) {
+// Nov 12 (QA): the accessible name says which title, since a screen shows many of these stars.
+function favoriteToggle(itemId, title = "") {
   const isFavorite = state.libraryFavorites.has(itemId);
   const label = isFavorite ? "Remove from Favorites" : "Add to Favorites";
+  const name = title ? (isFavorite ? `Remove ${title} from Favorites` : `Add ${title} to Favorites`) : label;
   return `
     <button
       class="rec-favorite-star ${isFavorite ? "is-favorite" : ""}"
       type="button"
       data-rec-favorite="${itemId}"
-      aria-label="${label}"
+      aria-label="${esc(name)}"
       title="${label}"
       aria-pressed="${isFavorite}"
     >${starIcon(isFavorite)}</button>`;
@@ -346,7 +348,7 @@ function recommendationCard(item, index, total) {
 
         <div class="editorial-status-row">
           <span class="reaction-status-slot">${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}</span>
-          ${favoriteToggle(item.id)}
+          ${favoriteToggle(item.id, item.title)}
         </div>
 
         <div class="editorial-title-row">
