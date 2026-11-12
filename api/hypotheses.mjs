@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { normalizeHypothesisResponse, preserveExistingHypotheses, settleConfirmedHypotheses, validateHypotheses } from "../src/ai/validate.js";
-import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
+import { aiErrorFields, aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
 import { HYPOTHESES_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState as hydrateBaseState } from "../src/server/request-state.mjs";
@@ -177,7 +177,8 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
       inputTokens: error?.usage?.input_tokens ?? null,
       outputTokens: error?.usage?.output_tokens ?? null,
       cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null,
-      cacheWriteTokens: error?.usage?.cache_creation_input_tokens ?? null
+      cacheWriteTokens: error?.usage?.cache_creation_input_tokens ?? null,
+      ...aiErrorFields(error)
     }, { env });
     throw error;
   }
