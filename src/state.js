@@ -1,6 +1,6 @@
 import { DEFAULT_LOOK, isLook } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
-import { clearPersistedState, loadPersistedState } from "./persistence.js";
+import { clearPersistedState, loadPersistedState, loadSetAsideData } from "./persistence.js";
 import { parseBackupText } from "./model/export.js";
 import { restoreNarrowedAreas } from "./model/area-scope.js";
 
@@ -156,7 +156,11 @@ export const state = {
   browseLoading: false,
   browseError: false,
   starterReplaceId: null,
-  resetArmed: false
+  resetArmed: false,
+  // #348 follow-up: this load left out data it couldn't read and set the original aside (persistence.js).
+  // In memory only: the one-line notice shows until the user opens My Tastemake or closes it.
+  setAsideNotice: loadSetAsideData(),
+  setAsideDiscardArmed: false
 };
 // Nov 4 (after #325): put back pattern areas an earlier refresh removed by mistake, where history is unambiguous.
 restoreNarrowedAreas(state);
