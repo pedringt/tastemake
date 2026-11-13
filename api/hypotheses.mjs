@@ -223,8 +223,10 @@ export default async function handler(req, res) {
     res.setHeader("cache-control", "no-store");
     return res.status(200).json(payload);
   } catch (error) {
-    console.error("[tastemake-profile-ai]", error?.status ?? "", error?.anthropicType ?? "", error?.message ?? "");
+    // Nov 12: "400 invalid_request_error" alone couldn't tell a billing pause (for example a low credit
+    // balance) from a bad request. Log Anthropic's own message, as /api/recommendations does.
     const budgetPaused = isAiBudgetExhausted(error);
+    console.error("[tastemake-profile-ai]", budgetPaused ? "budget paused" : "unavailable", error?.status ?? "", error?.anthropicType ?? "", error?.anthropicDetail || error?.message || "");
     return res.status(200).json({
       source: "unavailable",
       reason: budgetPaused ? AI_BUDGET_MESSAGE : "live profile AI unavailable",
