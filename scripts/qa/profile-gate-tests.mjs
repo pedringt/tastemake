@@ -61,4 +61,35 @@ const book = { id: "openlibrary-book-OL1W", provider: "openlibrary", providerId:
   eq("profile requests don't use up the recommendations allowance", recs.code, 200);
 }
 
+// ---- 4. A provider error logs Anthropic's own message (Nov 12) --------------------------------------------
+{
+  const res = () => { const r = { code: null, body: null, headers: {} }; r.status = (c) => { r.code = c; return r; }; r.json = (b) => { r.body = b; return r; }; r.setHeader = (k, v) => { r.headers[k] = v; }; return r; };
+  const saved = { env: { ...process.env }, fetch: globalThis.fetch, error: console.error };
+  const logged = [];
+  Object.assign(process.env, AI_ENV);
+  console.error = (...args) => logged.push(args.join(" "));
+  const run = async (message, ip) => {
+    globalThis.fetch = async () => ({ ok: false, status: 400, json: async () => ({ error: { type: "invalid_request_error", message } }) });
+    const r = res();
+    await handler({ method: "POST", headers: { "x-forwarded-for": ip }, body: { state: { selectedFavorites: [book.id], customItems: { [book.id]: book } } } }, r);
+    return r;
+  };
+  try {
+    const low = await run("Your credit balance is too low to access the Anthropic API.", "203.0.113.151");
+    check("a low credit balance pauses the profile", low.body?.meta?.budgetPaused === true);
+    const lowLine = logged.find((line) => line.startsWith("[tastemake-profile-ai]")) ?? "";
+    check("...and the log says so, with Anthropic's message", lowLine.includes("budget paused") && lowLine.includes("credit balance is too low"), lowLine);
+    logged.length = 0;
+    const other = await run("messages: field required", "203.0.113.152");
+    check("another 400 isn't a pause", !other.body?.meta?.budgetPaused);
+    const otherLine = logged.find((line) => line.startsWith("[tastemake-profile-ai]")) ?? "";
+    check("...and its log names the real problem", otherLine.includes("unavailable") && otherLine.includes("field required"), otherLine);
+  } finally {
+    for (const key of Object.keys(AI_ENV)) if (!(key in saved.env)) delete process.env[key];
+    Object.assign(process.env, saved.env);
+    globalThis.fetch = saved.fetch;
+    console.error = saved.error;
+  }
+}
+
 finish();
