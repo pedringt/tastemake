@@ -67,8 +67,8 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   Object.assign(state, reloaded, { profileView: "list" });
   const profile = renderProfile();
   const row = profile.slice(profile.indexOf('data-profile-pattern="ai-saved"'));
-  check("the Taste Profile row still shows the Yes answer", row.length > 0 && row.includes("accurate"));
-  check("the Taste Profile hides the stale Not sure yet line", !profile.includes(CONTEXT.unsure));
+  check("the Taste Profile row still shows the Yes answer", row.length > 0 && row.includes("<span>Confirmed</span>"));
+  check("the Taste Profile hides the stale Not sure yet line", !profile.includes(CONTEXT.unsure) && !row.includes("Not sure why"));
   check("My Tastemake hides it too", !renderMine().includes(CONTEXT.unsure));
   eq("displaying it doesn't rewrite the saved answer", state.patternStatements[0].context, "unsure");
   eq("or its history", JSON.stringify(state.hypothesisHistory), JSON.stringify(reloaded.hypothesisHistory));
@@ -86,11 +86,14 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "partial", context: "unsure" }];
   eq("Partly + Not sure yet still reaches the AI", buildContext(state).statements[0]?.context, "unsure");
   state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "accurate", context: "some" }];
-  check("a saved Yes + Depends line still renders", renderProfile().includes(CONTEXT.some) && renderMine().includes(CONTEXT.some));
+  check("a saved Yes + Depends line still renders", renderProfile().includes("<span>Depends</span>") && renderMine().includes(CONTEXT.some));
   // Nov 9 (feedback semantics D6): "Not sure" means unconfirmed. The level isn't capped, so the copy can't say "tentative".
   state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "unsure", context: null }];
+  const { noteAnswer, resetDisclosure } = await import("../../src/screens/profile.js");
+  noteAnswer("ai-saved", "says");
   const unsure = renderProfile();
-  check("Not sure is described as unconfirmed", unsure.includes("treats it as unconfirmed") && unsure.includes("Its level still reflects the evidence"));
+  resetDisclosure();
+  check("Not sure is described as unconfirmed", unsure.includes("won’t present this pattern to its AI as something you agreed with") && unsure.includes("Its level still reflects the evidence"));
   check("and never as tentative", !/tentative/i.test(unsure));
 }
 
