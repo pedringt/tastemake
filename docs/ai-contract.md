@@ -47,6 +47,7 @@ A model's answer is only ever a **proposal**. It is validated, stamped and then 
 | Circular reasoning ("matches your taste") | Rejected |
 | More than one curveball, or a curveball when they are off | Rejected |
 | A curveball on explicitly adult-tagged content ("Smut", "Erotica") when nothing the user tried carries such a tag (#257) | Rejected; the no-AI fallback skips to the next candidate for that slot. Regular picks are unaffected |
+| A cross-medium test (a `bridge` candidate, #252): a second one in the set, one into an area that is off, one that doesn't cite the item it was found from, or one whose why doesn't say it's a test | Rejected. Bridge candidates are only offered with Surprise Me on and the filter on All, at most one per set |
 | A pattern uses a reason word ("flat", "too slow", "exposition") that no cited item carries, or pairs it with a different dimension than the user did (#256) | Rejected: user reasons belong to their own item and dimension |
 | A pattern states a general rule ("always", "even when", "regardless of") from fewer than three items (#256) | **Kept, but marked conditional**, and noted |
 | Model error, timeout, or too little survives | **Fall back** to the deterministic result and say so |

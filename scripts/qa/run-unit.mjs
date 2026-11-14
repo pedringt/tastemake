@@ -24,6 +24,7 @@ const SUITES = [
   "escaping-tests.mjs",
   "async-tests.mjs",
   "validate-tests.mjs",
+  "bridge-picks-tests.mjs",
   "pitch-provenance-tests.mjs",
   "dismissed-tests.mjs",
   "profile-rules-tests.mjs",
