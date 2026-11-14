@@ -15,6 +15,7 @@ import { igdbItem, igdbToken, tmdbItem } from "./providers.mjs";
 import { evidenceRecords } from "../model/evidence.js";
 import { newReleaseReason, specificGenre } from "./fallback-reasons.mjs";
 import { isAdultTagged } from "./adult-content.mjs";
+import { isScreenExtra } from "./screen-extras.mjs";
 import { excludedBy } from "../model/exclusions.js";
 
 export const WINDOW_DAYS = 7;
@@ -35,7 +36,7 @@ async function tmdbReleases(kind, window, region, env, fetchImpl) {
   const url = `https://api.themoviedb.org/3/discover/${kind}?${dates}&sort_by=popularity.desc&include_adult=false&language=en-US&page=1`;
   const response = await fetchWithTimeout(fetchImpl, url, { headers: { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" } });
   if (!response.ok) throw new Error(`tmdb new releases ${response.status}`);
-  return ((await response.json()).results ?? []).slice(0, 20).map((row) => ({
+  return ((await response.json()).results ?? []).filter((row) => !isScreenExtra(row)).slice(0, 20).map((row) => ({
     ...tmdbItem(row, kind),
     releaseDate: (kind === "tv" ? row.first_air_date : row.release_date) || null,
     popularity: Number(row.popularity) || 0

@@ -98,19 +98,21 @@ for (const stale of [
   // Nov 6 follow-up QA: Partly kept the same wording (frozen since #325) and had no free-text details.
   "Tastemake treats it as a narrower pattern",
   "uses the details you add below",
-  "Tastemake will use this pattern more selectively."
+  "Tastemake will use this pattern more selectively.",
+  // #358: the shortlist reads no pattern answers (#334), so importance carries no weight there.
+  "more weight when choosing recommendations"
 ]) check(`profile copy no longer promises: "${stale}"`, !profile.includes(stale));
 for (const approved of [
-  "Tastemake won’t use this pattern in your Taste Profile, and asks its AI not to lean on it when explaining picks.",
-  "Tastemake will tell its AI this pattern matters more to you.",
-  "Tastemake keeps it in your profile and tells its AI to treat it more cautiously. It doesn’t yet know which part doesn’t fit.",
-  "Tastemake asks its AI to treat this pattern more cautiously when making recommendations.",
-  "Tastemake will tell its AI this pattern matters less to you.",
+  "Removed from your Taste Profile. Picks can still resemble these titles, because your ratings still count.",
+  // #358: plainer consequence copy, still describing an AI instruction as an instruction.
+  "When AI chooses your picks, it’s told this matters more to you. Your ratings still decide which titles it can choose from.",
+  "When AI chooses your picks, it’s told this matters less to you. Your ratings still decide which titles it can choose from.",
+  "Kept, but the AI is told to use it cautiously and not broaden it.",
+  "Confirmed. Refreshes keep this wording.",
+  "Marked as depending on context. From the next refresh, its level can’t go above Supported.",
   "Your Taste Profile won’t apply it to",
-  "Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count.",
   "Your recent reactions and corrections changed your Taste Profile. Your corrections are also passed to Tastemake’s AI when it orders and explains future picks.",
   "Patterns you said do not fit you. Tastemake leaves them out of your Taste Profile. Picks can still resemble the titles behind them, because your ratings still count. You can revisit them.",
-  "Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is.",
   "Your Taste Profile now uses the narrower version instead of the older, broader one.",
   "This gives Tastemake another example to consider when assessing the pattern.",
   "Your Taste Profile has updated which kinds of titles this pattern covers.",

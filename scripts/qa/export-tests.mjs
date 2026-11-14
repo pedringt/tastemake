@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { buildBackup, buildHtmlExport, htmlFileName, parseBackupText } from "../../src/model/export.js";
+import { backupFileName, buildBackup, buildHtmlExport, htmlFileName, parseBackupText, setAsideFileName } from "../../src/model/export.js";
 import { renderArtwork } from "../../src/components/artwork.js";
 import { createSuite } from "./lib/assert.mjs";
 
@@ -51,7 +51,12 @@ check("readable export includes Saved",html.includes(">Saved <span class=\"count
 check("readable export includes Tried and reaction",html.includes(">Tried <span class=\"count\">1</span></h2>")&&html.includes("Liked Movie")&&html.includes(">Liked<"));
 check("readable export includes active Taste Profile",html.includes("<h2>Taste Profile</h2>")&&html.includes("Active pattern"));
 check("readable export includes corrected patterns",html.includes("Corrected patterns")&&html.includes("Rejected pattern"));
-check("readable export filename uses html",htmlFileName(new Date("2026-09-30T12:00:00.000Z"))==="my-tastemake-2026-09-30.html");
+check("readable export filename uses html",htmlFileName(new Date(2026,8,30,12))==="my-tastemake-2026-09-30.html");
+// Nov 13: filenames use the person's local date. 11:30 PM local on Nov 13 is Nov 14 in UTC west of Greenwich.
+const lateEvening=new Date(2026,10,13,23,30);
+check("backup filename uses the local date",backupFileName(lateEvening)==="tastemake-backup-2026-11-13.json",backupFileName(lateEvening));
+check("readable export uses the local date",htmlFileName(lateEvening)==="my-tastemake-2026-11-13.html");
+check("set-aside download uses the local date",setAsideFileName(lateEvening)==="tastemake-set-aside-2026-11-13.json");
 check("readable collections use a compact responsive grid",html.includes(".collection .items{grid-template-columns:repeat(3,minmax(0,1fr))}"));
 check("collection headers include item counts",html.includes("<h2>Saved <span class=\"count\">1</span></h2>")&&html.includes("<h2>Tried <span class=\"count\">1</span></h2>"));
 check("corrected patterns are collapsed by default",html.includes('<details class="corrected">')&&html.includes("<summary>Corrected patterns"));

@@ -4,6 +4,7 @@ import { withBookSeriesEvidence } from "./book-series-editions.mjs";
 import { bookSeriesPosition, isBook, isLaterSeriesEntry } from "./book-series.mjs";
 import { wikidataSeriesPositions } from "./wikidata-series.mjs";
 import { isBookCompanion } from "./book-companions.mjs";
+import { isScreenExtra } from "./screen-extras.mjs";
 import { correctOldBookYears } from "./wikidata-years.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
@@ -194,7 +195,7 @@ async function tmdbRelated(item, env, fetchImpl, queryImpl) {
       headers: { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" }
     });
     if (!response.ok) return [];
-    return ((await response.json()).results ?? []).slice(0, 12).map((row) => tmdbItem(row, kind));
+    return ((await response.json()).results ?? []).filter((row) => !isScreenExtra(row)).slice(0, 12).map((row) => tmdbItem(row, kind));
   };
   const storePromise = relatedCanonicalItems(item, item.genres ?? [], { env, query: queryImpl });
   const livePromise = fetchImpl !== fetch

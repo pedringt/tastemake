@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { canKeepDiscovering } from "../model/taste.js";
-import { CONTEXT, FIT, NEEDS_REVIEW_TEXT, RECONFIRM_LABEL, RECONFIRM_TEXT, WEIGHT, canReconfirm, patternDisplayStatus, shownContext, statementFor } from "../model/statements.js";
+import { CONTEXT, NEEDS_REVIEW_TEXT, RECONFIRM_LABEL, RECONFIRM_TEXT, canReconfirm, patternDisplayStatus, statementFor, statementSummary } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
@@ -14,9 +14,50 @@ import { levelChangeConsequence } from "../model/history.js";
 import { exampleLinkHtml, isViewingExample } from "../example-profile.js";
 import { featuredCorrection } from "../model/featured-correction.js";
 
+// #358: progressive disclosure. An unanswered pattern shows its statement, one supporting example and the
+// question; follow-ups appear only after an answer, and an answered pattern collapses to a summary with
+// Change. This is screen state for this visit only (never saved), so a reload shows every answered pattern
+// as its summary. `changed` is the answer just given on a pattern: its consequence line shows only then.
+const disclosure = { open: new Set(), refine: new Set(), changed: new Map(), correctedShown: false };
+
+export function openPattern(id, { refine = false } = {}) {
+  disclosure.open.add(id);
+  if (refine) disclosure.refine.add(id);
+}
+export function closePattern(id) {
+  disclosure.open.delete(id);
+  disclosure.refine.delete(id);
+  disclosure.changed.delete(id);
+}
+export function toggleRefine(id) {
+  if (disclosure.refine.has(id)) disclosure.refine.delete(id);
+  else disclosure.refine.add(id);
+}
+export function noteAnswer(id, field) {
+  disclosure.open.add(id);
+  disclosure.changed.set(id, field);
+}
+export function resetDisclosure() {
+  disclosure.open.clear();
+  disclosure.refine.clear();
+  disclosure.changed.clear();
+  disclosure.correctedShown = false;
+}
+const isOpen = (item, said) => !said?.says || disclosure.open.has(item.id);
+// A pattern just answered "No" stays where it is until Done, so the acknowledgement is seen where it was given.
+const keptInPlace = (statements) => new Set((statements ?? [])
+  .filter((s) => s?.says === "not-me" && disclosure.open.has(s.hypothesisId) && disclosure.changed.get(s.hypothesisId) === "says")
+  .map((s) => s.hypothesisId));
+
+const areaLabel = (id) => domainById(id)?.label ?? id;
+
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
   return `<button type="button" class="button button-secondary signal-say-button" data-statement-pattern="${item.id}" data-statement-field="${field}" data-statement-value="${value}" aria-pressed="${pressed}">${label}</button>`;
+}
+
+function disclosureButton(item, action, label, extra = "") {
+  return `<button type="button" class="button button-quiet signal-disclosure-button signal-${action}-button" data-disclosure-pattern="${item.id}" data-disclosure-action="${action}"${extra}>${label}</button>`;
 }
 
 // #36: a lighter correction than "Not really me" — scope a pattern out of one domain without
@@ -52,12 +93,14 @@ function alsoAppliesControls(item, said) {
   if (!others.length) return "";
   const chosen = said?.alsoAppliesTo ?? [];
   return `
-          <div class="signal-say-group" role="group" aria-label="Is “${esc(item.title)}” also true for other areas?">
-            <span class="signal-say-label">Also true for</span>
-            ${others.map((domain) => `<button type="button" class="button button-secondary signal-say-button" data-also-pattern="${item.id}" data-also-domain="${domain.id}" aria-pressed="${chosen.includes(domain.id)}">${esc(domain.label)}</button>`).join("")}
-          </div>`;
+            <div class="signal-say-group" role="group" aria-label="Is “${esc(item.title)}” also true for other areas?">
+              <span class="signal-say-label">Also true for</span>
+              ${others.map((domain) => `<button type="button" class="button button-secondary signal-say-button" data-also-pattern="${item.id}" data-also-domain="${domain.id}" aria-pressed="${chosen.includes(domain.id)}">${esc(domain.label)}</button>`).join("")}
+            </div>`;
 }
 
+// #358: after Yes, refining is optional and closed until asked for; Partly offers only the context and area
+// options that exist today (which part fits waits for #323); No and Not sure ask nothing more.
 function sayControls(item, said, record) {
   const fit = said?.says ?? null;
   const primary = `
@@ -70,21 +113,26 @@ function sayControls(item, said, record) {
     </div>`;
 
   if (fit === "accurate") {
+    const refining = disclosure.refine.has(item.id);
     return `
       <div class="signal-say">
         ${primary}
-        <div class="signal-followups">
-          <div class="signal-say-group" role="group" aria-label="How important is “${esc(item.title)}” to your taste?">
-            <span class="signal-say-label">How important is it?</span>
-            ${sayButton(item, "weight", "lot", "Important to my taste", said)}
-            ${sayButton(item, "weight", "little", "Nice, but not important", said)}
+        <div class="signal-refine">
+          ${disclosureButton(item, "refine", "Refine this <span class=\"signal-optional\">(optional)</span>", ` aria-expanded="${refining}" aria-controls="refine-${esc(item.id)}"`)}
+          <div class="signal-followups" id="refine-${esc(item.id)}"${refining ? "" : " hidden"}>
+            ${refining ? `
+            <div class="signal-say-group" role="group" aria-label="How important is “${esc(item.title)}” to your taste?">
+              <span class="signal-say-label">How important is it?</span>
+              ${sayButton(item, "weight", "lot", "Important to my taste", said)}
+              ${sayButton(item, "weight", "little", "Nice, but not important", said)}
+            </div>
+            <div class="signal-say-group" role="group" aria-label="How often is “${esc(item.title)}” true for you?">
+              <span class="signal-say-label">How often is this true for you?</span>
+              ${sayButton(item, "context", "broad", "Usually", said)}
+              ${sayButton(item, "context", "some", "Depends", said)}
+            </div>
+            ${alsoAppliesControls(item, said)}` : ""}
           </div>
-          <div class="signal-say-group" role="group" aria-label="How often is “${esc(item.title)}” true for you?">
-            <span class="signal-say-label">How often is this true for you?</span>
-            ${sayButton(item, "context", "broad", "Usually", said)}
-            ${sayButton(item, "context", "some", "Depends", said)}
-          </div>
-          ${alsoAppliesControls(item, said)}
         </div>
       </div>`;
   }
@@ -107,9 +155,9 @@ function sayControls(item, said, record) {
   return `<div class="signal-say">${primary}</div>`;
 }
 
-export function partitionProfilePatterns(patterns = [], statements = []) {
+export function partitionProfilePatterns(patterns = [], statements = [], keep = new Set()) {
   const rejectedIds = new Set(
-    (statements ?? []).filter((entry) => entry?.says === "not-me").map((entry) => entry.hypothesisId)
+    (statements ?? []).filter((entry) => entry?.says === "not-me" && !keep.has(entry.hypothesisId)).map((entry) => entry.hypothesisId)
   );
   return {
     active: (patterns ?? []).filter((item) => !rejectedIds.has(item.id)),
@@ -117,29 +165,54 @@ export function partitionProfilePatterns(patterns = [], statements = []) {
   };
 }
 
-function statementConsequence(item, said) {
-  if (!said?.says) return "";
-  const excluded = (said.excludedDomains ?? []).map((id) => domainById(id)?.label ?? id);
+// Nov 3, 2026 (T1): say only what the software does. Corrections are enforced in the Taste Profile; for
+// recommendations they are passed to the AI as instructions, and they do not reach candidate scoring or the
+// catalog fallback (#334). So no line here promises that future picks will change, and an AI instruction is
+// described as an instruction. #358: plainer wording, shown only right after the answer that changed something.
+const CONSEQUENCE = {
+  says: {
+    accurate: "Confirmed. Refreshes keep this wording.",
+    partial: "Kept, but the AI is told to use it cautiously and not broaden it.",
+    "not-me": "Removed from your Taste Profile. Picks can still resemble these titles, because your ratings still count. When you’re done, it’s listed under Corrected patterns, where you can change it.",
+    // Nov 9 (feedback semantics D6): "Not sure" means unconfirmed, not weaker. Nothing caps the level.
+    unsure: "Tastemake won’t present this pattern to its AI as something you agreed with. Its level still reflects the evidence."
+  },
+  // When AI is paused, picks come from the catalog, which doesn't read this answer.
+  weight: {
+    lot: "When AI chooses your picks, it’s told this matters more to you. Your ratings still decide which titles it can choose from.",
+    little: "When AI chooses your picks, it’s told this matters less to you. Your ratings still decide which titles it can choose from."
+  },
+  // The refresh check caps a context-dependent pattern at Supported (src/ai/validate.js); the level shown now
+  // changes only when the profile is next refreshed.
+  context: { some: "Marked as depending on context. From the next refresh, its level can’t go above Supported." }
+};
 
-  // Nov 3, 2026 (T1): say only what the software does. Corrections are enforced in the Taste Profile;
-  // for recommendations they are passed to the AI as instructions, and they do not reach candidate
-  // scoring or the catalog fallback. So no line here promises that future picks will change.
+function statementConsequence(said, field) {
+  if (!said?.says || !field) return "";
   let text = "";
-  if (said.says === "not-me") text = "Tastemake won’t use this pattern in your Taste Profile, and asks its AI not to lean on it when explaining picks.";
-  // Nov 9 (feedback semantics D6): "Not sure" means unconfirmed, not weaker. Nothing caps the level, so the copy
-  // no longer says Tastemake keeps the pattern "tentative".
-  else if (said.says === "unsure") text = "Tastemake won’t present this pattern to its AI as something you agreed with. Its level still reflects the evidence.";
-  else if (said.says === "partial") text = "Tastemake asks its AI to treat this pattern more cautiously when making recommendations.";
-  else if (said.weight === "lot") text = "Tastemake will tell its AI this pattern matters more to you.";
-  else if (said.weight === "little") text = "Tastemake will tell its AI this pattern matters less to you.";
-  else if (said.context === "some") text = "Tastemake will treat this as conditional rather than broadly true.";
-  else if (said.says === "accurate") text = "Tastemake can keep using this pattern when it explains a future pick.";
-
-  if (excluded.length) text += ` Your Taste Profile won’t apply it to ${excluded.join(", ")}.`;
-  const also = (said.alsoAppliesTo ?? []).map((id) => domainById(id)?.label ?? id);
-  if (also.length) text += ` You said it also holds for ${also.join(", ")}, so Tastemake can use it there too.`;
+  if (field === "scope") {
+    const excluded = (said.excludedDomains ?? []).map(areaLabel);
+    if (excluded.length) text = `Your Taste Profile won’t apply it to ${excluded.join(", ")}.`;
+  } else if (field === "also") {
+    // #252: passed to the picks prompt only (catalog fallback doesn't read it), and never evidence there.
+    const also = (said.alsoAppliesTo ?? []).map(areaLabel);
+    text = also.length
+      ? `When AI chooses your picks, it’s told this also holds for ${also.join(", ")}. That’s your word, not something you’ve tried there, so its level doesn’t change.`
+      : "No longer marked as true for another area.";
+  } else {
+    text = CONSEQUENCE[field]?.[said[field]] ?? "";
+  }
   if (!text) return "";
   return `<div class="signal-consequence"><strong>What this changes</strong><span>${esc(text)}</span></div>`;
+}
+
+function summaryLine(item, said) {
+  const parts = statementSummary(said, areaLabel);
+  return `
+    <div class="signal-summary">
+      <span class="signal-summary-label"><span class="visually-hidden">Your answer: </span>${parts.map((part) => `<span>${esc(part)}</span>`).join(`<span aria-hidden="true"> · </span>`)}</span>
+      ${disclosureButton(item, "change", "Change", ` aria-label="Change your answer about “${esc(item.title)}”"`)}
+    </div>`;
 }
 
 // #250: the reasons the user gave on items this pattern cites, in their own words and per item. These
@@ -158,62 +231,82 @@ function saidReasonsLine(item, records) {
   return `<div class="signal-evidence signal-said-reasons"><span>Your reasons for these titles</span> ${rows.join(" · ")}</div>`;
 }
 
+// #358: one short supporting example up front; the full evidence, the reasons and the blind spots expand.
+function evidenceBlock(item, records, blindLine) {
+  const example = (item.supports ?? []).map((ref) => records.get(ref)?.title).find(Boolean);
+  return `
+    ${example ? `<p class="signal-example"><span>For example</span> ${esc(example)}</p>` : ""}
+    <details class="signal-more">
+      <summary>What this comes from</summary>
+      <div class="signal-evidence">${esc(item.evidence)}</div>
+      ${saidReasonsLine(item, records)}
+      <div class="signal-provenance">${esc(item.provenance ?? "Live AI interpretation.")}</div>
+      ${blindLine}
+    </details>`;
+}
+
 function hypothesisCard(item, index, records = new Map()) {
-  const update = { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." };
+  const update = { level: item.strength ?? "Emerging", status: item.status ?? "emerging" };
   const said = statementFor(state, item.id);
   const shown = patternDisplayStatus(item, said);
   const record = { scope: { supported: item.domains ?? [], excluded: said?.excludedDomains ?? [] } };
+  const open = isOpen(item, said);
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
     ? `<div class="signal-blind">Blind spot: ${spots.map((spot) => `\u201c${esc(spot.item.title)}\u201d`).join(", ")} didn't hold up here.${spots.length === 1 ? " It takes more than one to change what Tastemake thinks." : ""}</div>`
     : "";
+  const excluded = (said?.says === "partial" ? said.excludedDomains ?? [] : []).map(areaLabel);
   return `
-    <article class="signal-row signal-row-${index + 1}" data-profile-pattern="${item.id}">
+    <article class="signal-row signal-row-${index + 1}" data-profile-pattern="${item.id}" data-pattern-state="${open ? "open" : "answered"}">
       <div class="signal-index">${String(index + 1).padStart(2, "0")}</div>
       <div class="signal-main">
         <div class="signal-title-row">
           <h3>${esc(item.title)}</h3>
           <span class="signal-badges">
             ${item.status === "conditional" ? `<span class="signal-flag" title="This pattern holds in some picks and not others.">Conditional</span>` : ""}
-            ${said?.says === "accurate" ? `<span class="signal-flag signal-confirmed">You confirmed this</span>` : ""}
-            ${said?.says === "partial" ? `<span class="signal-flag">Partly accurate</span>` : ""}
-            ${said?.says === "unsure" ? `<span class="signal-flag">Not sure yet</span>` : ""}
             ${shown.kind === "level" ? `<span class="signal-status ${update.status}">${esc(update.level)}</span>` : `<span class="signal-flag">${esc(shown.label)}</span>`}
           </span>
         </div>
         <p class="signal-claim">${esc(item.claim)}</p>
-        ${shown.kind === "needs-review" ? `<div class="signal-said">${esc(NEEDS_REVIEW_TEXT)}</div>` : ""}
-        ${shown.kind === "needs-review" && canReconfirm(state, item.id) ? `<div class="signal-said signal-reconfirm"><span>${esc(RECONFIRM_TEXT)}</span> <button type="button" class="button button-secondary signal-say-button" data-reconfirm-pattern="${esc(item.id)}">${esc(RECONFIRM_LABEL)}</button></div>` : ""}
-        <div class="signal-evidence"><span>What this comes from</span> ${esc(item.evidence)}</div>
-        ${saidReasonsLine(item, records)}
-        <div class="signal-provenance">${esc(update.provenance)}</div>
-        ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count. The pattern stays here so you can change your mind.</div>` : ""}
-        ${said?.says === "partial" ? `<div class="signal-said"><strong>You marked this pattern as partly accurate.</strong> Tastemake keeps it in your profile and tells its AI to treat it more cautiously. It doesn’t yet know which part doesn’t fit.</div>` : ""}
-        ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake treats it as unconfirmed: it won’t present it to its AI as something you agreed with. How strong the evidence looks doesn’t change.</div>` : ""}
-        ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is.</div>` : ""}
-        ${["accurate", "partial"].includes(said?.says) && shownContext(said) ? `<div class="signal-said">${CONTEXT[shownContext(said)] ?? "You refined when this applies."}.</div>` : ""}
-        ${sayControls(item, said, record)}
-        ${statementConsequence(item, said)}
-        ${blindLine}
+        ${evidenceBlock(item, records, blindLine)}
+        ${shown.kind === "needs-review" ? `<details class="signal-carried"><summary>Why it needs another look</summary>
+          <div class="signal-said">${esc(NEEDS_REVIEW_TEXT)}</div>
+          ${canReconfirm(state, item.id) ? `<div class="signal-said signal-reconfirm"><span>${esc(RECONFIRM_TEXT)}</span> <button type="button" class="button button-secondary signal-say-button" data-reconfirm-pattern="${esc(item.id)}">${esc(RECONFIRM_LABEL)}</button></div>` : ""}
+        </details>` : ""}
+        ${!open && excluded.length ? `<details class="signal-carried"><summary>Where it doesn’t apply</summary>
+          <div class="signal-said">Your Taste Profile won’t apply it to ${esc(excluded.join(", "))}. Change it to include an area again.</div>
+        </details>` : ""}
+        ${open ? `
+          ${sayControls(item, said, record)}
+          ${statementConsequence(said, disclosure.changed.get(item.id))}
+          ${said?.says ? `<div class="signal-done-row">${disclosureButton(item, "done", "Done")}</div>` : ""}` : summaryLine(item, said)}
       </div>
     </article>`;
 }
 
+// #358: a corrected pattern carries the same summary ("Not me · Change"), so it can be undone from here.
 function correctedPatternsSection(items) {
   if (!items.length) return "";
+  // Once a corrected pattern is reopened here, the section stays open, so Done keeps focus in view.
+  if (items.some((item) => disclosure.open.has(item.id))) disclosure.correctedShown = true;
   return `
-    <details class="corrected-patterns">
+    <details class="corrected-patterns"${disclosure.correctedShown ? " open" : ""}>
       <summary>Corrected patterns <span class="corrected-pattern-count">${items.length}</span></summary>
       <p class="corrected-patterns-note">Patterns you said do not fit you. Tastemake leaves them out of your Taste Profile. Picks can still resemble the titles behind them, because your ratings still count. You can revisit them.</p>
       <div class="corrected-pattern-list">
-        ${items.map((item) => `
+        ${items.map((item) => {
+          const said = statementFor(state, item.id);
+          return disclosure.open.has(item.id) ? `
+          <div class="corrected-pattern-row is-open" data-profile-pattern="${item.id}">
+            <strong>${esc(item.title)}</strong>
+            ${sayControls(item, said, { scope: { supported: item.domains ?? [], excluded: [] } })}
+            <div class="signal-done-row">${disclosureButton(item, "done", "Done")}</div>
+          </div>` : `
           <div class="corrected-pattern-row" data-profile-pattern="${item.id}">
-            <div>
-              <strong>${esc(item.title)}</strong>
-              <span>You said this isn’t you.</span>
-            </div>
-            <button type="button" class="button button-quiet corrected-pattern-reconsider" data-statement-pattern="${item.id}" data-statement-field="says" data-statement-value="not-me">Reconsider</button>
-          </div>`).join("")}
+            <strong>${esc(item.title)}</strong>
+            ${summaryLine(item, said)}
+          </div>`;
+        }).join("")}
       </div>
     </details>`;
 }
@@ -405,7 +498,7 @@ export function renderProfile() {
   };
   const triedCount = evidenceMix.favorites + evidenceMix.loved + evidenceMix.liked + evidenceMix.disliked;
   const workingHypotheses = state.modelHypotheses ?? [];
-  const { active: activeHypotheses, corrected: correctedHypotheses } = partitionProfilePatterns(workingHypotheses, state.patternStatements);
+  const { active: activeHypotheses, corrected: correctedHypotheses } = partitionProfilePatterns(workingHypotheses, state.patternStatements, keptInPlace(state.patternStatements));
   const liveProfile = workingHypotheses.length > 0;
   const profileView = ["list", "full", "map"].includes(state.profileView) ? state.profileView : "list";
   const primaryHypotheses = activeHypotheses.slice(0, 6);

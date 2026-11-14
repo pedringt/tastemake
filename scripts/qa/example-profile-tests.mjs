@@ -128,7 +128,7 @@ eq("the strongest six are unchanged", sixIds.join(","), state.modelHypotheses.sl
 check("the corrected pattern is not forced into the six", !sixIds.includes("ai-quirky-character-comedy"));
 state.profileView = "full";
 const full = renderProfile();
-check("Full profile has no featured panel but still lists the pattern", !full.includes("profile-featured-correction") && full.includes('data-profile-pattern="ai-quirky-character-comedy"') && full.includes("Partly accurate"));
+check("Full profile has no featured panel but still lists the pattern", !full.includes("profile-featured-correction") && full.includes('data-profile-pattern="ai-quirky-character-comedy"') && full.includes("<span>Partly</span>"));
 state.profileView = "list";
 // Missing before-state: say so rather than invent one.
 const savedHistory = state.hypothesisHistory;

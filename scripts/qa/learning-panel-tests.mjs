@@ -91,6 +91,6 @@ refresh({ domains: ["movies"] });
 html = panel();
 check("3b. answer then real category change: the category change is reported", html.includes(CATEGORY_CHANGE));
 check("3b. answer then real category change: no stale answer line in the panel", !html.includes(ANSWER_CONSEQUENCE));
-check("3b. the answer is still shown on the pattern card", renderProfile().includes("You confirmed this"));
+check("3b. the answer is still shown on the pattern card", renderProfile().includes("<span>Confirmed</span>"));
 
 finish();
