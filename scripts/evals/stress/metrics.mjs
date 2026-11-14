@@ -458,6 +458,39 @@ export function reliability(calls) {
   };
 }
 
+// #252 part 2 (Oct 27): the bridge-pick before/after, over pick CALLS (not just kept picks), on profiles whose
+// pools hold marked bridge books (profiles.mjs screen / screenfew). Same fields on main and on the bridge
+// branch, since the marks come from the pool, not from product code.
+const shortTitle = (title) => String(title ?? "").split(/[:(\-–—]/)[0].trim().split(/\s+/).filter((w) => !["the", "a", "an"].includes(w.toLowerCase()))[0] ?? "";
+export function bridgeMetrics(calls) {
+  const picksCalls = calls.filter((c) => c.kind === "picks" && c.source !== "error");
+  const offered = picksCalls.filter((c) => (c.offered ?? []).some((o) => o.bridge));
+  const bridgePicks = picksCalls.flatMap((c) => (c.picks ?? []).filter((p) => p.bridge));
+  const ms = picksCalls.map((c) => c.ms).filter(Number.isFinite).sort((a, b) => a - b);
+  const at = (q) => (ms.length ? ms[Math.min(ms.length - 1, Math.floor(q * ms.length))] : null);
+  const share = (n, d) => (d ? Math.round((n / d) * 1000) / 1000 : null);
+  const namesSource = (p) => { const t = String(p.bridgeFrom ?? ""); const w = shortTitle(t); return Boolean(t) && (p.why ?? "").toLowerCase().includes(t.toLowerCase()) || (w.length >= 4 && new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(p.why ?? "")); };
+  const reasons = {};
+  for (const c of picksCalls) for (const r of c.rejected ?? []) if (r.bridge) for (const why of r.reasons ?? []) reasons[why] = (reasons[why] ?? 0) + 1;
+  return {
+    calls: picksCalls.length,
+    callsOfferingBridge: offered.length,
+    bridgeOfferedShare: share(offered.length, picksCalls.length),
+    bridgePickRate: share(offered.filter((c) => (c.picks ?? []).some((p) => p.bridge)).length, offered.length),
+    setsWithTwoOrMoreBridgePicks: picksCalls.filter((c) => (c.picks ?? []).filter((p) => p.bridge).length > 1).length,
+    bridgePicks: bridgePicks.length,
+    bridgeAsExploratory: share(bridgePicks.filter((p) => p.kind === "curveball").length, bridgePicks.length),
+    bridgeWhyNamesSource: share(bridgePicks.filter(namesSource).length, bridgePicks.length),
+    bridgeWhySaysTest: share(bridgePicks.filter((p) => /\btest/i.test(p.why ?? "")).length, bridgePicks.length),
+    bridgeRejected: picksCalls.reduce((n, c) => n + (c.rejected ?? []).filter((r) => r.bridge).length, 0),
+    bridgeRejectionReasons: reasons,
+    fallbackShare: share(picksCalls.filter((c) => c.source !== "model").length, picksCalls.length),
+    fallbackUsingBridge: picksCalls.filter((c) => (c.fallbackPicks ?? []).some((p) => p.bridge)).length,
+    msMedian: at(0.5),
+    msP90: at(0.9)
+  };
+}
+
 export const DEFINITIONS = [
   ["Title masking", "Before any wording metric, the pick's title and the titles of the evidence it cites are replaced by <title>, so 'Because you loved X' and 'Because you loved Y' count as one template."],
   ["distinct-2 / distinct-3", "Unique word 2-grams (3-grams) divided by all 2-grams (3-grams) across every explanation in the group. 1.0 = nothing repeats; lower = more reuse."],

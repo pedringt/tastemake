@@ -159,14 +159,14 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
         rejectedReasons: (validated.rejected ?? []).flatMap((r) => r.reasons ?? [])
       }));
       recordAiCallInBackground({ ...baseMetric, outcome: "validation_fallback" }, { env });
-      return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage, needsReview: validated.needsReview, notChecked: validated.notChecked } };
+      return { source: "unavailable", reason: validated.notes?.[0] || "model hypotheses did not pass validation", hypotheses: [], meta: { paidCallMade: true, model: model.model, usage: model.usage, needsReview: validated.needsReview, notChecked: validated.notChecked, narrowed: validated.narrowed } };
     }
     recordAiCallInBackground({ ...baseMetric, outcome: "success" }, { env });
     return {
       source: "model",
       reason: null,
       hypotheses: validated.accepted,
-      meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, rejectionCategories, notes: validated.notes, needsReview: validated.needsReview, notChecked: validated.notChecked }
+      meta: { paidCallMade: true, model: model.model, usage: model.usage, rejected: validated.rejected.length, rejectionCategories, notes: validated.notes, needsReview: validated.needsReview, notChecked: validated.notChecked, narrowed: validated.narrowed }
     };
   } catch (error) {
     recordAiCallInBackground({

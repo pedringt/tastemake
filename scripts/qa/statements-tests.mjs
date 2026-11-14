@@ -1,4 +1,5 @@
-import { setStatement, toggleDomainExclusion } from "../../src/model/statements.js";
+import { activeStatements, alsoAppliesToFor, setStatement, toggleAlsoApplies, toggleDomainExclusion } from "../../src/model/statements.js";
+import { evidenceFingerprint } from "../../src/ai/requests.js";
 import { createSuite } from "./lib/assert.mjs";
 import { levelChangeConsequence } from "../../src/model/history.js";
 import { isTastebreakCandidate, startTastebreak, tastebreakPatterns } from "../../src/model/tastebreak.js";
@@ -67,8 +68,8 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   Object.assign(state, reloaded, { profileView: "list" });
   const profile = renderProfile();
   const row = profile.slice(profile.indexOf('data-profile-pattern="ai-saved"'));
-  check("the Taste Profile row still shows the Yes answer", row.length > 0 && row.includes("accurate"));
-  check("the Taste Profile hides the stale Not sure yet line", !profile.includes(CONTEXT.unsure));
+  check("the Taste Profile row still shows the Yes answer", row.length > 0 && row.includes("<span>Confirmed</span>"));
+  check("the Taste Profile hides the stale Not sure yet line", !profile.includes(CONTEXT.unsure) && !row.includes("Not sure why"));
   check("My Tastemake hides it too", !renderMine().includes(CONTEXT.unsure));
   eq("displaying it doesn't rewrite the saved answer", state.patternStatements[0].context, "unsure");
   eq("or its history", JSON.stringify(state.hypothesisHistory), JSON.stringify(reloaded.hypothesisHistory));
@@ -86,11 +87,14 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "partial", context: "unsure" }];
   eq("Partly + Not sure yet still reaches the AI", buildContext(state).statements[0]?.context, "unsure");
   state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "accurate", context: "some" }];
-  check("a saved Yes + Depends line still renders", renderProfile().includes(CONTEXT.some) && renderMine().includes(CONTEXT.some));
+  check("a saved Yes + Depends line still renders", renderProfile().includes("<span>Depends</span>") && renderMine().includes(CONTEXT.some));
   // Nov 9 (feedback semantics D6): "Not sure" means unconfirmed. The level isn't capped, so the copy can't say "tentative".
   state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "unsure", context: null }];
+  const { noteAnswer, resetDisclosure } = await import("../../src/screens/profile.js");
+  noteAnswer("ai-saved", "says");
   const unsure = renderProfile();
-  check("Not sure is described as unconfirmed", unsure.includes("treats it as unconfirmed") && unsure.includes("Its level still reflects the evidence"));
+  resetDisclosure();
+  check("Not sure is described as unconfirmed", unsure.includes("won’t present this pattern to its AI as something you agreed with") && unsure.includes("Its level still reflects the evidence"));
   check("and never as tentative", !/tentative/i.test(unsure));
 }
 
@@ -112,6 +116,35 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   eq("no refuses domain refinement", toggleDomainExclusion(state, pattern.id, "movies"), null);
 }
 
+
+// ---- #252: "Also true for" another area ----------------------------------------------------------
+{
+  const books = { id: "ai-books", title: "Rich world-building", claim: "Richly built worlds carry the enjoyment.", domains: ["read"] };
+  const state = { modelHypotheses: [books], patternStatements: [], hypothesisHistory: [], feedbackByRecommendation: {}, recommendationSets: [], selectedFavorites: new Set(), areas: {} };
+
+  eq("not offered before the user says the pattern is accurate", toggleAlsoApplies(state, books.id, "play"), null);
+  setStatement(state, books.id, "says", "accurate");
+  const before = evidenceFingerprint(state);
+  check("after 'Yes', it can be marked true for another area", typeof toggleAlsoApplies(state, books.id, "play") === "string");
+  eq("the area is recorded on the user's statement", alsoAppliesToFor(state, books.id).join(), "play");
+  check("it changes the request fingerprint (stales an in-flight pick request)", evidenceFingerprint(state) !== before);
+  eq("an area the pattern already covers can't be added", toggleAlsoApplies(state, books.id, "read"), null);
+  check("it is recorded as a user-confirmed revision", state.hypothesisHistory.some((r) => r.origin === "user-confirmed" && /also true for Games/.test(r.reason)));
+  toggleAlsoApplies(state, books.id, "play");
+  eq("tapping again removes it", alsoAppliesToFor(state, books.id).length, 0);
+
+  toggleAlsoApplies(state, books.id, "movies");
+  setStatement(state, books.id, "says", "partial");
+  eq("changing the answer away from 'Yes' clears it", alsoAppliesToFor(state, books.id).length, 0);
+  setStatement(state, books.id, "says", "partial");
+  eq("a statement left with nothing is removed", activeStatements(state).length, 0);
+
+  // PR #329 left patterns with no area after reconfirming; "also" has nothing to extend there.
+  const unscoped = { id: "ai-none", title: "No area yet", claim: "Still finding where this shows up.", domains: [] };
+  state.modelHypotheses.push(unscoped);
+  setStatement(state, unscoped.id, "says", "accurate");
+  eq("a pattern with no area yet can't be marked true for another", toggleAlsoApplies(state, unscoped.id, "play"), null);
+}
 
 // ---- #19: Tastebreak is offered for items a Taste Profile pattern cites (Oct 20) -------------------
 {

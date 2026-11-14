@@ -438,18 +438,7 @@
   padding:12px 14px;
 }
 .corrected-pattern-row + .corrected-pattern-row { border-top:1px solid var(--line); }
-.corrected-pattern-row > div { min-width:0; }
-.corrected-pattern-row strong,
-.corrected-pattern-row span { display:block; }
-.corrected-pattern-row strong { color:var(--navy); font-size:14px; }
-.corrected-pattern-row span { margin-top:2px; color:var(--muted); font-size:11px; }
-.corrected-pattern-reconsider {
-  min-width:0;
-  min-height:34px;
-  padding:5px 9px;
-  font-size:11px;
-  box-shadow:none;
-}
+.corrected-pattern-row > strong { display:block; min-width:0; color:var(--navy); font-size:14px; }
 .profile-no-active-patterns {
   padding:20px;
   border-bottom:2px solid var(--navy);
@@ -599,3 +588,41 @@
   text-transform:none;
 }
 .signal-said-reason em { font-style:italic; }
+
+/* #358: progressive disclosure on patterns. One example up front, the rest of the evidence expands; an
+   answered pattern collapses to its summary with Change. */
+.signal-example { margin:0 0 8px; font-size:13px; color:var(--text2,#3f4774); }
+.signal-example span,
+.signal-more > summary,
+.signal-carried > summary {
+  margin-right:6px;
+  color:var(--accent-text,var(--pink));
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.signal-more,
+.signal-carried { margin-top:4px; }
+.signal-more > summary,
+.signal-carried > summary { display:flex; align-items:center; min-height:32px; width:fit-content; cursor:pointer; }
+.signal-more[open] > .signal-evidence:first-of-type { margin-top:2px; }
+.signal-summary { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:12px; }
+.signal-summary-label {
+  display:inline-block;
+  padding:5px 11px;
+  border:1.5px solid var(--navy);
+  border-radius:999px;
+  background:var(--paper,#fff);
+  color:var(--navy);
+  font-size:12px;
+  font-weight:800;
+}
+.signal-disclosure-button { min-height:32px; min-width:0; padding:4px 10px; font-size:12px; white-space:nowrap; box-shadow:none; }
+.signal-followups[hidden] { display:none; }
+.signal-refine { display:grid; gap:8px; justify-items:start; }
+.signal-refine .signal-followups { width:100%; box-sizing:border-box; }
+.signal-optional { font-weight:500; color:var(--muted); }
+.signal-done-row { display:flex; justify-content:flex-end; margin-top:10px; }
+.corrected-pattern-row.is-open { display:grid; justify-content:stretch; }
+.corrected-pattern-row .signal-summary { margin-top:0; }

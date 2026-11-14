@@ -343,7 +343,7 @@ const newProposals = (n) => ({ hypotheses: Array.from({ length: n }, (_, i) => p
   check("profile: the flagged row shows Needs another look", flaggedRow.includes(`<span class="signal-flag">${NEEDS_REVIEW_LABEL}</span>`), flaggedRow.slice(0, 400));
   check("profile: the flagged row explains it", flaggedRow.includes(NEEDS_REVIEW_TEXT.replace("’", "&#39;")) || flaggedRow.includes(NEEDS_REVIEW_TEXT), flaggedRow.slice(0, 1200));
   check("profile: the flagged row shows no confidence level", !/class="signal-status/.test(flaggedRow));
-  check("profile: the user's answer is still shown", flaggedRow.includes("You confirmed this"));
+  check("profile: the user's answer is still shown", flaggedRow.includes("<span>Confirmed</span>"));
   const validRow = row("ai-worlds");
   check("profile: a valid row keeps its level and no flag", /class="signal-status/.test(validRow) && !validRow.includes(NEEDS_REVIEW_LABEL));
 

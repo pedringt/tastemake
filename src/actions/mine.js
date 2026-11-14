@@ -4,7 +4,7 @@ import { clearStatement } from "../model/statements.js";
 import { removeBlindSpot } from "../model/blindspots.js";
 import { AREAS } from "../model/taste.js";
 import { EXCLUDABLE_GENRES, addExclusion, makeExclusion, removeExclusion } from "../model/exclusions.js";
-import { backupFileName, buildBackup, buildHtmlExport, htmlFileName } from "../model/export.js";
+import { backupFileName, buildBackup, buildHtmlExport, htmlFileName, setAsideFileName } from "../model/export.js";
 import { discardSetAsideCopy, readSetAsideCopy } from "../persistence.js";
 
 // ---- My Tastemake (#8) ----
@@ -80,7 +80,7 @@ export function handleMineClick(event, { render, updateStepper, restoreFocus, an
     const step = button.dataset.setAside;
     const copy = readSetAsideCopy();
     if (step === "download") {
-      if (copy) downloadText(`tastemake-set-aside-${new Date().toISOString().slice(0, 10)}.json`, "application/json;charset=utf-8", copy.raw);
+      if (copy) downloadText(setAsideFileName(), "application/json;charset=utf-8", copy.raw);
       announce(copy ? "Downloaded the set-aside data." : "There is no set-aside data.");
       return;
     }

@@ -5754,6 +5754,3056 @@
     "openlibrary-book-OL20650912W",
     "igdb-game-74"
    ]
+  },
+  {
+   "id": "screen-10",
+   "shape": "screen",
+   "size": "10",
+   "experienced": 10,
+   "seed": 505010,
+   "favorites": [
+    "tmdb-movie-284054",
+    "tmdb-movie-138843",
+    "tmdb-tv-303351"
+   ],
+   "reactions": [
+    {
+     "id": "tmdb-tv-116799",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-96580",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-563",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-11801",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-3034",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1918",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1751701",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    }
+   ],
+   "intent": [
+    {
+     "id": "tmdb-movie-196",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-movie-8656",
+     "how": "not-interested"
+    }
+   ],
+   "candidates": [
+    "tmdb-movie-315837",
+    "openlibrary-book-OL1737320W",
+    "tmdb-movie-866398",
+    "tmdb-tv-66788",
+    "tmdb-tv-1100",
+    "tmdb-tv-34747",
+    "tmdb-movie-929204",
+    "igdb-game-37777",
+    "openlibrary-book-OL103134W",
+    "tmdb-tv-549",
+    "tmdb-movie-1476746",
+    "tmdb-movie-482321",
+    "tmdb-tv-67242",
+    "tmdb-tv-220074",
+    "tmdb-tv-65733",
+    "openlibrary-book-OL17837968W",
+    "tmdb-movie-1294189",
+    "tmdb-movie-118340",
+    "tmdb-movie-1155089",
+    "tmdb-movie-1389172",
+    "openlibrary-book-OL29914687W",
+    "tmdb-tv-1422",
+    "tmdb-tv-72698",
+    "tmdb-tv-203744",
+    "tmdb-movie-340837",
+    "tmdb-tv-32798",
+    "tmdb-movie-1281331",
+    "openlibrary-book-OL46401W",
+    "igdb-game-73",
+    "tmdb-movie-10771",
+    "tmdb-tv-84791",
+    "tmdb-tv-245927",
+    "tmdb-tv-14755",
+    "tmdb-movie-7340",
+    "openlibrary-book-OL474061W",
+    "tmdb-movie-422803"
+   ],
+   "bridges": [
+    {
+     "id": "openlibrary-book-OL1737320W",
+     "fromId": "tmdb-movie-284054",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL103134W",
+     "fromId": "tmdb-movie-284054",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL17837968W",
+     "fromId": "tmdb-movie-284054",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL29914687W",
+     "fromId": "tmdb-movie-284054",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL46401W",
+     "fromId": "tmdb-movie-284054",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL474061W",
+     "fromId": "tmdb-movie-284054",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "screenfew-10",
+   "shape": "screenfew",
+   "size": "10",
+   "experienced": 10,
+   "seed": 606010,
+   "favorites": [
+    "tmdb-movie-1400837",
+    "tmdb-tv-72750",
+    "tmdb-movie-1234731"
+   ],
+   "reactions": [
+    {
+     "id": "tmdb-tv-2224",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-63770",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1930",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1272837",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1091",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "openlibrary-book-OL27420W",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "openlibrary-book-OL17202418W",
+     "how": "loved",
+     "refinements": [
+      "world-setting"
+     ],
+     "starred": false
+    }
+   ],
+   "intent": [
+    {
+     "id": "tmdb-tv-1426",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-movie-152",
+     "how": "not-interested"
+    }
+   ],
+   "candidates": [
+    "tmdb-movie-453405",
+    "openlibrary-book-OL72336W",
+    "tmdb-tv-303351",
+    "tmdb-tv-1434",
+    "openlibrary-book-OL17889978W",
+    "tmdb-tv-13945",
+    "tmdb-movie-755898",
+    "tmdb-tv-129552",
+    "openlibrary-book-OL149210W",
+    "tmdb-movie-939243",
+    "tmdb-movie-1556321",
+    "tmdb-movie-1292695",
+    "openlibrary-book-OL20883297W",
+    "tmdb-tv-615",
+    "tmdb-tv-80748",
+    "tmdb-tv-210787",
+    "openlibrary-book-OL257791W",
+    "tmdb-movie-1236045",
+    "tmdb-movie-91586",
+    "tmdb-tv-110531",
+    "openlibrary-book-OL927199W",
+    "tmdb-tv-97546",
+    "openlibrary-book-OL498556W",
+    "tmdb-tv-1100",
+    "tmdb-movie-866398",
+    "tmdb-tv-93166",
+    "tmdb-movie-482321",
+    "tmdb-movie-1284046",
+    "openlibrary-book-OL41078W",
+    "tmdb-movie-473033",
+    "openlibrary-book-OL551015W",
+    "tmdb-tv-764",
+    "tmdb-tv-289423",
+    "openlibrary-book-OL28319W",
+    "tmdb-tv-232230",
+    "tmdb-movie-9772"
+   ],
+   "bridges": [
+    {
+     "id": "openlibrary-book-OL72336W",
+     "fromId": "tmdb-movie-1400837",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL149210W",
+     "fromId": "tmdb-movie-1400837",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL257791W",
+     "fromId": "tmdb-movie-1400837",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL927199W",
+     "fromId": "tmdb-movie-1400837",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL41078W",
+     "fromId": "tmdb-movie-1400837",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL28319W",
+     "fromId": "tmdb-movie-1400837",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "screen-50",
+   "shape": "screen",
+   "size": "50",
+   "experienced": 50,
+   "seed": 505050,
+   "favorites": [
+    "tmdb-movie-614933",
+    "tmdb-movie-83542",
+    "tmdb-tv-15844",
+    "tmdb-tv-70523",
+    "tmdb-movie-603"
+   ],
+   "reactions": [
+    {
+     "id": "tmdb-movie-1010581",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-245927",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-1396",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1101383",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-502",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-16869",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-1667",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-181812",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-381284",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-79003",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1317288",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-99308",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-106",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-43242",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-106646",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1911",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-57243",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-113962",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1621552",
+     "how": "disliked",
+     "refinements": [
+      "pacing"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-428078",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1061474",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1130948",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-436270",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-335984",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-95480",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-492",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-15655",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-5920",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-95350",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-912649",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-196",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-954",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1058424",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1242898",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-1426",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-507089",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-336843",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-764",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1091",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1236045",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-330459",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-307176",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-10681",
+     "how": "disliked",
+     "refinements": [
+      "pacing"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-99861",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-315837",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    }
+   ],
+   "intent": [
+    {
+     "id": "tmdb-movie-46529",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-tv-67242",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-movie-10998",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-movie-11544",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-tv-79744",
+     "how": "bookmark"
+    }
+   ],
+   "candidates": [
+    "tmdb-movie-614911",
+    "openlibrary-book-OL21745884W",
+    "tmdb-movie-563",
+    "tmdb-tv-38693",
+    "tmdb-tv-246412",
+    "tmdb-tv-127529",
+    "tmdb-movie-798645",
+    "openlibrary-book-OL27254W",
+    "tmdb-movie-218",
+    "tmdb-tv-44006",
+    "igdb-game-22917",
+    "tmdb-movie-325348",
+    "tmdb-tv-72750",
+    "tmdb-tv-33238",
+    "tmdb-tv-115337",
+    "tmdb-movie-7340",
+    "openlibrary-book-OL29914687W",
+    "tmdb-movie-698687",
+    "tmdb-movie-986056",
+    "tmdb-movie-204922",
+    "openlibrary-book-OL17365W",
+    "tmdb-tv-116799",
+    "tmdb-tv-65733",
+    "tmdb-tv-204541",
+    "tmdb-movie-301337",
+    "igdb-game-14746",
+    "tmdb-movie-9772",
+    "openlibrary-book-OL46108W",
+    "tmdb-tv-2734",
+    "tmdb-movie-933260",
+    "tmdb-tv-2286",
+    "tmdb-tv-283260",
+    "tmdb-tv-615",
+    "openlibrary-book-OL103134W",
+    "tmdb-movie-91586",
+    "tmdb-movie-841"
+   ],
+   "bridges": [
+    {
+     "id": "openlibrary-book-OL21745884W",
+     "fromId": "tmdb-movie-614933",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL27254W",
+     "fromId": "tmdb-movie-614933",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL29914687W",
+     "fromId": "tmdb-movie-614933",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL17365W",
+     "fromId": "tmdb-movie-614933",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL46108W",
+     "fromId": "tmdb-movie-614933",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL103134W",
+     "fromId": "tmdb-movie-614933",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "screenfew-50",
+   "shape": "screenfew",
+   "size": "50",
+   "experienced": 50,
+   "seed": 606050,
+   "favorites": [
+    "tmdb-movie-1610703",
+    "tmdb-movie-423108",
+    "tmdb-tv-99308",
+    "tmdb-movie-787747",
+    "tmdb-movie-340102"
+   ],
+   "reactions": [
+    {
+     "id": "tmdb-movie-1751701",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-113962",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-152601",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-41149",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-83097",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-84791",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-93405",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-108545",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-78648",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1918",
+     "how": "disliked",
+     "refinements": [
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1022787",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-93166",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1895",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-91586",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1607127",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-290233",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-32726",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-133813",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-644",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-227348",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-161",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-204490",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-10865",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-72750",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1266127",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1034541",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-1228834",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-619730",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-57706",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-34307",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-213375",
+     "how": "disliked",
+     "refinements": [
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-48891",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-609681",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-41446",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-57911",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-67744",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1291595",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1396",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-1981",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1434",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1281331",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-61986",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-214",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "openlibrary-book-OL551015W",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "openlibrary-book-OL1230613W",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    }
+   ],
+   "intent": [
+    {
+     "id": "tmdb-movie-2503",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-tv-232230",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-tv-58841",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-tv-218342",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-movie-417384",
+     "how": "bookmark"
+    }
+   ],
+   "candidates": [
+    "tmdb-movie-1236045",
+    "openlibrary-book-OL72311W",
+    "tmdb-tv-19614",
+    "openlibrary-book-OL891786W",
+    "tmdb-tv-30983",
+    "tmdb-tv-91759",
+    "tmdb-movie-562",
+    "tmdb-movie-106",
+    "tmdb-movie-507089",
+    "openlibrary-book-OL16820059W",
+    "tmdb-tv-307176",
+    "tmdb-movie-425274",
+    "tmdb-tv-5092",
+    "openlibrary-book-OL27420W",
+    "tmdb-tv-1419",
+    "tmdb-tv-283260",
+    "openlibrary-book-OL64225W",
+    "tmdb-movie-1130948",
+    "tmdb-movie-351286",
+    "tmdb-tv-1405",
+    "openlibrary-book-OL257785W",
+    "tmdb-tv-1422",
+    "tmdb-tv-15226",
+    "openlibrary-book-OL2172454W",
+    "tmdb-movie-453405",
+    "tmdb-movie-169",
+    "openlibrary-book-OL407498W",
+    "tmdb-tv-106651",
+    "tmdb-movie-635910",
+    "tmdb-movie-7340",
+    "tmdb-tv-1220",
+    "tmdb-tv-549",
+    "openlibrary-book-OL81598W",
+    "tmdb-tv-203857",
+    "openlibrary-book-OL32195W",
+    "tmdb-movie-1389172"
+   ],
+   "bridges": [
+    {
+     "id": "openlibrary-book-OL72311W",
+     "fromId": "tmdb-movie-1610703",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL16820059W",
+     "fromId": "tmdb-movie-1610703",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL64225W",
+     "fromId": "tmdb-movie-1610703",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL257785W",
+     "fromId": "tmdb-movie-1610703",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL407498W",
+     "fromId": "tmdb-movie-1610703",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL32195W",
+     "fromId": "tmdb-movie-1610703",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "screen-100",
+   "shape": "screen",
+   "size": "100",
+   "experienced": 120,
+   "seed": 505120,
+   "favorites": [
+    "tmdb-movie-609681",
+    "tmdb-tv-213306",
+    "tmdb-movie-262500",
+    "tmdb-movie-296",
+    "tmdb-movie-315635",
+    "tmdb-movie-1236045"
+   ],
+   "reactions": [
+    {
+     "id": "tmdb-tv-30983",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-45140",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-108545",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1184918",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-46529",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1891",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-1368166",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-96580",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-138843",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-218342",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-198663",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-460458",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-58677",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-106",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-603",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-351286",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1381078",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-283995",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-1421",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-696393",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-604079",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-10681",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1419406",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-185",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-787747",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-65417",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-7340",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-75006",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-18",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1751701",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-679",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-131631",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-23004",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1556321",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-607",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1918",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-141",
+     "how": "disliked",
+     "refinements": [
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-456",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-969681",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-79003",
+     "how": "disliked",
+     "refinements": [
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-70523",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-755898",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-239770",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-205596",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-95350",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-72545",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-1405",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1339713",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-429617",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-507086",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-34747",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-284053",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-218",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-303351",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-473033",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1895",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1284046",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-14755",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1314481",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-502",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-39513",
+     "how": "disliked",
+     "refinements": [
+      "pacing"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-7512",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-929204",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-83542",
+     "how": "disliked",
+     "refinements": [
+      "pacing"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-4614",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-911430",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-33238",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1010581",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1434",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1492640",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-931",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-840705",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-278367",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1416",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-482321",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-20352",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-41956",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-698687",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-1396",
+     "how": "disliked",
+     "refinements": [
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-7895",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-436270",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-353491",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1003596",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-16869",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-64957",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-45789",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-2734",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-644",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-246412",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-8077",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-196",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1130948",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-340837",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-131634",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-44006",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-2286",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-986056",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-79744",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-693",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-84791",
+     "how": "disliked",
+     "refinements": [
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-65701",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-216467",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-299536",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1294189",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-11801",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-210787",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-453405",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-3035",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1440098",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-563",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-23587",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-59941",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-680",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-289423",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    }
+   ],
+   "intent": [
+    {
+     "id": "tmdb-tv-133813",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-movie-422803",
+     "how": "not-interested"
+    },
+    {
+     "id": "igdb-game-19000",
+     "how": "bookmark"
+    },
+    {
+     "id": "igdb-game-1910",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-movie-443791",
+     "how": "bookmark"
+    },
+    {
+     "id": "igdb-game-132181",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-tv-15655",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-movie-24428",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-movie-425274",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-tv-246386",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-movie-1476746",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-movie-181812",
+     "how": "not-interested"
+    }
+   ],
+   "candidates": [
+    "tmdb-movie-933260",
+    "openlibrary-book-OL46125W",
+    "tmdb-movie-507089",
+    "tmdb-tv-57706",
+    "tmdb-tv-278178",
+    "tmdb-tv-72698",
+    "tmdb-movie-118340",
+    "tmdb-tv-113962",
+    "igdb-game-7842",
+    "openlibrary-book-OL15331302W",
+    "tmdb-movie-10998",
+    "tmdb-movie-1022787",
+    "tmdb-tv-67744",
+    "tmdb-tv-2316",
+    "tmdb-tv-204154",
+    "openlibrary-book-OL17365W",
+    "tmdb-movie-496243",
+    "tmdb-movie-848326",
+    "tmdb-movie-798645",
+    "tmdb-movie-2503",
+    "openlibrary-book-OL52266W",
+    "tmdb-tv-245927",
+    "tmdb-tv-1695",
+    "tmdb-tv-12504",
+    "tmdb-movie-99861",
+    "tmdb-movie-1290821",
+    "igdb-game-2899",
+    "tmdb-tv-1419",
+    "openlibrary-book-OL103134W",
+    "tmdb-movie-614911",
+    "tmdb-tv-307176",
+    "tmdb-tv-67242",
+    "tmdb-tv-57911",
+    "tmdb-movie-91586",
+    "openlibrary-book-OL2172454W",
+    "tmdb-movie-76757"
+   ],
+   "bridges": [
+    {
+     "id": "openlibrary-book-OL46125W",
+     "fromId": "tmdb-movie-609681",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL15331302W",
+     "fromId": "tmdb-movie-609681",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL17365W",
+     "fromId": "tmdb-movie-609681",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL52266W",
+     "fromId": "tmdb-movie-609681",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL103134W",
+     "fromId": "tmdb-movie-609681",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL2172454W",
+     "fromId": "tmdb-movie-609681",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "sci-fi"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "screenfew-100",
+   "shape": "screenfew",
+   "size": "100",
+   "experienced": 120,
+   "seed": 606120,
+   "favorites": [
+    "tmdb-movie-1034541",
+    "tmdb-movie-1283515",
+    "tmdb-movie-602",
+    "tmdb-movie-423108",
+    "tmdb-tv-108545",
+    "tmdb-tv-764"
+   ],
+   "reactions": [
+    {
+     "id": "tmdb-movie-943134",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-129552",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1695",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-61818",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-2668",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1290821",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-91586",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1426",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-246386",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-33238",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-249039",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1408",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1292695",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1228834",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-447332",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-58841",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1100",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-473033",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1284046",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-59941",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-110531",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-2503",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-210787",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-933260",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1234821",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1232569",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-13945",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-216467",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-38",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1159559",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-414906",
+     "how": "disliked",
+     "refinements": [
+      "pacing"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1084187",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1440098",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-232230",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1220",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-696393",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-152601",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-940721",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-214",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-754",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1452",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1389172",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1419",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1396",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1447",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-58677",
+     "how": "disliked",
+     "refinements": [
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-15844",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1405",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-65701",
+     "how": "disliked",
+     "refinements": [
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-48891",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-213306",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-16869",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-218342",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-4556",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-247718",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-203857",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-133813",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-131631",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1419406",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-787747",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-9537",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1400499",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-220074",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-453405",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-10092",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-263115",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-99308",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-138843",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-23587",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-78191",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-252107",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1091",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-66788",
+     "how": "disliked",
+     "refinements": [
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1621552",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-419430",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-63401",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-97546",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-417384",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-713704",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-562",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-70160",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1339713",
+     "how": "disliked",
+     "refinements": [
+      "pacing"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-949423",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-57243",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-95",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1130948",
+     "how": "loved",
+     "refinements": [],
+     "starred": true
+    },
+    {
+     "id": "tmdb-tv-203744",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-541671",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1101383",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-244786",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-2734",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-760161",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1434",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-593643",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": true
+    },
+    {
+     "id": "tmdb-movie-496243",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-7895",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-563",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1155089",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-7340",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-74",
+     "how": "loved",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-65682",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1236045",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-67744",
+     "how": "loved",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-456",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-329865",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-507089",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "visual-style"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-1476746",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-movie-280",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-303351",
+     "how": "liked",
+     "refinements": [
+      "characters"
+     ],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-1413",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-502",
+     "how": "loved",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "tmdb-tv-72750",
+     "how": "liked",
+     "refinements": [
+      "characters",
+      "humor"
+     ],
+     "starred": false
+    },
+    {
+     "id": "openlibrary-book-OL18012166W",
+     "how": "liked",
+     "refinements": [],
+     "starred": false
+    },
+    {
+     "id": "openlibrary-book-OL20796936W",
+     "how": "disliked",
+     "refinements": [],
+     "starred": false
+    }
+   ],
+   "intent": [
+    {
+     "id": "openlibrary-book-OL15437W",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-tv-107113",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-tv-205272",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-tv-307176",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-tv-95396",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-tv-4614",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-tv-4239",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-tv-15256",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-movie-156022",
+     "how": "bookmark"
+    },
+    {
+     "id": "openlibrary-book-OL891786W",
+     "how": "not-interested"
+    },
+    {
+     "id": "tmdb-tv-290233",
+     "how": "bookmark"
+    },
+    {
+     "id": "tmdb-movie-161",
+     "how": "not-interested"
+    }
+   ],
+   "candidates": [
+    "tmdb-movie-1291595",
+    "tmdb-tv-1425",
+    "openlibrary-book-OL81606W",
+    "tmdb-tv-34307",
+    "openlibrary-book-OL498556W",
+    "tmdb-tv-213375",
+    "tmdb-movie-351286",
+    "openlibrary-book-OL64225W",
+    "tmdb-movie-340102",
+    "tmdb-tv-93166",
+    "tmdb-movie-601",
+    "tmdb-movie-1607127",
+    "tmdb-tv-95480",
+    "tmdb-tv-41956",
+    "openlibrary-book-OL27420W",
+    "tmdb-tv-93405",
+    "openlibrary-book-OL263259W",
+    "tmdb-movie-680",
+    "tmdb-movie-1300116",
+    "tmdb-tv-278178",
+    "openlibrary-book-OL72282W",
+    "tmdb-tv-32692",
+    "openlibrary-book-OL20883297W",
+    "tmdb-tv-38693",
+    "tmdb-movie-425274",
+    "openlibrary-book-OL3388961W",
+    "tmdb-movie-346364",
+    "tmdb-movie-986056",
+    "tmdb-tv-1918",
+    "tmdb-movie-954",
+    "tmdb-tv-10536",
+    "openlibrary-book-OL81634W",
+    "tmdb-tv-549",
+    "tmdb-tv-61986",
+    "openlibrary-book-OL257785W",
+    "tmdb-movie-1368166"
+   ],
+   "bridges": [
+    {
+     "id": "openlibrary-book-OL81606W",
+     "fromId": "tmdb-movie-1034541",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL64225W",
+     "fromId": "tmdb-movie-1034541",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL263259W",
+     "fromId": "tmdb-movie-1034541",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL72282W",
+     "fromId": "tmdb-movie-1034541",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL3388961W",
+     "fromId": "tmdb-movie-1034541",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    },
+    {
+     "id": "openlibrary-book-OL257785W",
+     "fromId": "tmdb-movie-1034541",
+     "fromDomain": "movies",
+     "sharedGenres": [
+      "horror"
+     ]
+    }
+   ]
   }
  ]
 }

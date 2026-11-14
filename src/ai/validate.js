@@ -2,6 +2,7 @@ import { ANCHORS, CIRCULAR_PATTERNS, CONTRACT_VERSION, CROSS_DOMAIN, GENRE_ONLY,
 import { allowedCrossDomain, allowedLevel, capLevel, domainScope, evidenceRows, triedRecords } from "../model/evidence-rules.js";
 import { confirmationFor } from "../model/statements.js";
 import { isAdultTagged, triedAdultTagged } from "../catalog/adult-content.mjs";
+import { fileSupports } from "./support-filing.js";
 
 // The product's gate on model output (#31). Pure functions: (response, context) -> accepted / rejected.
 //
@@ -162,8 +163,22 @@ function carryStored(stored, ctx) {
 
 // A confirmed pattern's areas come from what was stored, plus any the model's identical version adds;
 // never narrowed by the user's exclusions (which the model was told about, so its copy may leave them out).
+// #318 (Nov 13, Paige): a stored area the re-check no longer cites anything in is dropped, not kept. Keeping it
+// made the validator reject the narrower version and settleConfirmedHypotheses put the stored one back, wrong
+// supports included. The narrower version is kept and flagged for the user to confirm (narrowedAreas, below).
 function keepStoredAreas(h, stored, ctx) {
-  return { ...h, domains: [...new Set([...carryStored(stored, ctx).domains, ...(h.domains ?? [])])], carriedForward: true };
+  const wanted = [...new Set([...carryStored(stored, ctx).domains, ...(h.domains ?? [])])];
+  const [checked] = normalizeHypothesisResponse({ hypotheses: [{ ...h, domains: wanted }] }, ctx).hypotheses;
+  const excluded = excludedAreas(stored, ctx);
+  return { ...h, domains: wanted.filter((d) => checked.domains.includes(d) || excluded.includes(d)), carriedForward: true };
+}
+
+// #318 (Nov 13): the areas the stored version of a confirmed pattern still covers on this check's evidence that
+// an accepted version no longer does, apart from any the user excluded. The user confirmed the wider pattern, so
+// a narrower one is listed for review, not taken as read. An area only unsent evidence covers isn't compared.
+function narrowedAreas(stored, accepted, ctx) {
+  const excluded = excludedAreas(stored, ctx);
+  return carryStored(stored, ctx).domains.filter((d) => !(accepted.domains ?? []).includes(d) && !excluded.includes(d));
 }
 
 export function preserveExistingHypotheses(response, ctx, existing = []) {
@@ -204,7 +219,10 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
   const unconfirmed = hypotheses.filter((h) => !confirmed(h));
   const room = Math.max(0, MAX_PROFILE_HYPOTHESES - (hypotheses.length - unconfirmed.length));
   const kept = new Set([...unconfirmed.filter((h) => existingIds.has(h?.id)), ...unconfirmed.filter((h) => !existingIds.has(h?.id))].slice(0, room));
-  return { ...response, hypotheses: hypotheses.filter((h) => confirmed(h) || kept.has(h)) };
+  // #318: a refresh re-cites what it cited before, so a support that got onto a cross-media pattern once stays
+  // there; take off the ones that belong to another pattern (src/ai/support-filing.js).
+  const filed = fileSupports(hypotheses.filter((h) => confirmed(h) || kept.has(h)), ctx);
+  return { ...response, hypotheses: filed.hypotheses, ...(filed.refiled.length ? { refiled: filed.refiled } : {}) };
 }
 
 // #325: run after validateHypotheses. A pattern the user confirmed must come out of a refresh either
@@ -262,22 +280,31 @@ function keepStoredEvidence(h, stored, ctx) {
 }
 
 export function settleConfirmedHypotheses(validated, ctx, existing = []) {
-  if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [], notChecked: [] };
+  if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [], notChecked: [], narrowed: [] };
   const accepted = [...(validated.accepted ?? [])];
   const needsReview = [];
   const notChecked = [];
+  const narrowed = [];
+  const review = (stored, h) => {
+    const areas = narrowedAreas(stored, h, ctx);
+    if (!areas.length) return;
+    narrowed.push({ id: stored.id, areas });
+    if (!needsReview.includes(stored.id)) needsReview.push(stored.id);
+  };
   for (const stored of existing) {
     if (!isStoredPattern(stored) || !confirmationFor(ctx.statements, stored) || everyAreaExcluded(stored, ctx)) continue;
     const states = evidenceStates(stored, ctx);
     if (states.notChecked.length) notChecked.push(stored.id);
     if (states.invalid.length) needsReview.push(stored.id);
     const at = accepted.findIndex((h) => h.id === stored.id || text(h.label) === storedLabel(stored));
-    if (at >= 0) { accepted[at] = keepStoredEvidence(accepted[at], stored, ctx); continue; }
+    if (at >= 0) { accepted[at] = keepStoredEvidence(accepted[at], stored, ctx); review(stored, accepted[at]); continue; }
     const retry = validateHypotheses({ hypotheses: [carryStored(stored, ctx)] }, ctx);
-    if (retry.accepted.length) accepted.push(...retry.accepted.map((h) => keepStoredEvidence(h, stored, ctx)));
-    else if (!states.invalid.length && !states.notChecked.length) needsReview.push(stored.id);
+    if (retry.accepted.length) {
+      accepted.push(...retry.accepted.map((h) => keepStoredEvidence(h, stored, ctx)));
+      review(stored, accepted[accepted.length - 1]);
+    } else if (!states.invalid.length && !states.notChecked.length) needsReview.push(stored.id);
   }
-  return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview, notChecked };
+  return { ...validated, accepted, ok: accepted.length > 0, fallback: accepted.length === 0, needsReview, notChecked, narrowed };
 }
 
 // #256: a pattern that talks about *why* something worked or failed must use the reasons the user actually
@@ -430,6 +457,7 @@ export function validatePicks(response, ctx) {
   const evidenceUse = new Map();
   const anchorUse = new Map();
   let curveballs = 0;
+  let bridges = 0;
   for (const p of response.picks) {
     const reasons = checkShape(p, { itemId: "string", why: "string", cites: "refs", tests: "nullable-string", kind: "enum:kind" });
     if (!reasons.length) {
@@ -473,12 +501,21 @@ export function validatePicks(response, ctx) {
         else if (curveballs >= 1) reasons.push("more than one curveball");
         else if (isAdultTagged(candidate) && !triedAdultTagged(ctx.evidence)) reasons.push("curveball into explicitly adult-tagged content the user has not tried (#257)");
       }
+      // #252 part 2 (Oct 27): a bridge candidate tests whether a taste carries to another medium. One per set,
+      // never into an area that's off, citing the item it was found from and saying it's a test.
+      if (candidate?.bridge) {
+        if (bridges >= 1) reasons.push("more than one cross-medium test");
+        if ((candidate.domains ?? []).length && candidate.domains.every((domain) => ctx.areas?.[domain] === false)) reasons.push("cross-medium test into an area that is off");
+        if (candidate.relatedToId && !p.cites.includes(`ev:${candidate.relatedToId}`)) reasons.push("cross-medium test does not cite the item it was found from");
+        if (!/\btest/i.test(p.why)) reasons.push("cross-medium test is not labeled as a test");
+      }
     }
     if (reasons.length) { rejected.push({ proposal: p, reasons }); continue; }
     used.add(p.itemId);
     for (const ref of new Set(p.cites)) evidenceUse.set(ref, (evidenceUse.get(ref) ?? 0) + 1);
     if (p.anchor != null) anchorUse.set(p.anchor, (anchorUse.get(p.anchor) ?? 0) + 1);
     if (p.kind === "curveball") curveballs += 1;
+    if (candidates.get(p.itemId)?.bridge) bridges += 1;
     accepted.push({ ...p, item: candidates.get(p.itemId), authority: "inferred", source: "model", contract: CONTRACT_VERSION });
   }
   return { ok: accepted.length > 0, accepted, rejected, notes: [], fallback: accepted.length === 0 };

@@ -97,6 +97,42 @@ export function scoreFixture(fixture, run) {
     const dropped = [...before].filter((ref) => !now.evidence.includes(ref));
     out.push({ kind: "quality", name: `evidence: ${stored.title}`, pass: null, detail: `${now.evidenceSource === "carried" ? "carried (not re-checked)" : "re-cited"}; kept ${before.size - dropped.length}/${before.size}${dropped.length ? `; not re-cited ${dropped.join(", ")}` : ""}${added.length ? `; newly cited ${added.join(", ")}` : ""}` });
   }
+  // #326 (Nov 13): what a refresh did with evidence that arrived after the stored patterns. Quality findings,
+  // reviewed by hand too: matching patterns by words is rough, and whether a new pattern is meaningful is a
+  // judgement. Copies: a stored pattern returned with exactly its stored citations (#326's 9-of-9 finding).
+  if (e.refresh) {
+    const stored = run.state?.modelHypotheses ?? [];
+    const storedIds = new Set(stored.map((h) => h.id));
+    const fresh = hyp.accepted.filter((h) => !storedIds.has(h.id));
+    const same = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+    const copies = stored.filter((s) => { const now = hyp.accepted.find((h) => h.id === s.id); return now && same(now.evidence, s.supports ?? []) && same(now.counter ?? [], s.counters ?? []); });
+    out.push({ kind: "quality", name: "stored patterns returned with exactly their stored citations", pass: null, detail: `${copies.length} of ${stored.length}` });
+    // A new pattern is redundant when most of what it cites already supports one stored pattern.
+    const redundant = fresh.filter((h) => stored.some((s) => h.evidence.filter((ref) => (s.supports ?? []).includes(ref)).length * 2 > h.evidence.length));
+    out.push({ kind: "quality", name: "no redundant new pattern", pass: redundant.length === 0, detail: redundant.map((h) => h.label).join("; ") || `${fresh.length} new pattern(s), none redundant` });
+    if (e.refresh.newPreference) {
+      const found = fresh.filter((h) => h.evidence.filter((ref) => e.refresh.newPreference.includes(ref)).length >= 2);
+      out.push({ kind: "quality", name: "finds the new, distinct preference", pass: found.length > 0, detail: found.map((h) => `${h.label}: ${h.claim}`).join(" | ") || `none (new patterns: ${fresh.map((h) => h.label).join("; ") || "none"})` });
+      const cited = e.refresh.newPreference.filter((ref) => hyp.accepted.some((h) => h.evidence.includes(ref)));
+      out.push({ kind: "quality", name: "new ratings cited", pass: null, detail: `${cited.length} of ${e.refresh.newPreference.length}` });
+    }
+    if (e.refresh.counter) {
+      const { ref, pattern } = e.refresh.counter;
+      const matching = hyp.accepted.filter((h) => pattern.test(`${h.label} ${h.claim}`));
+      const attached = matching.filter((h) => (h.counter ?? []).includes(ref));
+      const elsewhere = hyp.accepted.filter((h) => !matching.includes(h) && (h.counter ?? []).includes(ref));
+      out.push({ kind: "quality", name: "new dislike attached as counter where it pulls against the pattern", pass: matching.length ? attached.length > 0 : null, detail: `${attached.length} of ${matching.length} matching pattern(s)${elsewhere.length ? `; also countered on ${elsewhere.map((h) => h.label).join("; ")}` : ""}` });
+    }
+    if (e.refresh.fitsExisting) {
+      const refs = e.refresh.fitsExisting.map((x) => x.ref);
+      const forNew = fresh.filter((h) => h.evidence.some((ref) => refs.includes(ref)));
+      out.push({ kind: "quality", name: "nothing new: no new pattern built on the new ratings", pass: forNew.length === 0, detail: forNew.map((h) => `${h.label}: ${h.claim}`).join(" | ") || "none" });
+      for (const { ref, title, pattern } of e.refresh.fitsExisting) {
+        const by = hyp.accepted.filter((h) => storedIds.has(h.id) && pattern.test(`${h.label} ${h.claim}`) && h.evidence.includes(ref));
+        out.push({ kind: "quality", name: `${title} cited by the stored pattern it fits`, pass: by.length > 0, detail: by.map((h) => h.label).join("; ") || "not cited there" });
+      }
+    }
+  }
   const grounded = hyp.accepted.length;
   out.push({ kind: "quality", name: "grounding coverage", pass: null, detail: `${grounded} hypothesis(es) could cite this user's own evidence; fallback ${hyp.fallback ? "used" : "not needed"}` });
   return out;

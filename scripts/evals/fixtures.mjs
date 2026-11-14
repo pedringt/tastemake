@@ -7,6 +7,7 @@ import { favorites, followUpPool, hypotheses, recommendations } from "../qa/fixt
 import { typeById, visibleDomains } from "../../src/data/domains.js";
 import { readFileSync } from "node:fs";
 import { hydrateState } from "../../src/server/request-state.mjs";
+import { evidenceRecords } from "../../src/model/evidence.js";
 
 const catalogItems = [...recommendations, ...followUpPool];
 const byId = (id) => catalogItems.find((item) => item.id === id);
@@ -104,6 +105,19 @@ export const FIXTURES = [
       const play = catalogItems.find((i) => i.domains.includes("play") && !i.domains.includes("movies") && i.hypotheses.includes("H04"));
       const watch = catalogItems.find((i) => i.domains.includes("movies") && !i.domains.includes("play") && i.hypotheses.includes("H04"));
       react(s, watch, "loved"); if (play) react(s, play, "loved"); return s;
+    },
+    expect: { maxCrossDomain: "tentative" }
+  },
+  {
+    // Oct 27 (#252 part 1): "Also true for" is the user's word, not evidence. Picks may connect to it, but the
+    // Taste Profile must not treat it as support in that area.
+    id: "user-said-also-true", title: "The user said a pattern also holds for books",
+    purpose: "alsoAppliesTo lets picks reach another area, but never raises cross-domain support on its own.",
+    build: () => {
+      const s = emptyState();
+      catalogItems.filter((i) => i.domains.includes("movies") && i.hypotheses.includes("H04")).slice(0, 3).forEach((item) => react(s, item, "loved"));
+      s.patternStatements = [{ hypothesisId: "H04", label: hypotheses.find((h) => h.id === "H04").title, says: "accurate", alsoAppliesTo: ["read"] }];
+      return s;
     },
     expect: { maxCrossDomain: "tentative" }
   },
@@ -320,3 +334,91 @@ export const DISLIKE_DIRECTION_FIXTURES = [1, 2, 3, 4, 5].flatMap((n) => [
   { id: `friends-plain-${n}`, arm: "plain", title: `Friends disliked for "Humor" (run ${n})`, purpose: "Today's vocabulary", candidates: [], build: () => friendsState(["humor"]), expect: { friendsScope: true } },
   { id: `friends-direction-${n}`, arm: "direction", title: `Friends disliked for "Humor: not my style of humor" (run ${n})`, purpose: "The #335 direction", candidates: [], build: () => friendsState(["humor:not-my-style"]), expect: { friendsScope: true } }
 ]);
+
+
+// ---- #278: does each counter-example contradict its pattern? (node scripts/evals/run.mjs --suite counter) -------
+// Eleven Taste Profile calls, no picks: the default fixtures with real titles (the synthetic scale fixtures are left
+// out, since a grader can't judge "Synthetic Movie 12"), plus Paige's Example Profile fresh and refreshed. Every
+// counter item on every kept pattern is then graded (scripts/evals/counter-grader.mjs).
+export const COUNTER_FIXTURES = [
+  ...FIXTURES.filter((f) => !f.id.startsWith("scale-")).map((f) => ({ ...f, candidates: [] })),
+  ...SUPPORT_FIXTURES.filter((f) => f.id === "example-refresh" || f.id === "example-fresh")
+];
+
+// The Example Profile's stored patterns are real model output, so their counters are graded too (no profile call).
+// Paige judged one (Nov 6, #278): It Ends With Us, a contemporary romance, isn't evidence against mythic worlds.
+const IT_ENDS_WITH_US = "ev:openlibrary-book-OL18020194W";
+export function exampleProfileCounters() {
+  const state = hydrateState(exampleBackup);
+  return {
+    source: "Example Profile (stored)",
+    evidence: evidenceRecords(state),
+    hypotheses: exampleBackup.modelHypotheses.map((p) => ({ ...p, label: p.title, known: p.id === MYTHIC ? { [IT_ENDS_WITH_US]: "not-defensible" } : null }))
+  };
+}
+
+// Calibration: cases with a known answer, graded every run and reported apart from the share. The Mr. Mercedes
+// case is reconstructed from the #278 write-up (its claim and genres are approximations); the Stoner case is a
+// constructed clear pass, a dislike for exactly the pacing the pattern says the person enjoys.
+const calibrationRecord = (id, title, type, by, genres, kind, reasons = []) => ({
+  ref: `ev:cal-${id}`, itemId: `cal-${id}`, title, type, kind, facts: { creator: by, genres },
+  refinements: reasons.map(([dimension, direction]) => ({ dimension, direction: direction ?? null }))
+});
+export function counterCalibration() {
+  const evidence = [
+    calibrationRecord("piranesi", "Piranesi", "book", "Susanna Clarke", ["Fantasy", "Mystery"], "experienced-strong-positive"),
+    calibrationRecord("arrival", "Arrival", "movie", null, ["Science Fiction", "Drama", "Mystery"], "experienced-strong-positive"),
+    calibrationRecord("solaris", "Solaris", "book", "Stanisław Lem", ["Science fiction"], "experienced-positive"),
+    calibrationRecord("moon", "Moon", "movie", null, ["Science Fiction", "Drama"], "experienced-positive"),
+    calibrationRecord("mr-mercedes", "Mr. Mercedes", "tv", null, ["Crime", "Drama", "Mystery"], "experienced-negative", [["Pacing"]]),
+    calibrationRecord("gilead", "Gilead", "book", "Marilynne Robinson", ["Literary fiction"], "experienced-strong-positive", [["Pacing", "Slow burn"]]),
+    calibrationRecord("remains", "The Remains of the Day", "book", "Kazuo Ishiguro", ["Literary fiction"], "experienced-strong-positive"),
+    calibrationRecord("stoner", "Stoner", "book", "John Williams", ["Literary fiction", "Academia"], "experienced-negative", [["Pacing", "Too slow"]])
+  ];
+  return {
+    source: "calibration",
+    evidence,
+    hypotheses: [
+      { label: "Cerebral speculative worlds with mystery at the core", claim: "Drawn to speculative stories built around a central mystery that rewards close attention.", evidence: ["ev:cal-piranesi", "ev:cal-arrival", "ev:cal-solaris", "ev:cal-moon"], counter: ["ev:cal-mr-mercedes"], known: { "ev:cal-mr-mercedes": "not-defensible" } },
+      { label: "Quiet, patiently paced literary novels", claim: "Enjoys quiet literary novels that take their time with an inner life.", evidence: ["ev:cal-gilead", "ev:cal-remains"], counter: ["ev:cal-stoner"], known: { "ev:cal-stoner": "defensible" } }
+    ]
+  };
+}
+
+// ---- #326 + #318: what a refresh does with new evidence (node scripts/evals/run.mjs --suite refresh) --------
+// The Example Profile's stored patterns (as corrected in #332), plus ratings made since its last refresh. Two
+// cases from #326's acceptance criteria, and the three #318 refresh fixtures above:
+//   - refresh-new-preference: four heist and con films, liked or loved, which no stored pattern covers, and one
+//     disliked slow-burn horror film, which pulls against "Uncanny slow-burn horror on screen" (#278: same kind
+//     of thing, tried and disliked). A refresh should find the new preference and attach the counter.
+//   - refresh-nothing-new: three ratings that each fit a stored pattern. A refresh should cite them there and
+//     add no pattern for them ("nothing new" is a valid outcome).
+// Titles, years and genres are real; the provider ids are fixture-only ("fx-"), so nothing is looked up.
+const fxItem = (id, title, type, domains, year, genres, provider) => ({ id: `${provider}-${type === "movie" ? "movie" : type}-fx-${id}`, provider, providerId: `fx-${id}`, title, type, domains, year, genres, about: "", providerMeta: {}, sourceUrl: null });
+const fxMovie = (id, title, year, genreIds) => fxItem(id, title, "movie", ["movies"], year, genreIds.map(String), "tmdb");
+export const NEW_PREFERENCE = [
+  { item: fxMovie("oceans-eleven", "Ocean's Eleven", "2001", [80, 53]), rating: "more", detail: "loved-before" },
+  { item: fxMovie("the-sting", "The Sting", "1973", [35, 80, 18]), rating: "more", detail: "loved-before" },
+  { item: fxMovie("inside-man", "Inside Man", "2006", [80, 18, 53]), rating: "more", detail: "liked-before" },
+  { item: fxMovie("logan-lucky", "Logan Lucky", "2017", [28, 35, 80]), rating: "more", detail: "liked-before" }
+];
+export const NEW_COUNTER = { item: fxMovie("it-comes-at-night", "It Comes at Night", "2017", [27, 9648]), rating: "less", detail: "tried-disliked" };
+export const FITS_EXISTING = [
+  { item: fxItem("amnesia", "Amnesia: The Dark Descent", "game", ["play"], "2010", ["Puzzle", "Adventure", "Indie"], "igdb"), rating: "more", detail: "liked-before", refinements: ["atmosphere-style"], pattern: /horror/i },
+  { item: fxMovie("the-babadook", "The Babadook", "2014", [27, 18]), rating: "more", detail: "loved-before", pattern: /horror/i },
+  { item: { ...fxItem("the-penelopiad", "The Penelopiad", "book", ["read"], "2005", ["Mythology", "Retellings", "Fiction"], "openlibrary"), by: "Margaret Atwood" }, rating: "more", detail: "liked-before", pattern: /myth|fantas/i }
+];
+const refOf = (entry) => `ev:${entry.item.id}`;
+const withRatings = (entries) => {
+  const state = { ...hydrateState(exampleBackup), recommendationSets: [], modelHypotheses: exampleBackup.modelHypotheses };
+  const added = Object.fromEntries(entries.map(({ item, rating, detail, refinements = [] }) => [item.id, { item, rating, detail, quality: null, source: "search", refinements }]));
+  return { ...state, feedbackByRecommendation: { ...state.feedbackByRecommendation, ...added } };
+};
+const STORED_CONFIRMED = exampleBackup.patternStatements.filter((s) => s.says === "accurate" || s.says === "partial").map((s) => s.hypothesisId);
+export const REFRESH_FIXTURES = [
+  ...SUPPORT_FIXTURES.filter((f) => f.id !== "example-fresh"),
+  { id: "refresh-new-preference", title: "Refresh after a new, distinct preference and a counter", purpose: "#326: does a refresh find a preference no stored pattern covers, and attach a genuine counter, without rewording what the user confirmed?", candidates: [], build: () => withRatings([...NEW_PREFERENCE, NEW_COUNTER]),
+    expect: { refresh: { newPreference: NEW_PREFERENCE.map(refOf), counter: { ref: refOf(NEW_COUNTER), pattern: /slow-burn|dread/i } }, keepsConfirmed: STORED_CONFIRMED } },
+  { id: "refresh-nothing-new", title: "Refresh after ratings that fit stored patterns", purpose: "#326 control: are new ratings cited by the patterns they fit, with no new pattern made for them?", candidates: [], build: () => withRatings(FITS_EXISTING),
+    expect: { refresh: { fitsExisting: FITS_EXISTING.map((entry) => ({ ref: refOf(entry), title: entry.item.title, pattern: entry.pattern })) }, keepsConfirmed: STORED_CONFIRMED } }
+];

@@ -18,7 +18,7 @@ export function hypothesisEvidenceKey(state) {
 // and a version. Bump PROFILE_REFRESH_VERSION when the refresh prompt or how patterns are built changes, so an
 // unchanged profile is refreshed once. (A model swapped in Vercel's settings isn't visible here; that refresh
 // waits for the next evidence change or a manual Refresh.)
-export const PROFILE_REFRESH_VERSION = 1;
+export const PROFILE_REFRESH_VERSION = 2;   // 2: #318 support filing and confirmed-pattern narrowing (Nov 13)
 const refreshVersion = () => `${CONTRACT_VERSION}:${PROFILE_REFRESH_VERSION}`;
 
 function hashKey(text) {
@@ -102,13 +102,25 @@ export function mergeHypotheses(existing = [], incoming = [], { statements = [],
 // meta.needsReview) is kept as stored, with the user's answer and history untouched, but marked so it
 // is not shown as supported. The mark is cleared only when a refresh accepts the pattern again: an
 // accepted pattern is rebuilt by normalizeHypothesis, which has no such field.
+//
+// #318 (Nov 13): a confirmed pattern a refresh narrowed (meta.narrowed: [{ id, areas }]) is flagged the same way,
+// with the areas it lost in narrowedAreas. Being accepted again doesn't clear that flag: the next refresh checks
+// the narrower version, so it would pass. It stays until the user confirms it (reconfirmPattern).
 const UPDATED_MESSAGE = "Updated using your latest reactions.";
 const CHECKED_NEEDS_REVIEW = "Tastemake checked your profile. Some patterns need another look because their evidence is no longer available.";
-export function markNeedsReview(patterns = [], needsReview = []) {
+const CHECKED_NARROWED = "Tastemake checked your profile. Some patterns you confirmed were narrowed and need another look.";
+export function markNeedsReview(patterns = [], needsReview = [], narrowed = []) {
   const ids = new Set(needsReview ?? []);
-  if (!ids.size) return patterns;
-  return patterns.map((p) => (ids.has(p?.id) ? { ...p, evidenceStatus: NEEDS_REVIEW } : p));
+  const lost = new Map((narrowed ?? []).filter((n) => n?.areas?.length).map((n) => [n.id, n.areas]));
+  if (!ids.size && !lost.size) return patterns;
+  return patterns.map((p) => (ids.has(p?.id) || lost.has(p?.id) ? { ...p, evidenceStatus: NEEDS_REVIEW, ...(lost.has(p.id) ? { narrowedAreas: [...new Set([...(p.narrowedAreas ?? []), ...lost.get(p.id)])] } : {}) } : p));
 }
+const flaggedNarrowed = (state) => (state.modelHypotheses ?? []).filter((p) => p?.evidenceStatus === NEEDS_REVIEW && p.narrowedAreas?.length && confirmationFor(state.patternStatements ?? [], p)).map((p) => ({ id: p.id, areas: p.narrowedAreas }));
+const reviewMessage = (patterns) => {
+  const flagged = (patterns ?? []).filter((p) => p?.evidenceStatus === NEEDS_REVIEW);
+  if (!flagged.length) return UPDATED_MESSAGE;
+  return flagged.every((p) => p.narrowedAreas?.length) ? CHECKED_NARROWED : CHECKED_NEEDS_REVIEW;
+};
 
 // Nov 4 (after #325): the evidence the stored patterns rest on, which a refresh must send if it still
 // exists, so the server never mistakes "not sent" for "removed". Patterns the user confirmed come first,
@@ -157,7 +169,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     // #340: this evidence was already checked before the page loaded. Show the result, keep Refresh, don't call.
     state.hypothesisAiKey = key;
     state.hypothesisAiStatus = "ready";
-    state.hypothesisAiMessage = state.modelHypotheses.some((p) => p?.evidenceStatus === NEEDS_REVIEW) ? CHECKED_NEEDS_REVIEW : UPDATED_MESSAGE;
+    state.hypothesisAiMessage = reviewMessage(state.modelHypotheses);
     onUpdate();
     return;
   }
@@ -193,6 +205,8 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     state.hypothesisRequest = null;
     noteAiAnswer(state, { budgetPaused: Boolean(payload.meta?.budgetPaused), usedModel: payload.source === "model" });
     const needsReview = Array.isArray(payload.meta?.needsReview) ? payload.meta.needsReview : [];
+    const newlyNarrowed = Array.isArray(payload.meta?.narrowed) ? payload.meta.narrowed : [];
+    const narrowed = [...newlyNarrowed, ...flaggedNarrowed(state)];
     if (payload.source === "model" && Array.isArray(payload.hypotheses) && payload.hypotheses.length) {
       const next = payload.hypotheses.map((h, index) => normalizeHypothesis(h, index, state));
       for (const h of next) {
@@ -216,18 +230,18 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         statements: state.patternStatements ?? [],
         activeLimit: 12,
         preserveExistingActive: rejected > 0
-      }), [...needsReview, ...stillFlagged]);
-      state.hypothesisAiMessage = needsReview.length ? CHECKED_NEEDS_REVIEW : UPDATED_MESSAGE;
+      }), [...needsReview, ...stillFlagged], narrowed);
+      state.hypothesisAiMessage = needsReview.length || narrowed.length ? reviewMessage(state.modelHypotheses) : UPDATED_MESSAGE;
       markChecked(state, key);
       announce("Taste Profile refreshed from your current evidence.");
-    } else if (needsReview.length) {
+    } else if (needsReview.length || newlyNarrowed.length) {
       // #325: nothing new was accepted, but the evidence check itself completed and found confirmed
       // patterns it can't verify. That is a result, not a failed refresh: record it, say what changed,
       // and don't ask again until the evidence changes.
-      state.modelHypotheses = markNeedsReview(state.modelHypotheses ?? [], needsReview);
-      state.hypothesisAiMessage = CHECKED_NEEDS_REVIEW;
+      state.modelHypotheses = markNeedsReview(state.modelHypotheses ?? [], needsReview, narrowed);
+      state.hypothesisAiMessage = reviewMessage(state.modelHypotheses);
       markChecked(state, key);
-      announce(CHECKED_NEEDS_REVIEW);
+      announce(state.hypothesisAiMessage);
     } else if (payload.meta?.insufficientEvidence) {
       // #349: too few tried things for a pattern yet; the server answered without a paid call. Not a failure,
       // so no "couldn't" message, and no asking again until the evidence changes.

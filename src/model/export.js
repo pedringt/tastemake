@@ -174,10 +174,20 @@ ${correctedHtml}
 }
 
 
+// Nov 13: the person's own date, not UTC, so an evening download in Pacific time isn't named for tomorrow.
+export function localDateStamp(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 export function backupFileName(date = new Date()) {
-  return `tastemake-backup-${date.toISOString().slice(0, 10)}.json`;
+  return `tastemake-backup-${localDateStamp(date)}.json`;
 }
 
 export function htmlFileName(date = new Date()) {
-  return `my-tastemake-${date.toISOString().slice(0, 10)}.html`;
+  return `my-tastemake-${localDateStamp(date)}.html`;
+}
+
+export function setAsideFileName(date = new Date()) {
+  return `tastemake-set-aside-${localDateStamp(date)}.json`;
 }
