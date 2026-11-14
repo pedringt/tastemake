@@ -10,56 +10,16 @@
 //
 // Every metric's definition is written next to its code and repeated in the report (DEFINITIONS below).
 
-import { CIRCULAR_PATTERNS } from "../../../src/ai/contract.js";
+import {
+  FRAME, GENERIC_TEMPLATES, GENRE_WORDS, REACTION_WORDS, SET_GATE, STOCK_FAMILIES, STOPWORDS, isContent, maskTitles, ngrams, tokens
+} from "../../../src/ai/phrasing.js";
 import { TMDB_GENRES } from "../../../src/catalog/synopsis.mjs";
 
 // ---- text normalisation ------------------------------------------------------------------------
 
-// Small English stopword list; content words are what is left.
-export const STOPWORDS = new Set(("a an the and or but if then so as of to in on at by for with from into onto about over under " +
-  "this that these those it its it's is are was were be been being has have had do does did not no nor " +
-  "you your you're you've yours i me my we our they them their he she his her who whom which what when where why how " +
-  "than too very just more most less much many some any all each both either neither one two own same other such " +
-  "can could will would should may might must shall also even still yet only again ever never here there " +
-  "because since while though although whether through like well " +
-  "s t ll ve re d m").split(/\s+/));
-
-// Reaction and recommendation verbs say nothing about WHICH taste idea is used, so they are left out of
-// theme terms (they still count for wording metrics).
-export const REACTION_WORDS = new Set("love loved loves liked likes enjoy enjoyed enjoys disliked dislike tried try pick picks fit fits worth".split(" "));
-
-const TITLE = "<title>";
-
-function escapeRegex(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
-
-// Titles are masked before any wording metric, so "Because you loved X" and "Because you loved Y" count
-// as the same template rather than as different sentences. Masked titles: the pick's own title and the
-// titles of the evidence it cites.
-export function maskTitles(text, titles = []) {
-  let out = ` ${String(text ?? "")} `;
-  const sorted = [...new Set(titles.filter((t) => t && t.trim().length >= 2))].sort((a, b) => b.length - a.length);
-  for (const title of sorted) out = out.replace(new RegExp(`(^|[^\\w])${escapeRegex(title)}(?=[^\\w]|$)`, "gi"), `$1 ${TITLE} `);
-  return out.trim();
-}
-
-export function tokens(text) {
-  return String(text ?? "").toLowerCase()
-    .replace(/<title>/g, " ttitlet ")
-    .replace(/[’']/g, "'")
-    .replace(/[^a-z0-9'\- ]+/g, " ")
-    .split(/\s+/)
-    .map((t) => t.replace(/^['-]+|['-]+$/g, ""))
-    .filter(Boolean)
-    .map((t) => (t === "ttitlet" ? TITLE : t));
-}
-
-export const isContent = (t) => t !== TITLE && !STOPWORDS.has(t) && t.length >= 3 && !/^\d+$/.test(t);
-
-export function ngrams(list, n) {
-  const out = [];
-  for (let i = 0; i + n <= list.length; i += 1) out.push(list.slice(i, i + n).join(" "));
-  return out;
-}
+// Stopwords, title masking, tokens, n-grams, the generic templates, genre words and the per-set gate live in
+// src/ai/phrasing.js (Nov 14) so the runtime why-line check uses the same definitions; re-exported here.
+export { FRAME, GENERIC_TEMPLATES, GENRE_WORDS, REACTION_WORDS, SET_GATE, STOCK_FAMILIES, STOPWORDS, isContent, maskTitles, ngrams, tokens };
 
 export function maskedTokens(pick) {
   return tokens(maskTitles(pick.why, [pick.title, ...(pick.citedEvidence ?? []).map((e) => e.title)]));
@@ -225,27 +185,6 @@ export function traceability(picks) {
 
 // ---- 4. circular / generic phrasing ---------------------------------------------------------------
 
-// A short, transparent list. Each hit counts once per explanation. The product's own CIRCULAR_PATTERNS
-// (src/ai/contract.js) make kept picks impossible for those exact forms, so they are listed for
-// completeness; the extra templates are softer generic phrases the validator does not block.
-export const GENERIC_TEMPLATES = [
-  ...CIRCULAR_PATTERNS.map((re, i) => ({ id: `product-circular-${i + 1}`, re })),
-  { id: "you'll love/like/enjoy", re: /\byou(?:'ll| will) (?:love|like|enjoy|appreciate|adore)\b/i },
-  { id: "right up your alley", re: /\bright up your alley\b/i },
-  { id: "perfect for you / perfect fit", re: /\bperfect (?:for you|fit|match|pick)\b/i },
-  { id: "great fit / good fit", re: /\b(?:great|good|natural|strong) (?:fit|match)\b/i },
-  { id: "your kind of", re: /\byour kind of\b/i },
-  { id: "you seem to like", re: /\byou seem to (?:like|love|enjoy|prefer)\b/i },
-  { id: "since you liked/loved", re: /\b(?:since|because|as) you (?:liked|loved|enjoyed)\b/i },
-  { id: "if you liked/loved", re: /\bif you (?:liked|loved|enjoyed)\b/i },
-  { id: "fans of", re: /\bfans? of\b/i },
-  { id: "similar to what you", re: /\bsimilar to (?:what|things|stuff) you\b/i },
-  { id: "based on your (anything)", re: /\bbased on your\b/i },
-  // Oct 20 (#28 comment): seen on a real books profile.
-  { id: "third person (a ... reader)", re: /\b(?:a|the) (?:[\w'’-]+ ){0,4}reader(?: who)?\b/i },
-  { id: "echoes / scope / sweeping", re: /\becho(?:es|ing)?\b|\bscope\b|\bsweeping\b/i }
-];
-
 export function genericPhrasing(picks) {
   const counts = Object.fromEntries(GENERIC_TEMPLATES.map((t) => [t.id, 0]));
   let any = 0;
@@ -259,14 +198,6 @@ export function genericPhrasing(picks) {
 
 // ---- 5. genre-label collapse ----------------------------------------------------------------------
 
-// Genre and medium vocabulary. An explanation "collapses into genre labels" when at least half of its
-// content words (titles masked and excluded) are genre or medium words. Reported as the share of
-// collapsed explanations and the mean genre-word ratio.
-export const GENRE_WORDS = new Set(("sci-fi scifi science fiction fantasy horror thriller thrillers mystery mysteries comedy comedies comedic " +
-  "drama dramas dramatic romance romantic adventure adventures action animated animation documentary documentaries " +
-  "crime historical history literary epic rpg rpgs role-playing puzzle puzzles strategy indie platformer shooter " +
-  "simulation cozy narrative genre genres film films movie movies show shows series tv book books novel novels " +
-  "game games fiction nonfiction memoir sitcom anime").split(/\s+/));
 export const COLLAPSE_THRESHOLD = 0.5;
 
 export function genreCollapse(picks) {
@@ -325,27 +256,6 @@ export function recencyAndDislikes(picks) {
 // and a future runtime gate would act on one set, so these checks run per set and are then summarised.
 // Prompt bans did not move these (Oct 20 paid eval: "echo" 10 of 49 before and after), so the point here
 // is to measure them per set, with enough explanations to tell a real change from noise.
-
-// Stock-word FAMILIES, so a swapped synonym still counts ("echo" -> "mirror" is the same habit). Matched
-// on title-masked text. Kept small on purpose (#28 report: large ban/flag lists stop meaning anything).
-export const STOCK_FAMILIES = [
-  { id: "callback verb", re: /\b(?:echo(?:es|ed|ing)?|mirror(?:s|ed|ing)?|recall(?:s|ed|ing)?|resonat(?:e|es|ed|ing)|evok(?:e|es|ed|ing)|evocative|reminiscent)\b/i },
-  { id: "scale word", re: /\b(?:sweeping|scope|sprawling)\b/i }
-];
-
-// "...you loved in <title>": the frame that replaced "you enjoyed in" once that was banned (1 -> 7 of 49).
-export const FRAME = /\byou(?:'ve)? (?:loved|enjoyed|liked|praised|responded to|connected with|rewarded|appreciated|admired) in <title>/i;
-
-// Thresholds for "a visitor would notice this set". Calibrated Oct 20 from reference-sets.json: 11 sets
-// Paige would show as-is, one above their 95th percentile (scripts/evals/stress/calibrate.mjs). Her kept
-// sets used a stock family in up to 2 explanations, so 2 alone is not a problem; they never repeated an
-// opening. A set "would trigger" when any one is reached.
-export const SET_GATE = {
-  stockFamilyWhys: 3,   // the same stock family in 3+ explanations of one set
-  frameWhys: 3,         // the "you loved in <title>" frame in 3+ explanations
-  openingWhys: 2,       // 2+ explanations starting with the same two words
-  sharedPhraseWhys: 3   // 3+ explanations sharing one 3-word phrase (with a content word)
-};
 
 // Vague hedges: what most separated the sets Paige dropped from the ones she kept (Oct 20: 38% of dropped
 // explanations vs 20% of kept). Reported, not part of the gate: a hedge is a specificity problem, and the
@@ -447,6 +357,11 @@ export function reliability(calls) {
   const reasons = {};
   for (const c of pickCalls) for (const r of c.rejected ?? []) for (const reason of r.reasons ?? []) reasons[reason] = (reasons[reason] ?? 0) + 1;
   const kept = pickCalls.reduce((a, c) => a + (c.picks?.length ?? 0), 0);
+  // Nov 14: kept picks whose why the product replaced with a plain line (src/ai/why-lines.js); `rawWhy` keeps
+  // the model's own sentence, so the wording metrics can be read either way.
+  const replacedPicks = pickCalls.flatMap((c) => (c.picks ?? []).filter((p) => p.whyReplaced?.length));
+  const whyReplacedReasons = {};
+  for (const p of replacedPicks) for (const reason of p.whyReplaced) whyReplacedReasons[reason] = (whyReplacedReasons[reason] ?? 0) + 1;
   const rejected = pickCalls.reduce((a, c) => a + (c.rejected?.length ?? 0), 0);
   return {
     calls: pickCalls.length,
@@ -454,6 +369,7 @@ export function reliability(calls) {
     fallback: pickCalls.filter((c) => c.source !== "model").length,
     fallbackReasons: pickCalls.filter((c) => c.source !== "model").reduce((m, c) => ({ ...m, [c.reason ?? "unknown"]: (m[c.reason ?? "unknown"] ?? 0) + 1 }), {}),
     picksKept: kept, picksRejected: rejected, rejectionReasons: reasons,
+    whyReplaced: replacedPicks.length, whyReplacedReasons,
     usd: round3(calls.reduce((a, c) => a + (c.costUsd ?? 0), 0))
   };
 }
@@ -508,6 +424,7 @@ export const DEFINITIONS = [
   ["cross-domain", "A pick citing evidence from a domain the pick is not in. Unsupported = the profile lacks TRIED evidence (Loved/Liked/disliked, not starter favorites) in the pick's domain or the cited domain."],
   ["recent share", "Of cited reaction refs, the share among the most recent 20% of the profile's tried reactions (about 0.2 if recency plays no part)."],
   ["cites a dislike", "Share of picks citing any disliked item (allowed only as contrast)."],
+  ["why lines replaced", "Kept picks whose sentence the product swapped for a plain software line (src/ai/why-lines.js), by reason: generic, repeat (would reach a per-set gate below), no-cited-title. The wording metrics read the line a visitor sees; each record's rawWhy keeps the model's own sentence."],
   ["per-set: would trigger", "Share of SETS (one call's kept picks, what one visitor sees) that reach any SET_GATE threshold: a stock-word family in 3+ explanations, the 'you … in <title>' frame in 3+, the same two-word opening in 2+, or one 3-word phrase (with a content word) in 3+. Calibrated Oct 20 against reference-sets.json."],
   ["per-set: stock family", "Share of sets where one STOCK_FAMILIES family (callback verbs: echo/mirror/recall/resonate/evoke/reminiscent; scale words: sweeping/scope/sprawling) appears in 2+ explanations. Families, so a swapped synonym still counts. Mean = family hits per set."],
   ["per-set: frame", "'you loved / enjoyed / responded to … in <title>' (title-masked): share of explanations using it, and share of sets where 3+ do."],
