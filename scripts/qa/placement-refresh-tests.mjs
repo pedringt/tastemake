@@ -250,6 +250,11 @@ const shortId = (request, r) => [...request.items, ...request.pool].find(([, x])
   check("…with a history entry saying why", s.hypothesisHistory.at(-1).hypothesisId === "ai-slow-horror" && /Retired/.test(s.hypothesisHistory.at(-1).reason));
   check("…and the message says it", /was retired/.test(gone.message));
 
+  const first = profile({ ledger: false });
+  react(first, SCARY_MISS[0], "disliked"); react(first, SCARY_MISS[1], "disliked"); react(first, SCARY_MISS[2], "disliked"); react(first, SCARY_MISS[3], "disliked");
+  applyPlacementResult(first, refreshQueue(first), placed(SCARY_MISS.map((it) => put(it, "counter", "ai-slow-horror"))));
+  check("first run that retires a pattern: what it cited is still recorded as seen", !pattern(first, "ai-slow-horror") && SLOW.every((it) => ref(it) in first.profileLedger.items) && !refreshQueue(first).items.length);
+
   const one = profile();
   react(one, SCARY_MISS[0], "disliked");
   applyPlacementResult(one, refreshQueue(one), placed([put(SCARY_MISS[0], "counter", "ai-slow-horror")]));

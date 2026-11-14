@@ -162,12 +162,12 @@ export function applyPlacementResult(state, queue, placement) {
   for (const p of retired) {
     recordRevision(state, { hypothesisId: p.id, claim: p.claim, supports: p.supports, counters: p.counters, domains: p.domains, level: p.strength, origin: "system", reason: "Retired: more of what you tried counts against it than for it" });
   }
-  state.modelHypotheses = patterns;
 
-  // Ledger: placed items are settled; liked unexplained ones go to the pool; invalid ones stay new.
-  const placed = placements.filter((x) => !(x.place === "unexplained" && rows.get(x.ref)?.polarity > 0 && outcome.get(x.ref)?.place === "unexplained")).map((x) => x.ref);
-  const pooled = placements.filter((x) => x.place === "unexplained" && rows.get(x.ref)?.polarity > 0 && outcome.get(x.ref)?.place === "unexplained").map((x) => x.ref);
-  state.profileLedger = advanceLedger(state, { placed, pooled, failed: placement?.invalid ?? [], unpooled });
+  // Ledger: placed items are settled; liked unexplained ones go to the pool; invalid ones stay new. Advanced before
+  // the patterns are replaced, so a first run records what the stored patterns cited as seen.
+  const toPool = (x) => x.place === "unexplained" && rows.get(x.ref)?.polarity > 0 && outcome.get(x.ref)?.place === "unexplained";
+  state.profileLedger = advanceLedger(state, { placed: placements.filter((x) => !toPool(x)).map((x) => x.ref), pooled: placements.filter(toPool).map((x) => x.ref), failed: placement?.invalid ?? [], unpooled });
+  state.modelHypotheses = patterns;
 
   const message = placement ? placementMessage({ queue, placement, outcome, byId, retired, lowered, flagged }) : touched.size ? "Updated your Taste Profile for ratings you removed." : NOTHING_NEW_MESSAGE;
   return { message, changed: changed.map((p) => p.id), retired: retired.map((p) => p.id), flagged: [...flagged.keys()], lowered: lowered.map((p) => p.id), created };
