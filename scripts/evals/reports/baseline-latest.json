@@ -769,6 +769,9 @@
         }
       ],
       "hypotheses": [],
+      "needsReview": [],
+      "reviewReasons": {},
+      "raw": null,
       "rejected": [],
       "picks": [
         {
