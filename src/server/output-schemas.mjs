@@ -56,3 +56,30 @@ export const HYPOTHESES_OUTPUT_SCHEMA = {
   required: ["hypotheses", "insufficientEvidence"],
   additionalProperties: false
 };
+
+// #326 Design A: one placement per new item, plus optional new patterns (src/ai/placement.js checks the values).
+export const PLACEMENT_OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    placements: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { item: { type: "string" }, place: { type: "string", enum: ["supports", "counter", "unexplained", "not-taste"] }, pattern: nullableString },
+        required: ["item", "place", "pattern"],
+        additionalProperties: false
+      }
+    },
+    newPatterns: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { label: { type: "string" }, claim: { type: "string" }, evidence: strings, domains: strings, conditional: { type: "boolean" } },
+        required: ["label", "claim", "evidence", "domains", "conditional"],
+        additionalProperties: false
+      }
+    }
+  },
+  required: ["placements", "newPatterns"],
+  additionalProperties: false
+};

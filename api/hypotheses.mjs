@@ -3,7 +3,8 @@ import { buildContext } from "../src/ai/context.js";
 import { normalizeHypothesisResponse, preserveExistingHypotheses, settleConfirmedHypotheses, validateHypotheses } from "../src/ai/validate.js";
 import { aiErrorFields, aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
-import { HYPOTHESES_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
+import { HYPOTHESES_OUTPUT_SCHEMA, PLACEMENT_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
+import { PLACEMENT_MAX_OUTPUT_TOKENS, placeNewItems } from "../src/ai/placement.js";
 import { hydrateState as hydrateBaseState } from "../src/server/request-state.mjs";
 import { clientIp, underBestEffortRateLimit } from "../src/server/rate-limit.mjs";
 import { visibleDomains } from "../src/data/domains.js";
@@ -184,6 +185,62 @@ export async function produceHypotheses({ rawState, env = process.env, fetchImpl
   }
 }
 
+// #326 Design A, behind a flag that is off by default: TASTEMAKE_PROFILE_PLACEMENT=1 on top of everything the
+// Taste Profile call already needs. The browser only asks for a placement while its own flag is on
+// (PLACEMENT_REFRESH in src/ai/hypothesis-profile.js); when this one is off it answers placementOff without a
+// call, and the browser uses today's full refresh instead. Switching this off is the way back without a deploy.
+export function placementConfig(env = process.env) {
+  const base = hypothesisConfig(env);
+  const reasons = [...base.reasons];
+  if (env.TASTEMAKE_PROFILE_PLACEMENT !== "1") reasons.push("placement-off-switch");
+  return { enabled: reasons.length === 0, reasons, model: base.model };
+}
+
+const refList = (value, max = 60) => (Array.isArray(value) ? [...new Set(value.filter((ref) => typeof ref === "string" && ref.startsWith("ev:")))].slice(0, max) : []);
+
+export async function producePlacement({ rawState, placement, env = process.env, fetchImpl = fetch } = {}) {
+  const config = placementConfig(env);
+  if (!config.enabled) return { source: "unavailable", reason: "placement refresh is off", placement: null, meta: { paidCallMade: false, placementOff: true } };
+  const state = hydrateState(rawState);
+  const ctx = { ...buildContext(state), presentRefs: state.presentRefs };
+  const started = Date.now();
+  try {
+    const result = await placeNewItems({
+      ctx,
+      patterns: state.modelHypotheses,
+      items: refList(placement?.items, 30),
+      pool: refList(placement?.pool, 30),
+      callModel: (prompt) => callAnthropic({ prompt, env, fetchImpl, maxTokens: PLACEMENT_MAX_OUTPUT_TOKENS, outputSchema: PLACEMENT_OUTPUT_SCHEMA })
+    });
+    if (result.source !== "model") return { source: result.source, reason: null, placement: null, meta: { paidCallMade: false, notSent: result.notSent } };
+    // Same operation name as today's refresh, so /api/ai-metrics (read by Project Health) keeps its shape.
+    recordAiCallInBackground({
+      operation: "taste_profile",
+      outcome: "success",
+      model: result.model,
+      durationMs: Math.max(1, Date.now() - started),
+      inputTokens: result.usage?.input_tokens ?? null,
+      outputTokens: result.usage?.output_tokens ?? null,
+      cacheReadTokens: result.usage?.cache_read_input_tokens ?? null,
+      cacheWriteTokens: result.usage?.cache_creation_input_tokens ?? null
+    }, { env });
+    return { source: "model", reason: null, placement: result.placement, meta: { paidCallMade: true, model: result.model, usage: result.usage } };
+  } catch (error) {
+    recordAiCallInBackground({
+      operation: "taste_profile",
+      outcome: aiOutcomeForError(error),
+      model: error?.model ?? config.model,
+      durationMs: Math.max(1, Date.now() - started),
+      inputTokens: error?.usage?.input_tokens ?? null,
+      outputTokens: error?.usage?.output_tokens ?? null,
+      cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null,
+      cacheWriteTokens: error?.usage?.cache_creation_input_tokens ?? null,
+      ...aiErrorFields(error)
+    }, { env });
+    throw error;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("allow", "POST");
@@ -211,7 +268,9 @@ export default async function handler(req, res) {
     // the request is known to be valid, so a malformed request doesn't use up the allowance.
     if (!underBestEffortRateLimit(`profile:${clientIp(req)}`)) return res.status(429).json({ error: "too many requests" });
     const started = Date.now();
-    const payload = await produceHypotheses({ rawState: body.state });
+    const payload = body.placement && typeof body.placement === "object"
+      ? await producePlacement({ rawState: body.state, placement: body.placement })
+      : await produceHypotheses({ rawState: body.state });
     console.info("[tastemake-profile]", JSON.stringify({
       ms: Date.now() - started,
       source: payload.source,
