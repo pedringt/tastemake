@@ -14,7 +14,8 @@ import { TMDB_GENRES } from "../catalog/synopsis.mjs";
 //     (year, creator, genres) and the user's refinements;
 //   - every earlier pattern with the evidence and counter-evidence it rests on (#228/#229), cited by the
 //     same short ids;
-//   - user statements (not-me / partial / unsure, weight, context, excluded domains).
+//   - user statements (not-me / partial / unsure, weight, context, excluded domains);
+//   - on a refresh, which rows no earlier pattern cites (n:1, #326).
 // Software keeps the full records: the validator and normalizer still run against ctx.evidence, and
 // expandProfileRefs maps the model's short ids back to the real `ev:` refs before either sees them.
 
@@ -90,6 +91,12 @@ export function compactProfileContext(ctx = {}, existing = []) {
     }
   }
   const cite = (list) => [...new Set((list ?? []).map((ref) => shortFor.get(ref)).filter(Boolean))];
+  // #326: on a refresh, n:1 marks a row no earlier pattern cites (support or counter): new since the last
+  // refresh, or never explained. It is where new support, counter-evidence or a new pattern would come from.
+  if ((existing ?? []).length) {
+    const cited = new Set((existing ?? []).flatMap((h) => [...(h.supports ?? (Array.isArray(h.evidence) ? h.evidence : [])), ...(h.counters ?? h.counter ?? [])]));
+    for (const byDomain of Object.values(groups)) for (const rows of Object.values(byDomain)) for (const row of rows) if (!cited.has(refs.get(row.id))) row.n = 1;
+  }
   const context = {
     evidence: groups,
     statements: (ctx.statements ?? []).map(compactStatement),
