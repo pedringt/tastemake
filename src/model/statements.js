@@ -46,6 +46,27 @@ export function effectiveStatement(said) {
   return said && shownContext(said) !== (said.context ?? null) ? { ...said, context: shownContext(said) } : said;
 }
 
+// #358: the compact summary a pattern shows once it is answered, e.g. ["Confirmed", "Important", "Usually"].
+// Only answers the person chose appear, and the context answer is the shown one (shownContext), so a hidden
+// stale answer never surfaces here. Areas use the domain labels passed in.
+export const SUMMARY = {
+  says: { accurate: "Confirmed", partial: "Partly", "not-me": "Not me", unsure: "Not sure" },
+  weight: { lot: "Important", little: "Not essential" },
+  context: { broad: "Usually", some: "Depends", unsure: "Not sure why" }
+};
+
+export function statementSummary(said, areaLabel = (id) => id) {
+  if (!SUMMARY.says[said?.says]) return [];
+  const context = ["accurate", "partial"].includes(said.says) ? shownContext(said) : null;
+  const excluded = said.says === "partial" ? (said.excludedDomains ?? []) : [];
+  return [
+    SUMMARY.says[said.says],
+    said.says === "accurate" ? SUMMARY.weight[said.weight] : null,
+    SUMMARY.context[context],
+    excluded.length ? `Not for ${excluded.map(areaLabel).join(", ")}` : null
+  ].filter(Boolean);
+}
+
 const MESSAGE = {
   says: (pattern, now) => (now ? `${pattern.title}: ${FIT[now]}.` : `${pattern.title}: your answer was cleared.`),
   weight: (pattern, now) => (now ? `${pattern.title}: ${WEIGHT[now]}.` : `${pattern.title}: how much it matters was cleared.`),
