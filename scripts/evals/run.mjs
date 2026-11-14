@@ -24,11 +24,19 @@
 // their plan (calls, models, cap) before the first call, and stop before a call once spend reaches the cap.
 // --auth ant is for runs on your own machine only and is refused when CI is set. --raw keeps the model's own
 // Taste Profile answer in the local report (off by default).
+//
+// --suite counter (#278) runs eleven Taste Profile calls (no picks), then grades every counter-example on every kept
+// pattern with scripts/evals/counter-grader.mjs: one grading call per item on --grade-model (default
+// claude-haiku-5-5), at most --max-grade-calls (default 60). The planned count is profile calls plus that cap, and
+// --max-calls and --max-usd cover both. Grading is an eval scorer only, never a production gate.
+//   node scripts/evals/run.mjs --suite counter --producer live --model claude-haiku-5-5 --dry-run
+//   node scripts/evals/run.mjs --suite counter --producer live --model claude-haiku-5-5 --yes --max-usd 0.40 --max-calls 75
 
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, DISLIKE_DIRECTION_FIXTURES, badResponses } from "./fixtures.mjs";
+import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, DISLIKE_DIRECTION_FIXTURES, COUNTER_FIXTURES, counterCalibration, exampleProfileCounters, badResponses } from "./fixtures.mjs";
+import { GRADER_MAX_OUTPUT_TOKENS, GRADER_OUTPUT_SCHEMA, buildGraderPrompt, counterItems, gradeCounters, gradesMarkdown, summarizeGrades } from "./counter-grader.mjs";
 import { scoreFixture } from "./scorers.mjs";
 import { buildContext } from "../../src/ai/context.js";
 import { validateHypotheses, validatePicks } from "../../src/ai/validate.js";
@@ -54,7 +62,7 @@ const args = process.argv.slice(2);
 const suite = args.includes("--suite") ? args[args.indexOf("--suite") + 1] : "default";
 // --suite dislike-directions is the #335 before/after: Friends disliked for plain "Humor" vs "Humor: not my style
 // of humor", five Taste Profile calls each, no picks.
-const FIXTURES = suite === "reasons" ? REASON_FIXTURES : suite === "support" ? SUPPORT_FIXTURES : suite === "dislike-directions" ? DISLIKE_DIRECTION_FIXTURES : DEFAULT_FIXTURES;
+const FIXTURES = suite === "reasons" ? REASON_FIXTURES : suite === "support" ? SUPPORT_FIXTURES : suite === "dislike-directions" ? DISLIKE_DIRECTION_FIXTURES : suite === "counter" ? COUNTER_FIXTURES : DEFAULT_FIXTURES;
 const producerName = args.includes("--producer") ? args[args.indexOf("--producer") + 1] : "baseline";
 const dryRun = args.includes("--dry-run");
 const confirmed = args.includes("--yes");
@@ -86,6 +94,10 @@ const maxUsd = args.includes("--max-usd") ? Number(args[args.indexOf("--max-usd"
 // --max-calls: an approved call count, enforced before every call next to the spend cap (Nov 11).
 const maxCalls = args.includes("--max-calls") ? Number(args[args.indexOf("--max-calls") + 1]) : Infinity;
 const keepRaw = args.includes("--raw");
+// #278: the counter-example grader runs with --suite counter on the live producer (paid, or its dry run).
+const gradeCounter = suite === "counter" && producerName === "live";
+const gradeModel = args.includes("--grade-model") ? args[args.indexOf("--grade-model") + 1] : "claude-haiku-5-5";
+const maxGradeCalls = args.includes("--max-grade-calls") ? Number(args[args.indexOf("--max-grade-calls") + 1]) : 60;
 const outArg = args.includes("--out") ? args[args.indexOf("--out") + 1] : null;
 const updateBaseline = args.includes("--update-baseline") ? (args[args.indexOf("--update-baseline") + 1] ?? "") : null;
 const inCI = Boolean(process.env.CI);
@@ -162,6 +174,22 @@ function recordSpend(model, usage) {
   spend.inputTokens += (usage?.input_tokens ?? 0) + (usage?.cache_creation_input_tokens ?? 0) + (usage?.cache_read_input_tokens ?? 0);
   spend.outputTokens += usage?.output_tokens ?? 0;
   spend.usd += usageCostUsd(model, usage ?? {});
+}
+// One grading call (#278), behind the same caps as every other paid call. A cap stop is marked so grading ends there.
+async function gradeCall(prompt) {
+  if (!useAnt && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run (or pass --auth ant)");
+  if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
+  const worstCase = worstCaseUsd(gradeModel, prompt.length, outputCap(gradeModel, GRADER_MAX_OUTPUT_TOKENS));
+  try { ensureBudget(worstCase); } catch (error) { error.budgetStop = true; throw error; }
+  try {
+    const model = await callAnthropic({ prompt, env: liveEnv(), fetchImpl: liveFetch, model: gradeModel, maxTokens: GRADER_MAX_OUTPUT_TOKENS, outputSchema: GRADER_OUTPUT_SCHEMA });
+    recordSpend(gradeModel, model.usage);
+    return model.json;
+  } catch (error) {
+    if (error.usage) recordSpend(gradeModel, error.usage);
+    else if (error.paidCallMade) recordUnmeasured(worstCase);
+    throw error;
+  }
 }
 const liveEnv = () => ({ ...process.env, ANTHROPIC_API_KEY: useAnt ? "unused-oauth" : process.env.ANTHROPIC_API_KEY });
 const dryRunPlan = [];
@@ -277,12 +305,14 @@ async function runOne(fixture) {
 
 // A paid run says what it will do before the first call (#341 step 2).
 if (paidRun && confirmed) {
-  const planned = producerName === "endpoint"
+  let planned = producerName === "endpoint"
     ? FIXTURES.length
     : FIXTURES.reduce((sum, f) => sum + (liveProfile ? (f.before ? 2 : 1) : 0) + ((f.candidates ?? EVAL_CANDIDATES).length ? 1 : 0), 0);
   const models = producerName === "endpoint" ? `whatever ${endpointUrl} is configured to use` : `profile ${liveProfile ? liveProfileModel : "baseline (no call)"}, picks ${liveModel}`;
+  if (gradeCounter && !(Number.isInteger(maxGradeCalls) && maxGradeCalls >= 0)) refuse("--max-grade-calls needs a whole number");
+  if (gradeCounter) planned += maxGradeCalls;
   if (planned > maxCalls) refuse(`the plan needs up to ${planned} call(s), more than --max-calls ${maxCalls}`);
-  console.log(`Plan: up to ${planned} paid call(s) over ${FIXTURES.length} fixture(s); ${models}; auth ${useAnt ? "ant login" : producerName === "endpoint" ? "none here" : "ANTHROPIC_API_KEY"}; cap $${maxUsd}: before each call the runner assumes that call's worst case and skips it if the cap could be crossed (costs are estimates from token counts and the pricing table, including prompt caching).`);
+  console.log(`Plan: up to ${planned} paid call(s) over ${FIXTURES.length} fixture(s)${gradeCounter ? ` (up to ${maxGradeCalls} of them counter-example grading on ${gradeModel})` : ""}; ${models}; auth ${useAnt ? "ant login" : producerName === "endpoint" ? "none here" : "ANTHROPIC_API_KEY"}; cap $${maxUsd}: before each call the runner assumes that call's worst case and skips it if the cap could be crossed (costs are estimates from token counts and the pricing table, including prompt caching).`);
 }
 
 const results = [];
@@ -292,6 +322,26 @@ for (const fixture of FIXTURES) {
     results.push({ fixture, run, scores: scoreFixture(fixture, run) });
   } catch (error) {
     results.push({ fixture, error: String(error.message ?? error), scores: [{ kind: "rule", name: "producer ran", pass: false, detail: String(error.message ?? error) }] });
+  }
+}
+
+// #278: grade every counter-example. Calibration first (known answers), then the stored Example Profile, then each
+// fixture's kept patterns, so a cap stop leaves the known cases graded.
+let counterGrades = null;
+if (gradeCounter) {
+  const items = [
+    ...counterItems(counterCalibration()),
+    ...counterItems(exampleProfileCounters()),
+    ...results.filter((r) => r.run).flatMap((r) => counterItems({ source: r.fixture.id, hypotheses: r.run.hyp.accepted, evidence: r.run.ctx.evidence }))
+  ];
+  if (dryRun) {
+    const prompts = items.filter((i) => !i.skip).map(buildGraderPrompt);
+    const longest = Math.max(...prompts.map((p) => p.length));
+    const perCall = worstCaseUsd(gradeModel, Math.ceil(longest * 1.5), outputCap(gradeModel, GRADER_MAX_OUTPUT_TOKENS));
+    for (let i = 0; i < maxGradeCalls; i += 1) dryRunPlan.push({ fixture: i < prompts.length ? "(grade)" : "(grade, from profile output)", count: 0, promptChars: prompts[i]?.length ?? Math.ceil(longest * 1.5), estIn: estimateTokens(prompts[i] ?? "x".repeat(Math.ceil(longest * 1.5))), prompt: prompts[i] ?? "", grade: true, worstCase: perCall });
+  } else {
+    const grades = await gradeCounters(items, { callModel: gradeCall, maxCalls: maxGradeCalls, isBudgetStop: (error) => Boolean(error?.budgetStop) });
+    counterGrades = { model: gradeModel, summary: summarizeGrades(grades), grades };
   }
 }
 
@@ -316,11 +366,12 @@ for (const id of ["about-10", "intent-heavy", "single-miss"]) {
 // ---- dry run: show exactly what would be sent, and what it would cost ----
 if (dryRun) {
   const totalIn = dryRunPlan.reduce((sum, p) => sum + p.estIn, 0);
-  const estOut = dryRunPlan.reduce((sum, p) => sum + (p.profile ? PROFILE_MAX_OUTPUT_TOKENS : Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200)), 0);
+  const estOut = dryRunPlan.reduce((sum, p) => sum + (p.grade ? GRADER_MAX_OUTPUT_TOKENS : p.profile ? PROFILE_MAX_OUTPUT_TOKENS : Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200)), 0);
   // The same worst case the paid run checks against its cap, so --max-usd at or above this lets every call through.
-  const estUsd = dryRunPlan.reduce((sum, p) => sum + (p.profile ? worstCaseUsd(liveProfileModel, p.promptChars, outputCap(liveProfileModel, PROFILE_MAX_OUTPUT_TOKENS)) : worstCaseUsd(liveModel, p.promptChars, outputCap(liveModel, PICKS_MAX_OUTPUT))), 0);
-  console.log(`DRY RUN: ${dryRunPlan.length} call(s) would be made (${dryRunPlan.filter((p) => p.profile).length} taste-profile, ${dryRunPlan.filter((p) => !p.profile).length} picks).`);
-  dryRunPlan.forEach((p) => console.log(`  ${p.fixture}: ${p.count} picks asked for, prompt ~${p.estIn} tokens (${p.promptChars} chars)`));
+  const estUsd = dryRunPlan.reduce((sum, p) => sum + (p.grade ? p.worstCase : p.profile ? worstCaseUsd(liveProfileModel, p.promptChars, outputCap(liveProfileModel, PROFILE_MAX_OUTPUT_TOKENS)) : worstCaseUsd(liveModel, p.promptChars, outputCap(liveModel, PICKS_MAX_OUTPUT))), 0);
+  console.log(`DRY RUN: ${dryRunPlan.length} call(s) would be made (${dryRunPlan.filter((p) => p.profile).length} taste-profile, ${dryRunPlan.filter((p) => !p.profile && !p.grade).length} picks${gradeCounter ? `, up to ${dryRunPlan.filter((p) => p.grade).length} counter-example grading on ${gradeModel}` : ""}).`);
+  if (gradeCounter) console.log(`  grading: ${dryRunPlan.filter((p) => p.fixture === "(grade)").length} known now (calibration and the stored Example Profile); the rest depends on how many counter items the profiles return, capped at --max-grade-calls ${maxGradeCalls}`);
+  dryRunPlan.filter((p) => !p.grade).forEach((p) => console.log(`  ${p.fixture}: ${p.count} picks asked for, prompt ~${p.estIn} tokens (${p.promptChars} chars)`));
   console.log(`Estimated input ~${totalIn} tokens; output capped at ${estOut} tokens across all calls.`);
   console.log(`Worst-case cost: $${estUsd.toFixed(4)} (prompts at the highest input rate, every output cap used); real runs usually cost far less. A paid run needs --max-usd at or above this to make every call.`);
   console.log(`Model: ${liveModel} (effort ${liveEffort}, thinking ${liveThinking}); key ${process.env.ANTHROPIC_API_KEY ? "present" : "absent"}.`);
@@ -372,6 +423,7 @@ for (const r of results) {
 lines.push("## Validator self-test (deliberately bad answers)", "", "| Fixture | Bad answer | Caught | Reason given |", "|---|---|---|---|");
 selfTest.forEach((t) => lines.push(`| ${t.fixture} | ${t.name} | ${t.caught ? "yes" : "**NO**"} | ${t.reasons.join("; ").replace(/\|/g, "/")} |`));
 
+if (counterGrades) lines.push("", gradesMarkdown(counterGrades.summary, counterGrades.grades));
 const reportMd = lines.join("\n") + "\n";
 const reportJson = JSON.stringify({
   producer: producerName, contract: CONTRACT_VERSION,
@@ -384,7 +436,8 @@ const reportJson = JSON.stringify({
     raw: keepRaw && r.run?.hyp.raw ? (r.run.hyp.raw.hypotheses ?? []).map(({ id, label, claim, evidence, counter, level, crossDomain }) => ({ id, label, claim, evidence, counter, level, crossDomain })) : null,
     rejected: r.run?.hyp.rejected.map((x) => ({ label: x.proposal?.label, claim: x.proposal?.claim ?? null, evidence: x.proposal?.evidence ?? [], counter: x.proposal?.counter ?? [], reasons: x.reasons })) ?? [],
     picks: r.run?.picks.accepted.map((p) => ({ itemId: p.itemId, title: p.item?.title ?? null, kind: p.kind, why: p.why ?? null, cites: p.cites })) ?? [] })),
-  selfTest
+  selfTest,
+  ...(counterGrades ? { counterGrades } : {})
 }, null, 2) + "\n";
 
 writeFileSync(`${reportPath}.md`, reportMd);
@@ -411,6 +464,10 @@ missed.forEach((m) => console.log(`  x validator missed: ${m.fixture} / ${m.name
 if (endpointRuns.length) {
   console.log("endpoint answers:");
   endpointRuns.forEach((r) => console.log(`  ${r.fixture}: ${r.source}${r.reason ? ` (${r.reason})` : ""}`));
+}
+if (counterGrades) {
+  const g = counterGrades.summary;
+  console.log(`counter-examples (#278): ${g.defensible} of ${g.graded} graded defensible (${g.share === null ? "n/a" : `${Math.round(g.share * 100)}%`}); ${g.ungraded} ungraded, ${g.skipped} skipped; calibration agreed ${g.calibration.agreed}/${g.calibration.of}`);
 }
 if (spend.calls) console.log(`paid calls: ${spend.calls}${spend.unmeasuredCalls ? ` (${spend.unmeasuredCalls} without usage, counted at their worst case)` : ""}; tokens in ${spend.inputTokens}, out ${spend.outputTokens}; estimated cost $${spend.usd.toFixed(3)}`);
 console.log(`report: ${relative(process.cwd(), reportPath)}.md`);
