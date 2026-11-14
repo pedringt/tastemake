@@ -2,12 +2,13 @@
 // reacted to, never the person's ratings themselves.
 const ITEM_FIELDS = ["id", "provider", "providerId", "type", "title", "domains", "genres", "providerMeta"];
 
-export async function fetchSimilar(item, exclude = [], { signal } = {}) {
+// #252 part 2: `targetDomain` asks for "with these vibes" from another medium instead.
+export async function fetchSimilar(item, exclude = [], { signal, targetDomain = null } = {}) {
   const sent = Object.fromEntries(ITEM_FIELDS.filter((key) => item?.[key] != null).map((key) => [key, item[key]]));
   const response = await fetch("/api/similar", {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({ item: sent, exclude: exclude.slice(0, 500) }),
+    body: JSON.stringify({ item: sent, exclude: exclude.slice(0, 500), ...(targetDomain ? { targetDomain } : {}) }),
     signal
   });
   if (!response.ok) throw new Error(`similar failed: ${response.status}`);

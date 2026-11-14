@@ -390,3 +390,4 @@ button:focus-visible,a:focus-visible,.why-trigger:focus-visible { outline:3px so
 .example-banner { display:flex; align-items:center; justify-content:space-between; gap:12px 20px; flex-wrap:wrap; margin:0 0 20px; padding:14px 18px; border:2px solid var(--ink); border-radius:14px; background:var(--paper); color:var(--ink); }
 .example-banner p { margin:0; max-width:70ch; line-height:1.5; }
 .example-banner .button { flex:none; }
+.set-aside-notice-actions { display:flex; flex-wrap:wrap; gap:8px; }

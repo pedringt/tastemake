@@ -256,7 +256,7 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
     announce(picks.length
       ? `New set: ${plural(picks.length, "pick", "picks")}. ${source === "model" ? "Live AI was used and validated." : "Real catalog fallback was used."}`
       : "No more eligible catalog picks were found.");
-  } catch {
+  } catch (error) {
     cancelRecommendationTiming(request.id);
     const stale = staleReason(state, request);
     if (stale) {
@@ -264,16 +264,26 @@ async function runRecommendationRequest({ render, updateStepper, announce, navig
       state.aiStatus = "idle";
       return;
     }
-    finishRequest(state, request, {
-      source: "error",
-      message: "Recommendations are temporarily unavailable. Tastemake did not substitute seeded demo picks."
-    });
+    // #350: a failed request is an outage or a limit, not a verdict on the user's taste. Say so, keep
+    // whatever set was already there, and offer Try again (screens/recommendations.js).
+    finishRequest(state, request, { source: "error", message: requestFailureMessage(error) });
     state.recommendationExhausted = false;
     navigate("recommendations", { replace: true, scroll: false });
-    announce("Recommendations are temporarily unavailable.");
+    announce(`Recommendations didn’t load. ${state.aiMessage}`);
   } finally {
     clearLoadingStages();
   }
+}
+
+export function requestFailureMessage(error) {
+  if (error?.status === 429) return "Too many requests in a short time. Wait a minute, then try again.";
+  return "Tastemake couldn’t reach its recommendations just now. Your favorites and reactions are safe.";
+}
+
+// #350: Try again after a failed request. With no set yet it is the first request again; otherwise the
+// next set in the category already selected.
+export async function retryRecommendations(ctx) {
+  return runRecommendationRequest({ ...ctx, initial: !state.recommendationSets.length });
 }
 
 export async function runInitialRecommendations(ctx) {

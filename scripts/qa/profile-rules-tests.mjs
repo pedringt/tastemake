@@ -3,7 +3,7 @@
 // deterministic guarantees software now owns, checked without a model call:
 //   1. cross-domain links resting only on starter favorites are "untested" (cold-4, starter-6), and one
 //      tried thing in each of two areas is at most "tentative";
-//   2. one miss never removes an earlier pattern (single-miss); two misses in its area may;
+//   2. one miss never removes an earlier pattern (single-miss); since #325, neither do uncited misses in its area;
 //   3. a reply with text after the JSON still parses;
 //   4. confidence level counts only things the user tried: a pattern resting only on starter favorites
 //      stays "emerging" (cold-4, starter-6), however many it cites.
@@ -98,14 +98,16 @@ const earlierProfile = [
   eq("the revision's label wins", revisedResult.accepted.find((h) => h.id === "ai-teeth")?.label, "Comedy with teeth, revised");
 }
 {
-  // Two misses in a pattern's area: the model may drop it.
+  // #325 (replaces the #228 rule "two misses in a pattern's area let the model drop it"): dislikes that
+  // merely share a pattern's area are not evidence against it, so the pattern is still carried.
+  // Confirmed patterns and cited counters are covered in confirmed-patterns-tests.mjs.
   const s = lovedBefore();
   const watchMisses = catalogItems.filter((i) => !["eeaao", "barry"].includes(i.id) && i.domains.some((d) => earlierProfile[0].domains.includes(d))).slice(0, 2);
   watchMisses.forEach((item) => react(s, item, "disliked"));
   s.modelHypotheses = earlierProfile;
   const ctx = buildContext(s);
   const result = preserveExistingHypotheses({ hypotheses: [] }, ctx, s.modelHypotheses);
-  check("two misses in a pattern's area let the model drop it", !result.hypotheses.some((h) => h.id === "ai-teeth"), result.hypotheses.map((h) => h.id).join(","));
+  check("two uncited misses in a pattern's area do not drop it", result.hypotheses.some((h) => h.id === "ai-teeth"), result.hypotheses.map((h) => h.id).join(","));
   check("patterns in other areas are still carried", result.hypotheses.some((h) => h.id === "ai-puzzles"));
 }
 {

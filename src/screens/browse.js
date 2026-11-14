@@ -9,17 +9,21 @@ import { blurbOf } from "../catalog/synopsis.mjs";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { starIcon } from "../components/star.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
+import { renderPathSwitch } from "../components/path-switch.js";
 import { isExperienced } from "../model/evidence.js";
+import { bridgeTargetNoun } from "../catalog/bridges.mjs";
 
-function favoriteToggle(itemId) {
+// Nov 12 (QA): the accessible name says which title, since a screen shows many of these stars.
+function favoriteToggle(itemId, title = "") {
   const isFavorite = state.onboarded ? state.libraryFavorites.has(itemId) : state.selectedFavorites.has(itemId);
   const label = isFavorite ? "Remove from Favorites" : "Add to Favorites";
+  const name = title ? (isFavorite ? `Remove ${title} from Favorites` : `Add ${title} to Favorites`) : label;
   return `
     <button
       class="rec-favorite-star ${isFavorite ? "is-favorite" : ""}"
       type="button"
       data-rec-favorite="${itemId}"
-      aria-label="${label}"
+      aria-label="${esc(name)}"
       title="${label}"
       aria-pressed="${isFavorite}"
     >${starIcon(isFavorite)}</button>`;
@@ -60,6 +64,7 @@ function feedbackPanel(item, feedback) {
         </div>
         <button type="button" class="rec-feedback-close" data-feedback-close="${item.id}" aria-label="Close feedback">×</button>
       </div>
+      ${feedback ? renderPathSwitch(item, path) : ""}
       <div class="feedback-details experience-outcomes">
         <span class="feedback-detail-prompt">${path === "tried" ? "How did it land?" : "Want to keep it around?"}</span>
         <div class="detail-chip-row" role="group" aria-label="${path === "tried" ? "How did it land?" : "What do you want to do with this untried item?"}">
@@ -91,7 +96,7 @@ function browseCard(item) {
             <h3>${esc(item.title)}</h3>
             <p class="browse-meta">${esc(meta)}</p>
           </div>
-          ${favoriteToggle(item.id)}
+          ${favoriteToggle(item.id, item.title)}
         </div>
         ${state.browseSimilar && item.reason ? `<p class="browse-why">${esc(item.reason)}</p>` : ""}
         <p class="browse-about">${esc(blurbOf(item))}</p>
@@ -122,12 +127,12 @@ function browseCard(item) {
 const SIMILAR_NOUN = { movie: "Movies", tv: "Shows", book: "Books", game: "Games" };
 
 function similarHead() {
-  const { title, type } = state.browseSimilar;
+  const { title, type, targetDomain } = state.browseSimilar;
   return `
       <div class="browse-results-head browse-similar-head">
         <div>
-          <h2>${esc(SIMILAR_NOUN[type] ?? "More")} like ${esc(title)}</h2>
-          <p>Found from what they share with it. Rate the ones you've tried.</p>
+          <h2>${targetDomain ? `${esc(bridgeTargetNoun(targetDomain))} with the vibes of ${esc(title)}` : `${esc(SIMILAR_NOUN[type] ?? "More")} like ${esc(title)}`}</h2>
+          <p>${targetDomain ? "Found from genres they share with it. Rate the ones you've tried." : "Found from what they share with it. Rate the ones you've tried."}</p>
         </div>
         <button class="button button-quiet" type="button" data-browse-similar-close>← Browse by genre</button>
       </div>`;
@@ -207,12 +212,12 @@ export function renderBrowse() {
         </div>` : ""}
 
       ${state.browseLoading && !state.browseItems.length ? `
-        <div class="browse-loading" role="status"><span class="search-spinner" aria-hidden="true"></span><strong>${state.browseSimilar ? `Finding things like ${esc(state.browseSimilar.title)}…` : `Finding ${esc(genres.find((genre) => genre.id === state.browseGenre)?.label ?? "")} picks…`}</strong></div>` : ""}
+        <div class="browse-loading" role="status"><span class="search-spinner" aria-hidden="true"></span><strong>${state.browseSimilar?.targetDomain ? `Finding ${esc(bridgeTargetNoun(state.browseSimilar.targetDomain).toLowerCase())} with the vibes of ${esc(state.browseSimilar.title)}…` : state.browseSimilar ? `Finding things like ${esc(state.browseSimilar.title)}…` : `Finding ${esc(genres.find((genre) => genre.id === state.browseGenre)?.label ?? "")} picks…`}</strong></div>` : ""}
 
       ${!state.browseLoading && !state.browseError && !state.browseItems.length ? `
         <div class="browse-empty" role="status">
-          <strong>${state.browseSimilar ? "No close matches turned up." : "Nothing useful showed up in this batch."}</strong>
-          <span>${state.browseSimilar ? "You may have rated them already, or the catalog knows too little about this one. Try browsing by genre." : "Try another genre or search for a title directly."}</span>
+          <strong>${state.browseSimilar?.targetDomain ? "Nothing close turned up for this one." : state.browseSimilar ? "No close matches turned up." : "Nothing useful showed up in this batch."}</strong>
+          <span>${state.browseSimilar?.targetDomain ? "Try browsing by genre." : state.browseSimilar ? "You may have rated them already, or the catalog knows too little about this one. Try browsing by genre." : "Try another genre or search for a title directly."}</span>
           <button class="button button-secondary" type="button" data-action="open-search">Search instead</button>
         </div>` : ""}
 

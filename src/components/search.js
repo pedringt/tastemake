@@ -316,7 +316,26 @@ export function initSearch({ onChange, announce, goTo }) {
     });
   }
 
+  // Nov 12 (QA): the dialog normally hands focus back to whatever opened it, but closing re-renders the
+  // screen, so an in-page "Search…" button is replaced and focus fell to the page. Remember which of those
+  // buttons it was (by position) and focus its re-rendered copy, or the header search button.
+  let returnTo = null;
+  function rememberReturnFocus() {
+    const active = document.activeElement;
+    const launchers = [...document.querySelectorAll('[data-action="open-search"]')];
+    returnTo = { element: active, launcher: launchers.indexOf(active) };
+  }
+  function restoreReturnFocus() {
+    const saved = returnTo;
+    returnTo = null;
+    if (!saved || dialog.open) return;
+    if (saved.element?.isConnected && saved.element !== document.body) { saved.element.focus(); return; }
+    const launchers = document.querySelectorAll('[data-action="open-search"]');
+    (launchers[saved.launcher] ?? (saved.launcher >= 0 ? launchers[0] : null) ?? opener).focus();
+  }
+
   function open() {
+    if (!dialog.open) rememberReturnFocus();
     Object.assign(ui, { query: "", filter: "all", mode: "results", itemId: null, pending: null, experiencePath: null, addTitle: "", addCreator: "", addMedium: "movie", addError: "", external: [], catalogLoading: false, catalogError: "", booksLoading: false, booksFailed: false });
     input.value = "";
     syncFilters();
@@ -410,7 +429,11 @@ export function initSearch({ onChange, announce, goTo }) {
   }
 
   opener.addEventListener("click", open);
-  dialog.addEventListener("close", () => { state.starterReplaceId = null; });
+  dialog.addEventListener("close", () => {
+    state.starterReplaceId = null;
+    // After any re-render the close caused (onChange) has run.
+    setTimeout(restoreReturnFocus, 0);
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey || dialog.open) return;
     const target = event.target;
@@ -508,7 +531,7 @@ export function initSearch({ onChange, announce, goTo }) {
     }
 
     const goto = event.target.closest("[data-search-goto]");
-    if (goto) { dialog.close(); goTo(goto.dataset.searchGoto); return; }
+    if (goto) { returnTo = null; dialog.close(); goTo(goto.dataset.searchGoto); return; }   // the new screen sets its own focus
 
     const starterButton = event.target.closest("[data-search-starter]");
     if (starterButton) {

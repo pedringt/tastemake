@@ -4,10 +4,11 @@ import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 import { applyTaglineFallback } from "../src/catalog/providers.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
-import { aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
+import { aiErrorFields, aiOutcomeForError, recordAiCallInBackground } from "../src/server/ai-metrics.mjs";
 import { AI_BUDGET_MESSAGE, callAnthropic, isAiBudgetExhausted, liveConfig } from "../src/server/anthropic.mjs";
 import { PICKS_OUTPUT_SCHEMA } from "../src/server/output-schemas.mjs";
 import { hydrateState } from "../src/server/request-state.mjs";
+import { clientIp, underBestEffortRateLimit } from "../src/server/rate-limit.mjs";
 import { domainById } from "../src/data/domains.js";
 import { ANCHORS, MAX_PICKS_PER_ANCHOR } from "../src/ai/contract.js";
 import { isAdultTagged, triedAdultTagged } from "../src/catalog/adult-content.mjs";
@@ -15,36 +16,15 @@ import { evidenceRecords } from "../src/model/evidence.js";
 import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
 import { contentThemesFor } from "../src/model/refinements.js";
 import { excludedBy } from "../src/model/exclusions.js";
-import { chooseCandidates, closestRatings } from "../src/ai/taste-score.js";
+import { chooseCandidates, closestRatings, featureRarity, selectionBasis } from "../src/ai/taste-score.js";
 
 const MAX_BODY_BYTES = 160_000;
-const DEFAULT_VISITOR_LIMIT = 6;
-const DEFAULT_WINDOW_MS = 60_000;
 const MAX_PROMPT_EVIDENCE = 18;
-const rateBuckets = globalThis.__tastemakeAiRateBuckets ??= new Map();
 
 function parseBody(body) {
   if (body && typeof body === "object") return body;
   if (typeof body === "string") return JSON.parse(body);
   return {};
-}
-
-function clientIp(req) {
-  const forwarded = req.headers?.["x-forwarded-for"] ?? req.headers?.get?.("x-forwarded-for");
-  return String(forwarded || "unknown").split(",")[0].trim();
-}
-
-function underBestEffortRateLimit(ip, now = Date.now()) {
-  const limit = Number(process.env.TASTEMAKE_AI_VISITOR_LIMIT || DEFAULT_VISITOR_LIMIT);
-  const windowMs = Number(process.env.TASTEMAKE_AI_RATE_WINDOW_MS || DEFAULT_WINDOW_MS);
-  const bucket = rateBuckets.get(ip);
-  if (!bucket || now - bucket.started >= windowMs) {
-    rateBuckets.set(ip, { started: now, count: 1 });
-    return true;
-  }
-  if (bucket.count >= limit) return false;
-  bucket.count += 1;
-  return true;
 }
 
 function compactEvidenceRecord(record) {
@@ -82,8 +62,8 @@ function promptEvidencePriority(record) {
 // Oct 27: the six offered are the best fits for everything the person has rated (src/ai/taste-score.js),
 // not the first six retrieval returned. With a surprise slot, it goes to a candidate found from a Liked item.
 // Exported so the stress eval offers exactly what production does.
-export function offeredCandidates(ctx, count = 6) {
-  return chooseCandidates(ctx.candidates, ctx.evidence, { count, mode: ctx.recommendationFilter, curveball: ctx.curveball });
+export function offeredCandidates(ctx, count = 6, trace = null) {
+  return chooseCandidates(ctx.candidates, ctx.evidence, { count, mode: ctx.recommendationFilter, curveball: ctx.curveball, trace });
 }
 
 export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
@@ -338,20 +318,33 @@ export async function warmRecommendationCandidates({ rawState, env = process.env
 
 // `retrieve` defaults to production's catalog retrieval. Only the #28 stress eval
 // (scripts/evals/stress/) passes its own, to hold the candidate pool fixed while measuring reasoning.
-export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates } = {}) {
+// #1a: `trace: true` (evals and dev scripts only; the API handler never passes it) adds result.trace:
+// every candidate's path through retrieval, the shortlist, the model and validation, and for each
+// final pick the ratings that selected it and whether its reason's citations overlap them. The payload is
+// otherwise identical.
+export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates, trace = false } = {}) {
+  if (!trace) return recommend({ rawState, env, fetchImpl, retrieve, trace: null });
+  const steps = {};
+  const result = await recommend({ rawState, env, fetchImpl, retrieve, trace: steps });
+  return { ...result, trace: requestTrace(steps, result) };
+}
+
+async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
   const state = hydrateState(rawState);
 
   let started = Date.now();
   // #48: "never recommend" boundaries come off before anything is picked, for live AI and fallback alike.
-  const pool = await retrieve(state, { env, fetchImpl });
+  const pool = await retrieve(state, { env, fetchImpl, ...(trace ? { trace } : {}) });
   const retrieved = state.exclusions.length ? pool.filter((item) => !excludedBy(item, state.exclusions)) : pool;
+  if (trace) trace.excluded = pool.filter((item) => !retrieved.includes(item)).map((item) => item.id);
   logStage("candidateRetrieval", Date.now() - started, { candidates: retrieved.length, excluded: pool.length - retrieved.length });
 
   started = Date.now();
   const ctx = buildContext(state, retrieved);
   logStage("buildContext", Date.now() - started);
+  if (trace) trace.evidence = ctx.evidence ?? [];
 
-  const candidates = offeredCandidates(ctx);
+  const candidates = offeredCandidates(ctx, 6, trace);
   if (!candidates.length) {
     // Real bug (2026-09-29): retrieveCatalogCandidates narrows anchor selection to only evidence
     // already tagged with the active domain filter (related.mjs's `evidenceItems` filter) before it
@@ -379,6 +372,7 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
   // context with candidates capped to the actual offered set, used everywhere the model's answer is
   // built or checked.
   const promptCtx = { ...ctx, candidates };
+  if (trace) trace.promptEvidence = selectPromptEvidence(promptCtx).map((record) => record.ref);
   const offeredDomains = {};
   for (const candidate of candidates) {
     for (const domain of candidate.domains ?? []) offeredDomains[domain] = (offeredDomains[domain] ?? 0) + 1;
@@ -424,6 +418,12 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
     started = Date.now();
     const normalizedModel = normalizeModelPicks(model.json);
     const validated = validatePicks(normalizedModel, promptCtx);
+    if (trace) {
+      trace.model = {
+        picks: (normalizedModel?.picks ?? []).map((pick) => ({ itemId: pick.itemId ?? null, cites: pick.cites ?? [], kind: pick.kind ?? null })),
+        rejected: (validated.rejected ?? []).map((entry) => ({ itemId: entry.proposal?.itemId ?? null, reasons: entry.reasons }))
+      };
+    }
     // #120/QA-sweep follow-up (Paige's explicit call, 2026-09-28): this used to require every
     // candidate offered (up to 6) to individually pass validation, or the whole batch fell back to
     // catalog picks -- one flawed pick discarded five good ones, and #148's logging confirmed this
@@ -479,7 +479,8 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       inputTokens: error?.usage?.input_tokens ?? null,
       outputTokens: error?.usage?.output_tokens ?? null,
       cacheReadTokens: error?.usage?.cache_read_input_tokens ?? null,
-      cacheWriteTokens: error?.usage?.cache_creation_input_tokens ?? null
+      cacheWriteTokens: error?.usage?.cache_creation_input_tokens ?? null,
+      ...aiErrorFields(error)
     }, { env });
     console.error("[tastemake-ai]", reason, error?.status ?? "", error?.anthropicType ?? "", error?.anthropicDetail ?? error?.message ?? "");
     return fallbackPayload(candidates, state, reason, {
@@ -490,6 +491,64 @@ export async function produceRecommendations({ rawState, env = process.env, fetc
       catalogCandidates: retrieved.length
     }, ctx.candidates);
   }
+}
+
+// #1a: assemble the request trace. A pick's selection evidence is the rating it was found from plus
+// the positive ratings that made up its taste score. `citationOverlapsSelection` only says whether its
+// reason cites at least one of them -- an overlap diagnostic, not a check that the reason names the
+// decisive factor (a pick can cite a minor contributor while a dislike weighed heavily against it; the
+// candidate's full parts, negatives included, are in trace.candidates). Catalog-fallback reasons are
+// written from the found-from item, so that is what they cite.
+function requestTrace(steps, result) {
+  const evidence = steps.evidence ?? [];
+  // #1b (diagnostic only): what decided each pick, computed here so untraced requests do no extra work.
+  const basisCache = new Map();
+  const basisRarity = featureRarity(evidence, basisCache);
+  const refFor = (itemId) => evidence.find((record) => record.itemId === itemId && record.class === "experienced")?.ref ?? null;
+  const byId = new Map((steps.candidates ?? []).map((entry) => [entry.itemId, entry]));
+  const picks = (result.picks ?? []).map((pick) => {
+    const entry = byId.get(pick.id) ?? null;
+    const retrievedFromRef = refFor(pick.relatedToId);
+    const scoredFrom = entry ? entry.positives.map((match) => match.ref) : [];
+    const cites = pick.ai?.cites ?? (retrievedFromRef ? [retrievedFromRef] : []);
+    const selection = new Set([retrievedFromRef, ...scoredFrom].filter(Boolean));
+    const basis = selectionBasis(pick, evidence, { cache: basisCache, rarity: basisRarity });
+    return {
+      itemId: pick.id,
+      title: pick.title ?? null,
+      source: result.source,
+      outcome: entry?.outcome ?? null,
+      retrievedFrom: pick.relatedToId ?? null,
+      retrievedFromRef,
+      scoredFrom,
+      cites,
+      citationOverlapsSelection: cites.some((ref) => selection.has(ref)),
+      // #1b: does the reason cite a rating that decided the pick (null when none did: not applicable),
+      // and every weakness label that applies, with the totals behind them. Measured, not enforced.
+      decidedBy: basis.refs,
+      citesDecisiveBasis: basis.refs.length ? cites.some((ref) => basis.refs.includes(ref)) : null,
+      weakBasis: basis.weakBasis,
+      positiveTotal: basis.positiveTotal,
+      againstTotal: basis.againstTotal
+    };
+  });
+  return {
+    retrieval: steps.retrieval ?? null,
+    excluded: steps.excluded ?? [],
+    candidates: steps.candidates ?? [],
+    promptEvidence: steps.promptEvidence ?? [],
+    model: steps.model ?? null,
+    picks,
+    summary: {
+      candidates: (steps.candidates ?? []).length,
+      offered: (steps.candidates ?? []).filter((entry) => entry.outcome === "chosen" || entry.outcome === "edge").length,
+      picks: picks.length,
+      citationOverlapsSelection: picks.filter((pick) => pick.citationOverlapsSelection).length,
+      citesDecisiveBasis: picks.filter((pick) => pick.citesDecisiveBasis === true).length,
+      decisiveBasisNotApplicable: picks.filter((pick) => pick.citesDecisiveBasis === null).length,
+      weakBasis: picks.filter((pick) => pick.weakBasis.length).length
+    }
+  };
 }
 
 export default async function handler(req, res) {

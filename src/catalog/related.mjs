@@ -8,6 +8,10 @@ import { correctOldBookYears } from "./wikidata-years.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
+import { bookGenreFamilies } from "./book-genres.mjs";
+
+// Oct 27: bookGenreFamilies moved to book-genres.mjs so the browser can use it (bridges.mjs); re-exported here.
+export { bookGenreFamilies };
 
 // Deliberately NOT imported from model/evidence.js: this module sits in a real circular import
 // chain (taste.js -> evidence.js -> starters.js -> search.js -> taste.js), and adding related.mjs
@@ -213,32 +217,6 @@ function normalizeBookSubject(value) {
 // fiction" and "Adult books for young adults"; querying them returned Emily of New Moon and Dear Enemy,
 // which share only "Orphans" plus "Juvenile fiction" / "Children's fiction".
 const AUDIENCE_OR_FORMAT_SUBJECT = /^(?:juvenile(?: audience| fiction| literature)?|children'?s (?:fiction|literature|books|stories)|child and youth fiction|adult books for young adults|young adult (?:fiction|literature)|teen fiction|large (?:type|print) books?|colou?ring books?|activity books?|picture books?|series|form:.*|series:.*|serie:.*|franchise:.*|nyt:.*|fiction,? general|[a-z]+ literature|.*\(fictitious character\).*|.*fictitious character.*)$/i;
-
-// Genre families a subject points to. A book's family set is what "the same kind of book" means for
-// retrieval: a candidate must share one with the book it came from (when that book has any).
-const BOOK_GENRE_FAMILIES = [
-  ["fantasy", /\b(?:fantasy|fantastic|magic|magicians?|wizards?|witch(?:es|craft)?|dragons?|elves|fairies|fairy tales?|mytholog(?:y|ical)|myths?|sword and sorcery|romantasy)\b/i],
-  ["science fiction", /\b(?:science fiction|sci-?fi|space opera|dystopi(?:a|an|as)|cyberpunk|time travel|robots?|extraterrestrial|interplanetary|aliens?)\b/i],
-  ["horror", /\b(?:horror|ghosts?|ghost stories|vampires?|haunted|gothic|supernatural|monsters?|zombies?|demons?|exorcism)\b/i],
-  ["mystery", /\b(?:mystery|mysteries|detective|whodunit|private investigators?)\b/i],
-  ["thriller", /\b(?:thrillers?|suspense|espionage|spy stories)\b/i],
-  ["crime", /\b(?:crime|murder|criminals?|heists?|swindlers?|gangsters?)\b/i],
-  ["romance", /\b(?:romance|romantic|love stories)\b/i],
-  ["historical", /\b(?:historical|history)\b/i],
-  ["literary", /\bliterary\b/i],
-  ["humor", /\b(?:humou?r|humorous|comedy|satire)\b/i],
-  ["adventure", /\b(?:adventure|quests?|voyages)\b/i],
-  ["war", /\b(?:war stories|military|soldiers?)\b/i]
-];
-
-export function bookGenreFamilies(subjects = []) {
-  const families = new Set();
-  for (const subject of subjects) {
-    const value = String(subject ?? "").replace(/^genre\s*:\s*/i, "");
-    for (const [family, re] of BOOK_GENRE_FAMILIES) if (re.test(value)) families.add(family);
-  }
-  return families;
-}
 
 export function meaningfulBookSubjects(values = []) {
   return values
@@ -550,13 +528,21 @@ async function hydrateSelectedAnchorMetadata(items, { env, query }) {
 const FINAL_SERIES_CHECK = 8;
 const YEAR_WAIT_MS = 400;
 
-export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
+// With `trace` (an object, eval/dev only), trace.retrieval records the anchors queried, how many
+// candidates each returned, and the pool sizes after each step. Candidates are the same either way.
+export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl, trace = null } = {}) {
   const mode = state.recommendationFilter ?? "all";
+  const anchorTrace = [];
+  const done = (result) => {
+    if (trace) trace.retrieval = { mode, anchors: anchorTrace, returned: result.length, eligible: eligible?.length ?? 0 };
+    return result;
+  };
+  let eligible = null;
   const allEvidence = preferRicherAnchors(externalEvidenceItems(state));
   let evidenceItems = mode === "all"
     ? selectAllAnchors(allEvidence)
     : allEvidence.filter((item) => item.domains?.includes(mode)).slice(0, 6);
-  if (!evidenceItems.length) return [];
+  if (!evidenceItems.length) return done([]);
   if (state.curveball !== false) evidenceItems = withEdgeAnchor(evidenceItems, allEvidence.filter((item) => modeAllowed(state, item)));
   // Preserve series/franchise suppression, but only query the tiny selected-anchor set and cap
   // the optional lookup at 100ms instead of blocking on the user's entire evidence history.
@@ -577,6 +563,9 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   // (Promise.all below) — this only measures that existing concurrency, it does not add any.
   const loadEvidence = async (items) => Promise.all(items.map(async (item) => {
     const startedAt = Date.now();
+    // Pushed before the lookup starts, so the trace lists anchors in query order, not finish order.
+    const traced = trace ? { itemId: item.id, title: item.title ?? null, provider: item.provider, medium: primaryDomain(item), results: 0 } : null;
+    if (traced) anchorTrace.push(traced);
     try {
       let related = [];
       if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
@@ -590,9 +579,11 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
       // note in providers.mjs's searchCatalog). Not awaited, never throws, no-op when
       // TASTEMAKE_DATABASE_URL isn't configured.
       canonicalizeWriteBehind(related, { env });
+      if (traced) traced.results = related.length;
       return related.map((candidate) => ({ ...candidate, relatedTo: item.title, relatedToId: item.id }));
     } catch {
       console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: 0, errored: true }));
+      if (traced) traced.errored = true;
       return [];
     }
   }));
@@ -625,7 +616,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   ]);
   const providerKey = (item) => item?.provider && item?.providerId ? `${item.provider}:${item.type ?? ""}:${item.providerId}` : null;
   const blockedProviderKeys = new Set(allEvidence.map(providerKey).filter(Boolean));
-  let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
+  eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
   // #142: before each guard pass, read Open Library edition series names for same-author book pairs
   // the cheaper signals did not settle (bounded, cached, fail-open; see book-series-editions.mjs).
   const bookSeriesMemo = new Map();
@@ -730,9 +721,9 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
       const deepIndex = Math.min(adventurous.length - 1, 9);
       [adventurous[5], adventurous[deepIndex]] = [adventurous[deepIndex], adventurous[5]];
     }
-    return adventurous;
+    return done(adventurous);
   }
-  return ranked.slice(0, limit);
+  return done(ranked.slice(0, limit));
 }
 
 // Oct 27: "See similar". The same per-item lookups recommendations use, for one item the person chose,
