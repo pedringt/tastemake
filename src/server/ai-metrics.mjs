@@ -1,5 +1,6 @@
 import { waitUntil } from "@vercel/functions";
 import { query as defaultQuery, isConfigured } from "./db.mjs";
+import { isAiBudgetExhausted } from "./anthropic.mjs";
 
 // Verified against platform.claude.com/docs/en/about-claude/pricing on 2026-10-10 ($ per million
 // tokens; cache writes at the 5-minute rate, which is what cache_control "ephemeral" uses).
@@ -17,9 +18,12 @@ const OPUS_55 = { input: 4, output: 20, cacheWrite: 5, cacheRead: 0.20 };
 const HAIKU_55_LONG_PROMPT_TOKENS = 100_000;
 
 const KNOWN_OPERATIONS = new Set(["recommendations", "taste_profile"]);
+// budget_paused (Nov 12): the account's spend limit turned the call away. That's the designed pause, not a
+// failure, so it counts as an attempt but not in failures or the success and fallback rates.
 const KNOWN_OUTCOMES = new Set([
   "success",
   "validation_fallback",
+  "budget_paused",
   "malformed_response",
   "timeout",
   "provider_error",
@@ -53,7 +57,21 @@ export function estimateCostUsd({ model, inputTokens, outputTokens, cacheReadTok
   return (input * rates.input + output * rates.output + cacheRead * rates.cacheRead + cacheWrite * rates.cacheWrite) / 1_000_000;
 }
 
+// Why a call failed, without content: the provider's HTTP status and its own error type (for example
+// overloaded_error, rate_limit_error), or the client's own kind (timeout, malformed-response). Never the
+// error message, which can quote the request. Anything that isn't a short identifier is stored as "other".
+const ERROR_TYPE = /^[a-z0-9_-]{1,40}$/;
+export function aiErrorFields(error) {
+  const status = Number(error?.status);
+  const type = error?.anthropicType ?? (error?.name === "AbortError" ? "timeout" : error?.status ? null : "transport");
+  return {
+    errorStatus: Number.isInteger(status) && status >= 100 && status <= 599 ? status : null,
+    errorType: type == null ? null : (ERROR_TYPE.test(String(type)) ? String(type) : "other")
+  };
+}
+
 export function aiOutcomeForError(error) {
+  if (isAiBudgetExhausted(error)) return "budget_paused";
   if (error?.name === "AbortError") return "timeout";
   if (error?.anthropicType === "malformed-response" || error?.anthropicType === "no-text-block") return "malformed_response";
   if (error?.status) return "provider_error";
@@ -82,8 +100,20 @@ async function ensureWriteSchema(runQuery) {
   await runQuery("alter table ai_call_metrics add column if not exists operation text not null default 'recommendations'");
   await runQuery("alter table ai_call_metrics add column if not exists outcome text not null default 'success'");
   await runQuery("alter table ai_call_metrics add column if not exists cache_write_tokens integer");
+  await runQuery("alter table ai_call_metrics add column if not exists error_status integer");
+  await runQuery("alter table ai_call_metrics add column if not exists error_type text");
   await runQuery("create index if not exists idx_ai_call_metrics_occurred_at on ai_call_metrics (occurred_at desc)");
   await runQuery("create index if not exists idx_ai_call_metrics_operation_outcome on ai_call_metrics (operation, outcome, occurred_at desc)");
+}
+
+// Nov 13: the schema statements (about 9 database round trips) ran before every insert. Now they run once
+// per function instance for each database client; a failed setup is forgotten so the next write retries it.
+const schemaReady = new WeakMap();
+function schemaReadyFor(key, runQuery) {
+  if (!schemaReady.has(key)) {
+    schemaReady.set(key, ensureWriteSchema(runQuery).catch((error) => { schemaReady.delete(key); throw error; }));
+  }
+  return schemaReady.get(key);
 }
 
 export async function recordAiCall(metric, { env = process.env, query: queryImpl } = {}) {
@@ -99,13 +129,17 @@ export async function recordAiCall(metric, { env = process.env, query: queryImpl
   const cacheReadTokens = metric?.cacheReadTokens == null ? 0 : Number(metric.cacheReadTokens);
   const cacheWriteTokens = metric?.cacheWriteTokens == null ? 0 : Number(metric.cacheWriteTokens);
   const estimatedCostUsd = estimateCostUsd({ model, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, perCall: true });
+  // Only for failures; re-checked here so a caller can't store anything but a status and a short identifier.
+  const failed = outcome !== "success" && outcome !== "validation_fallback";
+  const errorStatus = failed && Number.isInteger(metric?.errorStatus) && metric.errorStatus >= 100 && metric.errorStatus <= 599 ? metric.errorStatus : null;
+  const errorType = failed && metric?.errorType != null ? (ERROR_TYPE.test(String(metric.errorType)) ? String(metric.errorType) : "other") : null;
 
-  await ensureWriteSchema(runQuery);
+  await schemaReadyFor(queryImpl ?? defaultQuery, runQuery);
   await runQuery(
     `insert into ai_call_metrics
-      (operation, outcome, model, duration_ms, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, estimated_cost_usd, pricing_as_of)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-    [operation, outcome, model, durationMs, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, estimatedCostUsd, estimatedCostUsd == null ? null : PRICING_AS_OF]
+      (operation, outcome, model, duration_ms, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, estimated_cost_usd, pricing_as_of, error_status, error_type)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+    [operation, outcome, model, durationMs, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, estimatedCostUsd, estimatedCostUsd == null ? null : PRICING_AS_OF, errorStatus, errorType]
   );
   return true;
 }
@@ -126,13 +160,17 @@ function normalizeSummary(row = {}) {
   const successes = Number(row.successes || 0);
   const fallbacks = Number(row.fallbacks || 0);
   const failures = Number(row.failures || 0);
+  const paused = Number(row.paused || 0);
+  // Rates are over the calls the budget allowed, so a spend-limit pause doesn't read as the AI failing.
+  const reached = attempts - paused;
   return {
     attempts,
     successes,
     fallbacks,
     failures,
-    success_rate: rate(successes, attempts),
-    fallback_rate: rate(fallbacks, attempts),
+    budget_paused: paused,
+    success_rate: rate(successes, reached),
+    fallback_rate: rate(fallbacks, reached),
     latency_ms: {
       p50: row.p50_ms == null ? null : Math.round(Number(row.p50_ms)),
       p95: row.p95_ms == null ? null : Math.round(Number(row.p95_ms))
@@ -193,7 +231,8 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
        count(*)::int as attempts,
        count(*) filter (where ${outcomeExpr} = 'success')::int as successes,
        count(*) filter (where ${outcomeExpr} = 'validation_fallback')::int as fallbacks,
-       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback'))::int as failures,
+       count(*) filter (where ${outcomeExpr} = 'budget_paused')::int as paused,
+       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback','budget_paused'))::int as failures,
        percentile_cont(0.5) within group (order by duration_ms)
          filter (where ${outcomeExpr} = 'success')::double precision as p50_ms,
        percentile_cont(0.95) within group (order by duration_ms)
@@ -214,7 +253,8 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
        count(*)::int as attempts,
        count(*) filter (where ${outcomeExpr} = 'success')::int as successes,
        count(*) filter (where ${outcomeExpr} = 'validation_fallback')::int as fallbacks,
-       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback'))::int as failures,
+       count(*) filter (where ${outcomeExpr} = 'budget_paused')::int as paused,
+       count(*) filter (where ${outcomeExpr} not in ('success','validation_fallback','budget_paused'))::int as failures,
        percentile_cont(0.5) within group (order by duration_ms)
          filter (where ${outcomeExpr} = 'success')::double precision as p50_ms,
        percentile_cont(0.95) within group (order by duration_ms)
@@ -254,6 +294,21 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
     [days]
   );
 
+  // Why calls failed (status and provider error type), newest first. Rows from before these columns
+  // existed read as "not recorded". Additive: every field above is unchanged.
+  const failureRows = columnNames.has("error_type")
+    ? await runQuery(
+      `select ${operationExpr} as operation, ${outcomeExpr} as outcome, error_status, error_type,
+              count(*)::int as count, max(occurred_at) as last_at
+         from ai_call_metrics
+        where occurred_at >= now() - ($1::int * interval '1 day')
+          and ${outcomeExpr} not in ('success','validation_fallback','budget_paused')
+        group by ${operationExpr}, ${outcomeExpr}, error_status, error_type
+        order by last_at desc`,
+      [days]
+    )
+    : null;
+
   const summary = normalizeSummary(summaryRows?.[0]);
   const operations = {};
   for (const row of operationRows ?? []) {
@@ -282,11 +337,20 @@ export async function aggregateAiMetrics({ env = process.env, query: queryImpl, 
     successes: summary.successes,
     fallbacks: summary.fallbacks,
     failures: summary.failures,
+    budget_paused: summary.budget_paused,
     success_rate: summary.success_rate,
     fallback_rate: summary.fallback_rate,
     latency_scope: "successful model calls only",
     operations,
     outcomes,
+    failure_reasons: failureRows === null ? null : failureRows.map((row) => ({
+      operation: row.operation,
+      outcome: row.outcome,
+      status: row.error_status == null ? null : Number(row.error_status),
+      type: row.error_type ?? "not recorded",
+      count: Number(row.count || 0),
+      last_at: row.last_at
+    })),
 
     pricing_as_of: PRICING_AS_OF,
     scope: "live model calls for recommendations and taste profile",

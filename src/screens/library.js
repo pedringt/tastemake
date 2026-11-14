@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { isBookmarked } from "../model/taste.js";
-import { isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
+import { isDeclined, isExperiencedNegative, isStrongPositive } from "../model/evidence.js";
 import { dislikedItems, libraryItems } from "../model/library.js";
 import { itemMatchesDomain, renderDomainFilter } from "../components/domain-filter.js";
 import { renderStickerField } from "../components/stickers.js";
@@ -159,7 +159,7 @@ function savedCard(feedback) {
             type="button"
             data-library-item="${item.id}"
             data-library-action="favorite"
-            aria-label="Add to Favorites"
+            aria-label="Add ${esc(item.title)} to Favorites"
             title="Add to Favorites"
             aria-pressed="false"
           >${starIcon(false)}</button>
@@ -270,7 +270,7 @@ function triedCard(entry) {
           type="button"
           data-library-item="${id}"
           data-library-action="${entry.isFavorite ? "unfavorite" : "favorite"}"
-          aria-label="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
+          aria-label="${entry.isFavorite ? `Remove ${esc(item.title)} from Favorites` : `Add ${esc(item.title)} to Favorites`}"
           title="${entry.isFavorite ? "Remove from Favorites" : "Add to Favorites"}"
           aria-pressed="${entry.isFavorite}"
         >${starIcon(entry.isFavorite)}</button>
@@ -333,7 +333,7 @@ function section(title, note, entries, emptyText, key = title.toLowerCase()) {
 function dislikedBlock(items) {
   if (!items.length) return "";
   return `
-    <details class="library-disliked">
+    <details class="library-disliked" data-keep-open="library-disliked">
       <summary>Things you didn't like (${items.length})</summary>
       <p>These stay out of your Tried list. Tastemake keeps them in the background so it can learn from them, and you can correct any that you got wrong.</p>
       <ul>
@@ -342,7 +342,7 @@ function dislikedBlock(items) {
             <div class="library-disliked-row">
               <span>${esc(item.title)} <em>${esc(displayLabel(item))}</em></span>
               <span class="library-restore" role="group" aria-label="Correct ${esc(item.title)}">
-                <button class="rec-favorite-star library-action" type="button" data-library-item="${id}" data-library-action="favorite" aria-label="Add to Favorites" title="Add to Favorites" aria-pressed="false">${starIcon(false)}</button>
+                <button class="rec-favorite-star library-action" type="button" data-library-item="${id}" data-library-action="favorite" aria-label="Add ${esc(item.title)} to Favorites" title="Add to Favorites" aria-pressed="false">${starIcon(false)}</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="liked">Actually, I liked it</button>
                 <button class="button button-quiet library-action" type="button" data-library-item="${id}" data-library-action="loved">Actually, I loved it</button>
               </span>
@@ -403,6 +403,57 @@ function renderTriedView() {
     </div>`;
 }
 
+// ---- Dismissed (#336) ----------------------------------------------------------------------------
+// Everything marked Not interested, from Recommendations, Browse or New this week. Before this, a dismissed
+// pick could be changed only while its recommendation set was on screen. A secondary view, reached from a
+// quiet link under the tabs: it holds titles; exclusion rules stay in My Tastemake.
+
+export function dismissedEntries(currentState = state) {
+  return Object.values(currentState.feedbackByRecommendation ?? {}).filter((feedback) => feedback?.item && isDeclined(feedback));
+}
+
+function dismissedChoice(id, outcome, label, pressed = false) {
+  return `<button class="detail-chip outcome-chip" type="button" data-dismissed-item="${esc(id)}" data-dismissed-outcome="${outcome}" aria-pressed="${pressed}">${label}</button>`;
+}
+
+function dismissedRow({ item }) {
+  const info = [displayLabel(item), item.year].filter(Boolean).join(" · ");
+  return `
+    <li class="library-dismissed-item" data-dismissed-row="${esc(item.id)}">
+      <div class="library-disliked-row">
+        <span>${esc(item.title)} <em>${esc(info)}</em></span>
+        <details class="library-reaction-edit">
+          <summary>Change</summary>
+          <div class="library-dismissed-options">
+            <div class="detail-chip-row" role="group" aria-label="Tried ${esc(item.title)}: how did it land?">
+              <span class="feedback-detail-prompt">Tried it</span>
+              ${dismissedChoice(item.id, "loved", "Loved it")}
+              ${dismissedChoice(item.id, "liked", "Liked it")}
+              ${dismissedChoice(item.id, "disliked", "Didn’t like it")}
+            </div>
+            <div class="detail-chip-row" role="group" aria-label="Not tried ${esc(item.title)}: what do you want to do with it?">
+              <span class="feedback-detail-prompt">Not tried</span>
+              ${dismissedChoice(item.id, "save", "Save")}
+              ${dismissedChoice(item.id, "not-interested", "Not interested", true)}
+            </div>
+          </div>
+        </details>
+      </div>
+    </li>`;
+}
+
+function renderDismissedView() {
+  const dismissed = dismissedEntries().filter((feedback) => itemMatchesDomain(feedback.item, state.libraryFilter));
+  return `
+    <div class="library-view" data-library-view-panel="dismissed">
+      <h2 class="library-dismissed-heading" tabindex="-1" data-dismissed-heading>Dismissed</h2>
+      <p class="library-view-lede">Things you marked Not interested. Tastemake won't suggest them again. If you tapped the wrong answer, change it here.</p>
+      ${dismissed.length
+        ? `<ul class="library-dismissed-list">${dismissed.map(dismissedRow).join("")}</ul>`
+        : `<div class="filter-empty library-empty">Nothing dismissed${state.libraryFilter && state.libraryFilter !== "all" ? " in this category" : ""}.</div>`}
+    </div>`;
+}
+
 // ---- shell: tabs + shared filter band --------------------------------------------------------
 
 function libraryTab(id, label, count) {
@@ -420,7 +471,8 @@ function libraryTab(id, label, count) {
 }
 
 export function renderLibrary() {
-  const view = state.libraryView === "tried" ? "tried" : "saved";
+  const view = ["tried", "dismissed"].includes(state.libraryView) ? state.libraryView : "saved";
+  const dismissedCount = dismissedEntries().length;
   const savedCount = savedEntries().filter(isBookmarked).length;
   const triedBuckets = libraryItems(state);
   const triedCount = triedBuckets.favorites.length + triedBuckets.library.length + dislikedItems(state).length;
@@ -446,6 +498,7 @@ export function renderLibrary() {
         ${libraryTab("saved", "Saved", savedCount)}
         ${libraryTab("tried", "Tried", triedCount)}
       </div>
+      ${dismissedCount || view === "dismissed" ? `<button class="library-dismissed-link" type="button" data-library-dismissed aria-pressed="${view === "dismissed"}">Dismissed <span>${dismissedCount}</span></button>` : ""}
 
       <div class="filter-band library-filter-band">
         <span class="filter-band-label">Filter</span>
@@ -459,6 +512,7 @@ export function renderLibrary() {
       <div id="library-panel-tried" role="tabpanel" aria-labelledby="library-tab-tried" ${view === "tried" ? "" : "hidden"}>
         ${view === "tried" ? renderTriedView() : ""}
       </div>
+      ${view === "dismissed" ? `<div id="library-panel-dismissed" role="region" aria-label="Dismissed">${renderDismissedView()}</div>` : ""}
 
       <div class="recommendation-footer page-actions">
         <div class="page-actions-left"><button class="button button-quiet" type="button" data-action="show-recs">&larr; Recommendations</button></div>

@@ -1,7 +1,8 @@
 import { DEFAULT_LOOK, isLook } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
-import { clearPersistedState, loadPersistedState } from "./persistence.js";
+import { clearPersistedState, loadPersistedState, loadSetAsideData } from "./persistence.js";
 import { parseBackupText } from "./model/export.js";
+import { restoreNarrowedAreas } from "./model/area-scope.js";
 
 // Everything the user has told Tastemake or configured, in one place so "Start over" can clear it.
 // (The look, and where the user is, are not part of this: starting over keeps your look.)
@@ -37,6 +38,9 @@ function fresh() {
     modelHypotheses: [],
     hypothesisAiStatus: "idle",
     hypothesisAiKey: null,
+    // #340: a short, saved record of the last completed refresh ({ hash, version }), so a page load with the
+    // same evidence doesn't pay for the same refresh again. hypothesisAiKey itself stays transient.
+    hypothesisAiChecked: null,
     hypothesisAiMessage: null,
     // Transient live-AI UI state (#42). None of this is taste evidence and none of it is persisted.
     // aiRequest is the in-flight request: its id, the evidence fingerprint it was computed from, and its
@@ -46,6 +50,7 @@ function fresh() {
     aiSource: null,
     aiMessage: null,
     aiPaused: false,
+    aiLive: false,
     // Taste Profile view (#21): the list, or the map with an optional selected pattern / evidence pick.
     profileView: "list",
     mapPattern: null,
@@ -140,6 +145,7 @@ export const state = {
   aiSource: null,
   aiMessage: null,
     aiPaused: false,
+    aiLive: false,
   hypothesisAiStatus: "idle",
   hypothesisAiMessage: null,
   recommendationMediumFilter: "all",
@@ -150,23 +156,43 @@ export const state = {
   browseLoading: false,
   browseError: false,
   starterReplaceId: null,
-  resetArmed: false
+  resetArmed: false,
+  // #348 follow-up: this load left out data it couldn't read and set the original aside (persistence.js).
+  // In memory only: the one-line notice shows until the user opens My Tastemake or closes it.
+  setAsideNotice: loadSetAsideData(),
+  setAsideDiscardArmed: false
 };
+// Nov 4 (after #325): put back pattern areas an earlier refresh removed by mistake, where history is unambiguous.
+restoreNarrowedAreas(state);
 
 document.documentElement.dataset.look = state.look;
 
+// Nov 4 (after #325): "Start over", restoring a backup and opening the Example Profile all replace the
+// profile in place. A Taste Profile refresh still in flight belongs to the profile that was there before,
+// so it is cancelled, and the new generation makes its answer stale if it lands anyway
+// (profileRefreshStaleReason in src/ai/hypothesis-profile.js). Kept outside fresh() so Object.assign can't
+// reset it to a value an old request already holds.
+function startNewProfileGeneration() {
+  state.hypothesisRequest?.controller?.abort?.();
+  return (state.profileGeneration ?? 0) + 1;
+}
+
 export function resetState() {
   const look = state.look;
+  const profileGeneration = startNewProfileGeneration();
   // Oct 27: "Start over" inside Paige's Example Profile clears the example in memory, never the visitor's saved profile.
   if (!state.viewingExample) clearPersistedState();
-  Object.assign(state, fresh(), { look });
+  Object.assign(state, fresh(), { look, profileGeneration, hypothesisRequest: null });
 }
 
 
 export function restoreStateFromBackupText(text) {
   const restored = parseBackupText(text);
   const look = isLook(restored.look) ? restored.look : state.look;
+  const profileGeneration = startNewProfileGeneration();
   Object.assign(state, fresh(), restored, {
+    profileGeneration,
+    hypothesisRequest: null,
     look,
     patternStatements: normalizePersistedPatternStatements(restored.patternStatements ?? []),
     exclusions: Array.isArray(restored.exclusions) ? restored.exclusions : [],
@@ -179,6 +205,7 @@ export function restoreStateFromBackupText(text) {
     aiSource: null,
     aiMessage: null,
     aiPaused: false,
+    aiLive: false,
     hypothesisAiStatus: "idle",
     hypothesisAiMessage: null,
     recommendationMediumFilter: "all",
@@ -191,6 +218,7 @@ export function restoreStateFromBackupText(text) {
     starterReplaceId: null,
     resetArmed: false
   });
+  restoreNarrowedAreas(state);
   document.documentElement.dataset.look = state.look;
   return state;
 }

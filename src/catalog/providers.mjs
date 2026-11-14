@@ -4,6 +4,7 @@ import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { buildItemId } from "./item-id.mjs";
 import { bookSeriesFromRow } from "./book-series.mjs";
 import { isBookCompanion } from "./book-companions.mjs";
+import { isScreenExtra } from "./screen-extras.mjs";
 import { correctOldBookYears } from "./wikidata-years.mjs";
 import { fallbackSummary, sanitizeAbout } from "./synopsis.mjs";
 import { waitUntil } from "@vercel/functions";
@@ -65,8 +66,8 @@ async function searchTmdb(query, env, fetchImpl, domain = "all") {
   if ((wantMovies && !movies?.ok) && (wantTv && !tv?.ok)) throw new Error(`tmdb ${movies?.status || ""}/${tv?.status || ""}`);
 
   const rows = [];
-  if (movies?.ok) rows.push(...((await movies.json()).results ?? []).slice(0, 12).map((row) => ({ row, type: "movie" })));
-  if (tv?.ok) rows.push(...((await tv.json()).results ?? []).slice(0, 12).map((row) => ({ row, type: "tv" })));
+  if (movies?.ok) rows.push(...((await movies.json()).results ?? []).filter((row) => !isScreenExtra(row, query)).slice(0, 12).map((row) => ({ row, type: "movie" })));
+  if (tv?.ok) rows.push(...((await tv.json()).results ?? []).filter((row) => !isScreenExtra(row, query)).slice(0, 12).map((row) => ({ row, type: "tv" })));
 
   // TMDb ranks movie and TV searches independently. Merge them with the shared ranking (title match,
   // popularity, record completeness, work type) so an exact flagship series is not buried behind

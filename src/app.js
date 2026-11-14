@@ -8,7 +8,7 @@
 // non-framework guide uses a plain `<script defer src="/_vercel/insights/script.js">` tag instead,
 // which needs no module resolution. #100 does exactly that, in src/lib/vercel-insights.js (its own
 // module in index.html, so it can never stop this one from running).
-import { exampleBannerHtml, exampleRequestedAtBoot, forgetViewingExample, isViewingExample, loadExampleProfile } from "./example-profile.js";
+import { exampleBannerHtml, exampleRequestedAtBoot, exampleScreenFromPath, forgetViewingExample, isViewingExample, loadExampleProfile } from "./example-profile.js";
 import { state } from "./state.js";
 import { normalizedRefinements } from "./model/refinements.js";
 import { trackReasonChanged, trackReasonsOpened } from "./lib/reason-events.js";
@@ -26,7 +26,7 @@ import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/clie
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
 import { renderMine } from "./screens/mine.js";
-import { setStatement, toggleDomainExclusion } from "./model/statements.js";
+import { reconfirmPattern, setStatement, toggleDomainExclusion } from "./model/statements.js";
 import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
@@ -42,9 +42,11 @@ import { createCandidatePrefetcher } from "./ai/prefetch.js";
 import { refreshProfileHypotheses } from "./ai/hypothesis-profile.js";
 import { focusSelectorFor, restoreFocusIn } from "./actions/focus.js";
 import { handleMineChange, handleMineClick, handleMineSubmit, openMine } from "./actions/mine.js";
+import { renderRecovery } from "./components/recovery.js";
+import { setAsideNoticeHtml } from "./components/set-aside.js";
 import { saveBlindAction } from "./actions/blindspot.js";
 import { finishSavedTried, keepOnSavedList, saveBookmarkAction, saveLibraryAction } from "./actions/library.js";
-import { announceReaction, chooseExperiencePath, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite } from "./actions/recommendations.js";
+import { announceReaction, chooseExperiencePath, retryRecommendations, runInitialRecommendations, runKeepDiscovering, saveExperienceOutcome, saveFeedbackDetail, saveFeedbackRefinement, saveQuickFeedback, saveSeriesExperience, setRecommendationFavorite } from "./actions/recommendations.js";
 import { saveTastebreakAction } from "./actions/tastebreak.js";
 import { setTastebreakNote } from "./model/tastebreak.js";
 import { persistState } from "./persistence.js";
@@ -89,12 +91,15 @@ const candidatePrefetcher = createCandidatePrefetcher({ getState: () => state })
 
 // Paige's Example Profile: loaded on request, or from /?example=paige (linked from the portfolio case study).
 // Oct 27: loadExampleProfile also sets the sessionStorage flag, so a refresh comes back here.
-async function openExampleProfile() {
+// #320: at boot it opens on the page the address asked for and replaces that history entry (Back must not
+// land on the visitor's own setup screen in example mode); the in-app link adds a Taste Profile entry.
+async function openExampleProfile({ screen = "model", replace = false } = {}) {
   try {
-    await loadExampleProfile();
-    writeRoute(state.screen, { replace: false });
+    await loadExampleProfile({ screen });
+    writeRoute(state.screen, { replace });
     render();
     updateStepper();
+    maybeLoadBrowse();   // catalog browsing only, never a model call
     announce("Showing Paige's Example Profile. Nothing you change is saved.");
     window.scrollTo(0, 0);
   } catch {
@@ -103,10 +108,37 @@ async function openExampleProfile() {
   }
 }
 
+// Nov 12 (QA): a re-render rebuilds every <details> closed, so choosing a reason inside an open Library card
+// or "Things you didn't like" collapsed it. Open sections with a stable key stay open across a re-render of
+// the same screen; moving to another screen starts closed as before.
+const KEEP_OPEN_KEYS = ["data-library-id", "data-bookmark-id", "data-keep-open"];
+let lastRenderedScreen = null;
+
+function openDetailsSelectors() {
+  return [...app.querySelectorAll("details[open]")].flatMap((details) => {
+    const key = KEEP_OPEN_KEYS.find((name) => details.hasAttribute(name));
+    return key ? [`details[${key}="${CSS.escape(details.getAttribute(key))}"]`] : [];
+  });
+}
+
 function render() {
+  const keepOpen = state.screen === lastRenderedScreen ? openDetailsSelectors() : [];
+  lastRenderedScreen = state.screen;
   persistState(state);
   syncAiBadge(state);
-  app.innerHTML = exampleBannerHtml() + views[state.screen]();
+  // #348: a screen that throws shows a way out instead of a blank page.
+  let screenHtml;
+  try {
+    screenHtml = views[state.screen]();
+  } catch (error) {
+    console.error("[tastemake-render]", state.screen, error);
+    app.innerHTML = exampleBannerHtml() + renderRecovery(state);
+    return;
+  }
+  // #348 follow-up: opening My Tastemake (where the set-aside data is) answers the notice.
+  if (state.screen === "mine") state.setAsideNotice = false;
+  app.innerHTML = exampleBannerHtml() + setAsideNoticeHtml(state) + screenHtml;
+  for (const selector of keepOpen) app.querySelector(selector)?.setAttribute("open", "");
   candidatePrefetcher.schedule(state);
   // #6: fetched once per visit, after the first set exists (not for the example profile); only its own
   // slot is redrawn when it arrives.
@@ -189,8 +221,11 @@ function setLook(id) {
 
 const mineCtx = { render, updateStepper, restoreFocus, announce, navigate: (screen) => navigate(screen), canAccess };
 
+// #348: the recovery panel (components/recovery.js) reuses My Tastemake's controls on any screen.
+const mineControlsShown = () => state.screen === "mine" || Boolean(app.querySelector("[data-render-recovery]"));
+
 app.addEventListener("click", (event) => {
-  if (state.screen !== "mine") return;
+  if (!mineControlsShown()) return;
   handleMineClick(event, mineCtx);
 });
 
@@ -225,7 +260,7 @@ app.addEventListener("change", (event) => {
       return;
     }
   }
-  if (state.screen !== "mine") return;
+  if (!mineControlsShown()) return;
   handleMineChange(event, mineCtx);
 });
 
@@ -269,12 +304,24 @@ function markOnboarded(screen) {
   }
 }
 
-function maybeRefreshProfile({ force = false } = {}) {
+// Nov 12 (QA): Refresh disappears while the profile loads, so focus fell to the page. After a Refresh click,
+// focus waits on the status line and returns to Refresh when it's back -- unless the person has moved
+// focus somewhere else in the meantime.
+function keepProfileRefreshFocus() {
+  const active = document.activeElement;
+  if (active && active !== document.body && active !== app && !active.closest?.(".profile-ai-status")) return;
+  restoreFocus('[data-action="retry-profile"]', app.querySelector(".profile-ai-status") ?? app);
+}
+
+function maybeRefreshProfile({ force = false, keepFocus = false } = {}) {
   if (state.screen !== "model") return;
   void refreshProfileHypotheses(state, {
     force,
-    onUpdate() { render(); updateStepper(); },
-    announce
+    onUpdate() { render(); updateStepper(); if (keepFocus) keepProfileRefreshFocus(); },
+    announce,
+    // Nov 4: the answer was dropped because the user changed something while it was loading. Ask again the
+    // normal way (never forced), so this screen, the evidence-key check and the loading guard all still apply.
+    onStale() { maybeRefreshProfile(); }
   });
 }
 
@@ -647,6 +694,18 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  // PR #328 review: "Confirm it still fits" on a pattern flagged because a rating it rested on was removed.
+  // Local only, no model call (reconfirmPattern).
+  const reconfirmButton = event.target.closest("[data-reconfirm-pattern]");
+  if (reconfirmButton) {
+    const id = reconfirmButton.dataset.reconfirmPattern;
+    const message = reconfirmPattern(state, id);
+    if (!message) return;
+    renderPreservingPatternPosition(id, focusSelector);
+    announce(message);
+    return;
+  }
+
   const scopeButton = event.target.closest("[data-scope-pattern]");
   if (scopeButton) {
     const { scopePattern, scopeDomain } = scopeButton.dataset;
@@ -848,6 +907,9 @@ app.addEventListener("click", async (event) => {
   if (feedbackClose) {
     const itemId = feedbackClose.dataset.feedbackClose;
     state.recommendationFeedbackItemId = null;
+    // #336: switching Tried it / Not tried in Change without picking an answer changes nothing; the next
+    // Change opens on the saved reaction's own path.
+    if (state.feedbackByRecommendation[itemId]) delete state.recommendationExperienceChoice[itemId];
     renderPreservingCardPosition(itemId, state.feedbackByRecommendation[itemId]
       ? `[data-feedback-edit="${itemId}"]`
       : `[data-feedback-item="${itemId}"][data-experience-path]`);
@@ -1063,6 +1125,30 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  // #336: the Dismissed view, and changing a dismissed title from it. The answer goes through the same
+  // saveExperienceOutcome as a pick's own Change, so the reaction is replaced the same way everywhere.
+  if (event.target.closest("[data-library-dismissed]")) {
+    state.libraryView = "dismissed";
+    state.savedJustTried = [];
+    render();
+    restoreFocus("[data-dismissed-heading]");
+    announce("Showing Dismissed.");
+    return;
+  }
+  const dismissedChange = event.target.closest("[data-dismissed-outcome][data-dismissed-item]");
+  if (dismissedChange) {
+    const itemId = dismissedChange.dataset.dismissedItem;
+    const outcome = dismissedChange.dataset.dismissedOutcome;
+    const title = state.feedbackByRecommendation[itemId]?.item?.title ?? "Item";
+    if (outcome === "not-interested") { dismissedChange.closest("details")?.removeAttribute("open"); return; }
+    if (saveExperienceOutcome(itemId, outcome)) {
+      render();
+      restoreFocus("[data-dismissed-heading]");
+      announce(outcome === "save" ? `${title} moved to Saved.` : `${title} moved to Tried.`);
+    }
+    return;
+  }
+
   const libraryTab = event.target.closest("[data-library-tab]");
   if (libraryTab) {
     state.libraryView = libraryTab.dataset.libraryTab === "tried" ? "tried" : "saved";
@@ -1093,7 +1179,7 @@ app.addEventListener("click", async (event) => {
     navigate(destination.screen, destination.libraryView ? { libraryView: destination.libraryView } : {});
   }
   if (action === "view-model") navigate("model");
-  if (action === "retry-profile") maybeRefreshProfile({ force: true });
+  if (action === "retry-profile") maybeRefreshProfile({ force: true, keepFocus: true });
   if (action === "show-recs") {
     if (state.recommendationSets.length) navigate("recommendations");
     else if (state.aiStatus !== AI_LOADING) await runInitialRecommendations({ render, updateStepper, announce, navigate, prefetch: candidatePrefetcher });
@@ -1107,11 +1193,21 @@ app.addEventListener("click", async (event) => {
   if (action === "keep-discovering" && canKeepDiscovering(state) && state.aiStatus !== AI_LOADING) {
     await runKeepDiscovering({ render, updateStepper, announce, navigate });
   }
+  if (action === "retry-recommendations" && state.aiStatus !== AI_LOADING) {
+    await retryRecommendations({ render, updateStepper, announce, navigate });
+  }
 });
 
 document.addEventListener("click", (event) => {
   if (event.target.closest("[data-open-look]")) { openLookPicker(); return; }
   if (event.target.closest("[data-open-mine]")) { openMine(navigate); return; }
+  if (event.target.closest("[data-set-aside-notice-close]")) {
+    state.setAsideNotice = false;
+    render();
+    restoreFocus(null, app);
+    announce("Notice closed. The set-aside data is still in My Tastemake.");
+    return;
+  }
   if (event.target.closest('[data-action="look-done"]')) { finishLookPicker(); return; }
   if (!event.target.closest(".editorial-why")) closeWhyPopovers();
 
@@ -1151,7 +1247,10 @@ document.addEventListener("keydown", (event) => {
   if (state.recommendationFeedbackItemId) {
     const itemId = state.recommendationFeedbackItemId;
     state.recommendationFeedbackItemId = null;
-    renderPreservingCardPosition(itemId, `[data-feedback-item="${itemId}"][data-experience-path]`);
+    if (state.feedbackByRecommendation[itemId]) delete state.recommendationExperienceChoice[itemId];   // #336, as the close button
+    renderPreservingCardPosition(itemId, state.feedbackByRecommendation[itemId]
+      ? `[data-feedback-edit="${itemId}"]`
+      : `[data-feedback-item="${itemId}"][data-experience-path]`);
     return;
   }
   const open = document.querySelector(".editorial-why.is-pinned") ?? document.activeElement?.closest?.(".editorial-why");
@@ -1238,6 +1337,8 @@ initSearch({
 // Read before writeRoute below replaces the address (it drops the query string).
 // Oct 27: the sessionStorage flag counts too, so a refresh while viewing stays in the example.
 const wantsExampleProfile = exampleRequestedAtBoot(window.location.search);
+// #320: read before the visitor's own state decides (and rewrites) the route below.
+const exampleScreen = exampleScreenFromPath(window.location.pathname);
 const initialScreen = screenFromPath(undefined, { onboarded: state.onboarded });
 state.screen = canAccess(initialScreen) ? initialScreen : (state.onboarded ? "recommendations" : "setup");
 if (state.screen === "library") state.libraryView = "saved";
@@ -1253,4 +1354,4 @@ if (!wantsExampleProfile) {
   void resolveExistingCustomItems();
 }
 maybeLoadBrowse();
-if (wantsExampleProfile) void openExampleProfile();
+if (wantsExampleProfile) void openExampleProfile({ screen: exampleScreen, replace: true });

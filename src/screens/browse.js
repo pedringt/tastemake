@@ -9,18 +9,21 @@ import { blurbOf } from "../catalog/synopsis.mjs";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { starIcon } from "../components/star.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
+import { renderPathSwitch } from "../components/path-switch.js";
 import { isExperienced } from "../model/evidence.js";
 import { bridgeTargetNoun } from "../catalog/bridges.mjs";
 
-function favoriteToggle(itemId) {
+// Nov 12 (QA): the accessible name says which title, since a screen shows many of these stars.
+function favoriteToggle(itemId, title = "") {
   const isFavorite = state.onboarded ? state.libraryFavorites.has(itemId) : state.selectedFavorites.has(itemId);
   const label = isFavorite ? "Remove from Favorites" : "Add to Favorites";
+  const name = title ? (isFavorite ? `Remove ${title} from Favorites` : `Add ${title} to Favorites`) : label;
   return `
     <button
       class="rec-favorite-star ${isFavorite ? "is-favorite" : ""}"
       type="button"
       data-rec-favorite="${itemId}"
-      aria-label="${label}"
+      aria-label="${esc(name)}"
       title="${label}"
       aria-pressed="${isFavorite}"
     >${starIcon(isFavorite)}</button>`;
@@ -61,6 +64,7 @@ function feedbackPanel(item, feedback) {
         </div>
         <button type="button" class="rec-feedback-close" data-feedback-close="${item.id}" aria-label="Close feedback">×</button>
       </div>
+      ${feedback ? renderPathSwitch(item, path) : ""}
       <div class="feedback-details experience-outcomes">
         <span class="feedback-detail-prompt">${path === "tried" ? "How did it land?" : "Want to keep it around?"}</span>
         <div class="detail-chip-row" role="group" aria-label="${path === "tried" ? "How did it land?" : "What do you want to do with this untried item?"}">
@@ -92,7 +96,7 @@ function browseCard(item) {
             <h3>${esc(item.title)}</h3>
             <p class="browse-meta">${esc(meta)}</p>
           </div>
-          ${favoriteToggle(item.id)}
+          ${favoriteToggle(item.id, item.title)}
         </div>
         ${state.browseSimilar && item.reason ? `<p class="browse-why">${esc(item.reason)}</p>` : ""}
         <p class="browse-about">${esc(blurbOf(item))}</p>

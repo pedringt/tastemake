@@ -1,5 +1,6 @@
 import { contentThemesFor } from "../model/refinements.js";
 import { isFranchiseContinuation } from "../catalog/novelty.mjs";
+import { TMDB_GENRES } from "../catalog/synopsis.mjs";
 
 // Oct 27 (whole-profile recommendations): every rating votes, not just the handful sent to the model.
 //
@@ -78,20 +79,100 @@ function featuresOf(record, cache) {
   return cache.get(record.ref);
 }
 
-const reasonFactor = (record) => ((record.refinements ?? []).length ? REASON_BOOST : 1);
+// Reasons boost liked/loved ratings only. A reason on a dislike names one part that didn't work, so it
+// must not make everything that title shares (genres, creator) count more against other titles. This
+// removes the extra weight; dislike matching itself is still whole-title, not aspect-aware.
+const reasonFactor = (record) => (record.polarity > 0 && (record.refinements ?? []).length ? REASON_BOOST : 1);
 
 // How well a candidate fits everything the person has rated. Higher is better; below zero means it
 // mostly resembles things they disliked.
 export function tasteScore(candidate, records, { cache, rarity = null } = {}) {
+  return sumMatches(closestMatches(candidate, records, { cache, rarity }));
+}
+
+// The same score with the ratings that produced it (#1a candidate trace): the closest liked/loved and
+// disliked matches, each with its similarity and contribution, and the found-from bonus. Built only when
+// tracing; `score` is the same sum tasteScore returns.
+export function tasteScoreParts(candidate, records, { cache, rarity = null } = {}) {
+  const matches = closestMatches(candidate, records, { cache, rarity });
+  const part = (match) => ({ ref: match.record.ref, itemId: match.record.itemId, title: match.record.title ?? null, similarity: match.similarity, weight: match.record.weight, contribution: contribution(match) });
+  return { score: sumMatches(matches), positives: matches.positives.map(part), negatives: matches.negatives.map(part), anchorBonus: matches.anchorBonus };
+}
+
+// #1b explanation provenance (diagnostic only; used by the request trace, never by the prompt, the
+// validator or the shortlist): the ratings that decided why this candidate was offered, and honest labels
+// when that basis is weak. Blind testing (Nov 4) found that making the model cite this basis made
+// explanations worse under genre scoring, so it is measured, not enforced.
+// - Basis: the rating it was found from (when liked/loved), plus the smallest set of top positive
+//   contributors that make up at least half its positive score, each with the catalog facts the two share.
+// - weakBasis: every label that applies (diagnostic only; nothing is rejected or hidden for it, and a
+//   citation never clears it). found-from-only and broad-only exclude each other by definition, and
+//   no-positive-basis excludes both; contested can accompany any of them. positiveTotal and againstTotal
+//   are returned so a label is never the only record.
+//     no-positive-basis  no found-from rating and no positive match at all
+//     found-from-only    found from a rated item, but nothing they rated scores it positively
+//     broad-only         the deciding matches share only genre labels: the evidence supports a broad
+//                        relationship, which says nothing about whether the pick is good
+//     contested          dislikes weigh at least half as much as the positives, or weigh against it at
+//                        all when nothing positive does (people can still enjoy such titles; it is a
+//                        threshold for evaluation, not a verdict)
+export function selectionBasis(candidate, records, { cache, rarity = null } = {}) {
   const features = tasteFeatures(candidate);
-  const contribution = ({ record, similarity }) => similarity * record.weight * reasonFactor(record);
+  const { positives, negatives } = closestMatches(candidate, records, { cache, rarity });
+  const anchor = candidate?.relatedToId ? experienced(records).find((record) => record.itemId === candidate.relatedToId && record.polarity > 0) : null;
+  const shares = (record) => [...features.keys()].filter((key) => featuresOf(record, cache).has(key)).map(factLabel);
+  const positiveTotal = positives.reduce((sum, match) => sum + contribution(match), 0);
+  const decisive = [];
+  let covered = 0;
+  for (const match of [...positives].sort((a, b) => contribution(b) - contribution(a))) {
+    if (covered >= positiveTotal / 2) break;
+    decisive.push(match.record);
+    covered += contribution(match);
+  }
+  const rows = [
+    ...(anchor ? [{ ref: anchor.ref, title: anchor.title ?? null, role: "found-from", shares: shares(anchor) }] : []),
+    ...decisive.filter((record) => record !== anchor).map((record) => ({ ref: record.ref, title: record.title ?? null, role: "scored", shares: shares(record) }))
+  ];
+  const againstTotal = -negatives.reduce((sum, match) => sum + contribution(match), 0);
+  const contested = againstTotal > 0 && againstTotal >= positiveTotal / 2;
+  const scoredKeys = decisive.flatMap((record) => [...features.keys()].filter((key) => featuresOf(record, cache).has(key)));
+  const weakBasis = [
+    ...(!rows.length ? ["no-positive-basis"] : []),
+    ...(anchor && !decisive.length ? ["found-from-only"] : []),
+    ...(!anchor && decisive.length && scoredKeys.every((key) => key.startsWith("g:")) ? ["broad-only"] : []),
+    ...(contested ? ["contested"] : [])
+  ];
+  return {
+    refs: rows.map((row) => row.ref),
+    rows,
+    against: negatives.map((match) => ({ ref: match.record.ref, title: match.record.title ?? null })),
+    contested,
+    weakBasis,
+    positiveTotal,
+    againstTotal
+  };
+}
+
+// A shared feature as a reader would name it: TMDb genre ids become names ("27" -> "Horror").
+function factLabel(key) {
+  const [kind, value] = [key.slice(0, 1), key.slice(2)];
+  if (kind === "g") return TMDB_GENRES[value] ?? value;
+  return value;
+}
+
+const contribution = ({ record, similarity }) => similarity * record.weight * reasonFactor(record);
+
+function closestMatches(candidate, records, { cache, rarity }) {
+  const features = tasteFeatures(candidate);
   const positives = closestRatings(candidate, records, { polarity: 1, limit: TOP_POSITIVE, features, cache, rarity });
   const negatives = closestRatings(candidate, records, { polarity: -1, limit: TOP_NEGATIVE, features, cache, rarity });
   const anchor = candidate?.relatedToId ? experienced(records).find((record) => record.itemId === candidate.relatedToId) : null;
-  return positives.reduce((sum, match) => sum + contribution(match), 0)
-    + negatives.reduce((sum, match) => sum + contribution(match), 0)
-    + (anchor && anchor.polarity > 0 ? ANCHOR_BONUS * anchor.weight : 0);
+  return { positives, negatives, anchorBonus: anchor && anchor.polarity > 0 ? ANCHOR_BONUS * anchor.weight : 0 };
 }
+
+const sumMatches = ({ positives, negatives, anchorBonus }) => positives.reduce((sum, match) => sum + contribution(match), 0)
+  + negatives.reduce((sum, match) => sum + contribution(match), 0)
+  + anchorBonus;
 
 const MIXED_DOMAINS = ["movies", "tv", "read", "play"];
 const primaryDomain = (item) => MIXED_DOMAINS.find((domain) => item?.domains?.includes(domain)) ?? "other";
@@ -114,17 +195,29 @@ export function isEdgeCandidate(candidate, records) {
 // - #252 part 2 (Oct 27): with a surprise slot and the filter on All, a bridge candidate (a cross-medium test,
 //   src/catalog/related.mjs) takes that last place instead, and no other bridge candidate is offered. Without
 //   one, nothing changes.
-export function chooseCandidates(candidates, records, { count = 6, mode = "all", curveball = false } = {}) {
+// - With `trace` (an object, eval/dev only), trace.candidates gets one entry per candidate: its score
+//   parts, ranks and outcome (chosen, edge, same-franchise, count-reached, scored-below-zero). The
+//   return value is the same either way.
+export function chooseCandidates(candidates, records, { count = 6, mode = "all", curveball = false, trace = null } = {}) {
   const cache = new Map();
   const rarity = featureRarity(records, cache);
-  const scored = candidates.map((item, index) => ({ item, index, score: tasteScore(item, records, { cache, rarity }) }));
+  const scored = candidates.map((item, index) => {
+    if (!trace) return { item, index, score: tasteScore(item, records, { cache, rarity }) };
+    const parts = tasteScoreParts(item, records, { cache, rarity });
+    return { item, index, score: parts.score, parts };
+  });
   const byTaste = [...scored].sort((a, b) => b.score - a.score || a.index - b.index);
   byTaste.forEach((entry, rank) => { entry.fused = 1 / (FUSION_K + rank) + 1 / (FUSION_K + entry.index); });
   const ordered = [...scored].sort((a, b) => (b.score >= 0) - (a.score >= 0) || b.fused - a.fused || a.index - b.index);
 
   const chosen = [];
+  const blocked = new Set();
   const sameFranchise = (entry) => chosen.some((other) => isFranchiseContinuation(entry.item, other.item) || isFranchiseContinuation(other.item, entry.item));
-  const take = (entry) => { if (entry && !chosen.includes(entry) && !sameFranchise(entry)) chosen.push(entry); };
+  const take = (entry) => {
+    if (!entry || chosen.includes(entry)) return;
+    if (sameFranchise(entry)) blocked.add(entry);
+    else chosen.push(entry);
+  };
 
   const bridge = curveball && mode === "all" ? ordered.find(({ item, score }) => item?.bridge && score >= 0) ?? null : null;
   const edge = curveball && !bridge ? ordered.find(({ item, score }) => score >= 0 && !item?.bridge && isEdgeCandidate(item, records)) : null;
@@ -155,8 +248,43 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
   } else {
     for (const entry of pool) { if (chosen.length >= mainCount) break; take(entry); }
   }
-  if (slot && !sameFranchise(slot)) chosen.push({ ...slot, isEdge: slot === edge });
+  const slotTaken = Boolean(slot && !sameFranchise(slot));
+  if (slot && !slotTaken) blocked.add(slot);
+  if (slotTaken) chosen.push({ ...slot, isEdge: slot === edge });
+  if (trace) trace.candidates = traceCandidates({ scored, ordered, chosen, blocked, edge: slotTaken && slot === edge ? edge : null });
   return chosen.map(({ item, score, isEdge }) => ({ ...item, tasteScore: round(score), ...(isEdge ? { edge: true } : {}) }));
+}
+
+// One trace entry per candidate, in retrieval order. Outcomes:
+//   chosen / edge         offered (edge = the surprise slot)
+//   same-franchise        reached, but another title from its franchise was already offered
+//   scored-below-zero     not reached; mostly resembles dislikes, so it was ordered last
+//   count-reached         not reached before the set was full
+function traceCandidates({ scored, ordered, chosen, blocked, edge }) {
+  const chosenIndex = new Set(chosen.filter((entry) => !entry.isEdge).map((entry) => entry.index));
+  const tasteRank = new Map([...scored].sort((a, b) => b.score - a.score || a.index - b.index).map((entry, rank) => [entry.index, rank]));
+  const orderRank = new Map(ordered.map((entry, rank) => [entry.index, rank]));
+  const outcome = (entry) => (edge && entry.index === edge.index ? "edge"
+    : chosenIndex.has(entry.index) ? "chosen"
+      : blocked.has(entry) ? "same-franchise"
+        : entry.score < 0 ? "scored-below-zero" : "count-reached");
+  return scored.map((entry) => ({
+    itemId: entry.item.id,
+    title: entry.item.title ?? null,
+    medium: primaryDomain(entry.item),
+    provider: String(entry.item.id ?? "").split("-")[0] || null,
+    retrievalIndex: entry.index,
+    relatedToId: entry.item.relatedToId ?? null,
+    relatedTo: entry.item.relatedTo ?? null,
+    score: entry.score,
+    tasteRank: tasteRank.get(entry.index),
+    fused: entry.fused,
+    order: orderRank.get(entry.index),
+    positives: entry.parts.positives,
+    negatives: entry.parts.negatives,
+    anchorBonus: entry.parts.anchorBonus,
+    outcome: outcome(entry)
+  }));
 }
 
 const round = (value) => Math.round(value * 1000) / 1000;

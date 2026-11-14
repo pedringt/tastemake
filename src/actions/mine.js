@@ -4,7 +4,8 @@ import { clearStatement } from "../model/statements.js";
 import { removeBlindSpot } from "../model/blindspots.js";
 import { AREAS } from "../model/taste.js";
 import { EXCLUDABLE_GENRES, addExclusion, makeExclusion, removeExclusion } from "../model/exclusions.js";
-import { backupFileName, buildBackup, buildHtmlExport, htmlFileName } from "../model/export.js";
+import { backupFileName, buildBackup, buildHtmlExport, htmlFileName, setAsideFileName } from "../model/export.js";
+import { discardSetAsideCopy, readSetAsideCopy } from "../persistence.js";
 
 // ---- My Tastemake (#8) ----
 
@@ -71,6 +72,30 @@ export function handleMineClick(event, { render, updateStepper, restoreFocus, an
   if (button.dataset.mineExport === "backup") {
     downloadText(backupFileName(), "application/json;charset=utf-8", JSON.stringify(buildBackup(state), null, 2));
     announce("Downloaded your Tastemake backup.");
+    return;
+  }
+
+  // #348 follow-up: the original of saved data that couldn't be read (persistence.js).
+  if (button.dataset.setAside) {
+    const step = button.dataset.setAside;
+    const copy = readSetAsideCopy();
+    if (step === "download") {
+      if (copy) downloadText(setAsideFileName(), "application/json;charset=utf-8", copy.raw);
+      announce(copy ? "Downloaded the set-aside data." : "There is no set-aside data.");
+      return;
+    }
+    if (step === "confirm") {
+      discardSetAsideCopy();
+      state.setAsideDiscardArmed = false;
+      render();
+      restoreFocus('[data-mine-export="backup"]');
+      announce("The set-aside data was discarded.");
+      return;
+    }
+    state.setAsideDiscardArmed = step === "arm";
+    render();
+    restoreFocus(step === "arm" ? '[data-set-aside="cancel"]' : '[data-set-aside="arm"]');
+    announce(step === "arm" ? "Discard the set-aside data? It can't be recovered afterward." : "Nothing was discarded.");
     return;
   }
 

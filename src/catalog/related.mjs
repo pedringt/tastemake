@@ -7,6 +7,7 @@ import { withBookSeriesEvidence } from "./book-series-editions.mjs";
 import { bookSeriesPosition, isBook, isLaterSeriesEntry } from "./book-series.mjs";
 import { wikidataSeriesPositions } from "./wikidata-series.mjs";
 import { isBookCompanion } from "./book-companions.mjs";
+import { isScreenExtra } from "./screen-extras.mjs";
 import { correctOldBookYears } from "./wikidata-years.mjs";
 import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
@@ -197,7 +198,7 @@ async function tmdbRelated(item, env, fetchImpl, queryImpl) {
       headers: { authorization: `Bearer ${env.TASTEMAKE_TMDB_TOKEN}`, accept: "application/json" }
     });
     if (!response.ok) return [];
-    return ((await response.json()).results ?? []).slice(0, 12).map((row) => tmdbItem(row, kind));
+    return ((await response.json()).results ?? []).filter((row) => !isScreenExtra(row)).slice(0, 12).map((row) => tmdbItem(row, kind));
   };
   const storePromise = relatedCanonicalItems(item, item.genres ?? [], { env, query: queryImpl });
   const livePromise = fetchImpl !== fetch
@@ -575,13 +576,21 @@ const cachedBridgeShelf = (args) => cachedValue(`bridge-shelf:v1:${args.domain}:
 const FINAL_SERIES_CHECK = 8;
 const YEAR_WAIT_MS = 400;
 
-export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl } = {}) {
+// With `trace` (an object, eval/dev only), trace.retrieval records the anchors queried, how many
+// candidates each returned, and the pool sizes after each step. Candidates are the same either way.
+export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl, trace = null } = {}) {
   const mode = state.recommendationFilter ?? "all";
+  const anchorTrace = [];
+  const done = (result) => {
+    if (trace) trace.retrieval = { mode, anchors: anchorTrace, returned: result.length, eligible: eligible?.length ?? 0 };
+    return result;
+  };
+  let eligible = null;
   const allEvidence = preferRicherAnchors(externalEvidenceItems(state));
   let evidenceItems = mode === "all"
     ? selectAllAnchors(allEvidence)
     : allEvidence.filter((item) => item.domains?.includes(mode)).slice(0, 6);
-  if (!evidenceItems.length) return [];
+  if (!evidenceItems.length) return done([]);
   if (state.curveball !== false) evidenceItems = withEdgeAnchor(evidenceItems, allEvidence.filter((item) => modeAllowed(state, item)));
   // #252 part 2: started now so it runs alongside the first wave.
   const bridge = chooseBridge(state, allEvidence);
@@ -608,6 +617,9 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   // (Promise.all below) — this only measures that existing concurrency, it does not add any.
   const loadEvidence = async (items) => Promise.all(items.map(async (item) => {
     const startedAt = Date.now();
+    // Pushed before the lookup starts, so the trace lists anchors in query order, not finish order.
+    const traced = trace ? { itemId: item.id, title: item.title ?? null, provider: item.provider, medium: primaryDomain(item), results: 0 } : null;
+    if (traced) anchorTrace.push(traced);
     try {
       let related = [];
       if (item.provider === "tmdb") related = await tmdbRelated(item, env, fetchImpl, queryImpl);
@@ -621,9 +633,11 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
       // note in providers.mjs's searchCatalog). Not awaited, never throws, no-op when
       // TASTEMAKE_DATABASE_URL isn't configured.
       canonicalizeWriteBehind(related, { env });
+      if (traced) traced.results = related.length;
       return related.map((candidate) => ({ ...candidate, relatedTo: item.title, relatedToId: item.id }));
     } catch {
       console.info("[tastemake-related]", JSON.stringify({ provider: item.provider, ms: Date.now() - startedAt, results: 0, errored: true }));
+      if (traced) traced.errored = true;
       return [];
     }
   }));
@@ -656,7 +670,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
   ]);
   const providerKey = (item) => item?.provider && item?.providerId ? `${item.provider}:${item.type ?? ""}:${item.providerId}` : null;
   const blockedProviderKeys = new Set(allEvidence.map(providerKey).filter(Boolean));
-  let eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
+  eligible = uniq(interleave(rows)).filter((item) => !blocked.has(item.id) && !blockedProviderKeys.has(providerKey(item)) && areaAllowed(state, item) && modeAllowed(state, item));
   // #142: before each guard pass, read Open Library edition series names for same-author book pairs
   // the cheaper signals did not settle (bounded, cached, fail-open; see book-series-editions.mjs).
   const bookSeriesMemo = new Map();
@@ -767,9 +781,9 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
       const deepIndex = Math.min(adventurous.length - 1, 9);
       [adventurous[5], adventurous[deepIndex]] = [adventurous[deepIndex], adventurous[5]];
     }
-    return withBridges(adventurous);
+    return done(withBridges(adventurous));
   }
-  return withBridges(ranked.slice(0, limit));
+  return done(withBridges(ranked.slice(0, limit)));
 }
 
 // Oct 27: "See similar". The same per-item lookups recommendations use, for one item the person chose,
