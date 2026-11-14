@@ -227,6 +227,33 @@ assert.equal(aiOutcomeForError(new Error("socket")),"transport_error");
   assert.equal(aggregate.operations.recommendations.budget_paused,12);
   assert.equal(aggregate.operations.recommendations.success_rate,Number((45/46).toFixed(4)));
   assert.ok(statements.some((text)=>/not in \('success','validation_fallback','budget_paused'\)/.test(text)),"failures exclude pauses");
+
+  // Nov 13: Anthropic's other spend-limit wording is a pause too.
+  const specified=Object.assign(new Error("Anthropic returned 400 (invalid_request_error)"),{status:400,anthropicType:"invalid_request_error",anthropicDetail:"You have reached your specified API usage limits. You will regain access on 2026-12-01 at 00:00 UTC."});
+  assert.equal(aiOutcomeForError(specified),"budget_paused");
+  const badRequest=Object.assign(new Error("Anthropic returned 400 (invalid_request_error)"),{status:400,anthropicType:"invalid_request_error",anthropicDetail:"messages: field required"});
+  assert.equal(aiOutcomeForError(badRequest),"provider_error","an ordinary bad request isn't a pause");
+}
+
+// Nov 13: schema setup runs once per database client, not before every write, and retries after a failure.
+{
+  const metric={operation:"recommendations",outcome:"success",model:"claude-haiku-5-5",durationMs:100,inputTokens:10,outputTokens:5};
+  let schemaStatements=0, inserts=0;
+  const query=async(text)=>{ if (/create table|alter table|create index/i.test(text)) schemaStatements+=1; if (/insert into/i.test(text)) inserts+=1; return []; };
+  await recordAiCall(metric,{query});
+  const perSetup=schemaStatements;
+  assert.ok(perSetup>0,"the first write sets up the schema");
+  await recordAiCall(metric,{query});
+  await recordAiCall(metric,{query});
+  assert.equal(schemaStatements,perSetup,"later writes skip the setup");
+  assert.equal(inserts,3,"every write still inserts");
+
+  let failFirst=true, flakyInserts=0;
+  const flaky=async(text)=>{ if (/create table/i.test(text) && failFirst){ failFirst=false; throw new Error("db down"); } if (/insert into/i.test(text)) flakyInserts+=1; return []; };
+  await assert.rejects(recordAiCall(metric,{query:flaky}),/db down/);
+  assert.equal(flakyInserts,0,"no insert when setup failed");
+  await recordAiCall(metric,{query:flaky});
+  assert.equal(flakyInserts,1,"the next write retries the setup and inserts");
 }
 
 console.log("AI metrics tests passed");
