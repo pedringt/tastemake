@@ -207,6 +207,16 @@ export const NEEDS_REVIEW_LABEL = "Needs another look";
 export const NEEDS_REVIEW_TEXT = "Some evidence behind this pattern is no longer available. Your earlier answer is saved, but Tastemake can’t currently verify the pattern.";
 export const ALL_AREAS_EXCLUDED_LABEL = "Excluded from all areas";
 
+// #318 (Nov 13, Paige): a refresh can find a confirmed pattern no longer shows up in one of its areas (what it
+// cited there was filed under other patterns, or dropped). The narrower version is kept and flagged with the
+// areas it lost (narrowedAreas), so the user decides; the flag stays until they confirm it.
+const areaNames = (areas) => (areas ?? []).map((id) => domainById(id)?.label ?? id).join(" and ");
+export function needsReviewText(pattern) {
+  if (!pattern?.narrowedAreas?.length) return NEEDS_REVIEW_TEXT;
+  const left = (pattern.domains ?? []).length ? ` It now covers ${areaNames(pattern.domains)} only.` : "";
+  return `The latest check found nothing in ${areaNames(pattern.narrowedAreas)} that shows this pattern any more, so it was narrowed.${left} Your earlier answer is saved; confirm it if the narrower version still describes you.`;
+}
+
 // #325: the one status a pattern shows on the Taste Profile, Taste Map and HTML export, so they never
 // disagree. Display only: nothing stored changes. In order:
 //   1. every area excluded by the user: their scope correction outranks anything else;
@@ -242,7 +252,14 @@ function reconfirmation(state, hypothesisId) {
   return { pattern, present, supports, removed };
 }
 
-export const canReconfirm = (state, hypothesisId) => Boolean(reconfirmation(state, hypothesisId));
+export const canReconfirm = (state, hypothesisId) => Boolean(reconfirmation(state, hypothesisId) || narrowedConfirmation(state, hypothesisId));
+export const reconfirmText = (pattern) => (pattern?.narrowedAreas?.length ? `If it still describes you without ${areaNames(pattern.narrowedAreas)}, confirm it again.` : RECONFIRM_TEXT);
+
+function narrowedConfirmation(state, hypothesisId) {
+  const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
+  if (!pattern || pattern.evidenceStatus !== NEEDS_REVIEW || !pattern.narrowedAreas?.length || !confirmationFor(state.patternStatements, pattern)) return null;
+  return reconfirmation(state, hypothesisId) ? null : pattern;
+}
 
 // Nov 4 (after #328): the user confirming the claim still fits doesn't vouch for how much evidence is left.
 // What the remaining evidence allows is recomputed with the validator's own rules (src/model/evidence-rules.js):
@@ -269,6 +286,15 @@ function recomputedFromEvidence(state, pattern, supportRows, counterRows) {
 }
 
 export function reconfirmPattern(state, hypothesisId) {
+  const narrowed = narrowedConfirmation(state, hypothesisId);
+  if (narrowed) {
+    // Nothing to recompute: the refresh already checked the narrower version. Only the flag and its note go.
+    const { evidenceStatus, narrowedAreas, ...next } = narrowed;
+    state.modelHypotheses = state.modelHypotheses.map((p) => (p.id === hypothesisId ? next : p));
+    const message = `${narrowed.title}: you confirmed it still fits without ${areaNames(narrowedAreas)}.`;
+    recordRevision(state, { hypothesisId, claim: next.claim, supports: next.supports, counters: next.counters, domains: next.domains, level: next.strength, origin: "user-confirmed", reason: message });
+    return message;
+  }
   const found = reconfirmation(state, hypothesisId);
   if (!found) return null;
   const { pattern, present, supports, removed } = found;

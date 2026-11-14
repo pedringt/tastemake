@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { canKeepDiscovering } from "../model/taste.js";
-import { CONTEXT, NEEDS_REVIEW_TEXT, RECONFIRM_LABEL, RECONFIRM_TEXT, canReconfirm, patternDisplayStatus, statementFor, statementSummary } from "../model/statements.js";
+import { CONTEXT, RECONFIRM_LABEL, canReconfirm, needsReviewText, patternDisplayStatus, reconfirmText, statementFor, statementSummary } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
@@ -270,8 +270,8 @@ function hypothesisCard(item, index, records = new Map()) {
         <p class="signal-claim">${esc(item.claim)}</p>
         ${evidenceBlock(item, records, blindLine)}
         ${shown.kind === "needs-review" ? `<details class="signal-carried"><summary>Why it needs another look</summary>
-          <div class="signal-said">${esc(NEEDS_REVIEW_TEXT)}</div>
-          ${canReconfirm(state, item.id) ? `<div class="signal-said signal-reconfirm"><span>${esc(RECONFIRM_TEXT)}</span> <button type="button" class="button button-secondary signal-say-button" data-reconfirm-pattern="${esc(item.id)}">${esc(RECONFIRM_LABEL)}</button></div>` : ""}
+          <div class="signal-said">${esc(needsReviewText(item))}</div>
+          ${canReconfirm(state, item.id) ? `<div class="signal-said signal-reconfirm"><span>${esc(reconfirmText(item))}</span> <button type="button" class="button button-secondary signal-say-button" data-reconfirm-pattern="${esc(item.id)}">${esc(RECONFIRM_LABEL)}</button></div>` : ""}
         </details>` : ""}
         ${!open && excluded.length ? `<details class="signal-carried"><summary>Where it doesn’t apply</summary>
           <div class="signal-said">Your Taste Profile won’t apply it to ${esc(excluded.join(", "))}. Change it to include an area again.</div>
