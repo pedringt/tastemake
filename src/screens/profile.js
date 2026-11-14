@@ -399,12 +399,12 @@ function learningPanel(patterns = []) {
 // the example makes no AI calls and no effect on recommendations has been measured. Example-only, so
 // nobody else's profile is ever shown a sample.
 const SAID = { partial: "partly accurate", "not-me": "not her", unsure: "not sure yet" };
-// Nov 7: separate the shortlist (built in software, which doesn't read pattern answers; #334) from what live AI
-// is told. Partly matches the shipped "more cautiously" wording. A pick's validator check for "not me" isn't
+// Nov 7: separate the shortlist (built in software) from what live AI is told. Nov 14 (#334): "Not me" now
+// down-ranks clearly matching titles in the shortlist; Partly and Not sure still don't touch it. Partly matches the shipped "more cautiously" wording. A pick's validator check for "not me" isn't
 // claimed: live picks arrive without a tested pattern, so it doesn't run on them.
 const USE = {
   partial: "Tastemake builds its shortlist without using her answer. When AI chooses and explains picks, it's told to treat this pattern more cautiously.",
-  "not-me": "Her answer doesn't change Tastemake's shortlist. Live AI is told not to use the pattern, and Tastemake keeps it out of her Taste Profile when the profile is refreshed.",
+  "not-me": "Titles that clearly match this pattern move to the back of her shortlist, but aren't removed. Live AI is told not to use the pattern, and Tastemake keeps it out of her Taste Profile when the profile is refreshed.",
   unsure: "Her answer doesn't change Tastemake's shortlist. Live AI is told it isn't a confirmed preference."
 };
 const shortDate = (iso) => {
