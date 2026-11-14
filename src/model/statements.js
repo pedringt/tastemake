@@ -3,6 +3,7 @@ import { recordRevision } from "./history.js";
 import { evidenceRecords } from "./evidence.js";
 import { allowedCrossDomain, allowedLevel, capLevel, domainScope, evidenceRows } from "./evidence-rules.js";
 import { CROSS_DOMAIN, LEVELS } from "../ai/contract.js";
+import { domainById } from "../data/domains.js";
 
 // What the user has said about a pattern (pattern corrections). Decided Sept 22, 2026:
 //   - This is its own authority, **user-confirmed**. It outranks anything Tastemake or a model inferred.
@@ -59,11 +60,13 @@ export function statementSummary(said, areaLabel = (id) => id) {
   if (!SUMMARY.says[said?.says]) return [];
   const context = ["accurate", "partial"].includes(said.says) ? shownContext(said) : null;
   const excluded = said.says === "partial" ? (said.excludedDomains ?? []) : [];
+  const also = said.says === "accurate" ? (said.alsoAppliesTo ?? []) : [];
   return [
     SUMMARY.says[said.says],
     said.says === "accurate" ? SUMMARY.weight[said.weight] : null,
     SUMMARY.context[context],
-    excluded.length ? `Not for ${excluded.map(areaLabel).join(", ")}` : null
+    excluded.length ? `Not for ${excluded.map(areaLabel).join(", ")}` : null,
+    also.length ? `Also for ${also.map(areaLabel).join(", ")}` : null
   ].filter(Boolean);
 }
 
@@ -95,6 +98,8 @@ export function setStatement(state, hypothesisId, field, value) {
   entry[field] = next;
 
   if (field === "says") {
+    // "Also true for" is a follow-up to "accurate" only, so any other answer clears it.
+    if (next !== "accurate") entry.alsoAppliesTo = [];
     if (next === "not-me" || next === "unsure" || next == null) {
       entry.weight = null;
       entry.context = null;
@@ -146,6 +151,30 @@ export function toggleDomainExclusion(state, hypothesisId, domainId) {
   const message = excluding
     ? `${pattern.title}: marked as not applying to ${domainId}.`
     : `${pattern.title}: ${domainId} is included again.`;
+  recordRevision(state, { hypothesisId: pattern.id, claim: pattern.claim, origin: "user-confirmed", reason: message });
+  return message;
+}
+
+// #252: the opposite of excludedDomains. After saying a pattern is accurate, the user can say it also holds
+// in another area ("this is true of my books too"). User-confirmed, so a model may use it to connect a pick
+// in that area to the pattern's cited evidence; it is NOT experience, never counts as evidence there, and
+// never raises a pattern's confidence or cross-domain status.
+export function alsoAppliesToFor(state, hypothesisId) {
+  return statementFor(state, hypothesisId)?.alsoAppliesTo ?? [];
+}
+
+export function toggleAlsoApplies(state, hypothesisId, domainId) {
+  const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
+  const entry = statementFor(state, hypothesisId);
+  if (!pattern || entry?.says !== "accurate" || !(pattern.domains ?? []).length || pattern.domains.includes(domainId)) return null;
+  entry.alsoAppliesTo ??= [];
+  const adding = !entry.alsoAppliesTo.includes(domainId);
+  entry.alsoAppliesTo = adding ? [...entry.alsoAppliesTo, domainId] : entry.alsoAppliesTo.filter((d) => d !== domainId);
+  // Announced and kept in the pattern history, so the area's name, not its internal id ("read").
+  const area = domainById(domainId)?.label ?? domainId;
+  const message = adding
+    ? `${pattern.title}: you said this is also true for ${area}.`
+    : `${pattern.title}: no longer marked as true for ${area}.`;
   recordRevision(state, { hypothesisId: pattern.id, claim: pattern.claim, origin: "user-confirmed", reason: message });
   return message;
 }
@@ -259,5 +288,5 @@ export function reconfirmPattern(state, hypothesisId) {
 }
 
 export function activeStatements(state) {
-  return (state.patternStatements ?? []).filter((s) => s.says || s.weight || s.context || s.excludedDomains?.length);
+  return (state.patternStatements ?? []).filter((s) => s.says || s.weight || s.context || s.excludedDomains?.length || s.alsoAppliesTo?.length);
 }

@@ -13,7 +13,7 @@ globalThis.document = { documentElement: { dataset: {} }, querySelector: () => n
 const { check, eq, finish } = createSuite("disclosure tests");
 const { state, resetState } = await import("../../src/state.js");
 const { closePattern, noteAnswer, openPattern, renderProfile, resetDisclosure, toggleRefine } = await import("../../src/screens/profile.js");
-const { setStatement, statementSummary, toggleDomainExclusion } = await import("../../src/model/statements.js");
+const { setStatement, statementSummary, toggleAlsoApplies, toggleDomainExclusion } = await import("../../src/model/statements.js");
 
 const pattern = {
   id: "ai-dread", title: "Quiet dread", label: "Quiet dread",
@@ -188,6 +188,40 @@ const CONSEQUENCE = "What this changes";
   answer("says", "accurate");
   html = renderProfile();
   check("undo: answering Yes moves it back to the active list, open", row(html).includes("data-pattern-state=\"open\"") && pressed(row(html)).join() === "says=accurate" && !html.includes('class="corrected-patterns"'));
+}
+
+// ---- #252 "Also true for": one of the optional Yes follow-ups, inside "Refine this" ----
+{
+  setup();
+  answer("says", "accurate");
+  let html = renderProfile();
+  check("also: not shown while Refine this is closed", !row(html).includes("data-also-pattern"));
+  toggleRefine(pattern.id);
+  html = renderProfile();
+  check("also: shown inside the open Refine panel", /id="refine-ai-dread"[^>]*>[\s\S]*data-also-pattern="ai-dread"/.test(row(html)));
+  check("also: offers only areas the pattern isn't in yet", !/data-also-domain="(movies|read)"/.test(row(html)) && row(html).includes('data-also-domain="play"'));
+  check("also: nothing preselected", !/data-also-pattern="ai-dread"[^>]*aria-pressed="true"/.test(row(html)));
+  toggleAlsoApplies(state, pattern.id, "play");
+  noteAnswer(pattern.id, "also");
+  html = renderProfile();
+  check("also: the consequence describes an AI instruction, not a result", row(html).includes("When AI chooses your picks, it’s told this also holds for Games") && row(html).includes("its level doesn’t change"));
+  closePattern(pattern.id);
+  html = renderProfile();
+  eq("also: summary names the area", summaryOf(row(html)), "Confirmed · Also for Games");
+  openPattern(pattern.id, { refine: true });
+  html = renderProfile();
+  check("also: no consequence on reopening with Change", !row(html).includes(CONSEQUENCE));
+  toggleAlsoApplies(state, pattern.id, "play");
+  noteAnswer(pattern.id, "also");
+  html = renderProfile();
+  check("also: removing it says so", row(html).includes("No longer marked as true for another area."));
+
+  // #267's rule: a pattern with no area yet has nothing to be "also" true beyond.
+  setup();
+  state.modelHypotheses[0].domains = [];
+  answer("says", "accurate");
+  toggleRefine(pattern.id);
+  check("also: hidden on a pattern with no area", !row(renderProfile()).includes("data-also-pattern"));
 }
 
 finish();
