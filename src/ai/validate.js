@@ -2,6 +2,7 @@ import { CIRCULAR_PATTERNS, CONTRACT_VERSION, CROSS_DOMAIN, GENRE_ONLY, IDENTITY
 import { allowedCrossDomain, allowedLevel, capLevel, domainScope, evidenceRows, triedRecords } from "../model/evidence-rules.js";
 import { confirmationFor } from "../model/statements.js";
 import { isAdultTagged, triedAdultTagged } from "../catalog/adult-content.mjs";
+import { fileSupports } from "./support-filing.js";
 
 // The product's gate on model output (#31). Pure functions: (response, context) -> accepted / rejected.
 //
@@ -204,7 +205,10 @@ export function preserveExistingHypotheses(response, ctx, existing = []) {
   const unconfirmed = hypotheses.filter((h) => !confirmed(h));
   const room = Math.max(0, MAX_PROFILE_HYPOTHESES - (hypotheses.length - unconfirmed.length));
   const kept = new Set([...unconfirmed.filter((h) => existingIds.has(h?.id)), ...unconfirmed.filter((h) => !existingIds.has(h?.id))].slice(0, room));
-  return { ...response, hypotheses: hypotheses.filter((h) => confirmed(h) || kept.has(h)) };
+  // #318: a refresh re-cites what it cited before, so a support that got onto a cross-media pattern once stays
+  // there; take off the ones that belong to another pattern (src/ai/support-filing.js).
+  const filed = fileSupports(hypotheses.filter((h) => confirmed(h) || kept.has(h)), ctx);
+  return { ...response, hypotheses: filed.hypotheses, ...(filed.refiled.length ? { refiled: filed.refiled } : {}) };
 }
 
 // #325: run after validateHypotheses. A pattern the user confirmed must come out of a refresh either
