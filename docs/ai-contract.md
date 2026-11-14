@@ -55,6 +55,9 @@ A model's answer is only ever a **proposal**. It is validated, stamped and then 
 
 Everything accepted is stamped `authority: "inferred"`, `source: "model"` and the contract version.
 
+## Why-line check (after validation, picks only)
+`checkWhyLines` (`src/ai/why-lines.js`, Nov 14) runs on the accepted picks. It never drops a pick. When a pick's why is **generic** (circular, or fewer than two specific words once titles, reaction verbs, genre words and filler are removed), **repeats** another pick's wording (it would reach the stress eval's per-set gate: same two-word opening, a 3-word phrase or stock-word family already in two earlier lines, or the "you loved in <title>" frame already in two), or names **no cited item** by a recognisable form of its title, the why is replaced with a plain line that names a liked cited item ("Because you liked Circe."; a cross-medium test keeps "A book test, found from Arrival."). Earlier lines are kept and later ones replaced. The pick carries `ai.whyReplaced` (the reasons), the response `meta.whyReplaced` (the count), and the server log a `whyLines` stage with counts only. The wording measures are shared with the stress eval (`src/ai/phrasing.js`).
+
 ## Failing conservatively
 `acceptOrFallback(result, deterministic)`: on an error, a timeout, or fewer valid items than needed, the product uses the deterministic answer (`src/ai/baseline.js`) and records why. It never fills gaps with invented certainty. Too little evidence is an acceptable answer.
 

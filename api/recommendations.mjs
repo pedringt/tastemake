@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { buildContext } from "../src/ai/context.js";
 import { acceptOrFallback, validatePicks } from "../src/ai/validate.js";
+import { checkWhyLines } from "../src/ai/why-lines.js";
 import { retrieveCatalogCandidates } from "../src/catalog/related.mjs";
 import { applyTaglineFallback } from "../src/catalog/providers.mjs";
 import { sanitizeRecommendationCopy } from "../src/lib/recommendation-copy.js";
@@ -232,7 +233,7 @@ function clientPicks(validated, conflicts = null) {
     prediction: "Worth testing",
     surprise: pick.kind === "curveball",
     reason: sanitizeRecommendationCopy(pick.why) || "Tastemake is testing this against things you've liked before.",
-    ai: { cites: pick.cites, tests: pick.tests, kind: pick.kind, anchor: pick.anchor ?? null, contract: pick.contract }
+    ai: { cites: pick.cites, tests: pick.tests, kind: pick.kind, anchor: pick.anchor ?? null, contract: pick.contract, ...(pick.whyReplaced ? { whyReplaced: pick.whyReplaced } : {}) }
   }));
 }
 
@@ -483,7 +484,14 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
       });
     }
     recordAiCallInBackground({ ...aiMetric, outcome: "success" }, { env });
-    const picks = clientPicks(result.items, ctx.correctionConflict);
+    // Nov 14 (Paige's Nov 13 call): a kept pick whose why is generic, repeats another pick's wording, or names
+    // no cited item keeps its place with a plain software line instead (src/ai/why-lines.js). Counts and
+    // reasons only in the log, never the text.
+    started = Date.now();
+    const lines = checkWhyLines(result.items, promptCtx.evidence ?? []);
+    logStage("whyLines", Date.now() - started, { checked: lines.checked, replacedCount: lines.replaced, replacementReasons: lines.reasons });
+    if (trace) trace.model = { ...trace.model, whyReplaced: lines.picks.filter((pick) => pick.whyReplaced).map((pick) => ({ itemId: pick.itemId, reasons: pick.whyReplaced })) };
+    const picks = clientPicks(lines.picks, ctx.correctionConflict);
     // Real report (2026-09-28): "after a few rounds I'm getting mostly books now" -- the domain-spread
     // nudge (#153) only shapes what the model is told to do; nothing has ever logged what it actually
     // picked. Sanitized domain counts only (never titles/ids), so a real skew is visible without
@@ -494,7 +502,7 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
       source: "model",
       reason: null,
       picks,
-      meta: { model: model.model, usage: model.usage, rejected: result.rejected ?? 0, paidCallMade: true, catalogCandidates: retrieved.length }
+      meta: { model: model.model, usage: model.usage, rejected: result.rejected ?? 0, whyReplaced: lines.replaced, paidCallMade: true, catalogCandidates: retrieved.length }
     };
   } catch (error) {
     const timedOut = error?.name === "AbortError";

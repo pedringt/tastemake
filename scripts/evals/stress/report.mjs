@@ -87,14 +87,15 @@ export function buildReport({ calls, headers }) {
   lines.push(`${calls.length} recorded call(s), ${picks.length} kept pick explanation(s); models ${models.join(", ") || "none"}; sizes ${sizes.join(", ") || "none"}; profiles ${shapes.join(", ") || "none"}. Estimated cost $${usd.toFixed(4)}.${dry ? " **Includes dry-run records (no model output).**" : ""}`, "");
   lines.push("These are measurements, not pass/fail gates. Definitions are at the end. Size labels count experienced items: 10, 50 and 100 (= 120 experienced; production's wire keeps at most 96 tried reactions plus favorites, and the pick prompt shows at most 18 evidence rows at any size).", "");
 
-  lines.push("## Reliability", "", "| Model | Size | Pick calls | Model picks | Fallback | Picks kept | Picks rejected | Top rejection reasons | Cost |", "|---|---|---|---|---|---|---|---|---|");
+  lines.push("## Reliability", "", "| Model | Size | Pick calls | Model picks | Fallback | Picks kept | Picks rejected | Top rejection reasons | Why lines replaced | Cost |", "|---|---|---|---|---|---|---|---|---|---|");
   for (const model of models) for (const size of sizes) {
     const group = calls.filter((c) => c.model === model && c.size === size);
     if (!group.length) continue;
     const r = reliability(group);
     const top = Object.entries(r.rejectionReasons).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} (${v})`).join("; ");
     const fb = Object.entries(r.fallbackReasons).map(([k, v]) => `${k}: ${v}`).join("; ");
-    lines.push(`| ${model} | ${size} | ${r.calls} | ${r.modelSource} | ${r.fallback}${fb ? ` (${cell(fb)})` : ""} | ${r.picksKept} | ${r.picksRejected} | ${cell(top) || "–"} | $${fmt(r.usd)} |`);
+    const why = Object.entries(r.whyReplacedReasons).map(([k, v]) => `${k}: ${v}`).join("; ");
+    lines.push(`| ${model} | ${size} | ${r.calls} | ${r.modelSource} | ${r.fallback}${fb ? ` (${cell(fb)})` : ""} | ${r.picksKept} | ${r.picksRejected} | ${cell(top) || "–"} | ${r.whyReplaced}${why ? ` (${cell(why)})` : ""} | $${fmt(r.usd)} |`);
   }
   lines.push("");
 

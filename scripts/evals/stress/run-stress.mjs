@@ -215,6 +215,7 @@ export async function runTask(task, opts, { fetchImpl, snapshotIndex }) {
   const picks = payload.source === "model" ? payload.picks.map((p) => ({
     itemId: p.id, title: p.title, domains: p.domains ?? [], genres: p.genres ?? [], about: p.about ?? null,
     why: p.reason, rawWhy: rawById.get(p.id)?.why ?? null, cites: p.ai?.cites ?? [], kind: p.ai?.kind ?? "pick", anchor: p.ai?.anchor ?? null,
+    ...(p.ai?.whyReplaced ? { whyReplaced: p.ai.whyReplaced } : {}),
     fit: p.fit, prediction: p.prediction,
     // #252 part 2: from the pool's own marks (profiles.mjs), so main and the bridge branch record the same.
     ...(bridgeIds.has(p.id) ? { bridge: true, bridgeFrom: bridgeIds.get(p.id) } : {}),
