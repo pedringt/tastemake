@@ -212,7 +212,17 @@ export const ALL_AREAS_EXCLUDED_LABEL = "Excluded from all areas";
 // cited there was filed under other patterns, or dropped). The narrower version is kept and flagged with the
 // areas it lost (narrowedAreas), so the user decides; the flag stays until they confirm it.
 const areaNames = (areas) => (areas ?? []).map((id) => domainById(id)?.label ?? id).join(" and ");
+// #326 Design A (behind its flag): a refresh that only places new ratings can also flag a confirmed pattern, when
+// 2+ things tried and disliked since it was confirmed count against it, or a rating it rested on changed side
+// (placementReview: { kind: "counters" | "changed", refs }). It is never dropped or reworded for that.
+export const COUNTERS_REVIEW_TEXT = (n) => `Since you confirmed this, ${n} things you tried and didn’t like have counted against it. Your answer is saved; confirm it again if it still describes you.`;
+export const CHANGED_REVIEW_TEXT = "A rating this pattern rested on has changed since you confirmed it. Your answer is saved; confirm it again if it still describes you.";
+const PLACEMENT_RECONFIRM_TEXT = "If it still describes you, confirm it again.";
+
 export function needsReviewText(pattern) {
+  if (pattern?.placementReview && !pattern?.narrowedAreas?.length && pattern.evidenceStatus === NEEDS_REVIEW) {
+    return pattern.placementReview.kind === "counters" ? COUNTERS_REVIEW_TEXT((pattern.placementReview.refs ?? []).length) : CHANGED_REVIEW_TEXT;
+  }
   if (!pattern?.narrowedAreas?.length) return NEEDS_REVIEW_TEXT;
   const left = (pattern.domains ?? []).length ? ` It now covers ${areaNames(pattern.domains)} only.` : "";
   return `The latest check found nothing in ${areaNames(pattern.narrowedAreas)} that shows this pattern any more, so it was narrowed.${left} Your earlier answer is saved; confirm it if the narrower version still describes you.`;
@@ -253,8 +263,16 @@ function reconfirmation(state, hypothesisId) {
   return { pattern, present, supports, removed };
 }
 
-export const canReconfirm = (state, hypothesisId) => Boolean(reconfirmation(state, hypothesisId) || narrowedConfirmation(state, hypothesisId));
-export const reconfirmText = (pattern) => (pattern?.narrowedAreas?.length ? `If it still describes you without ${areaNames(pattern.narrowedAreas)}, confirm it again.` : RECONFIRM_TEXT);
+export const canReconfirm = (state, hypothesisId) => Boolean(reconfirmation(state, hypothesisId) || narrowedConfirmation(state, hypothesisId) || placementConfirmation(state, hypothesisId));
+export const reconfirmText = (pattern) => (pattern?.narrowedAreas?.length ? `If it still describes you without ${areaNames(pattern.narrowedAreas)}, confirm it again.` : pattern?.placementReview ? PLACEMENT_RECONFIRM_TEXT : RECONFIRM_TEXT);
+
+// #326 Design A: a flag a placement refresh raised (placementReview) and nothing else. Confirming clears it and
+// starts the count of new counters again; the counters stay cited.
+function placementConfirmation(state, hypothesisId) {
+  const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
+  if (!pattern?.placementReview || pattern.evidenceStatus !== NEEDS_REVIEW || pattern.narrowedAreas?.length || !confirmationFor(state.patternStatements, pattern)) return null;
+  return reconfirmation(state, hypothesisId) ? null : pattern;
+}
 
 function narrowedConfirmation(state, hypothesisId) {
   const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
@@ -293,6 +311,14 @@ export function reconfirmPattern(state, hypothesisId) {
     const { evidenceStatus, narrowedAreas, ...next } = narrowed;
     state.modelHypotheses = state.modelHypotheses.map((p) => (p.id === hypothesisId ? next : p));
     const message = `${narrowed.title}: you confirmed it still fits without ${areaNames(narrowedAreas)}.`;
+    recordRevision(state, { hypothesisId, claim: next.claim, supports: next.supports, counters: next.counters, domains: next.domains, level: next.strength, origin: "user-confirmed", reason: message });
+    return message;
+  }
+  const placed = placementConfirmation(state, hypothesisId);
+  if (placed) {
+    const { evidenceStatus, placementReview, newCounters, ...next } = placed;
+    state.modelHypotheses = state.modelHypotheses.map((p) => (p.id === hypothesisId ? next : p));
+    const message = `${placed.title}: you confirmed it still fits.`;
     recordRevision(state, { hypothesisId, claim: next.claim, supports: next.supports, counters: next.counters, domains: next.domains, level: next.strength, origin: "user-confirmed", reason: message });
     return message;
   }
