@@ -3,6 +3,7 @@ import { recordRevision } from "./history.js";
 import { evidenceRecords } from "./evidence.js";
 import { allowedCrossDomain, allowedLevel, capLevel, domainScope, evidenceRows } from "./evidence-rules.js";
 import { CROSS_DOMAIN, LEVELS } from "../ai/contract.js";
+import { domainById } from "../data/domains.js";
 
 // What the user has said about a pattern (pattern corrections). Decided Sept 22, 2026:
 //   - This is its own authority, **user-confirmed**. It outranks anything Tastemake or a model inferred.
@@ -169,9 +170,11 @@ export function toggleAlsoApplies(state, hypothesisId, domainId) {
   entry.alsoAppliesTo ??= [];
   const adding = !entry.alsoAppliesTo.includes(domainId);
   entry.alsoAppliesTo = adding ? [...entry.alsoAppliesTo, domainId] : entry.alsoAppliesTo.filter((d) => d !== domainId);
+  // Announced and kept in the pattern history, so the area's name, not its internal id ("read").
+  const area = domainById(domainId)?.label ?? domainId;
   const message = adding
-    ? `${pattern.title}: you said this is also true for ${domainId}.`
-    : `${pattern.title}: no longer marked as true for ${domainId}.`;
+    ? `${pattern.title}: you said this is also true for ${area}.`
+    : `${pattern.title}: no longer marked as true for ${area}.`;
   recordRevision(state, { hypothesisId: pattern.id, claim: pattern.claim, origin: "user-confirmed", reason: message });
   return message;
 }

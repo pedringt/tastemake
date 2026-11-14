@@ -129,7 +129,7 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   eq("the area is recorded on the user's statement", alsoAppliesToFor(state, books.id).join(), "play");
   check("it changes the request fingerprint (stales an in-flight pick request)", evidenceFingerprint(state) !== before);
   eq("an area the pattern already covers can't be added", toggleAlsoApplies(state, books.id, "read"), null);
-  check("it is recorded as a user-confirmed revision", state.hypothesisHistory.some((r) => r.origin === "user-confirmed" && /also true for play/.test(r.reason)));
+  check("it is recorded as a user-confirmed revision", state.hypothesisHistory.some((r) => r.origin === "user-confirmed" && /also true for Games/.test(r.reason)));
   toggleAlsoApplies(state, books.id, "play");
   eq("tapping again removes it", alsoAppliesToFor(state, books.id).length, 0);
 
