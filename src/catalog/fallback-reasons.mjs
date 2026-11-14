@@ -98,8 +98,25 @@ export function newReleaseReason(item, anchor, { index = 0 } = {}) {
   }
   // Games name their genre as a kind of game ("a new role-playing game"), never "new role-playing".
   const name = (tags) => (item.type === "game" ? `${tags} game` : tags);
+  // Nov 6 (#317): two shared genres always use one form. "New fantasy action, sharing both with The
+  // Northman" left the noun out and "both" without a referent.
   const reasons = b
-    ? [() => `New ${name(`${a} ${b}`)}, sharing both with ${from}.`, () => (item.type === "game" ? `A new ${a} and ${b} game, like ${from}.` : `A new ${kind} with ${a} and ${b}, like ${from}.`)]
+    ? [() => (item.type === "game" ? `A new ${a} and ${b} game, like ${from}.` : `A new ${kind} with ${a} and ${b}, like ${from}.`)]
     : [() => `New ${name(a)} this week, in the same genre as ${from}.`, () => `A new ${a} ${kind}, like ${from}.`];
+  return reasons[index % reasons.length]();
+}
+
+// #252 part 2 (Oct 27): "with these vibes" results come from another medium, so there are no tags to match
+// word for word. The reason names only the shared genres bridge-candidates.mjs found on both sides.
+const listOf = (words) => (words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
+
+export function bridgeReason(item, { index = 0 } = {}) {
+  const from = item.relatedTo || null;
+  const words = (item.bridge?.sharedGenres ?? []).slice(0, 2).map((label) => (label === "historical" ? "historical fiction" : label));
+  if (!from || !words.length) return null;
+  const reasons = [
+    () => `Shares ${listOf(words)} with ${from}.`,
+    () => `Also ${listOf(words)}, like ${from}.`
+  ];
   return reasons[index % reasons.length]();
 }

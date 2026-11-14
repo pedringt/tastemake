@@ -48,8 +48,8 @@ export function exonerated(state, feedback, patternId) {
   return !spot.hypotheses.some((id) => hypothesisMatches([patternId], id) || hypothesisMatches([id], patternId));
 }
 
-// What the user said about a pattern scales how much it steers ranking (see statements.js):
-// "not really me" = 0 (left out), "matters a lot" = 1.5, "matters a little" = 0.5. No statement = 1 (unchanged).
+// Not called anywhere (Nov 7): ranking doesn't read pattern answers (#334). Kept as the intended scaling for
+// that work: "not really me" = 0 (left out), "matters a lot" = 1.5, "matters a little" = 0.5, none = 1.
 function statementFactor(state, hypothesisId) {
   const s = (state.patternStatements ?? []).find((x) => hypothesisMatches([x.hypothesisId], hypothesisId) || hypothesisMatches([hypothesisId], x.hypothesisId));
   if (!s) return 1;

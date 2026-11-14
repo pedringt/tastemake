@@ -46,18 +46,25 @@ function primaryDomain(feedback) {
   return feedback?.item?.domains?.[0] ?? "other";
 }
 
-export function selectExperiencedFeedbackForWire(feedbackByRecommendation = {}, limit = MAX_WIRE_EXPERIENCED) {
+// Nov 4 (after #325): requiredIds are reactions the request must carry if they exist, in priority order
+// (the Taste Profile refresh passes what its stored patterns cite, confirmed patterns first). They go in
+// before the usual newest-per-medium fill and count against the same limit. Without requiredIds the
+// selection is exactly what it was, which is what recommendations still send.
+export function selectExperiencedFeedbackForWire(feedbackByRecommendation = {}, limit = MAX_WIRE_EXPERIENCED, { requiredIds = [] } = {}) {
   const entries = Object.entries(feedbackByRecommendation).filter(([, feedback]) => isExperienced(feedback));
   if (entries.length <= limit) return entries;
 
+  const byId = new Map(entries);
+  const out = [...new Set(requiredIds)].filter((id) => byId.has(id)).slice(0, limit).map((id) => [id, byId.get(id)]);
+  const taken = new Set(out.map(([id]) => id));
   const buckets = new Map([["movies", []], ["tv", []], ["read", []], ["play", []], ["other", []]]);
   for (const entry of entries) {
+    if (taken.has(entry[0])) continue;
     const key = buckets.has(primaryDomain(entry[1])) ? primaryDomain(entry[1]) : "other";
     buckets.get(key).push(entry);
   }
   for (const bucket of buckets.values()) bucket.reverse();
 
-  const out = [];
   while (out.length < limit && [...buckets.values()].some((bucket) => bucket.length)) {
     for (const bucket of buckets.values()) {
       const entry = bucket.shift();
@@ -91,13 +98,20 @@ function seenItemIdsForWire(state) {
   ])];
 }
 
-export function serializeAiState(state) {
-  const feedbackByRecommendation = Object.fromEntries(
-    selectExperiencedFeedbackForWire(state.feedbackByRecommendation ?? {})
-      .map(([id, feedback]) => [id, compactFeedbackForWire(feedback)])
-  );
+// requiredRefs (Taste Profile refresh only): evidence refs ("ev:<id>") the request should carry. Any that
+// still exist here but didn't fit under the limit are listed in presentRefs, ids only, so the server can
+// tell "not sent this time" from "removed" (settleConfirmedHypotheses). Recommendations pass nothing and
+// their payload is unchanged.
+export function serializeAiState(state, { requiredRefs = null } = {}) {
+  const requiredIds = (requiredRefs ?? []).map((ref) => String(ref).replace(/^ev:/, ""));
+  const selected = selectExperiencedFeedbackForWire(state.feedbackByRecommendation ?? {}, MAX_WIRE_EXPERIENCED, { requiredIds });
+  const feedbackByRecommendation = Object.fromEntries(selected.map(([id, feedback]) => [id, compactFeedbackForWire(feedback)]));
   const customItems = capCustomItemsForWire(state.customItems, feedbackByRecommendation, state.selectedFavorites);
+  const presentRefs = requiredRefs
+    ? [...new Set(requiredIds)].filter((id) => !feedbackByRecommendation[id] && isExperienced(state.feedbackByRecommendation?.[id])).map((id) => `ev:${id}`)
+    : null;
   return {
+    ...(presentRefs ? { presentRefs } : {}),
     selectedFavorites: [...state.selectedFavorites],
     feedbackByRecommendation,
     seenItemIds: seenItemIdsForWire(state),
@@ -139,7 +153,7 @@ export async function requestRecommendations(state, { signal } = {}) {
 
   let payload = null;
   try { payload = await response.json(); } catch { /* handled below */ }
-  if (!response.ok) throw new Error(payload?.error || `recommendation request failed (${response.status})`);
+  if (!response.ok) throw Object.assign(new Error(payload?.error || `recommendation request failed (${response.status})`), { status: response.status });
   if (!payload || !Array.isArray(payload.picks)) throw new Error("recommendation response was missing picks");
   return payload;
 }

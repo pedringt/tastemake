@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Security headers in vercel.json (Oct 27). Free, no browser, no network.
+// Security headers in vercel.json (Oct 27; CSP enforcing Nov 3). Free, no browser, no network.
 //
 //   node scripts/qa/security-headers-tests.mjs
 //
@@ -50,9 +50,11 @@ eq("Referrer-Policy", headers["referrer-policy"], "strict-origin-when-cross-orig
 eq("Permissions-Policy", headers["permissions-policy"], "camera=(), microphone=(), geolocation=()");
 eq("X-Frame-Options", headers["x-frame-options"], "DENY");
 
-const cspText = headers["content-security-policy-report-only"] ?? headers["content-security-policy"] ?? "";
+// Enforcing since Nov 3, after a week in Report-Only with zero violations across every page and look.
+const cspText = headers["content-security-policy"] ?? "";
 check("a Content-Security-Policy is sent", cspText.length > 0);
-check("CSP starts in Report-Only mode", Boolean(headers["content-security-policy-report-only"]) && !headers["content-security-policy"]);
+check("CSP is enforcing", Boolean(headers["content-security-policy"]));
+check("the Report-Only CSP header is gone", !("content-security-policy-report-only" in headers));
 
 const csp = new Map();
 for (const part of cspText.split(";")) {

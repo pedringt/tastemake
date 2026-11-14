@@ -7,12 +7,13 @@ import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { displayLabel, domainById } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { hasSeriesSignal } from "../catalog/novelty.mjs";
-import { safeAbout } from "../catalog/synopsis.mjs";
+import { safeAbout, storedSynopsis } from "../catalog/synopsis.mjs";
 import { readableRecommendationCopy } from "../lib/recommendation-copy.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
+import { renderPathSwitch } from "../components/path-switch.js";
 import { pathForFeedback } from "../model/reaction-flow.js";
 import { basisSentence, recommendationBasis } from "../model/loading-basis.js";
-import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE } from "../ai/ai-status.js";
+import { AI_PAUSED_EXPLAINER, AI_PAUSED_HEADLINE, CATALOG_SET_LINE, setSource } from "../ai/ai-status.js";
 import { renderArtwork } from "../components/artwork.js";
 import { releaseLabel } from "../ai/new-releases.js";
 import { exclusionOptions } from "../model/exclusions.js";
@@ -151,15 +152,17 @@ function seriesExperienceFeedback(item, feedback) {
 
 // Favorite is always available on a recommendation. Choosing it is shorthand for
 // “I know this and love it”: the action records Tried + Loved + Favorite in one step.
-function favoriteToggle(itemId) {
+// Nov 12 (QA): the accessible name says which title, since a screen shows many of these stars.
+function favoriteToggle(itemId, title = "") {
   const isFavorite = state.libraryFavorites.has(itemId);
   const label = isFavorite ? "Remove from Favorites" : "Add to Favorites";
+  const name = title ? (isFavorite ? `Remove ${title} from Favorites` : `Add ${title} to Favorites`) : label;
   return `
     <button
       class="rec-favorite-star ${isFavorite ? "is-favorite" : ""}"
       type="button"
       data-rec-favorite="${itemId}"
-      aria-label="${label}"
+      aria-label="${esc(name)}"
       title="${label}"
       aria-pressed="${isFavorite}"
     >${starIcon(isFavorite)}</button>`;
@@ -260,7 +263,7 @@ function whyContent(item) {
   if (isCurveball) uncertainty = foundFrom?.label === "Liked"
     ? `It comes from something you liked but didn't love, so it tests the edges of your taste. A miss is useful information.`
     : "This deliberately stretches beyond your strongest patterns, so a miss is useful information rather than a failure.";
-  else if (!pattern) uncertainty = "Tastemake does not have a stable named pattern behind this yet, so this is still an early test.";
+  else if (!pattern) uncertainty = "It’s based on your favorites and ratings so far, which may not capture everything you enjoy.";
   else if (pattern.status === "conditional") uncertainty = "This pattern has only held in some contexts, so this pick may expose where the boundary is.";
   else if (level === "Emerging") uncertainty = "This pattern is still early. One reaction could make Tastemake narrow it, strengthen it, or drop it.";
   else if (level === "Strong") uncertainty = "The pattern is strong, but Tastemake may still be wrong about which details of it matter most to you.";
@@ -268,18 +271,26 @@ function whyContent(item) {
 
   // The card already shows the reason; repeat it here only when the card had to cut it short.
   const truncated = truncateCopy(rationale, RATIONALE_MAX_CHARS) !== rationale;
+  // #321: the card shows about 90 characters of synopsis; here the stored text (which ingestion may already
+  // have shortened), so the context behind a pitch is one tap away. Left out when there is none.
+  const synopsis = storedSynopsis(item);
   return `
     <span class="why-kicker">${label}</span>
     ${truncated ? `<p><strong>Why this might work:</strong> ${esc(rationale)}</p>` : ""}
     ${foundFrom ? `<p><strong>Found from:</strong> ${esc(groundingText([foundFrom]))}, through the catalog's related titles.</p>` : ""}
     ${closest.length ? `<p><strong>Closest things you rated:</strong> ${esc(groundingText(closest))}</p>` : ""}
     ${pattern ? `<p><strong>Pattern being tested:</strong> ${esc(pattern.claim)}</p>` : ""}
+    ${synopsis ? `<p class="why-synopsis"><strong>Synopsis:</strong> ${esc(synopsis)}</p>` : ""}
     <p class="why-caveat"><strong>What could miss:</strong> ${esc(uncertainty)}</p>`;
 }
 
 function feedbackPopover(item, saved) {
   const path = experiencePath(item.id, saved);
   if (state.recommendationFeedbackItemId !== item.id || !path) return "";
+  // The saved reaction's follow-up questions belong to its own path. While Change shows the other path
+  // (Not tried on a Tried reaction, say), they're hidden until a new answer replaces the reaction; the
+  // saved answers stay until then, as in Browse.
+  const followUps = Boolean(saved) && path === pathForFeedback(saved);
 
 
   return `
@@ -291,10 +302,11 @@ function feedbackPopover(item, saved) {
         </div>
         <button type="button" class="rec-feedback-close" data-feedback-close="${item.id}" aria-label="Close feedback">×</button>
       </div>
+      ${saved ? renderPathSwitch(item, path) : ""}
       ${experienceChoices(item.id, saved)}
-      ${saved ? renderExperienceRefinement(item.id, item, saved) : ""}
-      ${saved ? seriesExperienceFeedback(item, saved) : ""}
-      ${saved ? renderBlindSpotPanel(item.id) : ""}
+      ${followUps ? renderExperienceRefinement(item.id, item, saved) : ""}
+      ${followUps ? seriesExperienceFeedback(item, saved) : ""}
+      ${followUps ? renderBlindSpotPanel(item.id) : ""}
     </div>`;
 }
 
@@ -336,7 +348,7 @@ function recommendationCard(item, index, total) {
 
         <div class="editorial-status-row">
           <span class="reaction-status-slot">${saved ? `<span class="reaction-stamp reaction-${saved.rating}">&#10003; ${reactionLabel(saved)}</span>` : ""}</span>
-          ${favoriteToggle(item.id)}
+          ${favoriteToggle(item.id, item.title)}
         </div>
 
         <div class="editorial-title-row">
@@ -412,6 +424,9 @@ function renderCardArea(items) {
     return Array.from({ length: 6 }, (_, index) => skeletonCard(index)).join("");
   }
   if (items.length) return items.map((item, index) => recommendationCard(item, index, items.length)).join("");
+  // #350: after a failed request the status above says what happened and offers Try again; this line is
+  // about the evidence, which isn't the problem.
+  if (state.aiSource === "error") return "";
   return `<div class="filter-empty recommendation-empty">No real catalog recommendations are available yet. Change your favorites or try another category.</div>`;
 }
 
@@ -453,7 +468,13 @@ function renderAiStatus() {
         </div>
       </div>`;
   }
-  if (!state.aiMessage) return "";
+  // Nov 3, 2026 (T2): no answer yet this session (a reload, or a return visit). The saved set still says
+  // where it came from, so a catalog set is labeled as such, with no claim about why.
+  if (!state.aiMessage) {
+    return setSource(activeRecommendations(state)) === "catalog"
+      ? `<p class="ai-inline-status ai-catalog-set">${CATALOG_SET_LINE}</p>`
+      : "";
+  }
   if (state.aiSource === "model") return "";
   if (state.aiSource === "catalog" && state.aiPaused) return `
     <aside class="ai-paused-notice" role="status">
@@ -461,7 +482,18 @@ function renderAiStatus() {
       <p>${AI_PAUSED_EXPLAINER} These picks come straight from the catalog, matched to your favorites. Your ratings still count, and they’ll shape AI picks when it’s back.</p>
     </aside>`;
   if (state.aiSource === "catalog") return `<p class="ai-inline-status">Using catalog matches for this set.</p>`;
-  return `<p class="ai-inline-status"><strong>Recommendations unavailable:</strong> Tastemake could not build a trustworthy set.</p>`;
+  // #350: a request that failed (an outage, a timeout or the per-visitor limit), not a judgment on the evidence.
+  const kept = activeRecommendations(state).length ? " The set below is the one you already had." : "";
+  return `
+    <div class="refresh-banner is-finished recommendation-request-error">
+      <div>
+        <span class="refresh-kicker">Recommendations didn’t load</span>
+        <p>${esc(state.aiMessage || "Tastemake couldn’t reach its recommendations just now.")}${kept}</p>
+      </div>
+      <div class="action-group">
+        <button class="button button-primary" type="button" data-action="retry-recommendations">Try again</button>
+      </div>
+    </div>`;
 }
 // #93/2026-09-28: the ongoing-loop action. Available as soon as a set exists — not gated behind
 // rating any card, let alone every card, in the current set (see canKeepDiscovering).
@@ -533,10 +565,22 @@ function renderNextSteps() {
 }
 
 // #6: a small strip of this week's releases that match the person's own experienced taste (no AI). Hidden
-// while loading and when nothing matches, so it never shows an empty frame.
+// while loading. Nov 2 (#317): when the releases loaded and none matched strongly enough, it says so rather
+// than disappearing. A failed or unconfigured source, or no experienced taste, still hides it: those are not
+// "no strong matches". Emptied by Save / Not interested, it hides too (those were matches).
 export function renderNewThisWeek() {
   const items = state.newReleases?.items ?? [];
-  if (state.aiStatus === "loading" || state.newReleases?.status !== "ready" || !items.length) return "";
+  if (state.aiStatus === "loading" || state.newReleases?.status !== "ready") return "";
+  if (!items.length) {
+    if (state.newReleases.outcome !== "no-strong-matches") return "";
+    return `
+      <section class="new-this-week new-this-week-empty" aria-labelledby="new-this-week-title">
+        <div class="new-this-week-head">
+          <h2 id="new-this-week-title">New this week for you</h2>
+          <p>No strong matches among the current new releases.</p>
+        </div>
+      </section>`;
+  }
   return `
       <section class="new-this-week" aria-labelledby="new-this-week-title">
         <div class="new-this-week-head">
