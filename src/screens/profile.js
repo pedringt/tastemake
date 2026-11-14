@@ -4,7 +4,7 @@ import { CONTEXT, NEEDS_REVIEW_TEXT, RECONFIRM_LABEL, RECONFIRM_TEXT, canReconfi
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
-import { displayLabel, domainById } from "../data/domains.js";
+import { displayLabel, domainById, visibleDomains } from "../data/domains.js";
 import { esc } from "../lib/html.js";
 import { libraryItems } from "../model/library.js";
 import { evidenceRecords } from "../model/evidence.js";
@@ -85,6 +85,20 @@ function domainScopeControls(item, record) {
 
 // Pattern corrections: what the user says here is user-confirmed and outranks inference, but it is not taste
 // evidence, so it never changes the confidence level (see src/model/statements.js).
+// #252: after "Yes", the user can say the pattern also holds in areas it has no evidence in yet.
+function alsoAppliesControls(item, said) {
+  // A pattern with no area yet (PR #329: reconfirming never invents one) has nothing to be "also" true beyond.
+  if (!(item.domains ?? []).length) return "";
+  const others = visibleDomains().filter((domain) => !(item.domains ?? []).includes(domain.id) && state.areas?.[domain.id] !== false);
+  if (!others.length) return "";
+  const chosen = said?.alsoAppliesTo ?? [];
+  return `
+            <div class="signal-say-group" role="group" aria-label="Is “${esc(item.title)}” also true for other areas?">
+              <span class="signal-say-label">Also true for</span>
+              ${others.map((domain) => `<button type="button" class="button button-secondary signal-say-button" data-also-pattern="${item.id}" data-also-domain="${domain.id}" aria-pressed="${chosen.includes(domain.id)}">${esc(domain.label)}</button>`).join("")}
+            </div>`;
+}
+
 // #358: after Yes, refining is optional and closed until asked for; Partly offers only the context and area
 // options that exist today (which part fits waits for #323); No and Not sure ask nothing more.
 function sayControls(item, said, record) {
@@ -116,7 +130,8 @@ function sayControls(item, said, record) {
               <span class="signal-say-label">How often is this true for you?</span>
               ${sayButton(item, "context", "broad", "Usually", said)}
               ${sayButton(item, "context", "some", "Depends", said)}
-            </div>` : ""}
+            </div>
+            ${alsoAppliesControls(item, said)}` : ""}
           </div>
         </div>
       </div>`;
@@ -178,6 +193,12 @@ function statementConsequence(said, field) {
   if (field === "scope") {
     const excluded = (said.excludedDomains ?? []).map(areaLabel);
     if (excluded.length) text = `Your Taste Profile won’t apply it to ${excluded.join(", ")}.`;
+  } else if (field === "also") {
+    // #252: passed to the picks prompt only (catalog fallback doesn't read it), and never evidence there.
+    const also = (said.alsoAppliesTo ?? []).map(areaLabel);
+    text = also.length
+      ? `When AI chooses your picks, it’s told this also holds for ${also.join(", ")}. That’s your word, not something you’ve tried there, so its level doesn’t change.`
+      : "No longer marked as true for another area.";
   } else {
     text = CONSEQUENCE[field]?.[said[field]] ?? "";
   }

@@ -7,6 +7,7 @@ import { favorites, followUpPool, hypotheses, recommendations } from "../qa/fixt
 import { typeById, visibleDomains } from "../../src/data/domains.js";
 import { readFileSync } from "node:fs";
 import { hydrateState } from "../../src/server/request-state.mjs";
+import { evidenceRecords } from "../../src/model/evidence.js";
 
 const catalogItems = [...recommendations, ...followUpPool];
 const byId = (id) => catalogItems.find((item) => item.id === id);
@@ -104,6 +105,19 @@ export const FIXTURES = [
       const play = catalogItems.find((i) => i.domains.includes("play") && !i.domains.includes("movies") && i.hypotheses.includes("H04"));
       const watch = catalogItems.find((i) => i.domains.includes("movies") && !i.domains.includes("play") && i.hypotheses.includes("H04"));
       react(s, watch, "loved"); if (play) react(s, play, "loved"); return s;
+    },
+    expect: { maxCrossDomain: "tentative" }
+  },
+  {
+    // Oct 27 (#252 part 1): "Also true for" is the user's word, not evidence. Picks may connect to it, but the
+    // Taste Profile must not treat it as support in that area.
+    id: "user-said-also-true", title: "The user said a pattern also holds for books",
+    purpose: "alsoAppliesTo lets picks reach another area, but never raises cross-domain support on its own.",
+    build: () => {
+      const s = emptyState();
+      catalogItems.filter((i) => i.domains.includes("movies") && i.hypotheses.includes("H04")).slice(0, 3).forEach((item) => react(s, item, "loved"));
+      s.patternStatements = [{ hypothesisId: "H04", label: hypotheses.find((h) => h.id === "H04").title, says: "accurate", alsoAppliesTo: ["read"] }];
+      return s;
     },
     expect: { maxCrossDomain: "tentative" }
   },
@@ -320,3 +334,53 @@ export const DISLIKE_DIRECTION_FIXTURES = [1, 2, 3, 4, 5].flatMap((n) => [
   { id: `friends-plain-${n}`, arm: "plain", title: `Friends disliked for "Humor" (run ${n})`, purpose: "Today's vocabulary", candidates: [], build: () => friendsState(["humor"]), expect: { friendsScope: true } },
   { id: `friends-direction-${n}`, arm: "direction", title: `Friends disliked for "Humor: not my style of humor" (run ${n})`, purpose: "The #335 direction", candidates: [], build: () => friendsState(["humor:not-my-style"]), expect: { friendsScope: true } }
 ]);
+
+
+// ---- #278: does each counter-example contradict its pattern? (node scripts/evals/run.mjs --suite counter) -------
+// Eleven Taste Profile calls, no picks: the default fixtures with real titles (the synthetic scale fixtures are left
+// out, since a grader can't judge "Synthetic Movie 12"), plus Paige's Example Profile fresh and refreshed. Every
+// counter item on every kept pattern is then graded (scripts/evals/counter-grader.mjs).
+export const COUNTER_FIXTURES = [
+  ...FIXTURES.filter((f) => !f.id.startsWith("scale-")).map((f) => ({ ...f, candidates: [] })),
+  ...SUPPORT_FIXTURES.filter((f) => f.id === "example-refresh" || f.id === "example-fresh")
+];
+
+// The Example Profile's stored patterns are real model output, so their counters are graded too (no profile call).
+// Paige judged one (Nov 6, #278): It Ends With Us, a contemporary romance, isn't evidence against mythic worlds.
+const IT_ENDS_WITH_US = "ev:openlibrary-book-OL18020194W";
+export function exampleProfileCounters() {
+  const state = hydrateState(exampleBackup);
+  return {
+    source: "Example Profile (stored)",
+    evidence: evidenceRecords(state),
+    hypotheses: exampleBackup.modelHypotheses.map((p) => ({ ...p, label: p.title, known: p.id === MYTHIC ? { [IT_ENDS_WITH_US]: "not-defensible" } : null }))
+  };
+}
+
+// Calibration: cases with a known answer, graded every run and reported apart from the share. The Mr. Mercedes
+// case is reconstructed from the #278 write-up (its claim and genres are approximations); the Stoner case is a
+// constructed clear pass, a dislike for exactly the pacing the pattern says the person enjoys.
+const calibrationRecord = (id, title, type, by, genres, kind, reasons = []) => ({
+  ref: `ev:cal-${id}`, itemId: `cal-${id}`, title, type, kind, facts: { creator: by, genres },
+  refinements: reasons.map(([dimension, direction]) => ({ dimension, direction: direction ?? null }))
+});
+export function counterCalibration() {
+  const evidence = [
+    calibrationRecord("piranesi", "Piranesi", "book", "Susanna Clarke", ["Fantasy", "Mystery"], "experienced-strong-positive"),
+    calibrationRecord("arrival", "Arrival", "movie", null, ["Science Fiction", "Drama", "Mystery"], "experienced-strong-positive"),
+    calibrationRecord("solaris", "Solaris", "book", "Stanisław Lem", ["Science fiction"], "experienced-positive"),
+    calibrationRecord("moon", "Moon", "movie", null, ["Science Fiction", "Drama"], "experienced-positive"),
+    calibrationRecord("mr-mercedes", "Mr. Mercedes", "tv", null, ["Crime", "Drama", "Mystery"], "experienced-negative", [["Pacing"]]),
+    calibrationRecord("gilead", "Gilead", "book", "Marilynne Robinson", ["Literary fiction"], "experienced-strong-positive", [["Pacing", "Slow burn"]]),
+    calibrationRecord("remains", "The Remains of the Day", "book", "Kazuo Ishiguro", ["Literary fiction"], "experienced-strong-positive"),
+    calibrationRecord("stoner", "Stoner", "book", "John Williams", ["Literary fiction", "Academia"], "experienced-negative", [["Pacing", "Too slow"]])
+  ];
+  return {
+    source: "calibration",
+    evidence,
+    hypotheses: [
+      { label: "Cerebral speculative worlds with mystery at the core", claim: "Drawn to speculative stories built around a central mystery that rewards close attention.", evidence: ["ev:cal-piranesi", "ev:cal-arrival", "ev:cal-solaris", "ev:cal-moon"], counter: ["ev:cal-mr-mercedes"], known: { "ev:cal-mr-mercedes": "not-defensible" } },
+      { label: "Quiet, patiently paced literary novels", claim: "Enjoys quiet literary novels that take their time with an inner life.", evidence: ["ev:cal-gilead", "ev:cal-remains"], counter: ["ev:cal-stoner"], known: { "ev:cal-stoner": "defensible" } }
+    ]
+  };
+}
