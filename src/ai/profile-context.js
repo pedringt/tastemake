@@ -1,4 +1,5 @@
 import { typeById } from "../data/domains.js";
+import { TMDB_GENRES } from "../catalog/synopsis.mjs";
 
 // The Taste Profile prompt's CONTEXT block, compacted the way #130 compacted the recommendations prompt.
 // The profile call used to send every experienced evidence record whole: a long `ev:<provider id>` ref
@@ -37,6 +38,11 @@ function compactGenres(genres = []) {
   }).slice(0, MAX_PROMPT_GENRES);
 }
 
+// #326/#318 (Nov 13): film and TV genres are stored as TMDb ids ("35", "99") and used to reach the model bare,
+// so "Documentary" or "Sci-fi & fantasy" was opaque to it. Film and TV rows send them as names; book and game
+// words are untouched. (Tested eval-only on Nov 7 as A1: The Leftovers stopped landing under a horror pattern.)
+const genreName = (genre) => (/^\d+$/.test(String(genre).trim()) ? (TMDB_GENRES[Number(genre)] ?? String(genre)) : genre);
+
 // One row: short id, title, then only what is known. Keys are short and explained in the prompt:
 // t title, type (only when the domain group does not imply it), y year, by creator, g genres,
 // r refinements, u:1 when the item's facts are unresolved (the model must not fill them in).
@@ -49,7 +55,8 @@ export function compactRow(row, id) {
   if (facts.resolved !== true) out.u = 1;
   if (facts.year) out.y = facts.year;
   if (facts.creator) out.by = facts.creator;
-  const genres = compactGenres(facts.genres);
+  const screen = domains.length > 0 && domains.every((d) => d === "movies" || d === "tv");
+  const genres = compactGenres(screen ? (facts.genres ?? []).map(genreName) : facts.genres);
   if (genres.length) out.g = genres;
   const refinements = (row.refinements ?? []).map((entry) => (typeof entry === "string" ? entry : entry?.id)).filter(Boolean);
   if (refinements.length) out.r = [...new Set(refinements)];
