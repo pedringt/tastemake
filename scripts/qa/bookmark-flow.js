@@ -206,9 +206,19 @@ export async function run() {
   check("confirming a pattern shows what it changes",/What this changes/.test($('[data-profile-pattern="ai-structured-weirdness"]')?.textContent||""));
   await act('[data-statement-pattern="ai-structured-weirdness"][data-statement-field="says"][data-statement-value="not-me"]');
   check("correction stored on generated pattern",state.patternStatements.some(s=>s.hypothesisId==="ai-structured-weirdness"&&s.says==="not-me"));
+  // #358: the acknowledgement shows where the answer was given; Done moves it to Corrected patterns.
+  check("rejecting a pattern acknowledges it in place",/Removed from your Taste Profile/.test($('[data-profile-pattern="ai-structured-weirdness"]')?.textContent||""));
+  await act('[data-disclosure-pattern="ai-structured-weirdness"][data-disclosure-action="done"]');
   check("rejected pattern leaves the active profile list",!$(`[data-profile-pattern="ai-structured-weirdness"].signal-row`));
   check("rejected pattern moves into corrected patterns",Boolean($(`.corrected-patterns [data-profile-pattern="ai-structured-weirdness"]`)));
   check("rejecting a pattern restores focus without throwing", Boolean(document.activeElement?.closest?.('[data-profile-pattern="ai-dark-playfulness"]') || document.activeElement?.closest?.(".corrected-patterns")));
+  // #358: a corrected pattern reads "Not me · Change"; Change opens its controls in place and Done returns focus to Change.
+  check("corrected pattern shows the Not me summary",/Not me/.test($('.corrected-patterns [data-profile-pattern="ai-structured-weirdness"] .signal-summary-label')?.textContent||""));
+  $(".corrected-patterns").open=true;
+  await act('.corrected-patterns [data-disclosure-pattern="ai-structured-weirdness"][data-disclosure-action="change"]');
+  check("Change on a corrected pattern focuses its answer",document.activeElement?.matches?.('[data-statement-pattern="ai-structured-weirdness"][data-statement-value="not-me"][aria-pressed="true"]'),document.activeElement?.outerHTML?.slice(0,120));
+  await act('.corrected-patterns [data-disclosure-pattern="ai-structured-weirdness"][data-disclosure-action="done"]');
+  check("Done keeps Corrected patterns open with focus on Change",$(".corrected-patterns")?.open&&document.activeElement?.matches?.('[data-disclosure-pattern="ai-structured-weirdness"][data-disclosure-action="change"]'),document.activeElement?.outerHTML?.slice(0,120));
 
   // Tried becomes a useful memory view, not just a storage bucket.
   await act('[data-step-jump="library"]');

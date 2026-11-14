@@ -18,7 +18,7 @@ import { libraryItemById, migrateStarterFavorites } from "./model/library.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { favoritesDestination } from "./model/library.js";
 import { renderBrowse } from "./screens/browse.js";
-import { renderProfile } from "./screens/profile.js";
+import { closePattern, noteAnswer, openPattern, renderProfile, resetDisclosure, toggleRefine } from "./screens/profile.js";
 import { renderNewThisWeek, renderRecommendations } from "./screens/recommendations.js";
 import { actOnNewRelease, maybeLoadNewReleases } from "./ai/new-releases.js";
 import { detailDescription, renderDetailMeta, renderLibrary } from "./screens/library.js";
@@ -26,7 +26,7 @@ import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/clie
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
 import { renderMine } from "./screens/mine.js";
-import { reconfirmPattern, setStatement, toggleDomainExclusion } from "./model/statements.js";
+import { reconfirmPattern, setStatement, shownContext, statementFor, toggleDomainExclusion } from "./model/statements.js";
 import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
@@ -534,7 +534,9 @@ function renderPreservingPatternPosition(patternId, focusSelector = null) {
   updateStepper();
 
   const same = document.querySelector(selector);
-  if (same?.classList.contains("signal-row") && beforeTop !== undefined) {
+  // #358: a corrected pattern's Change opens its controls in place under Corrected patterns.
+  const stayedCorrected = before?.classList.contains("corrected-pattern-row") && same?.classList.contains("corrected-pattern-row");
+  if ((same?.classList.contains("signal-row") || stayedCorrected) && beforeTop !== undefined) {
     const afterTop = same.getBoundingClientRect().top;
     window.scrollBy({ top: afterTop - beforeTop, left: 0, behavior: "auto" });
     restoreFocus(focusSelector, same.querySelector("button") || same);
@@ -689,6 +691,7 @@ app.addEventListener("click", async (event) => {
     const { statementPattern, statementField, statementValue } = sayButton.dataset;
     const message = setStatement(state, statementPattern, statementField, statementValue);
     if (!message) return;
+    noteAnswer(statementPattern, statementField);
     renderPreservingPatternPosition(statementPattern, focusSelector);
     announce(message);
     return;
@@ -711,13 +714,33 @@ app.addEventListener("click", async (event) => {
     const { scopePattern, scopeDomain } = scopeButton.dataset;
     const message = toggleDomainExclusion(state, scopePattern, scopeDomain);
     if (!message) return;
+    noteAnswer(scopePattern, "scope");
     renderPreservingPatternPosition(scopePattern, focusSelector);
     announce(message);
     return;
   }
 
+  // #358: Change reopens a pattern's answer controls (with "Refine this" open when a refinement was chosen),
+  // Refine this shows or hides the optional Yes follow-ups, and Done collapses the pattern to its summary.
+  const disclosureButton = event.target.closest("[data-disclosure-pattern]");
+  if (disclosureButton) {
+    const { disclosurePattern: id, disclosureAction: action } = disclosureButton.dataset;
+    const said = statementFor(state, id);
+    if (action === "change") openPattern(id, { refine: Boolean(said?.weight || shownContext(said)) });
+    else if (action === "refine") toggleRefine(id);
+    else if (action === "done") closePattern(id);
+    else return;
+    const target = action === "change"
+      ? `[data-statement-pattern="${id}"][data-statement-field="says"][aria-pressed="true"]`
+      : action === "done" ? `[data-disclosure-pattern="${id}"][data-disclosure-action="change"]` : focusSelector;
+    renderPreservingPatternPosition(id, target);
+    if (action === "done" && said?.says === "not-me") announce(`${said.label}: moved to Corrected patterns.`);
+    return;
+  }
+
   const viewButton = event.target.closest("[data-profile-view]");
   if (viewButton) {
+    resetDisclosure();
     state.profileView = viewButton.dataset.profileView;
     render();
     restoreFocus(focusSelector);
