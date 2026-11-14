@@ -46,6 +46,8 @@ function domainScopeControls(item, record) {
 // evidence, so it never changes the confidence level (see src/model/statements.js).
 // #252: after "Yes", the user can say the pattern also holds in areas it has no evidence in yet.
 function alsoAppliesControls(item, said) {
+  // A pattern with no area yet (PR #329: reconfirming never invents one) has nothing to be "also" true beyond.
+  if (!(item.domains ?? []).length) return "";
   const others = visibleDomains().filter((domain) => !(item.domains ?? []).includes(domain.id) && state.areas?.[domain.id] !== false);
   if (!others.length) return "";
   const chosen = said?.alsoAppliesTo ?? [];

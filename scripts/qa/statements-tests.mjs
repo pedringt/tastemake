@@ -135,6 +135,12 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
   eq("changing the answer away from 'Yes' clears it", alsoAppliesToFor(state, books.id).length, 0);
   setStatement(state, books.id, "says", "partial");
   eq("a statement left with nothing is removed", activeStatements(state).length, 0);
+
+  // PR #329 left patterns with no area after reconfirming; "also" has nothing to extend there.
+  const unscoped = { id: "ai-none", title: "No area yet", claim: "Still finding where this shows up.", domains: [] };
+  state.modelHypotheses.push(unscoped);
+  setStatement(state, unscoped.id, "says", "accurate");
+  eq("a pattern with no area yet can't be marked true for another", toggleAlsoApplies(state, unscoped.id, "play"), null);
 }
 
 // ---- #19: Tastebreak is offered for items a Taste Profile pattern cites (Oct 20) -------------------

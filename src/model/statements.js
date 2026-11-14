@@ -142,7 +142,7 @@ export function alsoAppliesToFor(state, hypothesisId) {
 export function toggleAlsoApplies(state, hypothesisId, domainId) {
   const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
   const entry = statementFor(state, hypothesisId);
-  if (!pattern || entry?.says !== "accurate" || (pattern.domains ?? []).includes(domainId)) return null;
+  if (!pattern || entry?.says !== "accurate" || !(pattern.domains ?? []).length || pattern.domains.includes(domainId)) return null;
   entry.alsoAppliesTo ??= [];
   const adding = !entry.alsoAppliesTo.includes(domainId);
   entry.alsoAppliesTo = adding ? [...entry.alsoAppliesTo, domainId] : entry.alsoAppliesTo.filter((d) => d !== domainId);
