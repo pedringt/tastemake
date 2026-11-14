@@ -1,0 +1,55 @@
+name: floor-eval-311
+
+# PAID, eval only (#311, approved by Paige Nov 13: about 24 calls). Runs only on a push to this eval
+# branch, never on main or a PR. Caps are enforced in scripts/evals/floor-eval-311.mjs: 12 calls and
+# $0.025 per arm. Needs the repository secrets ANTHROPIC_API_KEY and TASTEMAKE_TMDB_TOKEN.
+
+on:
+  push:
+    branches: [eval/311-floor-actions]
+
+concurrency:
+  group: floor-eval-311
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: runner
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: before
+      # "after" is main with #311 merged in, so the only difference between the arms is the floor.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: after
+          fetch-depth: 0
+      - name: Merge related-quality-floor into main for the after arm
+        working-directory: after
+        run: |
+          git -c user.name=eval -c user.email=eval@localhost merge --no-edit origin/related-quality-floor
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: |
+          for d in runner before after; do (cd "$d" && npm ci --no-audit --no-fund); done
+      - name: Run the before/after eval (paid, capped)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TASTEMAKE_TMDB_TOKEN: ${{ secrets.TASTEMAKE_TMDB_TOKEN }}
+        run: node runner/scripts/evals/floor-eval-311.mjs --before before --after after --max-calls 12 --max-usd 0.025 --yes
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: floor-eval-311
+          path: floor-eval-311.*
