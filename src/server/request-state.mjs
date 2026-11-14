@@ -16,6 +16,8 @@ export function hydrateState(raw = {}) {
     blindSpots: raw.blindSpots ?? {},
     blindSpotDrafts: raw.blindSpotDrafts ?? {},
     patternStatements: raw.patternStatements ?? [],
+    // #334: only present while a pattern is "Not me" (src/ai/live-client.js).
+    ...(Array.isArray(raw.correctionPatterns) ? { correctionPatterns: raw.correctionPatterns.slice(0, 40) } : {}),
     exclusions: Array.isArray(raw.exclusions) ? raw.exclusions.slice(0, 100) : [],
     areas: raw.areas ?? {},
     curveball: raw.curveball !== false,

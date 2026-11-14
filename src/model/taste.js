@@ -48,8 +48,9 @@ export function exonerated(state, feedback, patternId) {
   return !spot.hypotheses.some((id) => hypothesisMatches([patternId], id) || hypothesisMatches([id], patternId));
 }
 
-// Not called anywhere (Nov 7): ranking doesn't read pattern answers (#334). Kept as the intended scaling for
-// that work: "not really me" = 0 (left out), "matters a lot" = 1.5, "matters a little" = 0.5, none = 1.
+// Not called anywhere (Nov 7). #334 took a different route: "not me" down-ranks matching titles by their
+// catalog labels (src/ai/corrections.js), and how much a pattern matters doesn't change ranking. Kept as the
+// scaling once considered: "not really me" = 0 (left out), "matters a lot" = 1.5, "matters a little" = 0.5, none = 1.
 function statementFactor(state, hypothesisId) {
   const s = (state.patternStatements ?? []).find((x) => hypothesisMatches([x.hypothesisId], hypothesisId) || hypothesisMatches([hypothesisId], x.hypothesisId));
   if (!s) return 1;

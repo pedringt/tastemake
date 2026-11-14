@@ -62,8 +62,10 @@ function promptEvidencePriority(record) {
 // Oct 27: the six offered are the best fits for everything the person has rated (src/ai/taste-score.js),
 // not the first six retrieval returned. With a surprise slot, it goes to a candidate found from a Liked item.
 // Exported so the stress eval offers exactly what production does.
-export function offeredCandidates(ctx, count = 6, trace = null) {
-  return chooseCandidates(ctx.candidates, ctx.evidence, { count, mode: ctx.recommendationFilter, curveball: ctx.curveball, trace });
+// #334: titles matching a "Not me" pattern are ordered behind the rest (ctx.correctionConflict); `outcome`
+// gets surpriseDropped when every surprise candidate conflicted.
+export function offeredCandidates(ctx, count = 6, trace = null, outcome = null) {
+  return chooseCandidates(ctx.candidates, ctx.evidence, { count, mode: ctx.recommendationFilter, curveball: ctx.curveball, conflicts: ctx.correctionConflict, outcome, trace });
 }
 
 export function selectPromptEvidence(ctx, limit = MAX_PROMPT_EVIDENCE) {
@@ -219,9 +221,11 @@ export function normalizeModelPicks(compact) {
 // left a gap in the visible rank sequence for the real (non-curveball) picks, e.g. 1, [curveball], 3
 // instead of 1, [curveball], 2. rank is now a running counter over non-curveball picks only, so it
 // always reads as a dense 1..N regardless of where the curveball lands in the array.
-function clientPicks(validated) {
+// #334: a pick the model chose as its exploratory pick stays in the set but is not shown as a Surprise when
+// it matches a pattern the person said is not them (the prompt is unchanged, so the model can't know).
+function clientPicks(validated, conflicts = null) {
   let rank = 0;
-  return validated.map((pick) => ({
+  return validated.map((pick) => (pick.kind === "curveball" && conflicts?.(pick.item) ? { ...pick, kind: "pick" } : pick)).map((pick) => ({
     ...pick.item,
     rank: pick.kind === "curveball" ? null : (rank += 1),
     fit: pick.kind === "curveball" ? "Exploratory fit" : "Promising fit",
@@ -243,6 +247,8 @@ function anchorFor(item, state) {
 // #257: the fallback's curveball slot follows the same rule as the model's (src/catalog/adult-content.mjs):
 // an explicitly adult-tagged item only when the user has tried that kind of thing. Otherwise the next
 // eligible candidate takes the slot, or the set has no curveball.
+// #334: the same for a title matching a pattern the person said is not them (`conflicts`): it can be offered,
+// but never as the Surprise.
 // #252 part 2: a bridge candidate in the fallback says it's a test and names only the genres both share.
 const BRIDGE_KIND = { book: "book", movie: "film", tv: "show", game: "game" };
 const genreList = (words) => (words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
@@ -253,14 +259,15 @@ export function bridgeFallbackReason(item) {
   return `A ${kind} test: shares ${genreList(words)} with ${item.relatedTo}.`;
 }
 
-function catalogPicks(candidates, state, evidence = [], pool = candidates) {
+function catalogPicks(candidates, state, evidence = [], pool = candidates, conflicts = null) {
   const chosen = candidates.slice(0, 6);
   let curveballAllowed = state.curveball !== false && chosen.length >= 6;
   if (curveballAllowed && isAdultTagged(chosen[5]) && !triedAdultTagged(evidence)) {
-    const replacement = pool.find((item) => !isAdultTagged(item) && !chosen.some((picked) => picked.id === item.id));
+    const replacement = pool.find((item) => !isAdultTagged(item) && !conflicts?.(item) && !chosen.some((picked) => picked.id === item.id));
     if (replacement) chosen[5] = replacement;
     else curveballAllowed = false;
   }
+  if (curveballAllowed && conflicts?.(chosen[5])) curveballAllowed = false;
   return chosen.map((item, index) => {
     const curveball = curveballAllowed && index === chosen.length - 1;
     const basis = item.bridge ? bridgeFallbackReason(item) : fallbackReason(item, anchorFor(item, state), { index, curveball });
@@ -276,11 +283,11 @@ function catalogPicks(candidates, state, evidence = [], pool = candidates) {
   });
 }
 
-function fallbackPayload(candidates, state, reason, meta = {}, pool = candidates) {
+function fallbackPayload(candidates, state, reason, meta = {}, pool = candidates, conflicts = null) {
   return {
     source: "catalog",
     reason,
-    picks: catalogPicks(candidates, state, evidenceRecords(state), pool),
+    picks: catalogPicks(candidates, state, evidenceRecords(state), pool, conflicts),
     meta: { ...meta, paidCallMade: meta.paidCallMade ?? false }
   };
 }
@@ -362,7 +369,8 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
   logStage("buildContext", Date.now() - started);
   if (trace) trace.evidence = ctx.evidence ?? [];
 
-  const candidates = offeredCandidates(ctx, 6, trace);
+  const shortlist = {};
+  const candidates = offeredCandidates(ctx, 6, trace, shortlist);
   if (!candidates.length) {
     // Real bug (2026-09-29): retrieveCatalogCandidates narrows anchor selection to only evidence
     // already tagged with the active domain filter (related.mjs's `evidenceItems` filter) before it
@@ -389,7 +397,11 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
   // clientPicks' rank/fit) only ever expects the first 6 to have been offered. promptCtx is the same
   // context with candidates capped to the actual offered set, used everywhere the model's answer is
   // built or checked.
-  const promptCtx = { ...ctx, candidates };
+  // #334: when every surprise candidate matched a "Not me" pattern, this set has no surprise, for the model
+  // (curveball:false, the prompt's existing switch) and the fallback alike.
+  const promptCtx = { ...ctx, candidates, ...(shortlist.surpriseDropped ? { curveball: false } : {}) };
+  const setState = shortlist.surpriseDropped ? { ...state, curveball: false } : state;
+  const fallback = (reason, meta) => fallbackPayload(candidates, setState, reason, meta, ctx.candidates, ctx.correctionConflict);
   if (trace) trace.promptEvidence = selectPromptEvidence(promptCtx).map((record) => record.ref);
   const offeredDomains = {};
   for (const candidate of candidates) {
@@ -398,7 +410,7 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
   logStage("candidateDomains", 0, { domains: offeredDomains });
 
   const config = liveConfig(env);
-  if (!config.enabled) return fallbackPayload(candidates, state, "live AI is not enabled", { catalogCandidates: retrieved.length }, ctx.candidates);
+  if (!config.enabled) return fallback("live AI is not enabled", { catalogCandidates: retrieved.length });
   const recommendationModel = env.TASTEMAKE_RECOMMENDATIONS_MODEL || "claude-sonnet-5-5";
   const recommendationEffort = env.TASTEMAKE_RECOMMENDATIONS_EFFORT || "low";
 
@@ -463,15 +475,15 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
       // contract. Count this separately from transport/model failures so Project Health can show
       // a true fallback rate.
       recordAiCallInBackground({ ...aiMetric, outcome: "validation_fallback" }, { env });
-      return fallbackPayload(candidates, state, result.reason || "model output did not pass validation", {
+      return fallback(result.reason || "model output did not pass validation", {
         model: model.model,
         usage: model.usage,
         paidCallMade: true,
         catalogCandidates: retrieved.length
-      }, ctx.candidates);
+      });
     }
     recordAiCallInBackground({ ...aiMetric, outcome: "success" }, { env });
-    const picks = clientPicks(result.items);
+    const picks = clientPicks(result.items, ctx.correctionConflict);
     // Real report (2026-09-28): "after a few rounds I'm getting mostly books now" -- the domain-spread
     // nudge (#153) only shapes what the model is told to do; nothing has ever logged what it actually
     // picked. Sanitized domain counts only (never titles/ids), so a real skew is visible without
@@ -501,13 +513,13 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
       ...aiErrorFields(error)
     }, { env });
     console.error("[tastemake-ai]", reason, error?.status ?? "", error?.anthropicType ?? "", error?.anthropicDetail ?? error?.message ?? "");
-    return fallbackPayload(candidates, state, reason, {
+    return fallback(reason, {
       ...(budgetPaused ? { budgetPaused: true } : {}),
       paidCallMade: Boolean(error?.paidCallMade),
       errorStatus: error?.status ?? null,
       errorType: error?.anthropicType ?? (timedOut ? "timeout" : "transport"),
       catalogCandidates: retrieved.length
-    }, ctx.candidates);
+    });
   }
 }
 
