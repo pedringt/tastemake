@@ -106,6 +106,16 @@ async function ensureWriteSchema(runQuery) {
   await runQuery("create index if not exists idx_ai_call_metrics_operation_outcome on ai_call_metrics (operation, outcome, occurred_at desc)");
 }
 
+// Nov 13: the schema statements (about 9 database round trips) ran before every insert. Now they run once
+// per function instance for each database client; a failed setup is forgotten so the next write retries it.
+const schemaReady = new WeakMap();
+function schemaReadyFor(key, runQuery) {
+  if (!schemaReady.has(key)) {
+    schemaReady.set(key, ensureWriteSchema(runQuery).catch((error) => { schemaReady.delete(key); throw error; }));
+  }
+  return schemaReady.get(key);
+}
+
 export async function recordAiCall(metric, { env = process.env, query: queryImpl } = {}) {
   if (!queryImpl && !isConfigured(env)) return false;
   const runQuery = queryImpl ?? ((text, params) => defaultQuery(text, params, { env }));
@@ -124,7 +134,7 @@ export async function recordAiCall(metric, { env = process.env, query: queryImpl
   const errorStatus = failed && Number.isInteger(metric?.errorStatus) && metric.errorStatus >= 100 && metric.errorStatus <= 599 ? metric.errorStatus : null;
   const errorType = failed && metric?.errorType != null ? (ERROR_TYPE.test(String(metric.errorType)) ? String(metric.errorType) : "other") : null;
 
-  await ensureWriteSchema(runQuery);
+  await schemaReadyFor(queryImpl ?? defaultQuery, runQuery);
   await runQuery(
     `insert into ai_call_metrics
       (operation, outcome, model, duration_ms, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, estimated_cost_usd, pricing_as_of, error_status, error_type)
