@@ -174,7 +174,12 @@ check("cost is recorded from usage", first.costUsd > 0);
 const { markdown, metrics } = buildReport({ calls: liveRecords, headers: [] });
 check("report has a quality-vs-size table", markdown.includes("## Quality vs size: claude-haiku-5-5"));
 check("report lists what needs human review", markdown.includes("## Needs human review"));
-check("report flags the template the fake model repeated", metrics["claude-haiku-5-5"].bySize["10"].wording.sharedLong4 === 1);
+// Nov 14: the product now replaces repeated lines (src/ai/why-lines.js), so the visitor's lines no longer share
+// the template; the model's own sentence stays in rawWhy, and the report counts the replacements.
+const rawRecords = liveRecords.map((r) => ({ ...r, picks: r.picks.map((p) => ({ ...p, why: p.rawWhy })) }));
+check("report flags the template the fake model repeated (model lines)", buildReport({ calls: rawRecords, headers: [] }).metrics["claude-haiku-5-5"].bySize["10"].wording.sharedLong4 === 1);
+check("the repeated template is replaced in what a visitor sees", metrics["claude-haiku-5-5"].bySize["10"].wording.sharedLong4 < 1 && first.picks.slice(1).every((p) => p.whyReplaced?.includes("repeat")), JSON.stringify(first.picks.map((p) => p.whyReplaced ?? null)));
+check("report counts replaced why lines", markdown.includes("| Why lines replaced |") && markdown.includes("(repeat: "));
 eq("pick records flatten every kept pick", pickRecords(liveRecords).length, liveRecords.reduce((a, r) => a + r.picks.length, 0));
 const sample = reviewSample(liveRecords, { perProfile: 2 });
 check("review sample has picks per profile", sample.length === 3 && sample.every((g) => g.picks.length <= 2), JSON.stringify(sample.map((g) => g.profile)));
