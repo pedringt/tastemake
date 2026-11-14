@@ -21,6 +21,9 @@ on:
       max_calls:
         description: Refuse to start above this many planned model calls
         default: "150"
+      max_usd:
+        description: Spend cap per run (run.mjs --max-usd); each call's worst case is checked against it
+        default: "0.10"
 
 concurrency:
   group: ai-eval
@@ -69,6 +72,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MODELS: ${{ inputs.models }}
           REPEATS: ${{ inputs.repeats }}
+          MAX_CALLS: ${{ inputs.max_calls }}
+          MAX_USD: ${{ inputs.max_usd }}
         run: |
           set -uo pipefail
           if [ -z "${ANTHROPIC_API_KEY:-}" ]; then echo "The ANTHROPIC_API_KEY repository secret is not set."; exit 1; fi
@@ -77,7 +82,7 @@ jobs:
             model="$(echo "$raw" | tr -d '[:space:]')"
             for i in $(seq 1 "$REPEATS"); do
               # A failed rule check exits 1; keep going so the comparison still gets written.
-              node scripts/evals/run.mjs --producer live --model "$model" --tag "$model-run$i" --yes || true
+              node scripts/evals/run.mjs --producer live --model "$model" --tag "$model-run$i" --yes --max-usd "$MAX_USD" --max-calls "$MAX_CALLS" || true
             done
           done
 
