@@ -1,9 +1,12 @@
 #!/usr/bin/env node
-// #318 (Nov 13): what a Taste Profile refresh keeps.
+// #318 (Nov 13): two software fixes for what a Taste Profile refresh keeps.
 //   1. Support filing (src/ai/support-filing.js): Resident Evil 7 and BioShock came back under "Mythic and
 //      fantastical worlds" on every refresh, re-cited by the model itself (Nov 6: 10/10; Nov 13: 6/6 with a
 //      re-check prompt). A support on a cross-media pattern that shows nothing of its label and already belongs
 //      to a pattern of its own medium on another subject is taken off, never emptying a medium.
+//   2. Narrowing a confirmed pattern (src/ai/validate.js): when a refresh cites nothing in one of a confirmed
+//      pattern's areas, the narrower version used to be rejected and the stored one put back, wrong supports
+//      included. It is now kept and flagged "Needs another look" with the areas it lost, until the user confirms.
 // Checked on the Example Profile fixtures, then on cases built to catch over-dropping (the Nov 7 deterministic fit
 // check flagged 23-77% of fitting supports). Free, no browser, no model call.
 //
@@ -22,7 +25,8 @@ globalThis.document = { documentElement: { dataset: {} }, querySelector: () => n
 const { buildContext } = await import("../../src/ai/context.js");
 const { normalizeHypothesisResponse, preserveExistingHypotheses, settleConfirmedHypotheses, validateHypotheses } = await import("../../src/ai/validate.js");
 const { fileSupports, labelStems } = await import("../../src/ai/support-filing.js");
-const { markNeedsReview, mergeHypotheses, normalizeHypothesis } = await import("../../src/ai/hypothesis-profile.js");
+const { markNeedsReview, mergeHypotheses, normalizeHypothesis, refreshProfileHypotheses } = await import("../../src/ai/hypothesis-profile.js");
+const { NEEDS_REVIEW, NEEDS_REVIEW_TEXT, canReconfirm, needsReviewText, patternDisplayStatus, reconfirmPattern, statementFor } = await import("../../src/model/statements.js");
 const { SUPPORT_FIXTURES } = await import("../evals/fixtures.mjs");
 
 const { check, eq, finish } = createSuite("support filing tests");
@@ -35,7 +39,7 @@ function refresh(state, hypotheses) {
   const preserved = preserveExistingHypotheses(normalizeHypothesisResponse({ hypotheses }, ctx), ctx, state.modelHypotheses);
   const validated = settleConfirmedHypotheses(validateHypotheses(preserved, ctx), ctx, state.modelHypotheses);
   const next = validated.accepted.map((h, i) => normalizeHypothesis(h, i, state));
-  const merged = markNeedsReview(mergeHypotheses(state.modelHypotheses, next, { statements: state.patternStatements, activeLimit: 12, preserveExistingActive: validated.rejected.length > 0 }), validated.needsReview);
+  const merged = markNeedsReview(mergeHypotheses(state.modelHypotheses, next, { statements: state.patternStatements, activeLimit: 12, preserveExistingActive: validated.rejected.length > 0 }), validated.needsReview, validated.narrowed);
   return { ctx, preserved, validated, merged };
 }
 const titleOf = (ctx) => (ref) => ctx.evidence.find((row) => row.ref === ref)?.title;
@@ -113,6 +117,77 @@ eq("label words that name a medium or carry no meaning are ignored", labelStems(
   // A support with no genres can't be judged and stays.
   const bare = { ...ctx, evidence: ctx.evidence.map((row) => (row.title === "BioShock" ? { ...row, facts: { ...row.facts, genres: [] } } : row)) };
   check("a support with no genres stays", !fileSupports(normalizeHypothesisResponse({ hypotheses: base }, bare).hypotheses, bare).refiled.some((r) => r.ref === ref("BioShock")));
+}
+
+// ---- 3. a confirmed pattern narrowed by a refresh ------------------------------------------------------------
+{
+  // The model re-checks the confirmed mythic pattern and cites only books: same id, label and claim.
+  const state = fixture("example-refresh-confirmed").build();
+  const storedMythic = state.modelHypotheses.find((h) => MYTHIC.test(h.title));
+  const booksOnly = state.modelHypotheses.map(asProposal).map((h) => (h.id === storedMythic.id ? { ...h, evidence: h.evidence.filter((r) => /openlibrary|book/.test(r)) } : h));
+  const { ctx, validated, merged } = refresh(state, booksOnly);
+  const kept = validated.accepted.find((h) => h.id === storedMythic.id);
+  eq("narrowed: the narrower version is accepted, books only", kept?.domains.join(","), "read");
+  check("narrowed: the stored game supports are not put back", !titles(ctx, kept).some((t) => /Resident Evil 7|^BioShock$|Obra Dinn/.test(t)));
+  eq("narrowed: label and claim word for word", `${kept?.label}|${kept?.claim}`, `${storedMythic.title}|${storedMythic.claim}`);
+  eq("narrowed: listed for review", validated.needsReview.join(","), storedMythic.id);
+  eq("narrowed: with the area it lost", JSON.stringify(validated.narrowed), JSON.stringify([{ id: storedMythic.id, areas: ["play"] }]));
+  const shown = merged.find((p) => p.id === storedMythic.id);
+  eq("client: flagged Needs another look", shown?.evidenceStatus, NEEDS_REVIEW);
+  eq("client: remembers the area it lost", shown?.narrowedAreas?.join(","), "play");
+  eq("client: the display status is the flag", patternDisplayStatus(shown, statementFor(state, shown)).kind, "needs-review");
+  const text = needsReviewText(shown);
+  check("client: the explanation names what it lost and what it covers now", text.includes("Games") && text.includes("now covers Books only"));
+  check("client: not the removed-evidence explanation", text !== NEEDS_REVIEW_TEXT);
+  eq("client: other patterns aren't flagged", merged.filter((p) => p.evidenceStatus === NEEDS_REVIEW).length, 1);
+  {
+    const { state: app } = await import("../../src/state.js");
+    const { renderProfile } = await import("../../src/screens/profile.js");
+    Object.assign(app, { feedbackByRecommendation: state.feedbackByRecommendation, patternStatements: state.patternStatements, modelHypotheses: merged, profileView: "list" });
+    const html = renderProfile();
+    const at = html.indexOf(`data-profile-pattern="${storedMythic.id}"`);
+    const row = html.slice(at, html.indexOf("</article>", at));
+    check("profile: the narrowed row shows Needs another look", row.includes(">Needs another look</span>"), row.slice(0, 400));
+    check("profile: and explains the narrowing", row.includes("found nothing in Games") && row.includes("now covers Books only"), row.slice(0, 1600));
+    check("profile: with a way to confirm it", row.includes(`data-reconfirm-pattern="${storedMythic.id}"`) && row.includes("If it still describes you without Games"));
+  }
+
+  // The flag stays through the next refresh (which checks the narrower version, and would pass), until confirmed.
+  const after = { ...state, modelHypotheses: merged };
+  const realFetch = globalThis.fetch;
+  const again = after.modelHypotheses.map((p) => ({ id: p.id, label: p.title, claim: p.claim, evidence: p.supports, counter: p.counters, domains: p.domains, level: String(p.strength).toLowerCase(), crossDomain: "untested", conditional: false, context: null }));
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ source: "model", hypotheses: again, meta: { paidCallMade: true, needsReview: [], notChecked: [], narrowed: [], rejected: 0 } }) });
+  try { await refreshProfileHypotheses(after, { force: true }); } finally { globalThis.fetch = realFetch; }
+  const stillShown = after.modelHypotheses.find((p) => p.id === storedMythic.id);
+  eq("next refresh: still flagged", stillShown?.evidenceStatus, NEEDS_REVIEW);
+  eq("next refresh: still remembers the area", stillShown?.narrowedAreas?.join(","), "play");
+  check("next refresh: the message says patterns were narrowed", /narrowed/.test(after.hypothesisAiMessage ?? ""));
+
+  check("the user can confirm it", canReconfirm(after, storedMythic.id));
+  const message = reconfirmPattern(after, storedMythic.id);
+  check("confirming says what was confirmed", /still fits without Games/.test(message ?? ""));
+  const confirmed = after.modelHypotheses.find((p) => p.id === storedMythic.id);
+  check("confirming clears the flag and the note", confirmed && !confirmed.evidenceStatus && !confirmed.narrowedAreas);
+  eq("confirming keeps the narrower version", confirmed?.domains.join(","), "read");
+  check("confirming is recorded in the pattern's history", (after.hypothesisHistory ?? []).some((r) => r.hypothesisId === storedMythic.id && r.origin === "user-confirmed"));
+}
+{
+  // An area the user excluded is not a narrowing: the Partly fixture excludes games, and a books-only re-check
+  // is not flagged.
+  const state = fixture("example-refresh-partly").build();
+  const storedMythic = state.modelHypotheses.find((h) => MYTHIC.test(h.title));
+  const booksOnly = state.modelHypotheses.map(asProposal).map((h) => (h.id === storedMythic.id ? { ...h, evidence: h.evidence.filter((r) => /openlibrary|book/.test(r)), domains: ["read"] } : h));
+  const { validated } = refresh(state, booksOnly);
+  eq("excluded area: not reported as narrowed", validated.narrowed.length, 0);
+  check("excluded area: not flagged for review", !validated.needsReview.includes(storedMythic.id));
+}
+{
+  // An unconfirmed pattern narrowed by a refresh is ordinary: no flag (the user hasn't said anything about it).
+  const state = fixture("example-refresh").build();
+  const storedMythic = state.modelHypotheses.find((h) => MYTHIC.test(h.title));
+  const booksOnly = state.modelHypotheses.map(asProposal).map((h) => (h.id === storedMythic.id ? { ...h, evidence: h.evidence.filter((r) => /openlibrary|book/.test(r)), domains: ["read"] } : h));
+  const { validated } = refresh(state, booksOnly);
+  eq("unconfirmed: narrowed without a flag", `${validated.accepted.find((h) => h.id === storedMythic.id)?.domains.join(",")}|${validated.needsReview.length}`, "read|0");
 }
 
 finish();
