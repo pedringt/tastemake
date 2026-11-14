@@ -7,6 +7,7 @@ import { favorites, followUpPool, hypotheses, recommendations } from "../qa/fixt
 import { typeById, visibleDomains } from "../../src/data/domains.js";
 import { readFileSync } from "node:fs";
 import { hydrateState } from "../../src/server/request-state.mjs";
+import { ledgerAfterFullRefresh } from "../../src/model/refresh-ledger.js";
 import { evidenceRecords } from "../../src/model/evidence.js";
 
 const catalogItems = [...recommendations, ...followUpPool];
@@ -421,4 +422,77 @@ export const REFRESH_FIXTURES = [
     expect: { refresh: { newPreference: NEW_PREFERENCE.map(refOf), counter: { ref: refOf(NEW_COUNTER), pattern: /slow-burn|dread/i } }, keepsConfirmed: STORED_CONFIRMED } },
   { id: "refresh-nothing-new", title: "Refresh after ratings that fit stored patterns", purpose: "#326 control: are new ratings cited by the patterns they fit, with no new pattern made for them?", candidates: [], build: () => withRatings(FITS_EXISTING),
     expect: { refresh: { fitsExisting: FITS_EXISTING.map((entry) => ({ ref: refOf(entry), title: entry.item.title, pattern: entry.pattern })) }, keepsConfirmed: STORED_CONFIRMED } }
+];
+
+// ---- #326 Design A: the same refresh, by placement (node scripts/evals/run.mjs --suite refresh-a) -----------
+// Plumbing (docs/proposals/326-refresh-options.md, section 7): each fixture says which tried items the last
+// refresh saw, as a ledger (src/model/refresh-ledger.js); without one every uncited item counts as new.
+//   - refresh-new-preference, refresh-nothing-new and fixtures 1-2: the ledger is the Example Profile as stored
+//     (every item it had was seen; nothing pooled, so discovery has to come from the new ratings), and only the
+//     ratings added here are new.
+//   - the three #318 refresh fixtures and refresh-first-run: no ledger. That is what an existing production
+//     profile looks like on its first refresh after the switch (decision 7): every tried item no stored pattern
+//     cites is new (23 on the Example Profile).
+// New fixtures:
+//   1. refresh-one-unexplained: one heist film. Expected: placed as unexplained, no new pattern yet.
+//   2. refresh-pool-builds: two heist films, then (second call, on the ledger and pool the first one left) two
+//      more. Expected: no new pattern after call 1; a heist pattern after call 2.
+//   3. refresh-first-run: the Example Profile as stored (corrected patterns), no ledger. Expected: no invented
+//      patterns, fitting items placed; output size and latency recorded.
+//   4. refresh-second-profile: the "cal-" calibration profile from the #278 grader as a stored profile, plus
+//      three new ratings (one fits each pattern, one disliked slow literary novel). All refresh evidence so far
+//      comes from the Example Profile; this is the cheapest check that a result holds beyond it.
+const seenLedger = (state) => ({ ...ledgerAfterFullRefresh(state), pool: [] });
+const withLedger = (entries) => {
+  const state = withRatings(entries);
+  state.profileLedger = seenLedger({ ...hydrateState(exampleBackup), modelHypotheses: exampleBackup.modelHypotheses });
+  return state;
+};
+const firstRun = (fixture) => ({ ...fixture, build: () => { const state = fixture.build(); delete state.profileLedger; return state; } });
+const addRatings = (state, entries) => {
+  for (const { item, rating, detail, refinements = [] } of entries) state.feedbackByRecommendation[item.id] = { item, rating, detail, quality: null, source: "search", refinements };
+  return state;
+};
+const calItem = (id, title, type, domains, by, genres) => ({ id: `cal-${id}`, title, type, domains, by, genres, year: null, about: "", providerMeta: {}, sourceUrl: null });
+const CAL_ITEMS = {
+  piranesi: calItem("piranesi", "Piranesi", "book", ["read"], "Susanna Clarke", ["Fantasy", "Mystery"]),
+  arrival: calItem("arrival", "Arrival", "movie", ["movies"], null, ["Science Fiction", "Drama", "Mystery"]),
+  solaris: calItem("solaris", "Solaris", "book", ["read"], "Stanisław Lem", ["Science fiction"]),
+  moon: calItem("moon", "Moon", "movie", ["movies"], null, ["Science Fiction", "Drama"]),
+  mercedes: calItem("mr-mercedes", "Mr. Mercedes", "tv", ["tv"], null, ["Crime", "Drama", "Mystery"]),
+  gilead: calItem("gilead", "Gilead", "book", ["read"], "Marilynne Robinson", ["Literary fiction"]),
+  remains: calItem("remains", "The Remains of the Day", "book", ["read"], "Kazuo Ishiguro", ["Literary fiction"]),
+  stoner: calItem("stoner", "Stoner", "book", ["read"], "John Williams", ["Literary fiction", "Academia"])
+};
+const CAL_REACTIONS = [["piranesi", "loved"], ["arrival", "loved"], ["solaris", "liked"], ["moon", "liked"], ["mercedes", "disliked"], ["gilead", "loved"], ["remains", "loved"], ["stoner", "disliked"]];
+const CAL_NEW = [
+  { item: calItem("annihilation", "Annihilation", "movie", ["movies"], null, ["Science Fiction", "Mystery"]), rating: "more", detail: "loved-before", pattern: /speculative|mystery/i },
+  { item: calItem("never-let-me-go", "Never Let Me Go", "book", ["read"], "Kazuo Ishiguro", ["Literary fiction"]), rating: "more", detail: "liked-before", pattern: /literary|quiet/i },
+  { item: calItem("the-goldfinch", "The Goldfinch", "book", ["read"], "Donna Tartt", ["Literary fiction"]), rating: "less", detail: "tried-disliked" }
+];
+const CAL_PATTERNS = [
+  { id: "ai-cerebral-speculative-mystery", title: "Cerebral speculative worlds with mystery at the core", claim: "Drawn to speculative stories built around a central mystery that rewards close attention.", supports: ["ev:cal-piranesi", "ev:cal-arrival", "ev:cal-solaris", "ev:cal-moon"], counters: [], domains: ["read", "movies"], strength: "strong", status: "strong", crossDomain: "supported", context: null, aiGenerated: true, evidence: "Piranesi, Arrival, Solaris, Moon" },
+  { id: "ai-quiet-literary-novels", title: "Quiet, patiently paced literary novels", claim: "Enjoys quiet literary novels that take their time with an inner life.", supports: ["ev:cal-gilead", "ev:cal-remains"], counters: ["ev:cal-stoner"], domains: ["read"], strength: "supported", status: "supported", crossDomain: "untested", context: null, aiGenerated: true, evidence: "Gilead, The Remains of the Day" }
+];
+function secondProfile() {
+  const how = { loved: ["more", "loved-before"], liked: ["more", "liked-before"], disliked: ["less", "tried-disliked"] };
+  const state = { ...hydrateState({}), recommendationSets: [], modelHypotheses: CAL_PATTERNS.map((p) => ({ ...p })), patternStatements: [] };
+  for (const [key, reaction] of CAL_REACTIONS) state.feedbackByRecommendation[CAL_ITEMS[key].id] = { item: CAL_ITEMS[key], rating: how[reaction][0], detail: how[reaction][1], quality: null, source: "search", refinements: [] };
+  state.profileLedger = seenLedger(state);
+  return addRatings(state, CAL_NEW);
+}
+const HEIST_EXPECT = { refresh: { newPreference: NEW_PREFERENCE.map(refOf) }, keepsConfirmed: STORED_CONFIRMED };
+export const REFRESH_A_FIXTURES = [
+  ...SUPPORT_FIXTURES.filter((f) => f.id !== "example-fresh").map(firstRun),
+  { ...REFRESH_FIXTURES.find((f) => f.id === "refresh-new-preference"), build: () => withLedger([...NEW_PREFERENCE, NEW_COUNTER]) },
+  { ...REFRESH_FIXTURES.find((f) => f.id === "refresh-nothing-new"), build: () => withLedger(FITS_EXISTING) },
+  { id: "refresh-one-unexplained", title: "One new heist film, nothing else", purpose: "#326 A, fixture 1: is a single item no pattern covers placed as unexplained, with no pattern built on it alone?", candidates: [], build: () => withLedger(NEW_PREFERENCE.slice(0, 1)),
+    expect: { placement: { unexplained: NEW_PREFERENCE.slice(0, 1).map(refOf), noNewPattern: true }, keepsConfirmed: STORED_CONFIRMED } },
+  { id: "refresh-pool-builds", title: "Two heist films, then two more", purpose: "#326 A, fixture 2: does a preference build up across refreshes through the pool (no pattern after call 1, one after call 2)?", candidates: [], build: () => withLedger(NEW_PREFERENCE.slice(0, 2)),
+    then: [(state) => addRatings(state, NEW_PREFERENCE.slice(2))],
+    expect: { ...HEIST_EXPECT, placement: { steps: [{ noNewPattern: true }] } } },
+  { id: "refresh-first-run", title: "First refresh after the switch: the Example Profile with no ledger", purpose: "#326 A, fixture 3: with 23 uncited items new, are fitting items placed and no patterns invented? Output size and latency are recorded.", candidates: [], build: () => ({ ...hydrateState(exampleBackup), recommendationSets: [], modelHypotheses: exampleBackup.modelHypotheses }),
+    expect: { placement: { reportNewPatterns: true }, keepsConfirmed: STORED_CONFIRMED } },
+  { id: "refresh-second-profile", title: "A second profile (calibration), with three new ratings", purpose: "#326 A, fixture 4: does placement hold on a profile other than the Example Profile?", candidates: [], build: secondProfile,
+    expect: { refresh: { fitsExisting: CAL_NEW.filter((e) => e.pattern).map((e) => ({ ref: refOf(e), title: e.item.title, pattern: e.pattern })), counter: { ref: refOf(CAL_NEW[2]), pattern: /literary|quiet/i } } } }
 ];

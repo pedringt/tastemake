@@ -31,11 +31,17 @@
 // --max-calls and --max-usd cover both. Grading is an eval scorer only, never a production gate.
 //   node scripts/evals/run.mjs --suite counter --producer live --model claude-haiku-5-5 --dry-run
 //   node scripts/evals/run.mjs --suite counter --producer live --model claude-haiku-5-5 --yes --max-usd 0.40 --max-calls 75
+//
+// --suite refresh-a (#326 Design A) runs the refresh as production would with the placement flag on: each fixture's
+// ledger decides what is new, one placement call per refresh (a fixture with `then` runs more than one, on the
+// state the previous call left), and software applies the answer (src/model/placement-apply.js). Live producer
+// only; latency and usage of every call are kept in the report. The before arm is --suite refresh.
+//   node scripts/evals/run.mjs --suite refresh-a --producer live --profile-model claude-haiku-5-5 --dry-run
 
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, DISLIKE_DIRECTION_FIXTURES, COUNTER_FIXTURES, REFRESH_FIXTURES, counterCalibration, exampleProfileCounters, badResponses } from "./fixtures.mjs";
+import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, DISLIKE_DIRECTION_FIXTURES, COUNTER_FIXTURES, REFRESH_FIXTURES, REFRESH_A_FIXTURES, counterCalibration, exampleProfileCounters, badResponses } from "./fixtures.mjs";
 import { GRADER_MAX_OUTPUT_TOKENS, GRADER_OUTPUT_SCHEMA, buildGraderPrompt, counterItems, gradeCounters, gradesMarkdown, summarizeGrades } from "./counter-grader.mjs";
 import { scoreFixture } from "./scorers.mjs";
 import { buildContext } from "../../src/ai/context.js";
@@ -44,7 +50,11 @@ import { CONTRACT_VERSION } from "../../src/ai/contract.js";
 import * as baseline from "../../src/ai/baseline.js";
 import { buildPickPrompt, normalizeModelPicks } from "../../api/recommendations.mjs";
 import { callAnthropic, thinkingTypeFor } from "../../src/server/anthropic.mjs";
-import { HYPOTHESES_OUTPUT_SCHEMA, PICKS_OUTPUT_SCHEMA } from "../../src/server/output-schemas.mjs";
+import { HYPOTHESES_OUTPUT_SCHEMA, PICKS_OUTPUT_SCHEMA, PLACEMENT_OUTPUT_SCHEMA } from "../../src/server/output-schemas.mjs";
+import { PLACEMENT_MAX_OUTPUT_TOKENS, placeNewItems } from "../../src/ai/placement.js";
+import { refreshQueue } from "../../src/model/refresh-ledger.js";
+import { applyPlacementResult } from "../../src/model/placement-apply.js";
+import { NEEDS_REVIEW } from "../../src/model/statements.js";
 import { recommendations as qaRecommendations, followUpPool as qaFollowUps } from "../qa/fixtures/catalog.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { usageCostUsd, worstCaseUsd } from "./pricing.mjs";
@@ -64,7 +74,7 @@ const suite = args.includes("--suite") ? args[args.indexOf("--suite") + 1] : "de
 // of humor", five Taste Profile calls each, no picks.
 // --suite refresh is the #326/#318 before/after: the three #318 refresh fixtures plus a new, distinct preference
 // and a nothing-new control, one Taste Profile call each, no picks.
-const SUITES = { reasons: REASON_FIXTURES, support: SUPPORT_FIXTURES, "dislike-directions": DISLIKE_DIRECTION_FIXTURES, counter: COUNTER_FIXTURES, refresh: REFRESH_FIXTURES };
+const SUITES = { reasons: REASON_FIXTURES, support: SUPPORT_FIXTURES, "dislike-directions": DISLIKE_DIRECTION_FIXTURES, counter: COUNTER_FIXTURES, refresh: REFRESH_FIXTURES, "refresh-a": REFRESH_A_FIXTURES };
 const FIXTURES = SUITES[suite] ?? DEFAULT_FIXTURES;
 const producerName = args.includes("--producer") ? args[args.indexOf("--producer") + 1] : "baseline";
 const dryRun = args.includes("--dry-run");
@@ -106,6 +116,8 @@ const updateBaseline = args.includes("--update-baseline") ? (args[args.indexOf("
 const inCI = Boolean(process.env.CI);
 const paidRun = (producerName === "live" || producerName === "endpoint") && !dryRun;
 const refuse = (message) => { console.error(`refused: ${message}`); process.exit(2); };
+const placementSuite = suite === "refresh-a";
+if (placementSuite && producerName !== "live") refuse("--suite refresh-a makes the #326 placement call: use --producer live, with --dry-run (free) or --yes");
 // #341 step 2 (Paige, Nov 7): checked before anything runs or any credential is read.
 if (useAnt && inCI) refuse("--auth ant uses a personal login meant for runs on your own machine, not CI (CI is set)");
 if (paidRun && !(Number.isFinite(maxUsd) && maxUsd > 0)) refuse("a paid run needs a spend cap: --max-usd <dollars>");
@@ -193,6 +205,48 @@ async function gradeCall(prompt) {
     else if (error.paidCallMade) recordUnmeasured(worstCase);
     throw error;
   }
+}
+// #326 Design A: one placement call, behind the same caps. Latency and usage are kept for the report.
+const placementCalls = [];
+async function placementCall(prompt, label) {
+  if (dryRun) {
+    dryRunPlan.push({ fixture: label, count: 0, promptChars: prompt.length, estIn: estimateTokens(prompt), prompt, placement: true });
+    return null;
+  }
+  if (!useAnt && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY must be set for a live run (or pass --auth ant)");
+  if (!confirmed) throw new Error("a live run spends money: re-run with --yes once the dry run has been reviewed");
+  const worstCase = worstCaseUsd(liveProfileModel, prompt.length, outputCap(liveProfileModel, PLACEMENT_MAX_OUTPUT_TOKENS));
+  ensureBudget(worstCase);
+  const started = Date.now();
+  try {
+    const model = await callAnthropic({ prompt, env: liveEnv(), fetchImpl: liveFetch, model: liveProfileModel, maxTokens: PLACEMENT_MAX_OUTPUT_TOKENS, outputSchema: PLACEMENT_OUTPUT_SCHEMA });
+    recordSpend(liveProfileModel, model.usage);
+    placementCalls.push({ fixture: label, ms: Date.now() - started, inputTokens: model.usage?.input_tokens ?? null, outputTokens: model.usage?.output_tokens ?? null });
+    return model;
+  } catch (error) {
+    if (error.usage) recordSpend(liveProfileModel, error.usage);
+    else if (error.paidCallMade) recordUnmeasured(worstCase);
+    placementCalls.push({ fixture: label, ms: Date.now() - started, error: String(error.message ?? error) });
+    throw error;
+  }
+}
+async function runPlacement(fixture) {
+  const stored = fixture.build();   // the profile before any call, which the scorers compare against
+  const state = fixture.build();
+  const steps = [];
+  for (let i = 0; i <= (fixture.then?.length ?? 0); i += 1) {
+    if (i > 0) fixture.then[i - 1](state);
+    const queue = refreshQueue(state);
+    const result = await placeNewItems({ ctx: buildContext(state, []), patterns: state.modelHypotheses ?? [], items: queue.items, pool: queue.pool, callModel: (prompt) => placementCall(prompt, `${fixture.id}${i ? ` (call ${i + 1})` : ""}`) });
+    const applied = result.source === "model" ? applyPlacementResult(state, queue, result.placement) : null;
+    steps.push({ queue, source: result.source, placement: result.placement, applied });
+  }
+  const notMe = new Set((state.patternStatements ?? []).filter((x) => x.says === "not-me").map((x) => x.hypothesisId));
+  const accepted = (state.modelHypotheses ?? []).filter((p) => !notMe.has(p.id)).map((p) => ({ id: p.id, label: p.title, claim: p.claim, evidence: p.supports ?? [], counter: p.counters ?? [], domains: p.domains ?? [], level: p.strength, crossDomain: p.crossDomain, evidenceSource: "placement" }));
+  const rejected = steps.flatMap((step) => (step.placement?.rejectedPatterns ?? []).map((r) => ({ proposal: r, reasons: r.reasons })));
+  const flagged = (state.modelHypotheses ?? []).filter((p) => p.evidenceStatus === NEEDS_REVIEW);
+  const hyp = { accepted, rejected, notes: [], fallback: false, raw: null, needsReview: flagged.map((p) => p.id), reviewReasons: Object.fromEntries(flagged.map((p) => [p.id, p.placementReview?.kind ?? "evidence"])) };
+  return { state: stored, ctx: buildContext(state, []), hyp, picks: { accepted: [], rejected: [] }, before: null, steps };
 }
 const liveEnv = () => ({ ...process.env, ANTHROPIC_API_KEY: useAnt ? "unused-oauth" : process.env.ANTHROPIC_API_KEY });
 const dryRunPlan = [];
@@ -284,6 +338,7 @@ const producer = PRODUCERS[producerName];
 if (!producer) { console.error(`unknown producer "${producerName}"`); process.exit(2); }
 
 async function runOne(fixture) {
+  if (placementSuite) return runPlacement(fixture);
   // A before/after fixture runs the "before" profile first. Its accepted patterns are then stored on the
   // "after" state the way the client stores them (state.modelHypotheses), because production sends the
   // earlier profile with every refresh; without it the after-run was a fresh profile, not a refresh (#228).
@@ -310,6 +365,7 @@ async function runOne(fixture) {
 if (paidRun && confirmed) {
   let planned = producerName === "endpoint"
     ? FIXTURES.length
+    : placementSuite ? FIXTURES.reduce((sum, f) => sum + 1 + (f.then?.length ?? 0), 0)
     : FIXTURES.reduce((sum, f) => sum + (liveProfile ? (f.before ? 2 : 1) : 0) + ((f.candidates ?? EVAL_CANDIDATES).length ? 1 : 0), 0);
   const models = producerName === "endpoint" ? `whatever ${endpointUrl} is configured to use` : `profile ${liveProfile ? liveProfileModel : "baseline (no call)"}, picks ${liveModel}`;
   if (gradeCounter && !(Number.isInteger(maxGradeCalls) && maxGradeCalls >= 0)) refuse("--max-grade-calls needs a whole number");
@@ -369,12 +425,12 @@ for (const id of ["about-10", "intent-heavy", "single-miss"]) {
 // ---- dry run: show exactly what would be sent, and what it would cost ----
 if (dryRun) {
   const totalIn = dryRunPlan.reduce((sum, p) => sum + p.estIn, 0);
-  const estOut = dryRunPlan.reduce((sum, p) => sum + (p.grade ? GRADER_MAX_OUTPUT_TOKENS : p.profile ? PROFILE_MAX_OUTPUT_TOKENS : Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200)), 0);
+  const estOut = dryRunPlan.reduce((sum, p) => sum + (p.placement ? PLACEMENT_MAX_OUTPUT_TOKENS : p.grade ? GRADER_MAX_OUTPUT_TOKENS : p.profile ? PROFILE_MAX_OUTPUT_TOKENS : Number(process.env.TASTEMAKE_AI_MAX_TOKENS || 1200)), 0);
   // The same worst case the paid run checks against its cap, so --max-usd at or above this lets every call through.
-  const estUsd = dryRunPlan.reduce((sum, p) => sum + (p.grade ? p.worstCase : p.profile ? worstCaseUsd(liveProfileModel, p.promptChars, outputCap(liveProfileModel, PROFILE_MAX_OUTPUT_TOKENS)) : worstCaseUsd(liveModel, p.promptChars, outputCap(liveModel, PICKS_MAX_OUTPUT))), 0);
-  console.log(`DRY RUN: ${dryRunPlan.length} call(s) would be made (${dryRunPlan.filter((p) => p.profile).length} taste-profile, ${dryRunPlan.filter((p) => !p.profile && !p.grade).length} picks${gradeCounter ? `, up to ${dryRunPlan.filter((p) => p.grade).length} counter-example grading on ${gradeModel}` : ""}).`);
+  const estUsd = dryRunPlan.reduce((sum, p) => sum + (p.placement ? worstCaseUsd(liveProfileModel, p.promptChars, outputCap(liveProfileModel, PLACEMENT_MAX_OUTPUT_TOKENS)) : p.grade ? p.worstCase : p.profile ? worstCaseUsd(liveProfileModel, p.promptChars, outputCap(liveProfileModel, PROFILE_MAX_OUTPUT_TOKENS)) : worstCaseUsd(liveModel, p.promptChars, outputCap(liveModel, PICKS_MAX_OUTPUT))), 0);
+  console.log(`DRY RUN: ${dryRunPlan.length} call(s) would be made (${dryRunPlan.filter((p) => p.profile || p.placement).length} taste-profile, ${dryRunPlan.filter((p) => !p.profile && !p.grade && !p.placement).length} picks${gradeCounter ? `, up to ${dryRunPlan.filter((p) => p.grade).length} counter-example grading on ${gradeModel}` : ""}).`);
   if (gradeCounter) console.log(`  grading: ${dryRunPlan.filter((p) => p.fixture === "(grade)").length} known now (calibration and the stored Example Profile); the rest depends on how many counter items the profiles return, capped at --max-grade-calls ${maxGradeCalls}`);
-  dryRunPlan.filter((p) => !p.grade).forEach((p) => console.log(`  ${p.fixture}: ${p.count} picks asked for, prompt ~${p.estIn} tokens (${p.promptChars} chars)`));
+  dryRunPlan.filter((p) => !p.grade).forEach((p) => console.log(`  ${p.fixture}: ${p.placement ? "placement" : `${p.count} picks asked for`}, prompt ~${p.estIn} tokens (${p.promptChars} chars)`));
   console.log(`Estimated input ~${totalIn} tokens; output capped at ${estOut} tokens across all calls.`);
   console.log(`Worst-case cost: $${estUsd.toFixed(4)} (prompts at the highest input rate, every output cap used); real runs usually cost far less. A paid run needs --max-usd at or above this to make every call.`);
   console.log(`Model: ${liveModel} (effort ${liveEffort}, thinking ${liveThinking}); key ${process.env.ANTHROPIC_API_KEY ? "present" : "absent"}.`);
@@ -440,7 +496,8 @@ const reportJson = JSON.stringify({
     rejected: r.run?.hyp.rejected.map((x) => ({ label: x.proposal?.label, claim: x.proposal?.claim ?? null, evidence: x.proposal?.evidence ?? [], counter: x.proposal?.counter ?? [], reasons: x.reasons })) ?? [],
     picks: r.run?.picks.accepted.map((p) => ({ itemId: p.itemId, title: p.item?.title ?? null, kind: p.kind, why: p.why ?? null, cites: p.cites })) ?? [] })),
   selfTest,
-  ...(counterGrades ? { counterGrades } : {})
+  ...(counterGrades ? { counterGrades } : {}),
+  ...(placementSuite ? { placementCalls } : {})
 }, null, 2) + "\n";
 
 writeFileSync(`${reportPath}.md`, reportMd);
@@ -471,6 +528,11 @@ if (endpointRuns.length) {
 if (counterGrades) {
   const g = counterGrades.summary;
   console.log(`counter-examples (#278): ${g.defensible} of ${g.graded} graded defensible (${g.share === null ? "n/a" : `${Math.round(g.share * 100)}%`}); ${g.ungraded} ungraded, ${g.skipped} skipped; calibration agreed ${g.calibration.agreed}/${g.calibration.of}`);
+}
+if (placementCalls.length) {
+  const ms = placementCalls.filter((c) => !c.error).map((c) => c.ms).sort((a, b) => a - b);
+  const out = placementCalls.filter((c) => !c.error).map((c) => c.outputTokens ?? 0);
+  console.log(`placement calls: ${placementCalls.length}; latency p50 ${ms.length ? ms[Math.floor((ms.length - 1) / 2)] : "n/a"} ms, max ${ms.at(-1) ?? "n/a"} ms; output tokens max ${out.length ? Math.max(...out) : "n/a"}`);
 }
 if (spend.calls) console.log(`paid calls: ${spend.calls}${spend.unmeasuredCalls ? ` (${spend.unmeasuredCalls} without usage, counted at their worst case)` : ""}; tokens in ${spend.inputTokens}, out ${spend.outputTokens}; estimated cost $${spend.usd.toFixed(3)}`);
 console.log(`report: ${relative(process.cwd(), reportPath)}.md`);
