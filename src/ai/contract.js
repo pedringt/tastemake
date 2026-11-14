@@ -28,8 +28,17 @@ export const HYPOTHESIS_FIELDS = {
   crossDomain: "enum:crossDomain", level: "enum:level", conditional: "boolean", context: "nullable-string"
 };
 
+// #28 Stage 1 (Oct 20): every model pick names the one concrete element that links it to the cited
+// evidence, chosen before the sentence is written. Bans on stock phrases moved the model to the next stock
+// word (stress eval: sets that would trigger a repetition check rose from 23% to 35% on Haiku after #247);
+// a distinct anchor per pick changes what each sentence has to be about instead.
+export const ANCHORS = ["setting", "character", "structure", "tone", "theme", "pacing", "voice"];
+export const MAX_PICKS_PER_ANCHOR = 2;
+
 // Pick proposal.
 //   itemId   must be one of the eligible candidates the product sent
+//   anchor   one of ANCHORS: the element the why is about (optional for non-model producers; at most
+//            MAX_PICKS_PER_ANCHOR picks in one set may share it)
 //   why      the personalized reason: what this pick tests about the user's taste
 //   cites    refs of experienced evidence the reason relies on (at least one)
 //   tests    id of the hypothesis it tests (from the product's or the model's accepted list), or null
