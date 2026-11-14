@@ -540,6 +540,9 @@ function renderPreservingPatternPosition(patternId, focusSelector = null) {
     const afterTop = same.getBoundingClientRect().top;
     window.scrollBy({ top: afterTop - beforeTop, left: 0, behavior: "auto" });
     restoreFocus(focusSelector, same.querySelector("button") || same);
+    // #358: Done on a pattern taller than the screen collapses it above the fold; keep the focused Change visible.
+    const focused = document.activeElement?.getBoundingClientRect?.();
+    if (focused && (focused.top < 0 || focused.bottom > window.innerHeight)) document.activeElement.scrollIntoView({ block: "nearest" });
     return;
   }
 
