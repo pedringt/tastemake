@@ -16,6 +16,7 @@ export function focusSelectorFor(el) {
   if (d.mineBlindRemove) return `[data-mine-blind-remove="${d.mineBlindRemove}"]`;
   if (d.mineReset) return `[data-mine-reset="${d.mineReset === "arm" ? "cancel" : "arm"}"]`;
   if (d.statementPattern) return `[data-statement-pattern="${d.statementPattern}"][data-statement-field="${d.statementField}"][data-statement-value="${d.statementValue}"]`;
+  if (d.alsoPattern) return `[data-also-pattern="${d.alsoPattern}"][data-also-domain="${d.alsoDomain}"]`;
   if (d.disclosurePattern) return `[data-disclosure-pattern="${d.disclosurePattern}"][data-disclosure-action="${d.disclosureAction}"]`;
   if (d.scopePattern) return `[data-scope-pattern="${d.scopePattern}"][data-scope-domain="${d.scopeDomain}"]`;
   if (d.mineSaidRemove) return null;

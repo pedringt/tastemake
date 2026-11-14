@@ -5,9 +5,9 @@ import { createSuite } from "./lib/assert.mjs";
 import {
   maskTitles, maskedTokens, distinctN, longNgramShare, topPhrases, repeatedOpeningShare, themeConcentration,
   patternConcentration, traceability, genreKeys, genericPhrasing, genreCollapse, crossDomain, recencyAndDislikes, metricsFor,
-  setRepetition, perSetSummary, SET_GATE, MIN_EXPLANATIONS_PER_VARIANT
+  setRepetition, perSetSummary, SET_GATE, MIN_EXPLANATIONS_PER_VARIANT, bridgeMetrics
 } from "../evals/stress/metrics.mjs";
-import { SIZES, SHAPES, buildAllProfileSpecs, loadProfileSpecs, loadSnapshot, profileState, itemsIndex } from "../evals/stress/profiles.mjs";
+import { SIZES, SHAPES, ALL_SHAPES, BRIDGE_SHAPES, buildAllProfileSpecs, candidateItems, loadProfileSpecs, loadSnapshot, profileState, itemsIndex } from "../evals/stress/profiles.mjs";
 import { makeFetch, planTasks, runTask, validateOptions, parseArgs, costTable } from "../evals/stress/run-stress.mjs";
 import { buildReport, reviewSample, reviewMarkdown, pickRecords } from "../evals/stress/report.mjs";
 import { evidenceRecords } from "../../src/model/evidence.js";
@@ -85,7 +85,9 @@ eq("metricsFor on no picks does not throw", metricsFor([]).picks, 0);
 const snapshot = loadSnapshot();
 const committed = loadProfileSpecs();
 eq("profiles.json rebuilds exactly from the snapshot and seeds", JSON.stringify(buildAllProfileSpecs(snapshot)), JSON.stringify(committed));
-eq("one profile per shape and size", committed.length, SHAPES.length * Object.keys(SIZES).length);
+eq("one profile per shape and size", committed.length, ALL_SHAPES.length * Object.keys(SIZES).length);
+eq("--profiles all still means the original four shapes", parseArgs(["--profiles", "all"]).shapes.join(","), SHAPES.join(","));
+eq("the bridge shapes can be asked for by name", validateOptions(parseArgs(["--profiles", BRIDGE_SHAPES.join(",")])).length, 0);
 const index = itemsIndex(snapshot);
 for (const spec of committed) {
   const state = profileState(spec, { itemsById: index });
@@ -101,6 +103,17 @@ check("narrow: some candidates are outside films (cross-domain bait)", narrow.ca
 const split = committed.find((p) => p.id === "split-50");
 const splitCounts = split.reactions.reduce((m, r) => ({ ...m, [r.how]: (m[r.how] ?? 0) + 1 }), {});
 check("split: about as many dislikes as loves", Math.abs((splitCounts.loved ?? 0) - (splitCounts.disliked ?? 0)) <= 4, JSON.stringify(splitCounts));
+// #252 part 2: movie/TV-heavy profiles whose pools hold marked bridge books.
+for (const spec of committed.filter((p) => BRIDGE_SHAPES.includes(p.shape))) {
+  const tried = [...spec.favorites, ...spec.reactions.map((r) => r.id)].map((id) => index.get(id));
+  const books = tried.filter((item) => item.domains[0] === "read").length;
+  check(`${spec.id}: movies and TV heavy, with ${spec.shape === "screen" ? "no" : "two"} books`, books === (spec.shape === "screen" ? 0 : 2) && tried.filter((i) => ["movies", "tv"].includes(i.domains[0])).length === tried.length - books, String(books));
+  const pool = candidateItems(spec, { itemsById: index });
+  const marked = pool.filter((item) => item.bridge);
+  eq(`${spec.id}: six marked bridge books in the pool`, marked.length, 6);
+  check(`${spec.id}: each found from the first favorite, a film or show`, marked.every((item) => item.type === "book" && item.relatedToId === spec.favorites[0] && item.bridge.fromId === spec.favorites[0] && ["movies", "tv"].includes(item.bridge.fromDomain) && item.relatedTo === index.get(spec.favorites[0]).title));
+  check(`${spec.id}: one in every 6-item window, so every round can offer one`, [0, 1, 2, 3, 4, 5].every((w) => spec.candidates.slice(w * 6, w * 6 + 6).some((id) => marked.some((m) => m.id === id))));
+}
 const round2 = profileState(committed[0], { round: 2, itemsById: index });
 eq("round 2 has two earlier windows shown", round2.recommendationSets.length, 2);
 eq("round 6 cycles back to the first window", profileState(committed[0], { round: 6, itemsById: index }).recommendationSets.length, 0);
@@ -169,6 +182,36 @@ check("review markdown renders", reviewMarkdown(sample).includes("cites:"));
 check("report has the per-set repetition table", markdown.includes("## Per-set repetition") && markdown.includes("| Model | Size | Sets |"));
 check("pick records carry their call, so picks group into sets", pickRecords(liveRecords).every((p) => p.callKey));
 check("a small run is marked indicative", markdown.includes("(indicative)"));
+check("no bridge section without bridge candidates", !markdown.includes("## Cross-media bridge"));
+
+// #252 part 2: bridge metrics over pick calls.
+{
+  const call = (over) => ({ type: "call", kind: "picks", model: "m", size: "10", shape: "screen", source: "model", ms: 1000, offered: [{ id: "b1", bridge: true }, { id: "x" }], picks: [], rejected: [], ...over });
+  const calls = [
+    call({ key: "1", picks: [{ itemId: "b1", bridge: true, bridgeFrom: "Arrival", kind: "curveball", why: "A book test: the quiet dread of Arrival, on the page." }] }),
+    call({ key: "2", ms: 3000, picks: [{ itemId: "x", why: "Something else." }], rejected: [{ itemId: "b1", bridge: true, reasons: ["cross-medium test is not labeled as a test"] }] }),
+    call({ key: "3", source: "catalog", fallbackPicks: [{ itemId: "b1", bridge: true }] }),
+    call({ key: "4", offered: [{ id: "x" }] })
+  ];
+  const b = bridgeMetrics(calls);
+  eq("bridge offered share", b.bridgeOfferedShare, 0.75);
+  eq("bridge pick rate is per call offering one", b.bridgePickRate, 0.333);
+  eq("why names the source", b.bridgeWhyNamesSource, 1);
+  eq("why says it's a test", b.bridgeWhySaysTest, 1);
+  eq("bridge rejections are counted with their reasons", `${b.bridgeRejected}:${b.bridgeRejectionReasons["cross-medium test is not labeled as a test"]}`, "1:1");
+  eq("fallback share and fallbacks that used the bridge", `${b.fallbackShare}:${b.fallbackUsingBridge}`, "0.25:1");
+  eq("latency median", b.msMedian, 1000);
+  const report = buildReport({ calls, headers: [] }).markdown;
+  check("the report adds a bridge table when a bridge was offered", report.includes("## Cross-media bridge") && report.includes("| m | 10 | 4 |"), report.slice(report.indexOf("## Cross-media"), report.indexOf("## Cross-media") + 600));
+}
+
+// Dry run on a bridge profile records which offered candidate was the bridge.
+{
+  const bridgeTasks = planTasks({ ...dryOpts, sizes: ["10"], shapes: ["screen"], repeats: 1, withProfile: false });
+  const rec = await runTask(bridgeTasks[0], dryOpts, { fetchImpl: dryFetch, snapshotIndex: index });
+  check("a bridge profile dry-runs through production", rec.source !== "error" && rec.request?.estInputTokens > 500, JSON.stringify(rec.reason));
+  check("and the record marks bridge candidates in what was offered", (rec.offered ?? []).some((o) => o.bridge), JSON.stringify(rec.offered));
+}
 
 // ---- #28 Stage 0: per-set repetition, on explanations seen in the Oct 20 paid eval ----------------
 const set = (whys) => whys.map(([title, why, cited]) => pick(title, why, { citedEvidence: [ev(cited)] }));

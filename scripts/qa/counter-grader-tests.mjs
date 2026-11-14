@@ -96,7 +96,9 @@ check("pipes in a pattern don't break the table", md.includes("A / B"));
 
 // ---- fixtures ----
 eq("the counter suite leaves out the synthetic scale fixtures", COUNTER_FIXTURES.filter((f) => f.id.startsWith("scale-")).length, 0);
-eq("eleven Taste Profile calls", COUNTER_FIXTURES.reduce((n, f) => n + (f.before ? 2 : 1), 0), 11);
+// Counted from the fixtures, not hardcoded: a new eval fixture (#267 added one) adds a profile call (Nov 13).
+const PROFILE_CALLS = COUNTER_FIXTURES.reduce((n, f) => n + (f.before ? 2 : 1), 0);
+check("one or two Taste Profile calls per counter fixture", PROFILE_CALLS >= COUNTER_FIXTURES.length && PROFILE_CALLS <= 2 * COUNTER_FIXTURES.length, PROFILE_CALLS);
 check("no picks in the counter suite", COUNTER_FIXTURES.every((f) => Array.isArray(f.candidates) && f.candidates.length === 0));
 const cal = counterItems(counterCalibration());
 check("calibration holds the #278 Mr. Mercedes case as not defensible", cal.some((i) => i.counter?.title === "Mr. Mercedes" && i.known === "not-defensible" && /Cerebral speculative/.test(i.pattern)));
@@ -111,12 +113,12 @@ const tmp = mkdtempSync(join(tmpdir(), "tastemake-counter-grader-"));
 const env = { ...process.env, ANTHROPIC_API_KEY: "", CI: "" };
 const run = (args) => spawnSync(process.execPath, [join(root, "scripts", "evals", "run.mjs"), ...args, "--out", tmp], { encoding: "utf8", env });
 let r = run(["--suite", "counter", "--producer", "live", "--model", "claude-haiku-5-5", "--dry-run"]);
-check("dry run plans 11 profile calls and up to 60 grading calls", /DRY RUN: 71 call\(s\) would be made \(11 taste-profile, 0 picks, up to 60 counter-example grading on claude-haiku-5-5\)/.test(r.stdout), r.stdout.split("\n")[0]);
+check("dry run plans the profile calls and up to 60 grading calls", r.stdout.includes(`DRY RUN: ${PROFILE_CALLS + 60} call(s) would be made (${PROFILE_CALLS} taste-profile, 0 picks, up to 60 counter-example grading on claude-haiku-5-5)`), r.stdout.split("\n")[0]);
 r = run(["--suite", "counter", "--producer", "live", "--model", "claude-haiku-5-5", "--dry-run", "--max-grade-calls", "10"]);
-check("--max-grade-calls lowers the plan", /DRY RUN: 21 call\(s\)/.test(r.stdout), r.stdout.split("\n")[0]);
-r = run(["--suite", "counter", "--producer", "live", "--model", "claude-haiku-5-5", "--yes", "--max-usd", "1", "--max-calls", "70"]);
+check("--max-grade-calls lowers the plan", r.stdout.includes(`DRY RUN: ${PROFILE_CALLS + 10} call(s)`), r.stdout.split("\n")[0]);
+r = run(["--suite", "counter", "--producer", "live", "--model", "claude-haiku-5-5", "--yes", "--max-usd", "1", "--max-calls", String(PROFILE_CALLS + 59)]);
 eq("a paid run whose plan is over --max-calls is refused before any call", r.status, 2);
-check("the refusal names the planned count", r.stderr.includes("up to 71 call(s), more than --max-calls 70"), r.stderr);
+check("the refusal names the planned count", r.stderr.includes(`up to ${PROFILE_CALLS + 60} call(s), more than --max-calls ${PROFILE_CALLS + 59}`), r.stderr);
 rmSync(tmp, { recursive: true, force: true });
 
 finish();

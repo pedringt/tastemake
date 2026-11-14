@@ -109,6 +109,19 @@ export const FIXTURES = [
     expect: { maxCrossDomain: "tentative" }
   },
   {
+    // Oct 27 (#252 part 1): "Also true for" is the user's word, not evidence. Picks may connect to it, but the
+    // Taste Profile must not treat it as support in that area.
+    id: "user-said-also-true", title: "The user said a pattern also holds for books",
+    purpose: "alsoAppliesTo lets picks reach another area, but never raises cross-domain support on its own.",
+    build: () => {
+      const s = emptyState();
+      catalogItems.filter((i) => i.domains.includes("movies") && i.hypotheses.includes("H04")).slice(0, 3).forEach((item) => react(s, item, "loved"));
+      s.patternStatements = [{ hypothesisId: "H04", label: hypotheses.find((h) => h.id === "H04").title, says: "accurate", alsoAppliesTo: ["read"] }];
+      return s;
+    },
+    expect: { maxCrossDomain: "tentative" }
+  },
+  {
     id: "user-said-not-me", title: "The user said a pattern is not them",
     purpose: "A user-confirmed statement outranks inference: that pattern must not come back.",
     build: () => { const s = emptyState(); ["eeaao", "barry", "wwdits"].forEach((id) => react(s, byId(id), "loved")); s.patternStatements = [{ hypothesisId: "H04", label: hypotheses.find((h) => h.id === "H04").title, says: "not-me" }]; return s; },
@@ -371,3 +384,41 @@ export function counterCalibration() {
     ]
   };
 }
+
+// ---- #326 + #318: what a refresh does with new evidence (node scripts/evals/run.mjs --suite refresh) --------
+// The Example Profile's stored patterns (as corrected in #332), plus ratings made since its last refresh. Two
+// cases from #326's acceptance criteria, and the three #318 refresh fixtures above:
+//   - refresh-new-preference: four heist and con films, liked or loved, which no stored pattern covers, and one
+//     disliked slow-burn horror film, which pulls against "Uncanny slow-burn horror on screen" (#278: same kind
+//     of thing, tried and disliked). A refresh should find the new preference and attach the counter.
+//   - refresh-nothing-new: three ratings that each fit a stored pattern. A refresh should cite them there and
+//     add no pattern for them ("nothing new" is a valid outcome).
+// Titles, years and genres are real; the provider ids are fixture-only ("fx-"), so nothing is looked up.
+const fxItem = (id, title, type, domains, year, genres, provider) => ({ id: `${provider}-${type === "movie" ? "movie" : type}-fx-${id}`, provider, providerId: `fx-${id}`, title, type, domains, year, genres, about: "", providerMeta: {}, sourceUrl: null });
+const fxMovie = (id, title, year, genreIds) => fxItem(id, title, "movie", ["movies"], year, genreIds.map(String), "tmdb");
+export const NEW_PREFERENCE = [
+  { item: fxMovie("oceans-eleven", "Ocean's Eleven", "2001", [80, 53]), rating: "more", detail: "loved-before" },
+  { item: fxMovie("the-sting", "The Sting", "1973", [35, 80, 18]), rating: "more", detail: "loved-before" },
+  { item: fxMovie("inside-man", "Inside Man", "2006", [80, 18, 53]), rating: "more", detail: "liked-before" },
+  { item: fxMovie("logan-lucky", "Logan Lucky", "2017", [28, 35, 80]), rating: "more", detail: "liked-before" }
+];
+export const NEW_COUNTER = { item: fxMovie("it-comes-at-night", "It Comes at Night", "2017", [27, 9648]), rating: "less", detail: "tried-disliked" };
+export const FITS_EXISTING = [
+  { item: fxItem("amnesia", "Amnesia: The Dark Descent", "game", ["play"], "2010", ["Puzzle", "Adventure", "Indie"], "igdb"), rating: "more", detail: "liked-before", refinements: ["atmosphere-style"], pattern: /horror/i },
+  { item: fxMovie("the-babadook", "The Babadook", "2014", [27, 18]), rating: "more", detail: "loved-before", pattern: /horror/i },
+  { item: { ...fxItem("the-penelopiad", "The Penelopiad", "book", ["read"], "2005", ["Mythology", "Retellings", "Fiction"], "openlibrary"), by: "Margaret Atwood" }, rating: "more", detail: "liked-before", pattern: /myth|fantas/i }
+];
+const refOf = (entry) => `ev:${entry.item.id}`;
+const withRatings = (entries) => {
+  const state = { ...hydrateState(exampleBackup), recommendationSets: [], modelHypotheses: exampleBackup.modelHypotheses };
+  const added = Object.fromEntries(entries.map(({ item, rating, detail, refinements = [] }) => [item.id, { item, rating, detail, quality: null, source: "search", refinements }]));
+  return { ...state, feedbackByRecommendation: { ...state.feedbackByRecommendation, ...added } };
+};
+const STORED_CONFIRMED = exampleBackup.patternStatements.filter((s) => s.says === "accurate" || s.says === "partial").map((s) => s.hypothesisId);
+export const REFRESH_FIXTURES = [
+  ...SUPPORT_FIXTURES.filter((f) => f.id !== "example-fresh"),
+  { id: "refresh-new-preference", title: "Refresh after a new, distinct preference and a counter", purpose: "#326: does a refresh find a preference no stored pattern covers, and attach a genuine counter, without rewording what the user confirmed?", candidates: [], build: () => withRatings([...NEW_PREFERENCE, NEW_COUNTER]),
+    expect: { refresh: { newPreference: NEW_PREFERENCE.map(refOf), counter: { ref: refOf(NEW_COUNTER), pattern: /slow-burn|dread/i } }, keepsConfirmed: STORED_CONFIRMED } },
+  { id: "refresh-nothing-new", title: "Refresh after ratings that fit stored patterns", purpose: "#326 control: are new ratings cited by the patterns they fit, with no new pattern made for them?", candidates: [], build: () => withRatings(FITS_EXISTING),
+    expect: { refresh: { fitsExisting: FITS_EXISTING.map((entry) => ({ ref: refOf(entry), title: entry.item.title, pattern: entry.pattern })) }, keepsConfirmed: STORED_CONFIRMED } }
+];

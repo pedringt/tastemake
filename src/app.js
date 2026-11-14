@@ -26,7 +26,7 @@ import { fetchCatalogItemDetail, resolveCustomCatalogItem } from "./catalog/clie
 import { lookContinueLabel, renderLook } from "./screens/look.js";
 import { renderSetup } from "./screens/setup.js";
 import { renderMine } from "./screens/mine.js";
-import { reconfirmPattern, setStatement, shownContext, statementFor, toggleDomainExclusion } from "./model/statements.js";
+import { reconfirmPattern, setStatement, shownContext, statementFor, toggleAlsoApplies, toggleDomainExclusion } from "./model/statements.js";
 import { isLook, lookLabel } from "./data/looks.js";
 import { visibleDomains } from "./data/domains.js";
 import { firstBrowseGenre } from "./catalog/browse-genres.js";
@@ -540,6 +540,9 @@ function renderPreservingPatternPosition(patternId, focusSelector = null) {
     const afterTop = same.getBoundingClientRect().top;
     window.scrollBy({ top: afterTop - beforeTop, left: 0, behavior: "auto" });
     restoreFocus(focusSelector, same.querySelector("button") || same);
+    // #358: Done on a pattern taller than the screen collapses it above the fold; keep the focused Change visible.
+    const focused = document.activeElement?.getBoundingClientRect?.();
+    if (focused && (focused.top < 0 || focused.bottom > window.innerHeight)) document.activeElement.scrollIntoView({ block: "nearest" });
     return;
   }
 
@@ -697,6 +700,17 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const alsoButton = event.target.closest("[data-also-pattern]");
+  if (alsoButton) {
+    const { alsoPattern, alsoDomain } = alsoButton.dataset;
+    const message = toggleAlsoApplies(state, alsoPattern, alsoDomain);
+    if (!message) return;
+    noteAnswer(alsoPattern, "also");
+    renderPreservingPatternPosition(alsoPattern, focusSelector);
+    announce(message);
+    return;
+  }
+
   // PR #328 review: "Confirm it still fits" on a pattern flagged because a rating it rested on was removed.
   // Local only, no model call (reconfirmPattern).
   const reconfirmButton = event.target.closest("[data-reconfirm-pattern]");
@@ -726,7 +740,7 @@ app.addEventListener("click", async (event) => {
   if (disclosureButton) {
     const { disclosurePattern: id, disclosureAction: action } = disclosureButton.dataset;
     const said = statementFor(state, id);
-    if (action === "change") openPattern(id, { refine: Boolean(said?.weight || shownContext(said)) });
+    if (action === "change") openPattern(id, { refine: Boolean(said?.weight || shownContext(said) || said?.alsoAppliesTo?.length) });
     else if (action === "refine") toggleRefine(id);
     else if (action === "done") closePattern(id);
     else return;
