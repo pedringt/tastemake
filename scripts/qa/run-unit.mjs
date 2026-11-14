@@ -72,6 +72,7 @@ const SUITES = [
   "ai-status-tests.mjs",
   "learning-panel-tests.mjs",
   "support-fit-tests.mjs",
+  "refresh-prompt-tests.mjs",
   "eval-runner-tests.mjs",
   "correction-eval-tests.mjs"
 ];
