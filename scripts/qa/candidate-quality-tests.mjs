@@ -12,6 +12,7 @@
 import { bookGenreFamilies, igdbGenreOverlap, igdbGenreWhereClause, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { plainTitle, wikidataSeriesPositions } from "../../src/catalog/wikidata-series.mjs";
 import { isBookCompanion } from "../../src/catalog/book-companions.mjs";
+import { isScreenExtra } from "../../src/catalog/screen-extras.mjs";
 import { firstPublishedYear, searchCatalog } from "../../src/catalog/providers.mjs";
 import { correctOldBookYears } from "../../src/catalog/wikidata-years.mjs";
 import { createSuite } from "./lib/assert.mjs";
@@ -811,6 +812,17 @@ if (process.env.TASTEMAKE_LIVE_OPEN_LIBRARY === "1") {
     { title: "The Hitchhiker's Guide to the Galaxy", author_name: ["Douglas Adams"] },
     { title: "Companions", author_name: ["Katie M. Flynn"] }
   ].some((row) => isBookCompanion(row, "anything")));
+}
+
+// Nov 13 live check: screen extras (theatrical events, concert specials, making-ofs) aren't picks.
+{
+  for (const title of ["Game of Thrones The IMAX Experience", "Taylor Swift: Live in Concert", "The Making of Dune", "Behind the Scenes: Arrival", "Star Wars Deleted Scenes"]) {
+    check(`"${title}" is a screen extra`, isScreenExtra({ title }) && isScreenExtra({ name: title }));
+  }
+  for (const title of ["Game of Thrones", "Stop Making Sense", "The Concert for Bangladesh", "Making a Murderer", "Behind Her Eyes", "Severance"]) {
+    check(`"${title}" is a real title`, !isScreenExtra({ title }));
+  }
+  check("a search that asks for it still finds it", !isScreenExtra({ title: "Game of Thrones The IMAX Experience" }, "game of thrones imax"));
 }
 
 finish();
