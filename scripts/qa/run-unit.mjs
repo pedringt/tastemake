@@ -78,6 +78,7 @@ const SUITES = [
   "refresh-eval-tests.mjs",
   "eval-runner-tests.mjs",
   "correction-eval-tests.mjs",
+  "shortlist-corrections-tests.mjs",
   "counter-grader-tests.mjs"
 ];
 

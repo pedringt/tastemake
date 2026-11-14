@@ -134,6 +134,10 @@ export function serializeAiState(state, { requiredRefs = null } = {}) {
     // zero-behavior-change, zero-information-loss cut -- unlike feedbackByRecommendation/customItems,
     // there is no real data here the server needs at all.
     patternStatements: state.patternStatements ?? [],
+    // #334: the shortlist reads a "Not me" pattern's areas and supports (src/ai/corrections.js), and a
+    // confirmed one's, so it can tell which titles match it. Sent only while some pattern is "Not me", so
+    // every other request is unchanged.
+    ...correctionPatternsForWire(state),
     // #48: only what matching needs (no timestamps).
     exclusions: (state.exclusions ?? []).map(({ id, kind, key, label, ref }) => ({ id, kind, key, label, ...(ref ? { ref } : {}) })),
     areas: state.areas ?? {},
@@ -141,6 +145,17 @@ export function serializeAiState(state, { requiredRefs = null } = {}) {
     recommendationStyle: state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced"),
     recommendationFilter: state.recommendationFilter ?? "all"
   };
+}
+
+const MAX_WIRE_PATTERN_SUPPORTS = 40;
+function correctionPatternsForWire(state) {
+  const statements = state.patternStatements ?? [];
+  if (!statements.some((s) => s?.says === "not-me")) return {};
+  const answered = new Set(statements.filter((s) => s?.says === "not-me" || s?.says === "accurate").map((s) => s.hypothesisId));
+  const correctionPatterns = (state.modelHypotheses ?? [])
+    .filter((h) => h?.id && answered.has(h.id))
+    .map((h) => ({ id: h.id, domains: h.domains ?? [], supports: (h.supports ?? []).slice(0, MAX_WIRE_PATTERN_SUPPORTS) }));
+  return { correctionPatterns };
 }
 
 export async function requestRecommendations(state, { signal } = {}) {

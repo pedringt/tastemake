@@ -195,20 +195,27 @@ export function isEdgeCandidate(candidate, records) {
 // - #252 part 2 (Oct 27): with a surprise slot and the filter on All, a bridge candidate (a cross-medium test,
 //   src/catalog/related.mjs) takes that last place instead, and no other bridge candidate is offered. Without
 //   one, nothing changes.
+// - #334 (Nov 14): `conflicts(item)` is true for a title that matches a pattern the person said is not
+//   them (src/ai/corrections.js). Such a title goes behind every title that doesn't conflict (among those
+//   not scored below zero): a strong down-rank, not an exclusion, so it is still offered when nothing else
+//   is left, and media still take turns. It can't take the surprise slot; if every surprise candidate
+//   conflicts, the set has no surprise and `outcome.surpriseDropped` is set. Without conflicts, nothing
+//   changes.
 // - With `trace` (an object, eval/dev only), trace.candidates gets one entry per candidate: its score
-//   parts, ranks and outcome (chosen, edge, same-franchise, count-reached, scored-below-zero). The
+//   parts, ranks and outcome (chosen, edge, same-franchise, count-reached, scored-below-zero, not-me). The
 //   return value is the same either way.
-export function chooseCandidates(candidates, records, { count = 6, mode = "all", curveball = false, trace = null } = {}) {
+export function chooseCandidates(candidates, records, { count = 6, mode = "all", curveball = false, conflicts = null, outcome = null, trace = null } = {}) {
   const cache = new Map();
   const rarity = featureRarity(records, cache);
   const scored = candidates.map((item, index) => {
-    if (!trace) return { item, index, score: tasteScore(item, records, { cache, rarity }) };
+    const conflict = Boolean(conflicts?.(item));
+    if (!trace) return { item, index, conflict, score: tasteScore(item, records, { cache, rarity }) };
     const parts = tasteScoreParts(item, records, { cache, rarity });
-    return { item, index, score: parts.score, parts };
+    return { item, index, conflict, score: parts.score, parts };
   });
   const byTaste = [...scored].sort((a, b) => b.score - a.score || a.index - b.index);
   byTaste.forEach((entry, rank) => { entry.fused = 1 / (FUSION_K + rank) + 1 / (FUSION_K + entry.index); });
-  const ordered = [...scored].sort((a, b) => (b.score >= 0) - (a.score >= 0) || b.fused - a.fused || a.index - b.index);
+  const ordered = [...scored].sort((a, b) => (b.score >= 0) - (a.score >= 0) || a.conflict - b.conflict || b.fused - a.fused || a.index - b.index);
 
   const chosen = [];
   const blocked = new Set();
@@ -219,9 +226,13 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
     else chosen.push(entry);
   };
 
-  const bridge = curveball && mode === "all" ? ordered.find(({ item, score }) => item?.bridge && score >= 0) ?? null : null;
-  const edge = curveball && !bridge ? ordered.find(({ item, score }) => score >= 0 && !item?.bridge && isEdgeCandidate(item, records)) : null;
+  const bridgeFor = (entry) => mode === "all" && entry.item?.bridge && entry.score >= 0;
+  const edgeFor = (entry) => entry.score >= 0 && !entry.item?.bridge && isEdgeCandidate(entry.item, records);
+  const bridge = curveball ? ordered.find((entry) => bridgeFor(entry) && !entry.conflict) ?? null : null;
+  const edge = curveball && !bridge ? ordered.find((entry) => edgeFor(entry) && !entry.conflict) : null;
   const slot = bridge ?? edge;
+  const surpriseDropped = Boolean(curveball && !slot && ordered.some((entry) => bridgeFor(entry) || edgeFor(entry)));
+  if (outcome) outcome.surpriseDropped = surpriseDropped;
   const mainCount = slot ? count - 1 : count;
   const pool = ordered.filter((entry) => entry !== slot && !entry.item?.bridge);
 
@@ -251,7 +262,10 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
   const slotTaken = Boolean(slot && !sameFranchise(slot));
   if (slot && !slotTaken) blocked.add(slot);
   if (slotTaken) chosen.push({ ...slot, isEdge: slot === edge });
-  if (trace) trace.candidates = traceCandidates({ scored, ordered, chosen, blocked, edge: slotTaken && slot === edge ? edge : null });
+  if (trace) {
+    trace.candidates = traceCandidates({ scored, ordered, chosen, blocked, edge: slotTaken && slot === edge ? edge : null });
+    if (surpriseDropped) trace.surpriseDropped = true;
+  }
   return chosen.map(({ item, score, isEdge }) => ({ ...item, tasteScore: round(score), ...(isEdge ? { edge: true } : {}) }));
 }
 
@@ -259,6 +273,8 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
 //   chosen / edge         offered (edge = the surprise slot)
 //   same-franchise        reached, but another title from its franchise was already offered
 //   scored-below-zero     not reached; mostly resembles dislikes, so it was ordered last
+//   not-me                not reached; matches a pattern the person said is not them, so it was ordered
+//                         behind the rest (#334)
 //   count-reached         not reached before the set was full
 function traceCandidates({ scored, ordered, chosen, blocked, edge }) {
   const chosenIndex = new Set(chosen.filter((entry) => !entry.isEdge).map((entry) => entry.index));
@@ -267,7 +283,7 @@ function traceCandidates({ scored, ordered, chosen, blocked, edge }) {
   const outcome = (entry) => (edge && entry.index === edge.index ? "edge"
     : chosenIndex.has(entry.index) ? "chosen"
       : blocked.has(entry) ? "same-franchise"
-        : entry.score < 0 ? "scored-below-zero" : "count-reached");
+        : entry.score < 0 ? "scored-below-zero" : entry.conflict ? "not-me" : "count-reached");
   return scored.map((entry) => ({
     itemId: entry.item.id,
     title: entry.item.title ?? null,

@@ -12,7 +12,8 @@ import { domainById } from "../data/domains.js";
 //   - Two independent answers per pattern, each reversible (choose again to clear):
 //       fit     "accurate" (a "You confirmed this" badge) | "not-me" (left out of the Taste Profile; live AI is told not to use it)
 //       weight  "lot" | "little" (passed to live AI as how much it matters)
-//     None of these reach the shortlist or the catalog fallback: ranking doesn't read pattern answers (#334).
+//     Since #334 (Nov 14), "not-me" also down-ranks titles that match the pattern in the shortlist, for live AI
+//     and the catalog fallback alike (src/ai/corrections.js). The other answers don't reach the shortlist yet.
 //   - The original pattern and its history stay visible; nothing is deleted.
 // Stored as state.patternStatements = [{ hypothesisId, label, says, weight, authority }]; `says` is the fit
 // answer (the name the AI validator reads).

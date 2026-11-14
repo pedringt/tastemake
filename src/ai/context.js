@@ -1,6 +1,7 @@
 import { areaOn } from "../model/taste.js";
 import { evidenceRecords } from "../model/evidence.js";
 import { effectiveStatement } from "../model/statements.js";
+import { notMeConflict } from "./corrections.js";
 
 // What the product hands a model (and the validator). Built only from product state, never from model output.
 // The model gets typed evidence and a list of eligible candidates; it never gets the power to decide
@@ -37,6 +38,9 @@ export function buildContext(state, extraCandidates = []) {
     recommendationFilter: state.recommendationFilter ?? "all",
     // #252 part 2: the validator refuses a cross-medium test into an area that's off.
     areas: { ...(state.areas ?? {}) },
-    evidenceRotation: Math.floor((state.seenItemIds?.length ?? 0) / 5)
+    evidenceRotation: Math.floor((state.seenItemIds?.length ?? 0) / 5),
+    // #334: item -> true when it matches a pattern the person said is not them (null when none can).
+    // Read by the shortlist only (chooseCandidates); never sent to the model.
+    correctionConflict: notMeConflict(state)
   };
 }
