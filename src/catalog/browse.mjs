@@ -1,6 +1,7 @@
 import { browseGenreById } from "./browse-genres.js";
 import { igdbItem, igdbToken, openLibraryItem, tmdbItem } from "./providers.mjs";
 import { isBookCompanion } from "./book-companions.mjs";
+import { isScreenExtra } from "./screen-extras.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 
 export const BROWSE_PAGE_SIZE = 12;
@@ -33,7 +34,7 @@ async function browseTmdb(genre, page, env, fetchImpl, mediaType) {
   }
   const response = await fetchImpl(`https://api.themoviedb.org/3/discover/${mediaType}?${filter}&${common}`, { headers });
   if (!response.ok) throw new Error("tmdb browse unavailable");
-  const rows = ((await response.json()).results ?? []).slice(0, BROWSE_PAGE_SIZE).map((row) => tmdbItem(row, mediaType));
+  const rows = ((await response.json()).results ?? []).filter((row) => !isScreenExtra(row)).slice(0, BROWSE_PAGE_SIZE).map((row) => tmdbItem(row, mediaType));
   return { items: rows, configured: true, hasMore: rows.length >= BROWSE_PAGE_SIZE };
 }
 
