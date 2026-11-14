@@ -35,7 +35,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, DISLIKE_DIRECTION_FIXTURES, COUNTER_FIXTURES, counterCalibration, exampleProfileCounters, badResponses } from "./fixtures.mjs";
+import { FIXTURES as DEFAULT_FIXTURES, REASON_FIXTURES, SUPPORT_FIXTURES, DISLIKE_DIRECTION_FIXTURES, COUNTER_FIXTURES, REFRESH_FIXTURES, counterCalibration, exampleProfileCounters, badResponses } from "./fixtures.mjs";
 import { GRADER_MAX_OUTPUT_TOKENS, GRADER_OUTPUT_SCHEMA, buildGraderPrompt, counterItems, gradeCounters, gradesMarkdown, summarizeGrades } from "./counter-grader.mjs";
 import { scoreFixture } from "./scorers.mjs";
 import { buildContext } from "../../src/ai/context.js";
@@ -62,7 +62,10 @@ const args = process.argv.slice(2);
 const suite = args.includes("--suite") ? args[args.indexOf("--suite") + 1] : "default";
 // --suite dislike-directions is the #335 before/after: Friends disliked for plain "Humor" vs "Humor: not my style
 // of humor", five Taste Profile calls each, no picks.
-const FIXTURES = suite === "reasons" ? REASON_FIXTURES : suite === "support" ? SUPPORT_FIXTURES : suite === "dislike-directions" ? DISLIKE_DIRECTION_FIXTURES : suite === "counter" ? COUNTER_FIXTURES : DEFAULT_FIXTURES;
+// --suite refresh is the #326/#318 before/after: the three #318 refresh fixtures plus a new, distinct preference
+// and a nothing-new control, one Taste Profile call each, no picks.
+const SUITES = { reasons: REASON_FIXTURES, support: SUPPORT_FIXTURES, "dislike-directions": DISLIKE_DIRECTION_FIXTURES, counter: COUNTER_FIXTURES, refresh: REFRESH_FIXTURES };
+const FIXTURES = SUITES[suite] ?? DEFAULT_FIXTURES;
 const producerName = args.includes("--producer") ? args[args.indexOf("--producer") + 1] : "baseline";
 const dryRun = args.includes("--dry-run");
 const confirmed = args.includes("--yes");
