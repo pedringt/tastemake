@@ -24,7 +24,7 @@ A model's answer is only ever a **proposal**. It is validated, stamped and then 
 
 **Hypotheses** `{ hypotheses: [...], insufficientEvidence }`. Each hypothesis: `label`, `claim`, `evidence` (refs, at least one), `counter` (refs), `domains`, `crossDomain` (untested / tentative / supported), `level` (emerging / supported / strong), `conditional`, `context` (null unless the user gave one). `insufficientEvidence: true` with an empty list is a valid answer.
 
-**Picks** `{ picks: [...] }`. Each pick: `itemId` (one of the candidates), `why`, `cites` (refs, at least one), `tests` (hypothesis id or null), `kind` (pick / curveball).
+**Picks** `{ picks: [...] }`. Each pick: `itemId` (one of the candidates), `anchor` (#28 Stage 1: setting / character / structure / tone / theme / pacing / voice, chosen before the why), `why`, `cites` (refs, at least one), `tests` (hypothesis id or null), `kind` (pick / curveball).
 
 ## What the validator does (hard rules)
 
@@ -45,6 +45,7 @@ A model's answer is only ever a **proposal**. It is validated, stamped and then 
 | Pick not among the eligible candidates (invented, already seen, area off) | Rejected |
 | Pick with no citations, or resting only on intent | Rejected |
 | Circular reasoning ("matches your taste") | Rejected |
+| An unknown anchor, or a third pick in one set with the same anchor (#28 Stage 1) | Rejected; the rest of the set is kept |
 | More than one curveball, or a curveball when they are off | Rejected |
 | A curveball on explicitly adult-tagged content ("Smut", "Erotica") when nothing the user tried carries such a tag (#257) | Rejected; the no-AI fallback skips to the next candidate for that slot. Regular picks are unaffected |
 | A cross-medium test (a `bridge` candidate, #252): a second one in the set, one into an area that is off, one that doesn't cite the item it was found from, or one whose why doesn't say it's a test | Rejected. Bridge candidates are only offered with Surprise Me on and the filter on All, at most one per set |
