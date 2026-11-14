@@ -36,12 +36,15 @@ export function describeEvidence(record) {
   return `${record.title}${by} (${record.type ?? "item"}${genres ? `; genres: ${genres}` : ""}). The person ${REACTION[record.kind] ?? record.kind}${reasons.length ? `; their reasons: ${reasons.join(", ")}` : "; no reason given"}.`;
 }
 
+// Nov 13 (#278 rerun): the first run failed on-pattern dislikes only because no reason was given (Ariadne under
+// "Mythic retellings"), and gave The Witch and Severance opposite verdicts across profiles. A dislike of an item
+// that fits the pattern is exactly what a counter-example should be, so a missing reason no longer fails it.
 export function buildGraderPrompt({ pattern, claim, supports, counter }) {
   return [
     "You grade one counter-example on a taste pattern from a recommender's Taste Profile. A counter-example is something the person tried and disliked that the pattern lists as evidence against itself.",
     "",
     "State in one sentence which specific part of the pattern this item contradicts, and how. Then decide whether that relationship is defensible from the evidence given.",
-    "Defensible: the item has a quality the pattern says the person enjoys, and their dislike (or their stated reason) bears on that quality, so the dislike is a real reason to doubt or narrow the pattern.",
+    "Defensible: the item clearly has a quality the pattern says the person enjoys, so disliking it is a real reason to doubt or narrow the pattern. A dislike of an item that fits the pattern is defensible even when no reason is given; a missing reason is never by itself grounds for \"not defensible\". A stated reason only matters when it points away from the pattern (see below).",
     "Not defensible: the item just belongs to a different genre or area than the pattern; the stated reason is about something the pattern makes no claim about; or the link needs facts the evidence doesn't give. You may use common knowledge of what a title is, but the link to the pattern must come from that and the person's reaction and reasons.",
     "If nothing in the pattern is contradicted, set contradicts to \"nothing\" and defensible to false.",
     "",

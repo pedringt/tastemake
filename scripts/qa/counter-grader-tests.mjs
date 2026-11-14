@@ -30,6 +30,10 @@ const line = describeEvidence(rec("a", "Stoner", "experienced-negative", [{ dime
 check("evidence line carries the reaction and the reason with its direction", line.includes("tried it and disliked it") && line.includes("Pacing: Too slow"), line);
 check("evidence with no reason says so", describeEvidence(rec("b", "Circe", "starter-favorite")).includes("marked it a favorite; no reason given"));
 const prompt = buildGraderPrompt({ pattern: "Mythic worlds", claim: "Likes myth.", supports: [rec("c", "Circe", "starter-favorite")], counter: rec("d", "It Ends With Us", "experienced-negative") });
+check("an on-pattern dislike with no reason is defensible", /fits the pattern is defensible even when no reason is given/.test(prompt));
+check("a missing reason alone never fails an item", /missing reason is never by itself grounds for "not defensible"/.test(prompt));
+check("an off-pattern item (different genre) still fails", /just belongs to a different genre or area than the pattern/.test(prompt));
+check("the old rule that needed the reason to bear on the pattern is gone", !/dislike \(or their stated reason\) bears/.test(prompt));
 check("prompt names the pattern, claim, support and counter after CONTEXT", /CONTEXT\nPattern: Mythic worlds\nClaim: Likes myth\.[\s\S]*Circe[\s\S]*Counter-example to grade:\n- It Ends With Us/.test(prompt));
 
 // ---- item collection ----
