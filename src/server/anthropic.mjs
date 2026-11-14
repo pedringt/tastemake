@@ -9,7 +9,8 @@ const REQUEST_TIMEOUT_MS = 25_000;   // 12s was tripping on every real call; the
 // Oct 20 (Paige): when the Anthropic account's spend limit or credits are used up, visitors read this
 // instead of a generic failure. Same wording as State and Project Health.
 export const AI_BUDGET_MESSAGE = "AI features are paused for now. This portfolio project runs on a personal AI budget, and it's been used up for this period. Everything else still works, and AI answers return when the budget resets.";
-const BUDGET_ERROR_MARKERS = ["enforced_spend_limit_reached", "reached your api usage limits", "monthly api usage threshold", "credit balance is too low", "billing_error"];
+// Nov 13: Anthropic also says "reached your specified API usage limits", so match the shared "api usage limits".
+const BUDGET_ERROR_MARKERS = ["enforced_spend_limit_reached", "api usage limits", "monthly api usage threshold", "credit balance is too low", "billing_error"];
 
 export function isAiBudgetExhausted(error) {
   const text = `${error?.anthropicType ?? ""} ${error?.anthropicDetail ?? ""} ${error?.message ?? ""}`.toLowerCase();

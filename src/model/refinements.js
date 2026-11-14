@@ -41,9 +41,26 @@ const BY_TYPE = {
   ]
 };
 
-// Directions, books only for now (#250). Item-agnostic on purpose: "too slow" needs no metadata, and no
-// option may hint at the plot.
+// Directions for books (#250), and Humor / Characters on movies and TV (#335). Item-agnostic on purpose:
+// "too slow" needs no metadata, and no option may hint at the plot.
+//
+// #335: a plain "Humor" on a disliked Friends couldn't say *which* humor didn't work, so one dislike was read
+// as "avoids ensemble comedy" next to loved ensembles (The Office). The "worked" styles are what a "not my
+// style of humor" is read against.
+const SCREEN = {
+  humor: {
+    negative: [{ id: "not-my-style", label: "Not my style of humor" }, { id: "too-broad", label: "Too broad" }, { id: "too-mean", label: "Too mean" }, { id: "trying-too-hard", label: "Trying too hard" }],
+    positive: [{ id: "dry-deadpan", label: "Dry / deadpan" }, { id: "awkward-cringe", label: "Awkward / cringe" }, { id: "absurd", label: "Absurd" }, { id: "warm", label: "Warm" }]
+  },
+  characters: {
+    negative: [{ id: "hard-to-care", label: "Hard to care about" }, { id: "too-cartoonish", label: "Too cartoonish" }, { id: "too-many", label: "Too many to follow" }],
+    positive: [{ id: "good-company", label: "Loved spending time with them" }, { id: "felt-real", label: "Felt real" }]
+  }
+};
+
 const DIRECTIONS = {
+  movie: SCREEN,
+  tv: SCREEN,
   book: {
     pacing: {
       negative: [{ id: "too-slow", label: "Too slow" }, { id: "too-rushed", label: "Too rushed" }, { id: "uneven", label: "Uneven" }],

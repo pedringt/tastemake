@@ -277,6 +277,9 @@
 .why-caveat { margin-top:8px !important; font-style:italic; }
 /* Opening downward, the popover reaches into the next row; lift its own card above the neighbors. */
 .editorial-rec:has(.editorial-why:not(.is-dismissed):hover, .editorial-why:not(.is-dismissed):focus-within, .editorial-why.is-pinned) { position:relative; z-index:40; }
+/* #321: with the Synopsis line the popover can reach past the last row; lift the grid above the bar after it
+   (both sit at z-index 2) only while a popover is open, so nothing changes for closed cards. */
+.editorial-grid:has(.editorial-why:not(.is-dismissed):hover, .editorial-why:not(.is-dismissed):focus-within, .editorial-why.is-pinned) { z-index:3; }
 /* Oct 23 smoke test: it opens over the reaction buttons, so only a pinned (clicked) popover takes clicks.
    A hover/focus preview lets clicks through, and once closed (click again or Escape) it stays closed
    until the pointer and focus leave (.is-dismissed, src/app.js). */
@@ -773,6 +776,8 @@
 .new-this-week { margin:28px 0 8px; padding:16px; border:2px solid var(--navy); border-radius:16px; background:var(--paper,#fff); }
 .new-this-week-head h2 { margin:0; color:var(--navy); font-size:20px; }
 .new-this-week-head p { margin:4px 0 12px; color:var(--muted); font-size:13px; line-height:1.4; max-width:70ch; }
+/* #317: the empty message is the whole strip, so no gap under it. */
+.new-this-week-empty .new-this-week-head p { margin-bottom:0; }
 .new-this-week-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; margin:0; padding:0; list-style:none; }
 .new-release { display:flex; gap:10px; align-items:flex-start; padding:10px; border:1px solid var(--line); border-radius:12px; background:#fff; min-width:0; }
 .new-release-artwork { flex:0 0 56px; width:56px; height:84px; border-radius:6px; overflow:hidden; }

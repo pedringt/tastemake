@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { canKeepDiscovering } from "../model/taste.js";
-import { CONTEXT, FIT, WEIGHT, statementFor } from "../model/statements.js";
+import { CONTEXT, FIT, NEEDS_REVIEW_TEXT, RECONFIRM_LABEL, RECONFIRM_TEXT, WEIGHT, canReconfirm, patternDisplayStatus, shownContext, statementFor } from "../model/statements.js";
 import { renderStickerField } from "../components/stickers.js";
 import { renderBlindSpotPanel } from "../components/blindspot.js";
 import { activeBlindSpots, blindSpotsFor, isRecurring, recurringThemes } from "../model/blindspots.js";
@@ -11,7 +11,8 @@ import { evidenceRecords } from "../model/evidence.js";
 import { renderTasteMap } from "./tastemap.js";
 import { AI_PAUSED_EXPLAINER } from "../ai/ai-status.js";
 import { levelChangeConsequence } from "../model/history.js";
-import { exampleLinkHtml } from "../example-profile.js";
+import { exampleLinkHtml, isViewingExample } from "../example-profile.js";
+import { featuredCorrection } from "../model/featured-correction.js";
 
 function sayButton(item, field, value, label, said) {
   const pressed = said?.[field] === value;
@@ -105,16 +106,21 @@ function statementConsequence(item, said) {
   if (!said?.says) return "";
   const excluded = (said.excludedDomains ?? []).map((id) => domainById(id)?.label ?? id);
 
+  // Nov 3, 2026 (T1): say only what the software does. Corrections are enforced in the Taste Profile;
+  // for recommendations they are passed to the AI as instructions, and they do not reach candidate
+  // scoring or the catalog fallback. So no line here promises that future picks will change.
   let text = "";
-  if (said.says === "not-me") text = "Future recommendations will leave this pattern out.";
-  else if (said.says === "unsure") text = "Tastemake will keep this tentative instead of leaning on it.";
-  else if (said.says === "partial") text = "Tastemake will use this pattern more selectively.";
-  else if (said.weight === "lot") text = "This pattern will count more when Tastemake ranks future picks.";
-  else if (said.weight === "little") text = "This pattern will count less when Tastemake ranks future picks.";
+  if (said.says === "not-me") text = "Tastemake won’t use this pattern in your Taste Profile, and asks its AI not to lean on it when explaining picks.";
+  // Nov 9 (feedback semantics D6): "Not sure" means unconfirmed, not weaker. Nothing caps the level, so the copy
+  // no longer says Tastemake keeps the pattern "tentative".
+  else if (said.says === "unsure") text = "Tastemake won’t present this pattern to its AI as something you agreed with. Its level still reflects the evidence.";
+  else if (said.says === "partial") text = "Tastemake asks its AI to treat this pattern more cautiously when making recommendations.";
+  else if (said.weight === "lot") text = "Tastemake will tell its AI this pattern matters more to you.";
+  else if (said.weight === "little") text = "Tastemake will tell its AI this pattern matters less to you.";
   else if (said.context === "some") text = "Tastemake will treat this as conditional rather than broadly true.";
   else if (said.says === "accurate") text = "Tastemake can keep using this pattern when it explains a future pick.";
 
-  if (excluded.length) text += ` It will not use it for ${excluded.join(", ")}.`;
+  if (excluded.length) text += ` Your Taste Profile won’t apply it to ${excluded.join(", ")}.`;
   if (!text) return "";
   return `<div class="signal-consequence"><strong>What this changes</strong><span>${esc(text)}</span></div>`;
 }
@@ -130,12 +136,15 @@ function saidReasonsLine(item, records) {
     .filter((record) => record?.refinements?.length)
     .map((record) => `<span class="signal-said-reason"><em>${esc(record.title)}</em>: ${esc(record.refinements.map((r) => lowerFirst(r.label)).join(", "))}</span>`);
   if (!rows.length) return "";
-  return `<div class="signal-evidence signal-said-reasons"><span>You said</span> ${rows.join(" · ")}</div>`;
+  // Nov 6 (#318): these are the reasons given for each title, not for this pattern. "You said" under
+  // "Mythic and fantastical worlds" read as if atmosphere/exploration had been said about mythic settings.
+  return `<div class="signal-evidence signal-said-reasons"><span>Your reasons for these titles</span> ${rows.join(" · ")}</div>`;
 }
 
 function hypothesisCard(item, index, records = new Map()) {
   const update = { level: item.strength ?? "Emerging", status: item.status ?? "emerging", provenance: item.provenance ?? "Live AI interpretation." };
   const said = statementFor(state, item.id);
+  const shown = patternDisplayStatus(item, said);
   const record = { scope: { supported: item.domains ?? [], excluded: said?.excludedDomains ?? [] } };
   const spots = blindSpotsFor(state, item.id);
   const blindLine = spots.length
@@ -152,18 +161,20 @@ function hypothesisCard(item, index, records = new Map()) {
             ${said?.says === "accurate" ? `<span class="signal-flag signal-confirmed">You confirmed this</span>` : ""}
             ${said?.says === "partial" ? `<span class="signal-flag">Partly accurate</span>` : ""}
             ${said?.says === "unsure" ? `<span class="signal-flag">Not sure yet</span>` : ""}
-            <span class="signal-status ${update.status}">${esc(update.level)}</span>
+            ${shown.kind === "level" ? `<span class="signal-status ${update.status}">${esc(update.level)}</span>` : `<span class="signal-flag">${esc(shown.label)}</span>`}
           </span>
         </div>
         <p class="signal-claim">${esc(item.claim)}</p>
+        ${shown.kind === "needs-review" ? `<div class="signal-said">${esc(NEEDS_REVIEW_TEXT)}</div>` : ""}
+        ${shown.kind === "needs-review" && canReconfirm(state, item.id) ? `<div class="signal-said signal-reconfirm"><span>${esc(RECONFIRM_TEXT)}</span> <button type="button" class="button button-secondary signal-say-button" data-reconfirm-pattern="${esc(item.id)}">${esc(RECONFIRM_LABEL)}</button></div>` : ""}
         <div class="signal-evidence"><span>What this comes from</span> ${esc(item.evidence)}</div>
         ${saidReasonsLine(item, records)}
         <div class="signal-provenance">${esc(update.provenance)}</div>
-        ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of what it picks for you. The pattern stays here so you can change your mind.</div>` : ""}
-        ${said?.says === "partial" ? `<div class="signal-said"><strong>${FIT.partial}.</strong> Tastemake treats it as a narrower pattern and uses the details you add below.</div>` : ""}
-        ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake keeps the pattern tentative rather than treating your uncertainty as evidence.</div>` : ""}
-        ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. That changes how much it counts when picking, not how sure Tastemake is.</div>` : ""}
-        ${["accurate", "partial"].includes(said?.says) && said?.context ? `<div class="signal-said">${CONTEXT[said.context] ?? "You refined when this applies."}.</div>` : ""}
+        ${said?.says === "not-me" ? `<div class="signal-said"><strong>${FIT["not-me"]}.</strong> Tastemake leaves it out of your Taste Profile. Picks can still resemble the titles behind it, because your ratings still count. The pattern stays here so you can change your mind.</div>` : ""}
+        ${said?.says === "partial" ? `<div class="signal-said"><strong>You marked this pattern as partly accurate.</strong> Tastemake keeps it in your profile and tells its AI to treat it more cautiously. It doesn’t yet know which part doesn’t fit.</div>` : ""}
+        ${said?.says === "unsure" ? `<div class="signal-said"><strong>${FIT.unsure}.</strong> Tastemake treats it as unconfirmed: it won’t present it to its AI as something you agreed with. How strong the evidence looks doesn’t change.</div>` : ""}
+        ${said?.says === "accurate" && said?.weight ? `<div class="signal-said">${WEIGHT[said.weight]}. Tastemake tells its AI how much it matters to you. It doesn’t change how sure Tastemake is.</div>` : ""}
+        ${["accurate", "partial"].includes(said?.says) && shownContext(said) ? `<div class="signal-said">${CONTEXT[shownContext(said)] ?? "You refined when this applies."}.</div>` : ""}
         ${sayControls(item, said, record)}
         ${statementConsequence(item, said)}
         ${blindLine}
@@ -176,7 +187,7 @@ function correctedPatternsSection(items) {
   return `
     <details class="corrected-patterns">
       <summary>Corrected patterns <span class="corrected-pattern-count">${items.length}</span></summary>
-      <p class="corrected-patterns-note">Patterns you said do not fit you. They no longer shape recommendations, but you can revisit them.</p>
+      <p class="corrected-patterns-note">Patterns you said do not fit you. Tastemake leaves them out of your Taste Profile. Picks can still resemble the titles behind them, because your ratings still count. You can revisit them.</p>
       <div class="corrected-pattern-list">
         ${items.map((item) => `
           <div class="corrected-pattern-row" data-profile-pattern="${item.id}">
@@ -200,8 +211,19 @@ function learningPanel(patterns = []) {
   for (const pattern of patterns) {
     const revisions = history.filter((entry) => entry.hypothesisId === pattern.id);
     if (revisions.length < 2) continue;
-    const previous = revisions[revisions.length - 2];
     const current = revisions[revisions.length - 1];
+
+    // Nov 4, 2026 (R-1): a user answer (Taste Profile correction or Tastebreak) is recorded without the
+    // pattern's categories, supports or level. Compared field by field, it read as "Where this pattern
+    // applies changed" on every correction, and the next refresh after one read as a new supporting
+    // example. So a user answer is reported as itself, and a refresh is compared only with the previous
+    // refresh. Only the latest change per pattern is shown, so a later refresh replaces the answer here.
+    if (current.origin === "user-confirmed") {
+      if (current.reason) changes.push({ title: pattern.title, sourceLine: "", changed: current.reason, consequence: "Tastemake keeps your answer alongside its own read of this pattern." });
+      continue;
+    }
+    const previous = revisions.slice(0, -1).reverse().find((entry) => entry.origin !== "user-confirmed");
+    if (!previous) continue;
 
     const addedSupport = (current.supports ?? []).find((ref) => !(previous.supports ?? []).includes(ref));
     const source = addedSupport ? evidence.get(addedSupport) : null;
@@ -214,16 +236,13 @@ function learningPanel(patterns = []) {
       consequence = levelChangeConsequence(previous.level, current.level);
     } else if (String(previous.claim ?? "") !== String(current.claim ?? "")) {
       changed = "The pattern became more specific.";
-      consequence = "Future picks will use the narrower interpretation instead of the older broad one.";
+      consequence = "Your Taste Profile now uses the narrower version instead of the older, broader one.";
     } else if ((current.supports?.length ?? 0) > (previous.supports?.length ?? 0)) {
       changed = "This pattern gained another supporting example.";
-      consequence = "Tastemake has more reason to test this pattern again in future picks.";
+      consequence = "This gives Tastemake another example to consider when assessing the pattern.";
     } else if (JSON.stringify(previous.domains ?? []) !== JSON.stringify(current.domains ?? [])) {
       changed = "Where this pattern applies changed.";
-      consequence = "Tastemake will apply it more selectively across books, movies, shows, and games.";
-    } else if (current.origin === "user-confirmed" && current.reason) {
-      changed = current.reason;
-      consequence = "Your correction now outranks Tastemake’s earlier inference.";
+      consequence = "Your Taste Profile has updated which kinds of titles this pattern covers.";
     } else {
       continue;
     }
@@ -238,7 +257,7 @@ function learningPanel(patterns = []) {
         title: pattern.title,
         sourceLine: "",
         changed: pattern.claim,
-        consequence: "This is one of the patterns Tastemake is currently testing when it chooses recommendations."
+        consequence: "This is one of the patterns Tastemake sees in what you’ve rated so far. If it’s wrong, you can correct it."
       }));
 
   return `
@@ -248,7 +267,7 @@ function learningPanel(patterns = []) {
           <p class="kicker">Learning out loud</p>
           <h2 id="profile-learning-title">${hasChanges ? "What changed" : "What Tastemake learned"}</h2>
           <p>${hasChanges
-            ? "Your recent reactions and corrections changed how Tastemake will choose future picks."
+            ? "Your recent reactions and corrections changed your Taste Profile. Your corrections are also passed to Tastemake’s AI when it orders and explains future picks."
             : "A few patterns Tastemake is starting to see in what you love."}</p>
         </div>
       </div>
@@ -261,6 +280,71 @@ function learningPanel(patterns = []) {
             <span><b>What that means:</b> ${esc(item.consequence)}</span>
           </article>`).join("")}
       </div>
+    </section>`;
+}
+
+// #319: in Paige's Example Profile, one real correction gets its own panel on the Overview, apart from the
+// strongest six (their selection is unchanged). Every line comes from the saved record: what was inferred
+// before her answer, the answer itself, and what the code does with it. Nothing claims picks got better:
+// the example makes no AI calls and no effect on recommendations has been measured. Example-only, so
+// nobody else's profile is ever shown a sample.
+const SAID = { partial: "partly accurate", "not-me": "not her", unsure: "not sure yet" };
+// Nov 7: separate the shortlist (built in software, which doesn't read pattern answers; #334) from what live AI
+// is told. Partly matches the shipped "more cautiously" wording. A pick's validator check for "not me" isn't
+// claimed: live picks arrive without a tested pattern, so it doesn't run on them.
+const USE = {
+  partial: "Tastemake builds its shortlist without using her answer. When AI chooses and explains picks, it's told to treat this pattern more cautiously.",
+  "not-me": "Her answer doesn't change Tastemake's shortlist. Live AI is told not to use the pattern, and Tastemake keeps it out of her Taste Profile when the profile is refreshed.",
+  unsure: "Her answer doesn't change Tastemake's shortlist. Live AI is told it isn't a confirmed preference."
+};
+const shortDate = (iso) => {
+  const date = new Date(iso ?? "");
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+};
+
+function featuredCorrectionPanel(activeHypotheses) {
+  if (!isViewingExample()) return "";
+  const featured = featuredCorrection(state);
+  if (!featured) return "";
+  const { pattern, said, answer, inferred, later } = featured;
+  const titles = new Map(evidenceRecords(state).map((row) => [row.ref, row.title]));
+  const inferredFrom = (inferred?.supports ?? []).map((ref) => titles.get(ref)).filter(Boolean);
+  const position = activeHypotheses.findIndex((item) => item.id === pattern.id);
+  const where = position < 0
+    ? "It is listed under Corrected patterns."
+    : position < 6
+      ? "It is also one of the patterns below."
+      : `It is pattern ${position + 1} of ${activeHypotheses.length} in her full profile, so it isn't one of the strongest six below.`;
+  const details = [
+    said.context ? `${CONTEXT[said.context] ?? "She refined when it applies"}.` : "",
+    said.excludedDomains?.length ? `Not for ${said.excludedDomains.map((id) => domainById(id)?.label ?? id).join(", ")}.` : ""
+  ].filter(Boolean).join(" ") || "No further detail was recorded with it.";
+  const since = later.length
+    ? `Tastemake has revised the pattern ${later.length === 1 ? "once" : `${later.length} times`} since; the Full profile shows the current version.`
+    : "No change to the pattern has been recorded since her answer: its wording, evidence and level are the same.";
+  return `
+    <section class="profile-featured-correction" aria-labelledby="featured-correction-title" data-featured-correction="${esc(pattern.id)}">
+      <p class="kicker">A correction Paige made</p>
+      <h2 id="featured-correction-title">She said “${esc(pattern.title)}” is ${SAID[said.says]}.</h2>
+      <p class="featured-correction-intro">You’re viewing Paige’s Example Profile, so this is her own answer, taken from her saved profile.</p>
+      <p class="featured-correction-where">${esc(where)}</p>
+      <dl class="featured-correction-steps">
+        <div>
+          <dt>What Tastemake inferred</dt>
+          <dd>${inferred
+            ? `“${esc(inferred.claim)}”${inferred.level ? ` <span class="featured-correction-meta">${esc(inferred.level.charAt(0).toUpperCase() + inferred.level.slice(1))}${inferredFrom.length ? `, from ${inferredFrom.length} thing${inferredFrom.length === 1 ? "" : "s"} she tried: ${inferredFrom.map((title) => esc(title)).join(", ")}` : ""}.</span>` : ""}`
+            : "The pattern as Tastemake had it before her answer wasn't saved."}</dd>
+        </div>
+        <div>
+          <dt>What Paige said${shortDate(answer.createdAt) ? ` <span class="featured-correction-meta">${esc(shortDate(answer.createdAt))}</span>` : ""}</dt>
+          <dd>${esc(`${SAID[said.says].charAt(0).toUpperCase()}${SAID[said.says].slice(1)}.`)} ${esc(details)}</dd>
+        </div>
+        <div>
+          <dt>What it changes</dt>
+          <dd>${esc(since)} ${esc(USE[said.says])} This example makes no AI calls, and no effect on recommendations has been measured.</dd>
+        </div>
+      </dl>
+      <button class="button button-secondary" type="button" data-profile-view="full">See it in the full profile</button>
     </section>`;
 }
 
@@ -319,7 +403,7 @@ export function renderProfile() {
           <p class="kicker">Taste Profile</p>
           <h1><span class="profile-headline-lead">Less "you like fantasy."</span><br class="profile-headline-break" /><span class="profile-headline-highlight">More "this is what tends to click."</span></h1>
           <p class="lede profile-compact-lede">Working patterns based on what you’ve actually tried. Refine them when Tastemake gets you wrong.</p>
-          ${state.hypothesisAiMessage ? `<div class="profile-ai-status profile-ai-status-compact ${state.hypothesisAiStatus === "loading" ? "is-loading" : ""}" role="status" aria-busy="${state.hypothesisAiStatus === "loading"}"><span class="profile-ai-status-dot" aria-hidden="true"></span><span>${esc(state.hypothesisAiMessage)}</span>${state.hypothesisAiStatus !== "loading" ? `<button class="button button-quiet profile-retry" type="button" data-action="retry-profile">${liveProfile ? "Refresh" : "Try again"}</button>` : ""}</div>` : ""}
+          ${state.hypothesisAiMessage ? `<div class="profile-ai-status profile-ai-status-compact ${state.hypothesisAiStatus === "loading" ? "is-loading" : ""}" role="status" tabindex="-1" aria-busy="${state.hypothesisAiStatus === "loading"}"><span class="profile-ai-status-dot" aria-hidden="true"></span><span>${esc(state.hypothesisAiMessage)}</span>${state.hypothesisAiStatus !== "loading" ? `<button class="button button-quiet profile-retry" type="button" data-action="retry-profile">${liveProfile ? "Refresh" : "Try again"}</button>` : ""}</div>` : ""}
         </div>
         <div class="profile-stamp" aria-hidden="true">
           <strong>WORKING</strong>
@@ -337,8 +421,9 @@ export function renderProfile() {
 
       ${liveProfile ? (
         profileView === "map"
-          ? renderTasteMap(activeHypotheses)
+          ? renderTasteMap(activeHypotheses, state.patternStatements)
           : `
+            ${profileView === "list" ? featuredCorrectionPanel(activeHypotheses) : ""}
             <div class="profile-depth-head">
               <div>
                 <p class="kicker">${profileView === "full" ? "Full profile" : "Current read"}</p>

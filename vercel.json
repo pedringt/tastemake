@@ -83,7 +83,7 @@
           "value": "DENY"
         },
         {
-          "key": "Content-Security-Policy-Report-Only",
+          "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' 'sha256-v6A1BqBhCV71VX0EgwNei3fDfZj9TJ4B8vdl/lEZ43I='; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org https://images.igdb.com https://covers.openlibrary.org https://archive.org https://*.us.archive.org https://books.google.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
         }
       ]

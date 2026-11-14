@@ -33,6 +33,68 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
 }
 
 {
+  // #333: a Partly-only "Not sure yet" doesn't survive a switch to Yes; "Depends" (offered under both) does.
+  const state = fresh();
+  setStatement(state, pattern.id, "says", "partial");
+  setStatement(state, pattern.id, "context", "unsure");
+  setStatement(state, pattern.id, "says", "accurate");
+  eq("partly + not sure yet, then yes: no hidden context", state.patternStatements[0].context, null);
+  eq("yes refuses not sure yet", setStatement(state, pattern.id, "context", "unsure"), null);
+  const kept = fresh();
+  setStatement(kept, pattern.id, "says", "partial");
+  setStatement(kept, pattern.id, "context", "some");
+  setStatement(kept, pattern.id, "says", "accurate");
+  eq("partly + depends, then yes: depends stays", kept.patternStatements[0].context, "some");
+  check("each answer change is still recorded", (kept.hypothesisHistory ?? []).filter((r) => r.hypothesisId === pattern.id).length >= 3);
+}
+
+{
+  // #333: a profile saved before the fix (Yes + the Partly-only "Not sure yet") is shown without the stale
+  // line, on the Taste Profile and in My Tastemake, while the saved record and its history stay as they were.
+  const stored = new Map();
+  globalThis.localStorage = { getItem: (k) => stored.get(k) ?? null, setItem: (k, v) => stored.set(k, String(v)), removeItem: (k) => stored.delete(k) };
+  globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
+  const { state } = await import("../../src/state.js");
+  const { persistState, loadPersistedState } = await import("../../src/persistence.js");
+  const { renderProfile } = await import("../../src/screens/profile.js");
+  const { renderMine } = await import("../../src/screens/mine.js");
+  const { CONTEXT, shownContext } = await import("../../src/model/statements.js");
+  const saved = { id: "ai-saved", title: "Saved pattern", claim: "A claim saved before the fix.", supports: [], counters: [], domains: ["movies"], strength: "supported", status: "supported" };
+  const history = [{ hypothesisId: "ai-saved", field: "context", from: null, to: "unsure" }];
+  persistState({ ...state, onboarded: true, modelHypotheses: [saved], patternStatements: [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "accurate", context: "unsure" }], hypothesisHistory: history });
+  const reloaded = loadPersistedState();
+  eq("the inconsistent answer is still saved as it was", reloaded.patternStatements?.[0]?.context, "unsure");
+  Object.assign(state, reloaded, { profileView: "list" });
+  const profile = renderProfile();
+  const row = profile.slice(profile.indexOf('data-profile-pattern="ai-saved"'));
+  check("the Taste Profile row still shows the Yes answer", row.length > 0 && row.includes("accurate"));
+  check("the Taste Profile hides the stale Not sure yet line", !profile.includes(CONTEXT.unsure));
+  check("My Tastemake hides it too", !renderMine().includes(CONTEXT.unsure));
+  eq("displaying it doesn't rewrite the saved answer", state.patternStatements[0].context, "unsure");
+  eq("or its history", JSON.stringify(state.hypothesisHistory), JSON.stringify(reloaded.hypothesisHistory));
+  eq("Yes + Depends is still shown", shownContext({ says: "accurate", context: "some" }), "some");
+  eq("Partly + Not sure yet is still shown", shownContext({ says: "partial", context: "unsure" }), "unsure");
+  // #333: live AI reads the same effective answer the person sees (recommendations and Taste Profile refresh).
+  const { buildContext } = await import("../../src/ai/context.js");
+  const { buildPickPrompt } = await import("../../api/recommendations.mjs");
+  const { buildHypothesisPrompt } = await import("../../api/hypotheses.mjs");
+  const ctx = buildContext(state);
+  eq("the AI context sends Yes without the hidden Not sure yet", ctx.statements[0]?.context, null);
+  eq("and still sends the Yes answer", ctx.statements[0]?.says, "accurate");
+  check("neither prompt carries it", !/"unsure"/.test(buildPickPrompt(ctx, 3)) && !/"unsure"/.test(buildHypothesisPrompt(ctx, [saved])), buildPickPrompt(ctx, 3).slice(-600));
+  eq("building the context doesn't rewrite the saved answer", state.patternStatements[0].context, "unsure");
+  state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "partial", context: "unsure" }];
+  eq("Partly + Not sure yet still reaches the AI", buildContext(state).statements[0]?.context, "unsure");
+  state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "accurate", context: "some" }];
+  check("a saved Yes + Depends line still renders", renderProfile().includes(CONTEXT.some) && renderMine().includes(CONTEXT.some));
+  // Nov 9 (feedback semantics D6): "Not sure" means unconfirmed. The level isn't capped, so the copy can't say "tentative".
+  state.patternStatements = [{ hypothesisId: "ai-saved", label: "Saved pattern", says: "unsure", context: null }];
+  const unsure = renderProfile();
+  check("Not sure is described as unconfirmed", unsure.includes("treats it as unconfirmed") && unsure.includes("Its level still reflects the evidence"));
+  check("and never as tentative", !/tentative/i.test(unsure));
+}
+
+{
   const state = fresh();
   setStatement(state, pattern.id, "says", "partial");
   check("partly allows domain refinement", Boolean(toggleDomainExclusion(state, pattern.id, "movies")));
@@ -71,7 +133,7 @@ const fresh = () => ({ modelHypotheses:[pattern], patternStatements:[], hypothes
 // Oct 23 smoke test: "emerging → supported" was explained as "lean on this pattern more cautiously".
 {
   check("up a level reads as more confidence", /a little more/.test(levelChangeConsequence("emerging", "supported")), levelChangeConsequence("emerging", "supported"));
-  check("up to Strong reads as more weight", /more weight/.test(levelChangeConsequence("supported", "strong")));
+  check("up to Strong reads as more confidence, not more weight in recommendations", /more confident/.test(levelChangeConsequence("supported", "strong")) && !/recommend|pick/i.test(levelChangeConsequence("supported", "strong")));
   check("down from Strong reads as more cautious", /more cautiously/.test(levelChangeConsequence("strong", "supported")));
   check("down to Emerging reads as an open question again", /open question/.test(levelChangeConsequence("supported", "emerging")));
   check("capitalized levels work too", /a little more/.test(levelChangeConsequence("Emerging", "Supported")));

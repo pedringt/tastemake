@@ -108,6 +108,7 @@ export function expandProfileRefs(response, refs) {
   const expand = (list) => (Array.isArray(list) ? list.map((ref) => (typeof ref === "string" && refs.has(ref.trim()) ? refs.get(ref.trim()) : ref)) : list);
   return {
     ...response,
-    hypotheses: response.hypotheses.map((h) => (h && typeof h === "object" ? { ...h, evidence: expand(h.evidence), counter: expand(h.counter) } : h))
+    // carriedForward marks a stored pattern software carried (src/ai/validate.js); a model answer never sets it.
+    hypotheses: response.hypotheses.map((h) => (h && typeof h === "object" ? { ...h, evidence: expand(h.evidence), counter: expand(h.counter), carriedForward: undefined } : h))
   };
 }

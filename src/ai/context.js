@@ -1,5 +1,6 @@
 import { areaOn } from "../model/taste.js";
 import { evidenceRecords } from "../model/evidence.js";
+import { effectiveStatement } from "../model/statements.js";
 
 // What the product hands a model (and the validator). Built only from product state, never from model output.
 // The model gets typed evidence and a list of eligible candidates; it never gets the power to decide
@@ -30,7 +31,8 @@ export function buildContext(state, extraCandidates = []) {
     candidates: eligibleCandidates(state, extraCandidates),
     curveball: state.curveball !== false,
     recommendationStyle: state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced"),
-    statements: state.patternStatements ?? [],   // user-confirmed statements (pattern corrections; not built yet)
+    // #333: as the person sees them, so a saved Yes can't also send the Partly-only "Not sure yet".
+    statements: (state.patternStatements ?? []).map(effectiveStatement),
     contexts: [],                                 // contexts the user gave (taste modes; not collected yet)
     recommendationFilter: state.recommendationFilter ?? "all",
     evidenceRotation: Math.floor((state.seenItemIds?.length ?? 0) / 5)
