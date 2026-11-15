@@ -18,6 +18,7 @@ import { renderArtwork } from "../components/artwork.js";
 import { releaseLabel } from "../ai/new-releases.js";
 import { exclusionOptions } from "../model/exclusions.js";
 import { starIcon } from "../components/star.js";
+import { renderDismissalNote } from "../components/dismissal-note.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -382,7 +383,8 @@ function recommendationCard(item, index, total) {
             <div class="reaction-complete">
               <span>${reactionLabel(saved)}</span>
               <button class="button button-quiet reaction-change" type="button" data-feedback-edit="${item.id}">Change</button>
-            </div>`
+            </div>
+            ${isDeclined(saved) ? renderDismissalNote(item.id, item.title) : ""}`
           : `
             <div class="reaction-question">Have you tried it?</div>
             <div class="reaction-rail reaction-rail-binary" aria-label="Have you tried ${esc(item.title)}?">

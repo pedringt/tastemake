@@ -9,7 +9,7 @@ const SET_FIELDS = ["selectedFavorites", "libraryFavorites", "blindSpotDismissed
 const BACKUP_FIELDS = [
   "selectedFavorites", "feedbackByRecommendation", "recommendationSets", "recommendationExhausted",
   "libraryFavorites", "customItems", "blindSpots", "patternStatements", "exclusions", "blindSpotDismissed",
-  "tastebreaks", "hypothesisHistory", "modelHypotheses", "profileView", "mapPattern", "mapItem",
+  "tastebreaks", "dismissalNotes", "hypothesisHistory", "modelHypotheses", "profileView", "mapPattern", "mapItem",
   "mapFilter", "favoriteFilter", "recommendationFilter", "libraryFilter", "expandedFeedback",
   "areas", "curveball", "displayName", "setupAreas", "recommendationStyle", "setupComplete",
   "setupReturn", "onboarded", "libraryView", "look"

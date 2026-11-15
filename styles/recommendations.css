@@ -823,3 +823,27 @@
 
 /* Oct 24: the star is an SVG (src/components/star.js), so it sits at the true center of round buttons. */
 .star-icon { display:block; flex:none; }
+
+/* "What put you off?" after Not interested (optional; the pick is already dismissed). */
+.dismiss-note { display:grid; gap:6px; margin-top:8px; padding-top:10px; border-top:1px dashed var(--line); }
+.dismiss-note-label { font-size:13px; font-weight:800; color:var(--navy); }
+.dismiss-note-optional { margin-left:4px; font-size:12px; font-weight:600; color:var(--muted); }
+.dismiss-note-input {
+  width:100%;
+  min-height:56px;
+  padding:8px 10px;
+  border:1.5px solid var(--line);
+  border-radius:8px;
+  background:var(--paper);
+  color:var(--ink);
+  font:inherit;
+  font-size:14px;
+  resize:vertical;
+}
+.dismiss-note-input:focus-visible { outline:3px solid rgba(32,217,232,.55); outline-offset:2px; }
+.dismiss-note-hint { margin:0; font-size:12px; color:var(--muted); }
+.dismiss-note-error { margin:0; font-size:13px; font-weight:700; color:var(--coral); }
+.dismiss-note-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.dismiss-note-actions .button { min-height:44px; }
+.dismiss-note-saved { margin:8px 0 0; font-size:13px; color:var(--muted); overflow-wrap:anywhere; }
+.dismiss-note-saved span { font-weight:700; color:var(--navy); }

@@ -19,6 +19,7 @@ const MAPS = {
   customItems: isItem,
   blindSpots: isObject,
   tastebreaks: isObject,
+  dismissalNotes: (entry) => isObject(entry) && typeof entry.note === "string",
   expandedFeedback: () => true
 };
 
