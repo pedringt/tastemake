@@ -6,7 +6,7 @@ const SET_FIELDS = ["selectedFavorites", "libraryFavorites", "blindSpotDismissed
 const FIELDS = [
   "selectedFavorites", "feedbackByRecommendation", "recommendationSets", "recommendationExhausted",
   "libraryFavorites", "customItems", "blindSpots", "patternStatements", "exclusions", "blindSpotDismissed",
-  "tastebreaks", "hypothesisHistory", "modelHypotheses", "profileView", "mapPattern", "mapItem",
+  "tastebreaks", "dismissalNotes", "hypothesisHistory", "modelHypotheses", "profileView", "mapPattern", "mapItem",
   "mapFilter", "favoriteFilter", "recommendationFilter", "libraryFilter", "expandedFeedback",
   "areas", "curveball", "displayName", "setupAreas", "recommendationStyle", "setupComplete",
   "setupReturn", "onboarded", "libraryView", "look", "hypothesisAiChecked", "profileLedger"
@@ -77,16 +77,17 @@ export function loadPersistedState() {
   }
 }
 
+// True when the save went through (or there's nothing to save to disk: the Example Profile lives in memory).
 export function persistState(state) {
-  if (state?.viewingExample) return;   // Paige's Example Profile lives in memory only
+  if (state?.viewingExample) return true;   // Paige's Example Profile lives in memory only
   const store = storage();
-  if (!store) return;
+  if (!store) return false;
   const out = {};
   for (const field of FIELDS) {
     const value = state[field];
     out[field] = value instanceof Set ? [...value] : value;
   }
-  try { store.setItem(KEY, JSON.stringify({ version: 1, state: out })); } catch { /* test state is best effort */ }
+  try { store.setItem(KEY, JSON.stringify({ version: 1, state: out })); return true; } catch { return false; /* test state is best effort */ }
 }
 
 export function clearPersistedState() {

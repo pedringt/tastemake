@@ -28,6 +28,7 @@ const SUITES = [
   "why-lines-tests.mjs",
   "pitch-provenance-tests.mjs",
   "dismissed-tests.mjs",
+  "dismissal-note-tests.mjs",
   "profile-rules-tests.mjs",
   "confirmed-patterns-tests.mjs",
   "profile-refresh-race-tests.mjs",

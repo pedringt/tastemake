@@ -13,6 +13,7 @@ import { sanitizeRecommendationCopy } from "../lib/recommendation-copy.js";
 import { assessSynopsis, blurbOf } from "../catalog/synopsis.mjs";
 import { renderArtwork } from "../components/artwork.js";
 import { starIcon } from "../components/star.js";
+import { dismissalNoteFor } from "../model/dismissal-notes.js";
 import { bridgeTargetFor, bridgeTargetNoun } from "../catalog/bridges.mjs";
 
 // #94: Library has one simple mental model — Recommendations is discovery, Library is your stuff.
@@ -417,6 +418,7 @@ function dismissedChoice(id, outcome, label, pressed = false) {
 }
 
 function dismissedRow({ item }) {
+  const note = dismissalNoteFor(state, item.id);
   const info = [displayLabel(item), item.year].filter(Boolean).join(" · ");
   return `
     <li class="library-dismissed-item" data-dismissed-row="${esc(item.id)}">
@@ -439,6 +441,7 @@ function dismissedRow({ item }) {
           </div>
         </details>
       </div>
+      ${note ? `<p class="dismiss-note-saved"><span>Your note:</span> “${esc(note.note)}”</p>` : ""}
     </li>`;
 }
 

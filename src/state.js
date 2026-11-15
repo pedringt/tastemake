@@ -32,6 +32,10 @@ function fresh() {
     // user-confirmed revisions.
     tastebreaks: {},
     tastebreakDrafts: {},
+    // "What put you off?" notes after Not interested, one per title (src/model/dismissal-notes.js), and the
+    // open prompts with their unsent drafts (transient: a reload or Skip drops an unsent draft).
+    dismissalNotes: {},
+    dismissalPrompts: {},
     // Append-only revision history for taste hypotheses (#37). See src/model/history.js.
     hypothesisHistory: [],
     // #86: validated live interpretations for the Taste Profile. These are inferred state, never evidence.
