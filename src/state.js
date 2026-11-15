@@ -41,7 +41,7 @@ function fresh() {
     // #340: a short, saved record of the last completed refresh ({ hash, version }), so a page load with the
     // same evidence doesn't pay for the same refresh again. hypothesisAiKey itself stays transient.
     hypothesisAiChecked: null,
-    // #326 Design A (behind PLACEMENT_REFRESH, off): which tried items the last refresh placed, and the "not yet
+    // #326 Design A (behind PLACEMENT_REFRESH): which tried items the last refresh placed, and the "not yet
     // explained" pool (src/model/refresh-ledger.js). Undefined until that refresh runs, so nothing is saved for it.
     profileLedger: undefined,
     hypothesisAiMessage: null,

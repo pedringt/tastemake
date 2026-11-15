@@ -107,11 +107,11 @@ const shortId = (request, r) => [...request.items, ...request.pool].find(([, x])
 
 // ---- 2. saved state: migration and the flag ------------------------------------------------------------------
 {
-  eq("the browser flag is off by default", PLACEMENT_REFRESH, false);
+  eq("the browser flag is on (Paige turned A on, Nov 14)", PLACEMENT_REFRESH, true);
   const { state: fresh } = await import("../../src/state.js");
   stored.clear();
   persistState(fresh);
-  check("flag off: a saved profile has no ledger field", !String(stored.get("tastemake:test-state:v1")).includes("profileLedger"));
+  check("a fresh profile saves no ledger field until a refresh runs", !String(stored.get("tastemake:test-state:v1")).includes("profileLedger"));
   const s = profile();
   stored.clear();
   persistState(s);
@@ -447,12 +447,12 @@ const browserState = () => { const s = profile(); s.hypothesisAiChecked = null; 
   check("…and the ledger is rebuilt from the full refresh", readLedger(s.profileLedger) && !refreshQueue(s).items.length);
   serverEnv = { ...ENV, TASTEMAKE_PROFILE_PLACEMENT: "1" };
 
-  // flag off (the default): today's request, no ledger written
+  // flag off (placement: false, the rollback): today's request, no ledger written
   const t = browserState();
   delete t.profileLedger;
   react(t, HEIST[0], "liked");
   requests.length = 0;
-  await refreshProfileHypotheses(t, { force: true });
+  await refreshProfileHypotheses(t, { placement: false, force: true });
   check("browser flag off: today's request, without placement", requests.length === 1 && !requests[0].placement);
   check("…and no ledger is written", t.profileLedger === undefined);
 

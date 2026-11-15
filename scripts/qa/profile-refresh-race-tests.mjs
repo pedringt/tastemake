@@ -74,7 +74,7 @@ async function raceWith(change, { payload = ANSWER, s = profileState() } = {}) {
   let stale = 0;
   let updates = 0;
   const announced = [];
-  const running = refreshProfileHypotheses(s, { force: true, onStale: () => { stale += 1; }, onUpdate: () => { updates += 1; }, announce: (m) => announced.push(m) });
+  const running = refreshProfileHypotheses(s, { placement: false, force: true, onStale: () => { stale += 1; }, onUpdate: () => { updates += 1; }, announce: (m) => announced.push(m) });
   await tick();
   change(s);
   const before = snapshot(s);
@@ -120,7 +120,7 @@ for (const [name, change] of [
   const s = profileState();
   const calls = deferredFetch();
   let stale = 0;
-  const running = refreshProfileHypotheses(s, { force: true, onStale: () => { stale += 1; } });
+  const running = refreshProfileHypotheses(s, { placement: false, force: true, onStale: () => { stale += 1; } });
   await tick();
   setStatement(s, "ai-worlds", "weight", "lot");   // already "lot": toggles it off, which is a real change
   setStatement(s, "ai-worlds", "weight", "lot");   // and back on: the profile is what it was
@@ -134,9 +134,9 @@ for (const [name, change] of [
 {
   const s = profileState();
   const calls = deferredFetch();
-  const refresh = () => refreshProfileHypotheses(s, { onStale: () => { second = refresh(); } });
+  const refresh = () => refreshProfileHypotheses(s, { placement: false, onStale: () => { second = refresh(); } });
   let second = null;
-  const first = refreshProfileHypotheses(s, { force: true, onStale: () => { second = refresh(); } });
+  const first = refreshProfileHypotheses(s, { placement: false, force: true, onStale: () => { second = refresh(); } });
   await tick();
   setStatement(s, "ai-worlds", "says", "partial");
   calls[0].answer(ANSWER);
@@ -170,7 +170,7 @@ for (const [name, change] of [
   const s = profileState();
   const calls = deferredFetch();
   let stale = 0;
-  const running = refreshProfileHypotheses(s, { force: true, onStale: () => { stale += 1; } });
+  const running = refreshProfileHypotheses(s, { placement: false, force: true, onStale: () => { stale += 1; } });
   await tick();
   setStatement(s, "ai-worlds", "says", "not-me");
   calls[0].fail(new Error("offline"));
@@ -183,7 +183,7 @@ for (const [name, change] of [
   const s = profileState();
   const calls = deferredFetch();
   let stale = 0;
-  const running = refreshProfileHypotheses(s, { force: true, onStale: () => { stale += 1; }, announce: () => { throw new Error("render failed"); } });
+  const running = refreshProfileHypotheses(s, { placement: false, force: true, onStale: () => { stale += 1; }, announce: () => { throw new Error("render failed"); } });
   await tick();
   calls[0].answer(ANSWER);
   await running;
@@ -216,7 +216,7 @@ for (const [name, replace] of [
   let stale = 0;
   let updates = 0;
   const announced = [];
-  const running = refreshProfileHypotheses(appState, { force: true, onStale: () => { stale += 1; }, onUpdate: () => { updates += 1; }, announce: (m) => announced.push(m) });
+  const running = refreshProfileHypotheses(appState, { placement: false, force: true, onStale: () => { stale += 1; }, onUpdate: () => { updates += 1; }, announce: (m) => announced.push(m) });
   await tick();
   const updatesBefore = updates;
   replace();
@@ -235,7 +235,7 @@ for (const [name, replace] of [
   // The aborted request's rejection lands in the error path: it must not write "ready" or an error message.
   seedApp();
   const calls = deferredFetch();
-  const running = refreshProfileHypotheses(appState, { force: true });
+  const running = refreshProfileHypotheses(appState, { placement: false, force: true });
   await tick();
   resetState();
   const after = snapshot(appState);
@@ -250,13 +250,13 @@ for (const [name, replace] of [
 {
   seedApp();
   const calls = deferredFetch();
-  const first = refreshProfileHypotheses(appState, { force: true });
+  const first = refreshProfileHypotheses(appState, { placement: false, force: true });
   await tick();
   resetState();
   seed(appState);
   appState.modelHypotheses = [{ ...WORLDS, id: "ai-second", title: "Second profile pattern", claim: "Only the second profile, after Start over, has this pattern in it." }];
   appState.patternStatements = [];
-  const second = refreshProfileHypotheses(appState, { force: true });
+  const second = refreshProfileHypotheses(appState, { placement: false, force: true });
   await tick();
   const secondAnswer = { source: "model", hypotheses: [{ id: "ai-second", label: "Second profile pattern", claim: "Only the second profile, after Start over, has this pattern in it.", evidence: ["ev:eeaao", "ev:barry"], counter: [], domains: ["movies"], crossDomain: "untested", level: "supported", conditional: false, context: null }], meta: { rejected: 0, needsReview: [] } };
   calls[1].answer(secondAnswer);

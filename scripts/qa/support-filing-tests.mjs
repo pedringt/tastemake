@@ -157,7 +157,7 @@ eq("label words that name a medium or carry no meaning are ignored", labelStems(
   const realFetch = globalThis.fetch;
   const again = after.modelHypotheses.map((p) => ({ id: p.id, label: p.title, claim: p.claim, evidence: p.supports, counter: p.counters, domains: p.domains, level: String(p.strength).toLowerCase(), crossDomain: "untested", conditional: false, context: null }));
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ source: "model", hypotheses: again, meta: { paidCallMade: true, needsReview: [], notChecked: [], narrowed: [], rejected: 0 } }) });
-  try { await refreshProfileHypotheses(after, { force: true }); } finally { globalThis.fetch = realFetch; }
+  try { await refreshProfileHypotheses(after, { placement: false, force: true }); } finally { globalThis.fetch = realFetch; }
   const stillShown = after.modelHypotheses.find((p) => p.id === storedMythic.id);
   eq("next refresh: still flagged", stillShown?.evidenceStatus, NEEDS_REVIEW);
   eq("next refresh: still remembers the area", stillShown?.narrowedAreas?.join(","), "play");

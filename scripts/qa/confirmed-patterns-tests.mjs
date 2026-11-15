@@ -216,7 +216,7 @@ async function endpoint(s, answer) {
 async function clientRefresh(s, payload) {
   const realFetch = globalThis.fetch;
   globalThis.fetch = async () => ({ ok: true, json: async () => payload });
-  try { await refreshProfileHypotheses(s, { force: true }); }
+  try { await refreshProfileHypotheses(s, { placement: false, force: true }); }
   finally { globalThis.fetch = realFetch; }
 }
 {
@@ -396,7 +396,7 @@ const newProposals = (n) => ({ hypotheses: Array.from({ length: n }, (_, i) => p
   const said = [];
   const realFetch = globalThis.fetch;
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ source: "unavailable", hypotheses: [], meta: { paidCallMade: true, needsReview: ["ai-puzzles"] } }) });
-  try { await refreshProfileHypotheses(s, { force: true, announce: (m) => said.push(m) }); }
+  try { await refreshProfileHypotheses(s, { placement: false, force: true, announce: (m) => said.push(m) }); }
   finally { globalThis.fetch = realFetch; }
   eq("completed check, nothing accepted: the flag is set", s.modelHypotheses.find((h) => h.id === "ai-puzzles")?.evidenceStatus, NEEDS_REVIEW);
   check("completed check: the message says the check ran and what it found", /checked your profile/i.test(s.hypothesisAiMessage) && /need another look/i.test(s.hypothesisAiMessage), s.hypothesisAiMessage);
@@ -405,7 +405,7 @@ const newProposals = (n) => ({ hypotheses: Array.from({ length: n }, (_, i) => p
   eq("completed check: announced once", said.length, 1);
   let calls = 0;
   globalThis.fetch = async () => { calls += 1; return { ok: true, json: async () => ({ source: "unavailable", hypotheses: [], meta: {} }) }; };
-  try { await refreshProfileHypotheses(s, {}); }
+  try { await refreshProfileHypotheses(s, { placement: false }); }
   finally { globalThis.fetch = realFetch; }
   eq("completed check: the next visit with the same evidence makes no call", calls, 0);
 }
@@ -426,7 +426,7 @@ for (const [name, respond] of [
   const before = JSON.stringify({ patterns: s.modelHypotheses, statements: s.patternStatements, history: s.hypothesisHistory });
   const realFetch = globalThis.fetch;
   globalThis.fetch = respond;
-  try { await refreshProfileHypotheses(s, { force: true }); }
+  try { await refreshProfileHypotheses(s, { placement: false, force: true }); }
   finally { globalThis.fetch = realFetch; }
   eq(`${name}: the saved profile is unchanged`, JSON.stringify({ patterns: s.modelHypotheses, statements: s.patternStatements, history: s.hypothesisHistory }), before);
   eq(`${name}: not recorded as a completed check`, s.hypothesisAiKey, null);
