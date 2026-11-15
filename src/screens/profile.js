@@ -13,6 +13,7 @@ import { AI_PAUSED_EXPLAINER } from "../ai/ai-status.js";
 import { levelChangeConsequence } from "../model/history.js";
 import { exampleLinkHtml, isViewingExample } from "../example-profile.js";
 import { featuredCorrection } from "../model/featured-correction.js";
+import { partlyAreasReachPicks } from "../ai/corrections.js";
 
 // #358: progressive disclosure. An unanswered pattern shows its statement, one supporting example and the
 // question; follow-ups appear only after an answer, and an answered pattern collapses to a summary with
@@ -187,12 +188,16 @@ const CONSEQUENCE = {
   context: { some: "Marked as depending on context. From the next refresh, its level can’t go above Supported." }
 };
 
-function statementConsequence(said, field) {
+// Nov 15: a Partly's unticked areas also move matching titles down the shortlist (src/ai/corrections.js),
+// but only when the pattern's kind can be read from its titles' labels; otherwise nothing is promised.
+const picksLine = (areas) => ` In ${areas.join(", ")}, titles like this also move lower in your picks.`;
+
+function statementConsequence(said, field, reachesPicks = false) {
   if (!said?.says || !field) return "";
   let text = "";
   if (field === "scope") {
     const excluded = (said.excludedDomains ?? []).map(areaLabel);
-    if (excluded.length) text = `Your Taste Profile won’t apply it to ${excluded.join(", ")}.`;
+    if (excluded.length) text = `Your Taste Profile won’t apply it to ${excluded.join(", ")}.${reachesPicks ? picksLine(excluded) : ""}`;
   } else if (field === "also") {
     // #252: passed to the picks prompt only (catalog fallback doesn't read it), and never evidence there.
     const also = (said.alsoAppliesTo ?? []).map(areaLabel);
@@ -274,11 +279,11 @@ function hypothesisCard(item, index, records = new Map()) {
           ${canReconfirm(state, item.id) ? `<div class="signal-said signal-reconfirm"><span>${esc(reconfirmText(item))}</span> <button type="button" class="button button-secondary signal-say-button" data-reconfirm-pattern="${esc(item.id)}">${esc(RECONFIRM_LABEL)}</button></div>` : ""}
         </details>` : ""}
         ${!open && excluded.length ? `<details class="signal-carried"><summary>Where it doesn’t apply</summary>
-          <div class="signal-said">Your Taste Profile won’t apply it to ${esc(excluded.join(", "))}. Change it to include an area again.</div>
+          <div class="signal-said">Your Taste Profile won’t apply it to ${esc(excluded.join(", "))}.${partlyAreasReachPicks(state, item.id) ? esc(picksLine(excluded)) : ""} Change it to include an area again.</div>
         </details>` : ""}
         ${open ? `
           ${sayControls(item, said, record)}
-          ${statementConsequence(said, disclosure.changed.get(item.id))}
+          ${statementConsequence(said, disclosure.changed.get(item.id), partlyAreasReachPicks(state, item.id))}
           ${said?.says ? `<div class="signal-done-row">${disclosureButton(item, "done", "Done")}</div>` : ""}` : summaryLine(item, said)}
       </div>
     </article>`;

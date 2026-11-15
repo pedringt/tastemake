@@ -6,8 +6,10 @@ import { hypothesisMatches } from "../model/taste.js";
 // fallback alike, not just what the AI is told. Paige's rules (Nov 13):
 //   1. "Not me" on a pattern strongly down-ranks candidates that match that pattern (chooseCandidates in
 //      taste-score.js). A down-rank, never an exclusion: "never recommend" is #48's exclusions.
-//   2. Partly and "matters a little" change nothing here yet. They wait for element-level Partly (#323);
-//      that work plugs in where `rejected` and `confirmed` are built below.
+//   2. "Matters a little" changes nothing here yet. Partly changes nothing either, except (Nov 15, Paige)
+//      the areas it unticks: there it is a "Not me" in those areas only, and in the areas it keeps it guards
+//      like a Yes. The rest of Partly waits for element-level Partly (#323), which plugs in where `rejected`
+//      and `confirmed` are built below.
 //   3. If every Surprise candidate conflicts with a "Not me", the set has no Surprise (chooseCandidates).
 //
 // What "matches the pattern" means (round 4 of the correction eval, scripts/evals/corrections/patterns.mjs):
@@ -54,20 +56,39 @@ function patternsOf(state) {
 
 const samePattern = (a, b) => hypothesisMatches([a], b) || hypothesisMatches([b], a);
 
+// The areas a Partly answer unticked (its excludedDomains), as media. Empty for every other answer.
+export function partlyExcludedMedia(statement) {
+  if (statement?.says !== "partial" || !Array.isArray(statement.excludedDomains)) return [];
+  return statement.excludedDomains.filter((domain) => MEDIA.includes(domain));
+}
+
+// Whether a statement takes titles out of the running somewhere: a "Not me", or a Partly with unticked areas.
+export const rejectsSomewhere = (statement) => statement?.says === "not-me" || partlyExcludedMedia(statement).length > 0;
+
 // Which kinds the person rejected and confirmed: { rejected: [{ id, domains, labels }], confirmed: [...] },
 // or null when nothing is rejected (then the shortlist is exactly what it was before #334).
 export function correctionKinds(state) {
   const statements = state.patternStatements ?? [];
-  if (!statements.some((s) => s?.says === "not-me")) return null;
+  if (!statements.some(rejectsSomewhere)) return null;
   const patterns = patternsOf(state);
-  const pick = (says) => statements.filter((s) => s?.says === says)
-    .map((s) => patterns.find((p) => samePattern(p.id, s.hypothesisId)))
-    .filter(Boolean);
-  // Rule 2 seam (#323): only "not me" rejects, and only a Yes guards. Partly, its excluded areas, Not sure
-  // and how much a pattern matters are deliberately not read.
-  const rejectedPatterns = pick("not-me");
-  if (!rejectedPatterns.length) return null;
-  const confirmedPatterns = pick("accurate");
+  // Each answered pattern, narrowed to the media the answer is about. Only "not me" and a Partly's unticked
+  // areas reject; only a Yes and a Partly's kept areas guard. Not sure and how much a pattern matters are not read.
+  const rejectedPatterns = [];
+  const confirmedPatterns = [];
+  for (const statement of statements) {
+    const pattern = patterns.find((p) => samePattern(p.id, statement?.hypothesisId));
+    if (!pattern) continue;
+    const unticked = partlyExcludedMedia(statement);
+    const within = (keep) => ({ ...pattern, domains: pattern.domains.filter(keep) });
+    if (statement.says === "not-me") rejectedPatterns.push(pattern);
+    else if (statement.says === "accurate") confirmedPatterns.push(pattern);
+    else if (statement.says === "partial") {
+      if (unticked.length) rejectedPatterns.push(within((d) => unticked.includes(d)));
+      confirmedPatterns.push(within((d) => !unticked.includes(d)));
+    }
+  }
+  const narrowed = (list) => list.filter((p) => p.domains.length);
+  if (!narrowed(rejectedPatterns).length) return null;
 
   const labelsByRef = new Map();
   for (const record of evidenceRecords(state)) {
@@ -76,9 +97,16 @@ export function correctionKinds(state) {
     if (item) labelsByRef.set(record.ref, bridgeLabelsOf(item));
   }
   const withLabels = (p) => ({ id: p.id, domains: p.domains, labels: patternLabels(p.supports, labelsByRef) });
-  const rejected = rejectedPatterns.map(withLabels).filter((p) => p.labels.length);
+  const rejected = narrowed(rejectedPatterns).map(withLabels).filter((p) => p.labels.length);
   if (!rejected.length) return null;
-  return { rejected, confirmed: confirmedPatterns.map(withLabels).filter((p) => p.labels.length) };
+  return { rejected, confirmed: narrowed(confirmedPatterns).map(withLabels).filter((p) => p.labels.length) };
+}
+
+// Whether a Partly answer's unticked areas actually reach the shortlist: false when the pattern's kind can't
+// be read from its supports' labels (e.g. only a broad label like comedy), so the page promises nothing then.
+export function partlyAreasReachPicks(state, hypothesisId) {
+  const kinds = correctionKinds(state);
+  return Boolean(kinds?.rejected.some((p) => samePattern(p.id, hypothesisId)));
 }
 
 // item -> true when it matches a pattern the person said is not them. Null when nothing can conflict.

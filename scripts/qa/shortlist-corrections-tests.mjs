@@ -1,11 +1,12 @@
 // #334: a "Not me" correction changes which titles are shortlisted, for live AI and the catalog fallback
-// alike. Paige's rules (Nov 13): "Not me" strongly down-ranks matching titles (not an exclusion); Partly and
-// "matters a little" change nothing yet (#323); a set whose Surprise candidates all conflict has no Surprise.
+// alike. Paige's rules (Nov 13): "Not me" strongly down-ranks matching titles (not an exclusion); "matters a
+// little" changes nothing yet (#323); a set whose Surprise candidates all conflict has no Surprise. Nov 15: a
+// Partly's unticked areas are a "Not me" in those areas only, and its kept areas guard like a Yes.
 // Free: no network, no model (the live path runs against a stubbed Anthropic response).
 import { createSuite } from "./lib/assert.mjs";
 import { buildPickPrompt, offeredCandidates, produceRecommendations } from "../../api/recommendations.mjs";
 import { buildContext } from "../../src/ai/context.js";
-import { correctionKinds, notMeConflict } from "../../src/ai/corrections.js";
+import { correctionKinds, notMeConflict, partlyAreasReachPicks, rejectsSomewhere } from "../../src/ai/corrections.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { hydrateState } from "../../src/server/request-state.mjs";
 import { ROUNDS, loadCases, wireRecords } from "../evals/corrections/fixtures.mjs";
@@ -42,7 +43,7 @@ const patterns = [
 ];
 const say = (id, fields) => ({ hypothesisId: id, label: id, says: null, weight: null, context: null, authority: "user-confirmed", ...fields });
 
-function browserState({ statements = [], curveball = false } = {}) {
+function browserState({ statements = [], curveball = false, hypotheses = patterns } = {}) {
   const feedbackByRecommendation = {};
   for (const [key, item] of Object.entries(rated)) {
     feedbackByRecommendation[item.id] = { item, rating: "more", detail: loved.includes(key) ? "loved-before" : "liked-before" };
@@ -51,7 +52,7 @@ function browserState({ statements = [], curveball = false } = {}) {
     selectedFavorites: new Set(), libraryFavorites: new Set(), customItems: {}, feedbackByRecommendation,
     recommendationSets: [], seenItemIds: [], blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(),
     areas: { movies: true, tv: true, read: true, play: true }, curveball, recommendationFilter: "all",
-    modelHypotheses: patterns, patternStatements: statements
+    modelHypotheses: hypotheses, patternStatements: statements
   };
 }
 const wire = (opts) => JSON.parse(JSON.stringify(serializeAiState(browserState(opts))));
@@ -95,12 +96,12 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   eq("a pool of only conflicting titles is still offered in full", onlyHorror.length, horrorPool.length);
 }
 
-// ---- rule 2: Partly, "matters a little" (and the other answers) change nothing ---------------------------
+// ---- rule 2: "matters a little", Partly without unticked areas (and the other answers) change nothing -----
 {
   const base = key(offeredCandidates(contextFor({ curveball: true }, pool), 6));
   for (const [label, statements] of [
     ["Partly", [say("ai-horror-films", { says: "partial" })]],
-    ["Partly, not in movies", [say("ai-horror-films", { says: "partial", excludedDomains: ["movies"] })]],
+    ["Partly, not in books (an area the pattern doesn't cover)", [say("ai-horror-films", { says: "partial", excludedDomains: ["read"] })]],
     ["Partly, depends on context", [say("ai-horror-films", { says: "partial", context: "some" })]],
     ["matters a little", [say("ai-horror-films", { says: "accurate", weight: "little" })]],
     ["matters a lot", [say("ai-horror-films", { says: "accurate", weight: "lot" })]],
@@ -114,9 +115,52 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
     eq(`with a 'Not me', how much another pattern matters (${weight}) changes nothing`,
       key(offeredCandidates(contextFor({ statements: [...notMeHorror, say("ai-sci-fi-films", { says: "accurate", weight })] }, pool), 6)), plain);
   }
-  eq("with a 'Not me', a Partly elsewhere changes nothing",
+  eq("with a 'Not me', a Partly elsewhere changes nothing for titles it doesn't also match",
     key(offeredCandidates(contextFor({ statements: [...notMeHorror, say("ai-sci-fi-films", { says: "partial" })] }, pool), 6)),
     key(offeredCandidates(contextFor({ statements: notMeHorror }, pool), 6)));
+}
+
+// ---- Partly's unticked areas (Nov 15): "Not me" in those areas only ---------------------------------------
+{
+  const partlyNoMovies = [say("ai-horror-films", { says: "partial", excludedDomains: ["movies"] })];
+  for (const curveball of [false, true]) {
+    eq(`Partly, not in movies: the same shortlist as 'Not me' on a films-only pattern (curveball ${curveball})`,
+      key(offeredCandidates(contextFor({ curveball, statements: partlyNoMovies }, pool), 6)),
+      key(offeredCandidates(contextFor({ curveball, statements: notMeHorror }, pool), 6)));
+  }
+  const outcome = {};
+  offeredCandidates(contextFor({ curveball: true, statements: partlyNoMovies }, [...horrorPool, ...sciFiPool, edgeHorror]), 6, null, outcome);
+  eq("Partly, not in movies: a Surprise that conflicts there is dropped, as with 'Not me'", outcome.surpriseDropped, true);
+
+  // A horror pattern across films and books: unticking films leaves books alone.
+  const twoMedia = [{ ...patterns[0], domains: ["movies", "read"] }, patterns[1]];
+  const horrorBook = { ...horrorPool[0], id: "openlibrary-book-X", provider: "openlibrary", type: "book", domains: ["read"], genres: ["Horror"] };
+  const conflicts = notMeConflict(hydrateState(JSON.parse(JSON.stringify(serializeAiState(browserState({ statements: partlyNoMovies, hypotheses: twoMedia }))))));
+  check("films and books, films unticked: a horror film conflicts", conflicts(horrorPool[0]));
+  check("…a horror book does not: books are kept", !conflicts(horrorBook));
+  check("…a science fiction film does not", !conflicts(sciFiPool[0]));
+  const notMeBoth = notMeConflict(hydrateState(JSON.parse(JSON.stringify(serializeAiState(browserState({ statements: notMeHorror, hypotheses: twoMedia }))))));
+  check("…whereas 'Not me' on the same pattern does match the book", notMeBoth(horrorBook));
+
+  // Decision 3: a Partly guards like a Yes in the areas it keeps, and not in the areas it unticks.
+  const horrorSciFi = { ...horrorPool[0], genres: [HORROR, SCIFI] };
+  const guardedByPartly = notMeConflict(hydrateState(wire({ statements: [...notMeHorror, say("ai-sci-fi-films", { says: "partial" })] })));
+  check("a Partly pattern guards a title that also matches it, like a Yes", !guardedByPartly(horrorSciFi));
+  const notGuarded = notMeConflict(hydrateState(wire({ statements: [...notMeHorror, say("ai-sci-fi-films", { says: "partial", excludedDomains: ["movies"] })] })));
+  check("…but not in an area it unticked", notGuarded(horrorSciFi));
+
+  // Decision 4: a pattern whose kind can't be read from its supports changes nothing, and the page promises nothing.
+  const mixed = [{ id: "ai-mixed-films", title: "Films I like", domains: ["movies"], supports: [`ev:${rated.h1.id}`, `ev:${rated.s1.id}`] }, ...patterns];
+  const partlyMixed = [say("ai-mixed-films", { says: "partial", excludedDomains: ["movies"] })];
+  eq("a pattern with no distinctive label: Partly's unticked area changes nothing",
+    key(offeredCandidates(buildContext(hydrateState(JSON.parse(JSON.stringify(serializeAiState(browserState({ statements: partlyMixed, hypotheses: mixed }))))), pool), 6)),
+    key(offeredCandidates(contextFor({}, pool), 6)));
+  eq("…and the page is told it doesn't reach picks", partlyAreasReachPicks(browserState({ statements: partlyMixed, hypotheses: mixed }), "ai-mixed-films"), false);
+  eq("a readable pattern with an unticked area does reach picks", partlyAreasReachPicks(browserState({ statements: partlyNoMovies }), "ai-horror-films"), true);
+  eq("Partly with nothing unticked doesn't reach picks", partlyAreasReachPicks(browserState({ statements: [say("ai-horror-films", { says: "partial" })] }), "ai-horror-films"), false);
+
+  const fallback = await quietly(() => produceRecommendations({ rawState: wire({ curveball: true, statements: partlyNoMovies }), env: {}, fetchImpl: async () => { throw new Error("no network"); }, retrieve: async () => pool }));
+  eq("fallback: Partly, not in movies offers the same six as the shortlist", fallback.picks.map((p) => p.id).join(","), offeredCandidates(contextFor({ curveball: true, statements: partlyNoMovies }, pool), 6).map((c) => c.id).join(","));
 }
 
 // ---- rule 3: Surprise ------------------------------------------------------------------------------------
@@ -209,25 +253,37 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   const sent = wire({ statements: [...notMeHorror, say("ai-sci-fi-films", { says: "accurate" })] }).correctionPatterns;
   eq("with a 'Not me': the rejected and confirmed patterns' areas and supports are sent", JSON.stringify(sent), JSON.stringify(patterns.map(({ id, domains, supports }) => ({ id, domains, supports }))));
   const partlyOther = wire({ statements: [...notMeHorror, say("ai-sci-fi-films", { says: "partial" })] }).correctionPatterns;
-  eq("a Partly pattern is not sent", partlyOther.map((p) => p.id).join(","), "ai-horror-films");
+  eq("with a 'Not me', a Partly pattern is sent too (it guards its kept areas)", partlyOther.map((p) => p.id).join(","), "ai-horror-films,ai-sci-fi-films");
+  const partlyOnly = wire({ statements: [say("ai-horror-films", { says: "partial", excludedDomains: ["movies"] })] }).correctionPatterns;
+  eq("a Partly with an unticked area is enough to send pattern scopes", partlyOnly?.map((p) => p.id).join(","), "ai-horror-films");
 }
 
 // ---- correction-eval fixtures: no-op gate and effect -----------------------------------------------------
 {
   const cases = loadCases();
   let noopDiffs = 0, noopSets = 0, before = 0, after = 0, active = 0, mediaLost = 0, conflictingSurprise = 0;
+  const partly = { active: 0, before: 0, after: 0, mediaLost: 0, conflictingSurprise: 0 };
   for (const kase of cases) {
     const casePool = withAnchors(kase.pool, wireRecords(kase.state(0)));
     for (const scenario of scenariosFor(kase)) {
       const notMe = scenario.statements.some((s) => s.says === "not-me");
-      for (let round = 0; round < (notMe ? ROUNDS : 1); round += 1) {
+      const rejecting = scenario.statements.some(rejectsSomewhere);
+      for (let round = 0; round < (rejecting ? ROUNDS : 1); round += 1) {
         const r = compare(kase, round, scenario.statements, casePool);
-        if (!notMe) {
+        if (!rejecting) {
           noopSets += 1;
           if (r.active || r.before.titles.join("|") !== r.after.titles.join("|")) noopDiffs += 1;
           continue;
         }
         if (!r.active) continue;
+        if (!notMe) {
+          partly.active += 1;
+          partly.before += r.before.conflicting;
+          partly.after += r.after.conflicting;
+          if (r.after.media < r.before.media) partly.mediaLost += 1;
+          if (r.after.surpriseConflicts) partly.conflictingSurprise += 1;
+          continue;
+        }
         active += 1;
         before += r.before.conflicting;
         after += r.after.conflicting;
@@ -236,12 +292,17 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
       }
     }
   }
-  check("fixtures: there are answers with no 'Not me' to compare", noopSets > 100, String(noopSets));
-  eq("fixtures: with no 'Not me', every shortlist is identical to before (no-op gate)", noopDiffs, 0);
+  check("fixtures: there are answers with no 'Not me' or unticked area to compare", noopSets > 100, String(noopSets));
+  eq("fixtures: with no 'Not me' or unticked area, every shortlist is identical to before (no-op gate)", noopDiffs, 0);
   check("fixtures: a 'Not me' reaches some sets", active > 100, String(active));
   check("fixtures: 'Not me' titles offered fall by at least a third", after <= before * 2 / 3, `${before} -> ${after}`);
   eq("fixtures: no set loses a medium", mediaLost, 0);
   eq("fixtures: no Surprise is a 'Not me' title", conflictingSurprise, 0);
+  console.info(`fixtures, Partly with an unticked area: ${partly.active} sets changed; titles there ${partly.before} -> ${partly.after}; media lost ${partly.mediaLost}`);
+  check("fixtures: a Partly's unticked area reaches some sets", partly.active > 0, String(partly.active));
+  check("fixtures: titles in an unticked area fall by at least a third", partly.after <= partly.before * 2 / 3, `${partly.before} -> ${partly.after}`);
+  eq("fixtures: an unticked area never costs a set a medium", partly.mediaLost, 0);
+  eq("fixtures: no Surprise is a title from an unticked area", partly.conflictingSurprise, 0);
 }
 
 finish();
