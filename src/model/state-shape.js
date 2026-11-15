@@ -51,7 +51,9 @@ const SCALARS = {
   mapPattern: isStringOrNull,
   mapItem: isStringOrNull,
   areas: (value) => isObject(value) && Object.values(value).every(isBoolean),
-  hypothesisAiChecked: (value) => value === null || isObject(value)
+  hypothesisAiChecked: (value) => value === null || isObject(value),
+  // #326 Design A: its contents are checked where it's read (readLedger); an unusable one means a first run.
+  profileLedger: (value) => value === null || isObject(value)
 };
 
 // `value` is the saved `state` object. Returns { state, dropped }: the usable fields (unknown fields pass

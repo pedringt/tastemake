@@ -80,7 +80,8 @@ const SUITES = [
   "eval-runner-tests.mjs",
   "correction-eval-tests.mjs",
   "shortlist-corrections-tests.mjs",
-  "counter-grader-tests.mjs"
+  "counter-grader-tests.mjs",
+  "placement-refresh-tests.mjs"
 ];
 
 // A new *-tests.mjs file that is not listed above would otherwise never run.

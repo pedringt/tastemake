@@ -4,6 +4,14 @@ import { recordRevisionIfChanged } from "../model/history.js";
 import { noteAiAnswer } from "./ai-status.js";
 import { NEEDS_REVIEW, confirmationFor } from "../model/statements.js";
 import { CONTRACT_VERSION } from "./contract.js";
+import { ledgerAfterFullRefresh, refreshQueue } from "../model/refresh-ledger.js";
+import { applyPlacementResult } from "../model/placement-apply.js";
+
+// #326 Design A (docs/proposals/326-refresh-options.md): a refresh that only places new ratings, with software
+// keeping the books. OFF by default, and off in production until it passes the paid eval and Paige says so. It
+// needs this flag and the server's TASTEMAKE_PROFILE_PLACEMENT=1; with this off, nothing below runs and no
+// ledger is written, so a refresh is exactly today's.
+export const PLACEMENT_REFRESH = false;
 
 const slug = (text) => String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
@@ -161,7 +169,7 @@ function settleStale(state, request, { payload = null, onStale, onUpdate }) {
   if (!payload?.meta?.budgetPaused && !state.aiPaused) onStale();
 }
 
-export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, onStale = () => {}, force = false } = {}) {
+export async function refreshProfileHypotheses(state, { onUpdate = () => {}, announce = () => {}, onStale = () => {}, force = false, placement = PLACEMENT_REFRESH, ledger = placement } = {}) {
   if (state.viewingExample) return;   // the example's patterns are fixed; no model calls on its behalf
   const key = hypothesisEvidenceKey(state);
   if (state.hypothesisAiStatus === "loading" || (!force && state.hypothesisAiKey === key)) return;
@@ -173,6 +181,8 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     onUpdate();
     return;
   }
+
+  if (placement && (state.modelHypotheses ?? []).length) return refreshByPlacement(state, key, { onUpdate, announce, onStale });
 
   const request = {
     key,
@@ -232,6 +242,7 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
         preserveExistingActive: rejected > 0
       }), [...needsReview, ...stillFlagged], narrowed);
       state.hypothesisAiMessage = needsReview.length || narrowed.length ? reviewMessage(state.modelHypotheses) : UPDATED_MESSAGE;
+      if (ledger) state.profileLedger = ledgerAfterFullRefresh(state);
       markChecked(state, key);
       announce("Taste Profile refreshed from your current evidence.");
     } else if (needsReview.length || newlyNarrowed.length) {
@@ -270,6 +281,74 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     state.hypothesisAiMessage = (state.modelHypotheses ?? []).length
       ? "Tastemake couldn’t update your profile this time. Your existing patterns are unchanged."
       : "Tastemake couldn’t build your profile this time. You can try again.";
+  }
+  onUpdate();
+}
+
+// #326 Design A: only the items new since the last refresh go to the model, one placement each; software applies
+// the answer (src/model/placement-apply.js). Nothing new means no call. A failed or unusable answer changes
+// nothing and leaves every item new. With the server's switch off, today's full refresh runs instead.
+async function refreshByPlacement(state, key, { onUpdate, announce, onStale }) {
+  const queue = refreshQueue(state);
+  if (!queue.items.length) {
+    const { message } = applyPlacementResult(state, queue, null);
+    state.hypothesisAiMessage = message;
+    state.hypothesisAiStatus = "ready";
+    markChecked(state, hypothesisEvidenceKey(state));
+    onUpdate();
+    return;
+  }
+  const request = {
+    key,
+    generation: state.profileGeneration ?? 0,
+    viewingExample: Boolean(state.viewingExample),
+    previousStatus: state.hypothesisAiStatus,
+    previousMessage: state.hypothesisAiMessage ?? null,
+    controller: typeof AbortController === "function" ? new AbortController() : null
+  };
+  state.hypothesisRequest = request;
+  state.hypothesisAiStatus = "loading";
+  state.hypothesisAiMessage = "Refreshing your Taste Profile…";
+  onUpdate();
+  try {
+    const requiredRefs = [...new Set([...citedEvidenceRefs(state), ...queue.items, ...queue.pool])];
+    const bodyState = { ...serializeAiState(state, { requiredRefs }), modelHypotheses: state.modelHypotheses ?? [] };
+    const response = await fetch("/api/hypotheses", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ state: bodyState, placement: { items: queue.items, pool: queue.pool } }),
+      ...(request.controller ? { signal: request.controller.signal } : {})
+    });
+    const payload = await response.json().catch(() => null);
+    if (profileRefreshStaleReason(state, request)) return settleStale(state, request, { payload, onStale, onUpdate });
+    if (!response.ok || !payload) throw new Error(payload?.error || "profile request failed");
+    request.settled = true;
+    state.hypothesisRequest = null;
+    if (payload.meta?.placementOff) {
+      // The server's switch is off: today's full refresh, in this same refresh.
+      state.hypothesisAiStatus = request.previousStatus;
+      state.hypothesisAiMessage = request.previousMessage;
+      return refreshProfileHypotheses(state, { onUpdate, announce, onStale, force: true, placement: false, ledger: true });
+    }
+    noteAiAnswer(state, { budgetPaused: Boolean(payload.meta?.budgetPaused), usedModel: payload.source === "model" });
+    if (payload.source === "model" && payload.placement) {
+      const { message } = applyPlacementResult(state, queue, payload.placement);
+      state.hypothesisAiMessage = message;
+      markChecked(state, hypothesisEvidenceKey(state));
+      announce(message);
+    } else {
+      markChecked(state, null);
+      state.hypothesisAiMessage = payload.meta?.budgetPaused
+        ? "AI is paused, so your patterns can’t update right now. They’re still here."
+        : "Tastemake couldn’t update your profile this time. Your existing patterns are still here.";
+    }
+    state.hypothesisAiStatus = "ready";
+  } catch {
+    if (!request.settled && profileRefreshStaleReason(state, request)) return settleStale(state, request, { onStale, onUpdate });
+    if (state.hypothesisRequest === request) state.hypothesisRequest = null;
+    state.hypothesisAiStatus = "ready";
+    markChecked(state, null);
+    state.hypothesisAiMessage = "Tastemake couldn’t update your profile this time. Your existing patterns are unchanged.";
   }
   onUpdate();
 }

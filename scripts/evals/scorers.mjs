@@ -133,6 +133,30 @@ export function scoreFixture(fixture, run) {
       }
     }
   }
+  // #326 Design A (--suite refresh-a): what each placement call did, and the fixture-specific expectations.
+  // Quality findings, reviewed by hand too; the pass rules are fixed in the PR before any paid run.
+  if (run.steps) {
+    const storedIds = new Set((run.state?.modelHypotheses ?? []).map((h) => h.id));
+    const fresh = hyp.accepted.filter((h) => !storedIds.has(h.id));
+    run.steps.forEach((step, i) => {
+      const placed = step.placement?.placements ?? [];
+      const count = (place) => placed.filter((p) => p.place === place).length;
+      out.push({ kind: "quality", name: `placement call ${i + 1}`, pass: null, detail: `${step.source}; ${step.queue.items.length} new, ${step.queue.pool.length} pooled, ${step.queue.waiting} waiting; supports ${count("supports")}, counter ${count("counter")}, unexplained ${count("unexplained")}, not-taste ${count("not-taste")}, invalid ${(step.placement?.invalid ?? []).length}; new patterns ${(step.applied?.created ?? []).length}; "${step.applied?.message ?? "-"}"` });
+    });
+    const p = e.placement ?? {};
+    const last = run.steps.at(-1)?.placement?.placements ?? [];
+    for (const ref of p.unexplained ?? []) {
+      const got = last.find((x) => x.ref === ref);
+      out.push({ kind: "quality", name: `${refs.get(ref)?.title ?? ref} placed as unexplained`, pass: got?.place === "unexplained", detail: got ? `${got.place}${got.patternId ? ` ${got.patternId}` : ""}` : "not placed" });
+    }
+    if (p.noNewPattern) out.push({ kind: "quality", name: "no new pattern yet", pass: fresh.length === 0, detail: fresh.map((h) => `${h.label}: ${h.claim}`).join(" | ") || "none" });
+    (p.steps ?? []).forEach((want, i) => {
+      if (!want.noNewPattern) return;
+      const made = run.steps[i]?.applied?.created ?? [];
+      out.push({ kind: "quality", name: `call ${i + 1}: no new pattern yet`, pass: made.length === 0, detail: made.join(", ") || "none" });
+    });
+    if (p.reportNewPatterns) out.push({ kind: "quality", name: "new patterns (judge by hand: invented or real?)", pass: null, detail: fresh.map((h) => `${h.label}: ${h.claim} [${h.evidence.map((ref) => refs.get(ref)?.title ?? ref).join(", ")}]`).join(" | ") || "none" });
+  }
   const grounded = hyp.accepted.length;
   out.push({ kind: "quality", name: "grounding coverage", pass: null, detail: `${grounded} hypothesis(es) could cite this user's own evidence; fallback ${hyp.fallback ? "used" : "not needed"}` });
   return out;
