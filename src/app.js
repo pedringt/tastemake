@@ -532,10 +532,14 @@ function renderPreservingCardPosition(itemId, focusSelector = null) {
 // "What put you off?" (Nov 14): src/actions/dismissal-note.js. The live region keeps only the last message,
 // so the offer is folded into the reaction's own announcement.
 const withNoteOffer = (message) => announce(`${message} ${NOTE_OFFER}`);
+// Where focus goes once a prompt closes: the pick's Change button, or for New this week (where the title has
+// already left the strip) the strip's next button.
+const noteDoneFocus = (itemId, surface) => (surface === "new-this-week" ? ".new-release button" : `[data-feedback-edit="${itemId}"]`);
 const noteEffects = {
   persist: () => persistState(state),
   rerender: (itemId, focus) => renderPreservingCardPosition(itemId, focus),
-  announce: (message) => announce(message)
+  announce: (message) => announce(message),
+  doneFocus: noteDoneFocus
 };
 const submitDismissalNote = (itemId) => submitNote(itemId, noteEffects);
 
@@ -925,13 +929,15 @@ app.addEventListener("click", async (event) => {
 
   const newRelease = event.target.closest("[data-new-release-action]");
   if (newRelease) {
-    const said = actOnNewRelease(state, newRelease.dataset.newReleaseItem, newRelease.dataset.newReleaseAction);
+    const itemId = newRelease.dataset.newReleaseItem;
+    const said = actOnNewRelease(state, itemId, newRelease.dataset.newReleaseAction);
     if (said) {
+      const prompted = newRelease.dataset.newReleaseAction === "not-interested" && openDismissalPrompt(itemId, "new-this-week");
       persistState(state);
       const slot = app.querySelector("[data-new-this-week-slot]");
       if (slot) slot.innerHTML = renderNewThisWeek();
       restoreFocus(".new-release button", app);   // next release, or the page when none are left
-      announce(said);
+      announce(prompted ? `${said} ${NOTE_OFFER.replace("below the pick", "below the list")}` : said);
     }
     return;
   }
@@ -954,8 +960,9 @@ app.addEventListener("click", async (event) => {
   const noteSkip = event.target.closest("[data-dismiss-note-skip]");
   if (noteSkip) {
     const itemId = noteSkip.dataset.dismissNoteSkip;
+    const focus = noteDoneFocus(itemId, state.dismissalPrompts?.[itemId]?.surface);
     closeDismissalPrompt(itemId);
-    renderPreservingCardPosition(itemId, `[data-feedback-edit="${itemId}"]`);
+    renderPreservingCardPosition(itemId, focus);
     return;
   }
 
@@ -1004,7 +1011,7 @@ app.addEventListener("click", async (event) => {
       // Untried intent has no deeper taste questions, so finish the small editor after Save/Not interested.
       // Tried reactions keep it open so optional refinement/series/discovery feedback is available.
       if (outcome === "save" || outcome === "not-interested") state.recommendationFeedbackItemId = null;
-      const prompted = outcome === "not-interested" && openDismissalPrompt(itemId);
+      const prompted = outcome === "not-interested" && ["recommendations", "browse"].includes(state.screen) && openDismissalPrompt(itemId, state.screen);
       if (outcome !== "not-interested") closeDismissalPrompt(itemId);
       renderPreservingCardPosition(itemId, outcome === "save" || outcome === "not-interested"
         ? `[data-feedback-item="${itemId}"][data-experience-path="not-tried"]`

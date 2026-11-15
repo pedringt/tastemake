@@ -10,7 +10,8 @@ import { pathForFeedback } from "../model/reaction-flow.js";
 import { starIcon } from "../components/star.js";
 import { renderExperienceRefinement } from "../components/refinement.js";
 import { renderPathSwitch } from "../components/path-switch.js";
-import { isExperienced } from "../model/evidence.js";
+import { isDeclined, isExperienced } from "../model/evidence.js";
+import { renderDismissalNote } from "../components/dismissal-note.js";
 import { bridgeTargetNoun } from "../catalog/bridges.mjs";
 
 // Nov 12 (QA): the accessible name says which title, since a screen shows many of these stars.
@@ -109,7 +110,8 @@ function browseCard(item) {
           <div class="reaction-complete">
             <span>${esc(status.label)}</span>
             <button class="button button-quiet reaction-change" type="button" data-feedback-edit="${item.id}">Change</button>
-          </div>`
+          </div>
+          ${isDeclined(feedback) ? renderDismissalNote(item.id, item.title, "browse") : ""}`
         : `
           <div class="rec-interaction">
             <div class="reaction-question">Have you tried it?</div>

@@ -847,3 +847,6 @@
 .dismiss-note-actions .button { min-height:44px; }
 .dismiss-note-saved { margin:8px 0 0; font-size:13px; color:var(--muted); overflow-wrap:anywhere; }
 .dismiss-note-saved span { font-weight:700; color:var(--navy); }
+.new-release-note { margin-top:12px; padding:12px 14px; border:1px dashed var(--line); border-radius:10px; }
+.new-release-note-lead { margin:0; font-size:13px; font-weight:700; color:var(--navy); }
+.new-release-note .dismiss-note { border-top:0; padding-top:4px; }
