@@ -149,7 +149,7 @@ async function clientRefresh(s, raw, answer) {
   const payload = await endpoint(raw, answer);
   const realFetch = globalThis.fetch;
   globalThis.fetch = async () => ({ ok: true, json: async () => payload });
-  try { await refreshProfileHypotheses(s, { force: true }); }
+  try { await refreshProfileHypotheses(s, { placement: false, force: true }); }
   finally { globalThis.fetch = realFetch; }
   return payload;
 }

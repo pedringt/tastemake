@@ -61,7 +61,7 @@ function reload(s) {
   persistState(s);
   return { ...emptyState(), hypothesisAiStatus: "idle", hypothesisAiKey: null, hypothesisAiMessage: null, ...loadPersistedState(), screen: "model" };
 }
-const refresh = (s, opts = {}) => refreshProfileHypotheses(s, opts);
+const refresh = (s, opts = {}) => refreshProfileHypotheses(s, { placement: false, ...opts });
 
 // ---- 1. Paige's check: refresh, close, reopen ---------------------------------------------------------------
 {

@@ -8,10 +8,10 @@ import { ledgerAfterFullRefresh, refreshQueue } from "../model/refresh-ledger.js
 import { applyPlacementResult } from "../model/placement-apply.js";
 
 // #326 Design A (docs/proposals/326-refresh-options.md): a refresh that only places new ratings, with software
-// keeping the books. OFF by default, and off in production until it passes the paid eval and Paige says so. It
+// keeping the books. It passed the paid eval (refresh-a) and Paige turned it on. It
 // needs this flag and the server's TASTEMAKE_PROFILE_PLACEMENT=1; with this off, nothing below runs and no
-// ledger is written, so a refresh is exactly today's.
-export const PLACEMENT_REFRESH = false;
+// ledger is written, so a refresh is exactly today's. ON since Nov 14 (Paige's OK); rollback is unsetting the env var.
+export const PLACEMENT_REFRESH = true;
 
 const slug = (text) => String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
