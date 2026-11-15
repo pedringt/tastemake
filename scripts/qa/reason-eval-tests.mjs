@@ -14,9 +14,11 @@ const { check, eq, finish } = createSuite("reason-eval");
   check("every case has a pattern, a flagged title and at least two others", CASES.every((c) => c.pattern.name && c.pattern.claim && c.flagged && c.others.length >= 2));
   check("the flagged title is never among the others", CASES.every((c) => !c.others.some((t) => t.startsWith(c.flagged))));
   const office = caseContext(CASES[0]);
-  eq("facts come from the Example Profile", office.flagged.title, "The Office");
-  check("TMDb genre ids become names", office.flagged.genres.includes("Comedy") && !office.flagged.genres.some((g) => /^\d+$/.test(g)));
-  check("the flagged title carries its synopsis; the others don't", Boolean(office.flagged.about) && office.others.every((o) => !("about" in o)));
+  eq("The Office is the US show Paige meant (2005), not the stored 2001 UK series", `${office.flagged.year} ${/Dunder Mifflin/.test(office.flagged.about)}`, "2005 true");
+  const leftovers = caseContext(CASES[2]);
+  eq("other facts come from the Example Profile", leftovers.flagged.title, "The Leftovers");
+  check("TMDb genre ids become names", leftovers.flagged.genres.includes("Drama") && !leftovers.flagged.genres.some((g) => /^\d+$/.test(g)));
+  check("the flagged title carries its synopsis; the others don't", Boolean(leftovers.flagged.about) && leftovers.others.every((o) => !("about" in o)));
   eq("book subject tags are dropped", readableGenres({ genres: ["Fantasy", "nyt:combined-print=2018", "form:novel", "Fantasy"] }).join(","), "Fantasy");
 }
 

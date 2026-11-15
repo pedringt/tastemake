@@ -35,7 +35,20 @@ export function findItem(title) {
   return item;
 }
 
+// Paige (Nov 15): her Office is the US one (2005), but the Example Profile stores the 2001 UK series
+// (tmdb-tv-2996), whose facts can't lead to "warmer, less cringe". The eval uses the US show's facts instead,
+// entered here; the Example Profile itself is unchanged.
+const FACT_OVERRIDES = {
+  "The Office": { title: "The Office", medium: "TV series", year: "2005", genres: ["Comedy"],
+    about: "A mockumentary about the everyday lives of the employees at the Scranton, Pennsylvania branch of the Dunder Mifflin paper company." }
+};
+
 export function factsOf(title, { about = true } = {}) {
+  const override = FACT_OVERRIDES[title];
+  if (override) {
+    const { about: text, ...rest } = override;
+    return { ...rest, ...(about ? { about: text } : {}) };
+  }
   const item = findItem(title);
   return {
     title: item.title,
