@@ -30,6 +30,9 @@ const { check, eq, finish } = createSuite("reason-eval");
   check("asks for exactly three short reasons", prompt.includes(`exactly ${REASON_COUNT}`) && prompt.includes(`At most ${MAX_WORDS} words`));
   check("forbids invented facts and title names", /Never invent facts/.test(prompt) && /No title names/.test(prompt));
   check("never shows the gold answer", !CASES.filter((c) => c.gold).some((c) => c.gold.some((g) => buildReasonsPrompt(caseContext(c)).includes(g))));
+  check("v2 never shows the gold answer either, even in its examples", !CASES.filter((c) => c.gold).some((c) => c.gold.some((g) => buildReasonsPrompt(caseContext(c), "v2").toLowerCase().includes(g.toLowerCase().split(",")[0]))));
+  check("v2 asks for a contrast with the pattern, no plot, up to 8 words", /not <what the pattern says>/.test(buildReasonsPrompt(context, "v2")) && /no plot points/.test(buildReasonsPrompt(context, "v2")) && /At most 8 words/.test(buildReasonsPrompt(context, "v2")));
+  check("v2's examples are about none of the case titles", !/grief|mystery to solve|sitcom|history/i.test(buildReasonsPrompt(context, "v2").split("CONTEXT")[0]));
 }
 
 // ---- shape checks ----
@@ -37,6 +40,8 @@ const { check, eq, finish } = createSuite("reason-eval");
   const context = caseContext(CASES[0]);
   const good = { reasons: [{ label: "Traditional sitcom format", basis: "classic sitcom vs docu/sketch" }, { label: "Warmer, less cringe", basis: "tone" }, { label: "Workplace ensemble cast", basis: "about: office workers" }] };
   eq("a good answer passes", checkReasons(good, context).ok, true);
+  const eight = { reasons: [{ label: "A mystery to deduce, not a world", basis: "a" }, { label: "Two", basis: "b" }, { label: "Three", basis: "c" }] };
+  check("v1 caps reasons at 6 words, v2 at 8", !checkReasons(eight, context).ok && checkReasons(eight, context, "v2").ok);
   const bad = { reasons: [{ label: "A much warmer and kinder style of comedy overall", basis: "x" }, { label: "Unlike Nathan for You", basis: "x" }, { label: "unlike nathan for you", basis: "" }, { label: "you like it", basis: "x" }] };
   const problems = checkReasons(bad, context).problems.join(" / ");
   check("catches the wrong count", problems.includes("expected 3"));
