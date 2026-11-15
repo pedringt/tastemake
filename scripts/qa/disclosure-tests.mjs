@@ -156,6 +156,25 @@ const CONSEQUENCE = "What this changes";
   html = row(renderProfile());
   eq("Partly summary names the excluded area", summaryOf(html), "Partly · Not for Books");
   check("the excluded area stays expandable in the summary", /<details class="signal-carried"><summary>Where it doesn’t apply<\/summary>/.test(html));
+  check("titles with no catalog labels: nothing is promised about picks", !html.includes("move lower in your picks"));
+}
+
+// ---- Partly's unticked area reaches picks only when the pattern's kind can be read (Nov 15) ----
+{
+  setup();
+  const sciFi = (id, title) => ({ item: { id, title, type: "movie", provider: "tmdb", domains: ["movies"], genres: [878] }, rating: "more", detail: "loved-before" });
+  state.feedbackByRecommendation = {
+    "m-arrival": sciFi("m-arrival", "Arrival"), "m-annihilation": sciFi("m-annihilation", "Annihilation"),
+    "m-other": { item: { id: "m-other", title: "Paddington", type: "movie", provider: "tmdb", domains: ["movies"], genres: [35] }, rating: "more", detail: "liked-before" }
+  };
+  answer("says", "partial");
+  toggleDomainExclusion(state, pattern.id, "movies");
+  noteAnswer(pattern.id, "scope");
+  let html = row(renderProfile());
+  check("a readable pattern, films unticked: the consequence says picks change there", /In [^<]*, titles like this also move lower in your picks\./.test(html), html.match(/What this changes[\s\S]{0,240}/)?.[0]);
+  closePattern(pattern.id);
+  html = row(renderProfile());
+  check("…and so does the summary's 'Where it doesn’t apply'", html.includes("titles like this also move lower in your picks."));
 }
 
 // ---- Not sure: nothing more is asked ----
