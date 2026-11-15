@@ -3,9 +3,12 @@ import { esc } from "../lib/html.js";
 import { DISMISSAL_NOTE_MAX, dismissalNoteFor } from "../model/dismissal-notes.js";
 
 // The optional "What put you off?" prompt under a pick just marked Not interested, or the note once sent.
-// Every control carries the title's id, so prompts for several dismissed picks never cross.
-export function renderDismissalNote(itemId, title) {
-  const prompt = state.dismissalPrompts?.[itemId];
+// Every control carries the title's id, so prompts for several dismissed picks never cross. A prompt shows
+// only on the surface it was opened from, so a title on screen in two places never gets two fields.
+export function renderDismissalNote(itemId, title, surface = "recommendations") {
+  const open = state.dismissalPrompts?.[itemId];
+  const prompt = open && (open.surface ?? "recommendations") === surface ? open : null;
+  if (open && !prompt) return "";
   const saved = dismissalNoteFor(state, itemId);
   if (!prompt) {
     return saved ? `<p class="dismiss-note-saved"><span>Your note:</span> “${esc(saved.note)}”</p>` : "";

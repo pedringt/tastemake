@@ -5,6 +5,9 @@ import { esc } from "../lib/html.js";
 import { resolveCustomCatalogItem, searchExternalCatalog } from "../catalog/client.js";
 import { renderArtwork } from "./artwork.js";
 import { starIcon } from "./star.js";
+import { renderDismissalNote } from "./dismissal-note.js";
+import { closeDismissalPrompt, openDismissalPrompt, promptsOn, setDismissalDraft, submitDismissalNote } from "../actions/dismissal-note.js";
+import { persistState } from "../persistence.js";
 
 // Search dialog (#13). It lives outside #app, so re-rendering a screen never closes it.
 // Nothing here changes state except an explicit button: applySearchAction, or toggleStarterFavorite.
@@ -252,7 +255,8 @@ export function initSearch({ onChange, announce, goTo }) {
         ? `<div class="reaction-complete search-reaction-complete">
             <span>${esc(status.label)}</span>
             <button class="button button-quiet reaction-change" type="button" data-search-edit>Change</button>
-          </div>`
+          </div>
+          ${status.key === "not-interested" ? renderDismissalNote(item.id, item.title, "search") : ""}`
         : `<div class="rec-interaction search-reaction-start">
             <div class="reaction-question">Have you tried it?</div>
             <div class="reaction-rail reaction-rail-binary" aria-label="Have you tried ${esc(item.title)}?">
@@ -431,6 +435,8 @@ export function initSearch({ onChange, announce, goTo }) {
   opener.addEventListener("click", open);
   dialog.addEventListener("close", () => {
     state.starterReplaceId = null;
+    // Leaving the sheet is the same as Skip: the title stays dismissed and unsent text is dropped.
+    promptsOn("search").forEach(closeDismissalPrompt);
     // After any re-render the close caused (onChange) has run.
     setTimeout(restoreReturnFocus, 0);
   });
@@ -468,6 +474,14 @@ export function initSearch({ onChange, announce, goTo }) {
     }
 
     if (event.target.closest("[data-search-close]")) { dialog.close(); return; }
+
+    const noteSkip = event.target.closest("[data-dismiss-note-skip]");
+    if (noteSkip) {
+      closeDismissalPrompt(noteSkip.dataset.dismissNoteSkip);
+      render();
+      focus("[data-search-edit]");
+      return;
+    }
 
     const favoritePick = event.target.closest("[data-search-favorite]");
     if (favoritePick) {
@@ -581,7 +595,10 @@ export function initSearch({ onChange, announce, goTo }) {
       if (!item) return;
       const action = searchOutcome.dataset.searchOutcome;
       const message = applySearchAction(state, item, action);
-      if (message) onChange(message);
+      // "What put you off?" (Nov 15): offered in the sheet too, folded into the same announcement.
+      const prompted = Boolean(message) && action === "not-interested" && openDismissalPrompt(item.id, "search");
+      if (!prompted && message) closeDismissalPrompt(item.id);
+      if (message) onChange(prompted ? `${message} Optional: say what put you off, below.` : message);
       if (message && item.custom && !item.provider) void resolveAddedItem(state.customItems[item.id] ?? item);
       ui.experiencePath = null;
       render();
@@ -611,7 +628,24 @@ export function initSearch({ onChange, announce, goTo }) {
     }
   });
 
+  const noteEffects = {
+    persist: () => persistState(state),
+    rerender: (_itemId, selector) => { render(); focus(selector); },
+    announce: (message) => announce(message),
+    doneFocus: () => "[data-search-edit]"
+  };
+  dialog.addEventListener("input", (event) => {
+    const field = event.target.closest("[data-dismiss-note-input]");
+    if (field) setDismissalDraft(field.dataset.dismissNoteInput, field.value);
+  });
+
   dialog.addEventListener("submit", (event) => {
+    const noteForm = event.target.closest("[data-dismiss-note-form]");
+    if (noteForm) {
+      event.preventDefault();
+      submitDismissalNote(noteForm.dataset.dismissNoteForm, noteEffects);
+      return;
+    }
     const form = event.target.closest("[data-search-addform]");
     if (!form) return;
     event.preventDefault();

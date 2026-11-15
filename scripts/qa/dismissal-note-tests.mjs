@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// "What put you off?" after Not interested (Paige, Nov 14): an optional note, stored apart from the dismissal,
+// "What put you off?" after Not interested (Paige, Nov 14; everywhere it can be chosen since Nov 15): an
+// optional note, stored apart from the dismissal,
 // shown back in the card and in Library → Dismissed, and read by nothing that ranks or explains picks or
 // builds the Taste Profile. Free, no browser, no network, no model call.
 //
@@ -16,7 +17,10 @@ globalThis.sessionStorage = { getItem: () => null, setItem: () => {}, removeItem
 globalThis.document = { documentElement: { dataset: {} }, querySelector: () => null };
 
 const { state, resetState } = await import("../../src/state.js");
-const { renderRecommendations } = await import("../../src/screens/recommendations.js");
+const { renderNewThisWeek, renderRecommendations } = await import("../../src/screens/recommendations.js");
+const { renderBrowse } = await import("../../src/screens/browse.js");
+const { renderDismissalNote } = await import("../../src/components/dismissal-note.js");
+const { actOnNewRelease } = await import("../../src/ai/new-releases.js");
 const { renderLibrary } = await import("../../src/screens/library.js");
 const { saveExperienceOutcome } = await import("../../src/actions/recommendations.js");
 const { closeDismissalPrompt, openDismissalPrompt, setDismissalDraft, submitDismissalNote } = await import("../../src/actions/dismissal-note.js");
@@ -70,10 +74,48 @@ const card = (html, item) => {
   check("the hint says it doesn't change picks or the profile", /doesn’t change your picks or Taste Profile/.test(html));
   check("the dismissal shows before any answer", html.includes("reaction-complete"));
   check("no prompt on another pick", !card(renderRecommendations(), B).includes("dismiss-note-form"));
+}
+
+// ---- 1b. Everywhere Not interested can be chosen (Nov 15) -----------------------------------------------
+{
+  // Browse: the card stays, with the prompt under it.
   setup();
   state.screen = "browse";
+  state.browseItems = [A];
   saveExperienceOutcome(A.id, "not-interested");
-  check("not offered outside Recommendations (this first version)", !openDismissalPrompt(A.id));
+  check("Browse: offered", openDismissalPrompt(A.id, "browse"));
+  check("Browse: the prompt sits on that card", card(renderBrowse(), A).includes(`data-dismiss-note-form="${A.id}"`));
+  setDismissalDraft(A.id, "Not in the mood for comedy.");
+  eq("Browse: Submit saves", submitDismissalNote(A.id, effects()), "saved");
+  check("Browse: the card shows the note back", card(renderBrowse(), A).includes("Your note:</span> “Not in the mood for comedy.”"));
+
+  // New this week: the title leaves the strip, and the prompt stands below the list.
+  setup();
+  state.newReleases = { status: "ready", items: [A, B] };
+  check("New this week: dismissing still removes it from the strip", Boolean(actOnNewRelease(state, A.id, "not-interested")) && !state.newReleases.items.some((i) => i.id === A.id));
+  check("New this week: offered", openDismissalPrompt(A.id, "new-this-week"));
+  let strip = renderNewThisWeek();
+  check("New this week: the prompt names the title below the list", strip.includes("You marked Alpha Not interested.") && strip.includes(`data-dismiss-note-form="${A.id}"`) && strip.indexOf("new-release-note") > strip.indexOf("</ul>"));
+  check("New this week: the rest of the strip stays", strip.includes(`data-new-release="${B.id}"`));
+  const fx = effects();
+  fx.doneFocus = (itemId, surface) => (surface === "new-this-week" ? ".new-release button" : `[data-feedback-edit="${itemId}"]`);
+  setDismissalDraft(A.id, "Too dark for me.");
+  submitDismissalNote(A.id, fx);
+  check("New this week: saved, the prompt closes, focus goes to the strip", state.dismissalNotes[A.id]?.note === "Too dark for me." && !renderNewThisWeek().includes("new-release-note") && fx.log.renders.at(-1)?.focus === ".new-release button");
+  // The last title dismissed: the section stays just for its prompt.
+  actOnNewRelease(state, B.id, "not-interested");
+  openDismissalPrompt(B.id, "new-this-week");
+  strip = renderNewThisWeek();
+  check("New this week: with the strip emptied, the section stays for the prompt", strip.includes(`data-dismiss-note-form="${B.id}"`) && !strip.includes("<ul"));
+  closeDismissalPrompt(B.id);
+  eq("…and hides once it's skipped", renderNewThisWeek(), "");
+
+  // One prompt, one place: a title dismissed in search that is also a pick on screen gets one field.
+  setup();
+  saveExperienceOutcome(A.id, "not-interested");
+  openDismissalPrompt(A.id, "search");
+  check("search: the sheet shows the prompt", renderDismissalNote(A.id, "Alpha", "search").includes(`data-dismiss-note-form="${A.id}"`));
+  check("…the same pick on Recommendations doesn't show a second field", !card(renderRecommendations(), A).includes("dismiss-note-form"));
 }
 
 // ---- 2. Submit saves against the right title, once ---------------------------------------------------

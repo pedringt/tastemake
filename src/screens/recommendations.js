@@ -19,6 +19,7 @@ import { releaseLabel } from "../ai/new-releases.js";
 import { exclusionOptions } from "../model/exclusions.js";
 import { starIcon } from "../components/star.js";
 import { renderDismissalNote } from "../components/dismissal-note.js";
+import { promptsOn } from "../actions/dismissal-note.js";
 
 // #121: previously the rationale/synopsis were left full-length in the markup and clipped visually
 // with CSS `-webkit-line-clamp` + `overflow:hidden`, which can cut a sentence off mid-thought (e.g.
@@ -578,6 +579,20 @@ function renderNextSteps() {
 export function renderNewThisWeek() {
   const items = state.newReleases?.items ?? [];
   if (state.aiStatus === "loading" || state.newReleases?.status !== "ready") return "";
+  // A title dismissed here leaves the strip at once, so its optional note prompt stands below the list.
+  const notes = promptsOn("new-this-week").map((itemId) => {
+    const title = state.feedbackByRecommendation[itemId]?.item?.title ?? "This title";
+    return `<div class="new-release-note" data-rec-id="${esc(itemId)}"><p class="new-release-note-lead">You marked ${esc(title)} Not interested.</p>${renderDismissalNote(itemId, title, "new-this-week")}</div>`;
+  }).join("");
+  if (!items.length && notes) {
+    return `
+      <section class="new-this-week" aria-labelledby="new-this-week-title">
+        <div class="new-this-week-head">
+          <h2 id="new-this-week-title">New this week for you</h2>
+        </div>
+        ${notes}
+      </section>`;
+  }
   if (!items.length) {
     if (state.newReleases.outcome !== "no-strong-matches") return "";
     return `
@@ -609,6 +624,7 @@ export function renderNewThisWeek() {
               </div>
             </li>`).join("")}
         </ul>
+        ${notes}
       </section>`;
 }
 

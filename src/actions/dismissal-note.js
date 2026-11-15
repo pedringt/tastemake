@@ -1,18 +1,23 @@
 import { state } from "../state.js";
 import { cleanDismissalNote, dismissalNoteFor, saveDismissalNote } from "../model/dismissal-notes.js";
 
-// "What put you off?" (Paige, Nov 14): offered under a pick on Recommendations right after Not interested.
+// "What put you off?" (Paige, Nov 14): offered right after Not interested. Nov 15 (Paige): everywhere it can
+// be chosen: under a pick on Recommendations or Browse, in New this week's strip, and in the search sheet.
 // The dismissal is already saved before the prompt appears; the prompt never blocks, and Skip, leaving or
 // reloading keeps the title dismissed. Prompts are keyed by title id, so dismissing several picks quickly
 // can't attach a note to the wrong one.
 
 export const NOTE_OFFER = "Optional: say what put you off, below the pick.";
 
-export function openDismissalPrompt(itemId) {
-  if (state.screen !== "recommendations" || dismissalNoteFor(state, itemId)) return false;
-  state.dismissalPrompts = { ...state.dismissalPrompts, [itemId]: { draft: "", status: "open" } };
+// `surface` says where the prompt shows: "recommendations", "browse", "new-this-week" or "search".
+export function openDismissalPrompt(itemId, surface = "recommendations") {
+  if (dismissalNoteFor(state, itemId)) return false;
+  state.dismissalPrompts = { ...state.dismissalPrompts, [itemId]: { draft: "", status: "open", surface } };
   return true;
 }
+
+// The open prompts for one surface, oldest first.
+export const promptsOn = (surface) => Object.entries(state.dismissalPrompts ?? {}).filter(([, prompt]) => prompt.surface === surface).map(([itemId]) => itemId);
 
 export function closeDismissalPrompt(itemId) {
   if (!state.dismissalPrompts?.[itemId]) return;
@@ -29,13 +34,14 @@ export function setDismissalDraft(itemId, text) {
   if (prompt.status === "error") prompt.status = "open";
 }
 
-// effects: { persist() -> boolean, rerender(itemId, focusSelector), announce(message) }.
+// effects: { persist() -> boolean, rerender(itemId, focusSelector), announce(message), doneFocus?(itemId, surface) }.
+// doneFocus says where focus goes once the prompt closes (default: the pick's Change button).
 // Returns "saved", "blank", "error" or "ignored".
-export function submitDismissalNote(itemId, { persist, rerender, announce }) {
+export function submitDismissalNote(itemId, { persist, rerender, announce, doneFocus }) {
   const prompt = state.dismissalPrompts?.[itemId];
   if (!prompt || prompt.status === "saving") return "ignored";   // a second press while saving, or after, does nothing
   const title = state.feedbackByRecommendation?.[itemId]?.item?.title ?? "This title";
-  const changeButton = `[data-feedback-edit="${itemId}"]`;
+  const changeButton = doneFocus?.(itemId, prompt.surface) ?? `[data-feedback-edit="${itemId}"]`;
   if (!cleanDismissalNote(prompt.draft)) {
     // Whitespace or nothing is no note: the same as Skip.
     closeDismissalPrompt(itemId);
