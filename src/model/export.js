@@ -2,6 +2,8 @@ import { displayLabel } from "../data/domains.js";
 import { refinementRecords } from "./refinements.js";
 import { patternDisplayStatus, statementFor } from "./statements.js";
 import { checkStateShape } from "./state-shape.js";
+import { evidenceRecords } from "./evidence.js";
+import { excludedRefsOf } from "./partly-elements.js";
 
 export const BACKUP_VERSION = 1;
 
@@ -128,8 +130,14 @@ export function buildHtmlExport(state, generatedAt = new Date().toISOString()) {
     return shown.kind === "level" ? pattern.strength || pattern.level || "working pattern" : shown.label;
   };
 
+  // #323 phase 2: titles the person said don't fit a pattern's description, which it no longer cites.
+  const evidenceTitles = new Map(evidenceRecords(state).map((row) => [row.ref, row.title]));
+  const notCited = (pattern) => {
+    const titles = excludedRefsOf(pattern).map((ref) => evidenceTitles.get(ref)).filter(Boolean);
+    return titles.length ? `<small class="not-cited">No longer cited, because you said ${titles.length === 1 ? "it doesn’t" : "they don’t"} fit this description: ${titles.map(htmlEscape).join(", ")}</small>` : "";
+  };
   const patternHtml = activePatterns.length
-    ? activePatterns.map((pattern) => `<article class="pattern"><h3>${htmlEscape(pattern.title || pattern.label || "Pattern")}</h3><p>${htmlEscape(pattern.claim || "")}</p><small>Status: ${htmlEscape(exportStatus(pattern))}</small></article>`).join("")
+    ? activePatterns.map((pattern) => `<article class="pattern"><h3>${htmlEscape(pattern.title || pattern.label || "Pattern")}</h3><p>${htmlEscape(pattern.claim || "")}</p><small>Status: ${htmlEscape(exportStatus(pattern))}</small>${notCited(pattern)}</article>`).join("")
     : '<p class="empty">No active patterns yet.</p>';
 
   const correctedHtml = correctedPatterns.length
@@ -151,7 +159,7 @@ export function buildHtmlExport(state, generatedAt = new Date().toISOString()) {
   .collection .items{grid-template-columns:repeat(3,minmax(0,1fr))}
   .items{list-style:none;margin:0;padding:0;display:grid;gap:9px}.items li,.pattern{padding:11px 12px;border:1.5px solid #111a4b;border-radius:12px;background:white;min-width:0}
   .items strong{display:block;line-height:1.15;overflow-wrap:anywhere}.items span,.items em{display:block;margin-top:3px;font-size:12px;line-height:1.3;color:#6d7087;font-style:normal}
-  .pattern{margin-bottom:10px}.pattern p{margin:0 0 8px;line-height:1.5}.pattern small{font-weight:700}
+  .pattern{margin-bottom:10px}.pattern p{margin:0 0 8px;line-height:1.5}.pattern small{font-weight:700}.pattern .not-cited{display:block;margin-top:4px;font-weight:400}
   .corrected{margin-top:34px}.corrected summary{cursor:pointer;font-size:21px;font-weight:800}.corrected .items{margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
   footer{margin-top:42px;padding-top:18px;border-top:1px solid #d9d9e2;color:#77798c;font-size:12px}
   @media(max-width:720px){.collection .items,.corrected .items{grid-template-columns:repeat(2,minmax(0,1fr))}}
