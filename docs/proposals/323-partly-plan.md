@@ -19,7 +19,7 @@ Nothing changes until they choose.
 | Prototype rounds 1–2 (Nov 7) | Step 1 must let people point at titles, not only characteristics | #323 comment, Nov 7 |
 | Prototype round 3 (Nov 15) | All 4 trials were one title plus a reason. Every one was "captured", with "less effort". Chips versus tap-the-sentence didn't matter | #323 comment 6898675797 |
 | Reason eval v1 and v2 (Nov 15–16) | With the "X, not Y" prompt, 29 of 30 sets held a reason Paige would tap, and 20% of options were off (too general, wrong about the show, repetitive) | #323 comment 6919978807, draft PR #373 |
-| Not yet tested | Whether the model can write the **suggested correction** (the new name, claim and split). In the prototype these were hand-written | Phase 1 below |
+| Suggestion eval v1–v3 (Nov 16) | Rated blind, Paige would use 17 of the model's 30 v1 corrections as they are, 10 with edits. On the 6 cases with a hand-written version: model 61%, hand-written 67%. Two more prompt versions fixed the split but not two habits: narrowing "books and games" to "books", and leaving the wording unchanged. v1's prompt is kept; phase 4 adds a code check (section 5) | #323 comment 6926942718, draft PR #373 |
 
 ## 3. The flow
 
@@ -70,16 +70,16 @@ All new fields live in the browser's saved state, like the rest of the profile. 
 | When | the person marks a title "different side" | the person taps "See suggested correction" |
 | Input | the pattern's name and claim, the title's facts, the other titles (the v2 eval prompt) | the pattern; tapped words; each flagged title's verdict and reasons; the grouping answer; the titles' facts |
 | Output | 3 reasons, each at most about 8 words, "X, not Y" | 1–3 patterns (name, claim, cited titles), plus the set-aside titles. Structured output |
-| Software checks | count; length; no title names; no near-duplicates (a v3 fix); the "not …" part drawn from the claim | every original title accounted for exactly once (cited, set aside or dropped as the person said); only original titles cited; no title cited against its verdict; a claim that names a format or medium agrees with its titles (round 2's sitcom mismatch); confirmed wording elsewhere untouched |
+| Software checks | count; length; no title names; no near-duplicates (a v3 fix); the "not …" part drawn from the claim | every original title accounted for exactly once (cited, set aside or dropped as the person said); only original titles cited; no title cited against its verdict; a claim that names a format or medium agrees with its titles (round 2's sitcom mismatch); **a claim narrowed from several media to fewer** (the eval's "books and games" to "books"): the app removes the medium phrase, or retries once; confirmed wording elsewhere untouched |
 | If it fails | show "Something else" and the title rows; the person can still finish | show the original with "Couldn't suggest a change"; **Keep original** and **Edit** still work |
-| Cost on Haiku 5.5 | about $0.00014 per call (v2 eval) | estimate about $0.0003 per call; measured in phase 1 |
+| Cost on Haiku 5.5 | about $0.00014 per call (v2 eval) | about $0.00014 per call (phase 1 eval: 72 calls, about $0.010) |
 | Endpoint | a new mode on `api/hypotheses.mjs`, behind its own env flag like `TASTEMAKE_PROFILE_PLACEMENT` | the same |
 
 The person's own words ("Something else", a pattern's description edited by hand) go to call 2 as quoted data. They are never instructions, and the call's prompt will say so, as the reasons-eval prompt already does.
 
 ## 6. Phases (each its own PR, behind flags, merged only with Paige's OK)
 
-1. **Suggestion eval** (paid, small). Fixtures come from Paige's round-3 answers plus a few made-up ones (a split, a narrowed claim, only one title flagged). The model writes the correction, and Paige judges it blind against the hand-written prototype versions. The call count and cap are stated first: about 30 calls, under $0.02. If useful, try reasons v3 in the same run.
+1. **Suggestion eval: done Nov 16.** v1 (30 calls), v2 (30) and v3 (12 calls, 4 cases) cost about $0.010 in all. Decision: use v1's prompt, stop changing the prompt, and handle medium narrowing in code (phase 4). Unchanged wording is left to **Edit**. Reasons v3 is still to do, as its own paid run.
 2. **Data and software-only paths** (free). `elements`, `excludedRefs`, history entries, and "Doesn't fit this description" end to end, including the refresh validator, placement and corrections honoring `excludedRefs`. The Partly UI gains the two framing questions and title rows, with no AI yet. This alone fixes the RE7/BioShock-under-mythic problem (#318) for good.
 3. **Call 1 wired** (reasons), behind a flag. Includes a loading state, failure fallback and tests with canned answers.
 4. **Call 2 wired** (suggestion and review screen), behind a flag: Use this, Keep original, Edit, Suggest another, and Undo. Includes copy saying exactly what changes, the "Which titles is that about?" step (Decision 5), and the refresh's proposed-rewording state (Decision 1).
@@ -102,7 +102,7 @@ The person's own words ("Something else", a pattern's description edited by hand
 
 ## 8. Risks
 
-- **Suggestion quality is the unknown.** If phase 1 shows corrections Paige wouldn't use, phases 3–4 should stop at reasons and "Edit wording" only.
+- **Suggestion quality (phase 1 answered it).** Usable about as often as the hand-written versions. The two habits that remain are covered by the code check and **Edit**. If live use shows more "Edit" than "Use this", fall back to reasons plus "Edit wording" only.
 - **Off reasons (20%) erode trust.** Mitigations: the v3 rules, the "Something else" box always shown, and never more than 3 options.
 - **Picks prompt change (Decision 6)** can shift picks for every person with a correction. It stays behind its own flag until its eval passes, and can ship after phases 2–4 or not at all.
 - **Refresh interplay.** `excludedRefs` must hold through Design A placement *and* the full refresh fallback. Both paths are covered by tests in phase 2.
