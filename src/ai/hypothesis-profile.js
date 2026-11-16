@@ -6,6 +6,7 @@ import { NEEDS_REVIEW, confirmationFor } from "../model/statements.js";
 import { CONTRACT_VERSION } from "./contract.js";
 import { ledgerAfterFullRefresh, refreshQueue } from "../model/refresh-ledger.js";
 import { applyPlacementResult } from "../model/placement-apply.js";
+import { carryExcludedRefs } from "../model/partly-elements.js";
 
 // #326 Design A (docs/proposals/326-refresh-options.md): a refresh that only places new ratings, with software
 // keeping the books. It passed the paid eval (refresh-a) and Paige turned it on. It
@@ -218,7 +219,10 @@ export async function refreshProfileHypotheses(state, { onUpdate = () => {}, ann
     const newlyNarrowed = Array.isArray(payload.meta?.narrowed) ? payload.meta.narrowed : [];
     const narrowed = [...newlyNarrowed, ...flaggedNarrowed(state)];
     if (payload.source === "model" && Array.isArray(payload.hypotheses) && payload.hypotheses.length) {
-      const next = payload.hypotheses.map((h, index) => normalizeHypothesis(h, index, state));
+      // #323 phase 2 (Decision 7): a title the person said doesn't fit stays out of the pattern it was taken off.
+      // Dropped before normalizing (so the evidence titles leave them out too), then the field is carried.
+      const stored = state.modelHypotheses ?? [];
+      const next = carryExcludedRefs(carryExcludedRefs(payload.hypotheses, stored).map((h, index) => normalizeHypothesis(h, index, state)), stored);
       for (const h of next) {
         recordRevisionIfChanged(state, {
           hypothesisId: h.id,

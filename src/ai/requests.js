@@ -27,6 +27,8 @@ export function evidenceFingerprint(state) {
     .sort()
     .join("|");
   const areas = Object.entries(state.areas ?? {}).sort().map(([id, on]) => `${id}:${on}`).join("|");
+  // #323 phase 2: a title taken off a pattern changes which titles that pattern's corrections reach (corrections.js).
+  const excluded = (state.modelHypotheses ?? []).filter((p) => p?.excludedRefs?.length).map((p) => `${p.id}:${[...p.excludedRefs].sort().join(",")}`).sort().join("|");
   const shown = state.recommendationSets.flat().map((item) => item.id).join("|");
   const favorites = [...state.selectedFavorites].sort().join("|");
   // QA sweep real bug: recommendationFilter was missing here even though it's a real prompt input
@@ -35,7 +37,7 @@ export function evidenceFingerprint(state) {
   // aiStatus isn't already AI_LOADING, otherwise it just sets the filter and returns) went undetected
   // by staleReason, so the in-flight, old-filter response would land and render under the new filter
   // selection -- picks that don't match what's highlighted, with no indication anything was dropped.
-  return [favorites, reactions, statements, areas, `curveball:${state.curveball !== false}`, `filter:${state.recommendationFilter ?? "all"}`, shown].join("//");
+  return [favorites, reactions, statements, areas, ...(excluded ? [`excluded:${excluded}`] : []), `curveball:${state.curveball !== false}`, `filter:${state.recommendationFilter ?? "all"}`, shown].join("//");
 }
 
 let counter = 0;

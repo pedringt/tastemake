@@ -1,6 +1,7 @@
 import { BROAD_LABELS, SCIFI_FANTASY, bridgeLabelsOf } from "../catalog/bridges.mjs";
 import { evidenceRecords } from "../model/evidence.js";
 import { hypothesisMatches } from "../model/taste.js";
+import { excludedRefsOf } from "../model/partly-elements.js";
 
 // #334 (Nov 14): a "Not me" answer changes which titles are shortlisted, for live AI and the catalog
 // fallback alike, not just what the AI is told. Paige's rules (Nov 13):
@@ -45,13 +46,18 @@ export function patternLabels(supports, labelsByRef) {
 
 // The patterns the request knows about: the browser sends only the answered ones the shortlist reads
 // (serializeAiState's correctionPatterns); the browser's own state has them all (modelHypotheses).
+// #323 phase 2: a title the person said doesn't fit a pattern (its excludedRefs) is not one of its supports here,
+// so it never shapes that pattern's labels, and "Not me" or an unticked area no longer reaches it through them.
 function patternsOf(state) {
   const list = Array.isArray(state.correctionPatterns) ? state.correctionPatterns : (state.modelHypotheses ?? []);
-  return list.filter((p) => p && typeof p.id === "string").map((p) => ({
-    id: p.id,
-    domains: (Array.isArray(p.domains) && p.domains.length ? p.domains : MEDIA).filter((d) => MEDIA.includes(d)),
-    supports: Array.isArray(p.supports) ? p.supports.filter((ref) => typeof ref === "string") : []
-  }));
+  return list.filter((p) => p && typeof p.id === "string").map((p) => {
+    const excluded = excludedRefsOf(p);
+    return {
+      id: p.id,
+      domains: (Array.isArray(p.domains) && p.domains.length ? p.domains : MEDIA).filter((d) => MEDIA.includes(d)),
+      supports: Array.isArray(p.supports) ? p.supports.filter((ref) => typeof ref === "string" && !excluded.includes(ref)) : []
+    };
+  });
 }
 
 const samePattern = (a, b) => hypothesisMatches([a], b) || hypothesisMatches([b], a);
