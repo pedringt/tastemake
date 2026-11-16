@@ -3,6 +3,7 @@ import { allowedCrossDomain, allowedLevel, capLevel, domainScope, evidenceRows, 
 import { confirmationFor } from "../model/statements.js";
 import { isAdultTagged, triedAdultTagged } from "../catalog/adult-content.mjs";
 import { fileSupports } from "./support-filing.js";
+import { excludedRefsOf, storedMatch, withoutExcluded } from "../model/partly-elements.js";
 
 // The product's gate on model output (#31). Pure functions: (response, context) -> accepted / rejected.
 //
@@ -120,7 +121,22 @@ function contradictedByEvidence(_stored, _ctx) {
   return false;
 }
 
-function storedToProposal(stored) {
+// #323 phase 2 (Decision 4): a title the person said doesn't fit a pattern's description is in that pattern's
+// excludedRefs and is never cited by it again. A refreshed version of the pattern (same id or name) drops such a
+// citation here, in software, before it is checked, so its areas and level are judged without it. The stored
+// pattern is read the same way. No prompt change: the model may still cite the title; it just never sticks.
+export function dropExcludedCitations(hypotheses, existing = [], ctx = null) {
+  if (!Array.isArray(hypotheses) || !(existing ?? []).some((p) => excludedRefsOf(p).length)) return hypotheses;
+  return hypotheses.map((h) => {
+    if (!h || typeof h !== "object") return h;
+    const dropped = withoutExcluded(h, excludedRefsOf(storedMatch(existing, h)));
+    if (dropped === h || !ctx) return dropped;
+    return normalizeHypothesisResponse({ hypotheses: [dropped] }, ctx).hypotheses[0];
+  });
+}
+
+function storedToProposal(storedPattern) {
+  const stored = withoutExcluded(storedPattern);
   const level = String(stored.strength ?? stored.level ?? "emerging").toLowerCase();
   return {
     id: stored.id,
@@ -181,8 +197,10 @@ function narrowedAreas(stored, accepted, ctx) {
   return carryStored(stored, ctx).domains.filter((d) => !(accepted.domains ?? []).includes(d) && !excluded.includes(d));
 }
 
-export function preserveExistingHypotheses(response, ctx, existing = []) {
-  if (!response || !Array.isArray(response.hypotheses) || !Array.isArray(existing) || !existing.length) return response;
+export function preserveExistingHypotheses(response, ctx, stored = []) {
+  if (!response || !Array.isArray(response.hypotheses) || !Array.isArray(stored) || !stored.length) return response;
+  response = { ...response, hypotheses: dropExcludedCitations(response.hypotheses, stored, ctx) };
+  const existing = stored.map((p) => withoutExcluded(p));
   const rejectedByUser = new Set((ctx.statements ?? []).filter((s) => s.says === "not-me").map((s) => s.hypothesisId));
   const confirmed = (h) => Boolean(confirmationFor(ctx.statements, h));
   const confirmedStored = existing.filter((stored) => isStoredPattern(stored) && confirmed(stored));
@@ -279,8 +297,9 @@ function keepStoredEvidence(h, stored, ctx) {
   };
 }
 
-export function settleConfirmedHypotheses(validated, ctx, existing = []) {
-  if (!validated || !Array.isArray(existing) || !existing.length) return { ...validated, needsReview: [], notChecked: [], narrowed: [] };
+export function settleConfirmedHypotheses(validated, ctx, stored = []) {
+  if (!validated || !Array.isArray(stored) || !stored.length) return { ...validated, needsReview: [], notChecked: [], narrowed: [] };
+  const existing = stored.map((p) => withoutExcluded(p));
   const accepted = [...(validated.accepted ?? [])];
   const needsReview = [];
   const notChecked = [];

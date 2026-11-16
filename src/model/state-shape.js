@@ -57,6 +57,58 @@ const SCALARS = {
   profileLedger: (value) => value === null || isObject(value)
 };
 
+// #323 phase 2: the parts of a list entry that are checked on their own. A bad part is left out of a copy of the
+// entry (the entry itself stays) and reported as "<field>.<index>.<part>". Saves from before #323 have none of
+// these and pass untouched.
+const isStringList = (value) => Array.isArray(value) && value.every(isString);
+const ELEMENT_VERDICTS = ["doesnt-fit", "different"];
+const isTitleAnswer = (answer) => isObject(answer) && ELEMENT_VERDICTS.includes(answer.verdict)
+  && (answer.reasons === undefined || isStringList(answer.reasons))
+  && (answer.note === undefined || isStringOrNull(answer.note));
+
+function checkElements(elements, path, dropped) {
+  if (!isObject(elements)) { dropped.push(path); return undefined; }
+  const out = { ...elements };
+  if ("words" in out && !isStringList(out.words)) { delete out.words; dropped.push(`${path}.words`); }
+  if ("wordsAbout" in out && !(out.wordsAbout === null || out.wordsAbout === "all" || isStringList(out.wordsAbout))) { delete out.wordsAbout; dropped.push(`${path}.wordsAbout`); }
+  if ("grouped" in out && !(out.grouped === null || isBoolean(out.grouped))) { delete out.grouped; dropped.push(`${path}.grouped`); }
+  if ("titles" in out) {
+    if (!isObject(out.titles)) { delete out.titles; dropped.push(`${path}.titles`); }
+    else {
+      const titles = {};
+      for (const [ref, answer] of Object.entries(out.titles)) {
+        if (isTitleAnswer(answer)) titles[ref] = answer;
+        else dropped.push(`${path}.titles.${ref}`);
+      }
+      out.titles = titles;
+    }
+  }
+  return out;
+}
+
+const ENTRY_PARTS = {
+  patternStatements: (entry, path, dropped) => {
+    if (!("elements" in entry)) return entry;
+    const before = dropped.length;
+    const elements = checkElements(entry.elements, `${path}.elements`, dropped);
+    if (dropped.length === before) return entry;
+    const out = { ...entry };
+    if (elements === undefined) delete out.elements;
+    else out.elements = elements;
+    return out;
+  },
+  modelHypotheses: (entry, path, dropped) => {
+    if (!("excludedRefs" in entry)) return entry;
+    if (!Array.isArray(entry.excludedRefs)) {
+      dropped.push(`${path}.excludedRefs`);
+      const { excludedRefs, ...out } = entry;
+      return out;
+    }
+    const refs = entry.excludedRefs.filter((ref, at) => isString(ref) || (dropped.push(`${path}.excludedRefs.${at}`), false));
+    return refs.length === entry.excludedRefs.length ? entry : { ...entry, excludedRefs: refs };
+  }
+};
+
 // `value` is the saved `state` object. Returns { state, dropped }: the usable fields (unknown fields pass
 // through untouched) and a list of what was left out, e.g. "feedbackByRecommendation" for a whole field
 // or "feedbackByRecommendation.tmdb-movie-1" for one entry.
@@ -80,7 +132,10 @@ export function checkStateShape(value) {
   for (const [field, entryOk] of Object.entries(LISTS)) {
     if (!(field in value)) continue;
     if (!Array.isArray(value[field])) { drop(field); continue; }
-    out[field] = value[field].filter((entry, index) => entryOk(entry) || (dropped.push(`${field}.${index}`), false));
+    const parts = ENTRY_PARTS[field];
+    out[field] = value[field]
+      .map((entry, index) => (entryOk(entry) ? (parts ? parts(entry, `${field}.${index}`, dropped) : entry) : (dropped.push(`${field}.${index}`), null)))
+      .filter((entry) => entry !== null);
   }
 
   if ("recommendationSets" in value) {

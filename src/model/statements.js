@@ -77,6 +77,15 @@ const MESSAGE = {
   context: (pattern, now) => (now ? `${pattern.title}: ${CONTEXT[now]}.` : `${pattern.title}: the context qualifier was cleared.`)
 };
 
+// #323 phase 2: element-level answers (src/model/partly-elements.js) are answers to Partly. Leaving Partly keeps
+// only the "doesn't fit" records, which mirror the pattern's excludedRefs (those last until undone).
+function keepOnlyExclusions(entry) {
+  if (!entry?.elements) return;
+  const titles = Object.fromEntries(Object.entries(entry.elements.titles ?? {}).filter(([, answer]) => answer?.verdict === "doesnt-fit"));
+  if (Object.keys(titles).length) entry.elements = { words: [], wordsAbout: null, titles, grouped: null };
+  else delete entry.elements;
+}
+
 // Toggle one answer. Returns a sentence for the live region.
 export function setStatement(state, hypothesisId, field, value) {
   const pattern = (state.modelHypotheses ?? []).find((p) => p.id === hypothesisId);
@@ -113,6 +122,7 @@ export function setStatement(state, hypothesisId, field, value) {
       // "Depends" exists under both, so it stays (and shows as selected).
       if (entry.context === "unsure") entry.context = null;
     }
+    if (next !== "partial") keepOnlyExclusions(entry);
   }
 
   if (!entry.says && !entry.weight && !entry.context && !(entry.excludedDomains?.length)) {

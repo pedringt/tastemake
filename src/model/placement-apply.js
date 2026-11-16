@@ -5,6 +5,7 @@ import { NEEDS_REVIEW, confirmationFor, contextQualifiedFor } from "./statements
 import { advanceLedger } from "./refresh-ledger.js";
 import { fileSupports } from "../ai/support-filing.js";
 import { CROSS_DOMAIN, LEVELS } from "../ai/contract.js";
+import { excludedRefsOf, withoutExcluded } from "./partly-elements.js";
 
 // #326 Design A: software applies a checked placement answer (src/ai/placement.js) to the stored Taste Profile.
 // The model never writes a pattern here; every change below is a rule (Paige's decisions, Nov 14):
@@ -21,7 +22,11 @@ import { CROSS_DOMAIN, LEVELS } from "../ai/contract.js";
 //     "Needs another look" (decision 3);
 //   - accepted new patterns are added at the level their evidence allows (decision 4);
 //   - the #364 support filing runs over the result, as today;
-//   - one history entry per changed pattern; the ledger and pool are updated (src/model/refresh-ledger.js).
+//   - one history entry per changed pattern; the ledger and pool are updated (src/model/refresh-ledger.js);
+//   - #323 phase 2 (Decision 4): a title in a pattern's excludedRefs (the person said it doesn't fit its
+//     description) is never placed as that pattern's support or counter. Such a placement is reported as not
+//     part of a pattern yet, and a liked title joins the "not yet explained" pool like any unexplained one, so
+//     it can help start a new pattern (Paige, Nov 16).
 
 export const COUNTERS_TO_LOWER = 2;
 export const CONFIRMED_COUNTERS_TO_FLAG = 2;
@@ -74,7 +79,7 @@ export function applyPlacementResult(state, queue, placement) {
   const confirmed = (p) => Boolean(confirmationFor(statements, p));
   const touched = new Set();
   const flagged = new Map();     // id -> placementReview
-  let patterns = (state.modelHypotheses ?? []).map((p) => ({ ...p }));
+  let patterns = (state.modelHypotheses ?? []).map((p) => ({ ...withoutExcluded(p) }));
   const active = (p) => p?.id && !notMe.has(p.id);
 
   // Removed ratings, and ratings whose side changed.
@@ -102,8 +107,12 @@ export function applyPlacementResult(state, queue, placement) {
   const byId = new Map(patterns.map((p) => [p.id, p]));
   const outcome = new Map();   // ref -> { place, patternId }
   for (const { ref, place, patternId } of placements) {
-    outcome.set(ref, { place, patternId });
     const p = patternId ? byId.get(patternId) : null;
+    if (p && excludedRefsOf(p).includes(ref) && (place === "supports" || place === "counter")) {
+      outcome.set(ref, { place: "unexplained", patternId: null });
+      continue;
+    }
+    outcome.set(ref, { place, patternId });
     if (!p || !active(p)) continue;
     if (place === "supports" && !(p.supports ?? []).includes(ref)) { p.supports = [...(p.supports ?? []), ref]; touched.add(p.id); }
     if (place === "counter" && !(p.counters ?? []).includes(ref)) {
@@ -165,7 +174,7 @@ export function applyPlacementResult(state, queue, placement) {
 
   // Ledger: placed items are settled; liked unexplained ones go to the pool; invalid ones stay new. Advanced before
   // the patterns are replaced, so a first run records what the stored patterns cited as seen.
-  const toPool = (x) => x.place === "unexplained" && rows.get(x.ref)?.polarity > 0 && outcome.get(x.ref)?.place === "unexplained";
+  const toPool = (x) => outcome.get(x.ref)?.place === "unexplained" && rows.get(x.ref)?.polarity > 0;
   state.profileLedger = advanceLedger(state, { placed: placements.filter((x) => !toPool(x)).map((x) => x.ref), pooled: placements.filter(toPool).map((x) => x.ref), failed: placement?.invalid ?? [], unpooled });
   state.modelHypotheses = patterns;
 

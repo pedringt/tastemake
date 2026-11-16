@@ -2,6 +2,7 @@ import { areaOn } from "../model/taste.js";
 import { evidenceRecords } from "../model/evidence.js";
 import { effectiveStatement } from "../model/statements.js";
 import { notMeConflict } from "./corrections.js";
+import { withoutElements } from "../model/partly-elements.js";
 
 // What the product hands a model (and the validator). Built only from product state, never from model output.
 // The model gets typed evidence and a list of eligible candidates; it never gets the power to decide
@@ -33,7 +34,8 @@ export function buildContext(state, extraCandidates = []) {
     curveball: state.curveball !== false,
     recommendationStyle: state.recommendationStyle ?? (state.curveball === false ? "safe" : "balanced"),
     // #333: as the person sees them, so a saved Yes can't also send the Partly-only "Not sure yet".
-    statements: (state.patternStatements ?? []).map(effectiveStatement),
+    // #323 phase 2: without element-level answers, so the picks prompt (which sends statements whole) is unchanged.
+    statements: (state.patternStatements ?? []).map(effectiveStatement).map(withoutElements),
     contexts: [],                                 // contexts the user gave (taste modes; not collected yet)
     recommendationFilter: state.recommendationFilter ?? "all",
     // #252 part 2: the validator refuses a cross-medium test into an area that's off.

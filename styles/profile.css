@@ -626,3 +626,21 @@
 .signal-done-row { display:flex; justify-content:flex-end; margin-top:10px; }
 .corrected-pattern-row.is-open { display:grid; justify-content:stretch; }
 .corrected-pattern-row .signal-summary { margin-top:0; }
+
+/* #323 phase 2: after Partly, "Wrong for all of them, or just certain ones?" and one row per cited title. */
+.signal-partly-explainer { margin:0; color:var(--text2,#3f4774); font-size:12px; line-height:1.4; }
+.signal-partly-titles { display:grid; gap:6px; }
+.signal-partly-titles ul { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
+.signal-partly-title { display:grid; gap:5px; min-width:0; padding:8px 10px; border:1.5px solid var(--line); border-radius:10px; background:rgb(255 255 255 / .6); }
+.signal-partly-title-name { color:var(--navy); font-size:13px; font-weight:800; overflow-wrap:anywhere; }
+.signal-partly-title-note { color:var(--text2,#3f4774); font-size:12px; line-height:1.4; }
+.signal-partly-title.is-not-cited { border-style:dashed; }
+.signal-partly-title.is-not-cited .signal-say-button { justify-self:start; }
+.signal-partly-options { display:flex; flex-wrap:wrap; gap:6px; }
+.signal-partly-note { display:grid; gap:5px; }
+.signal-partly-note label { color:var(--navy); font-size:12px; font-weight:700; }
+.signal-partly-note textarea { width:100%; min-width:0; font:inherit; font-size:13px; }
+.signal-partly-note .button { justify-self:start; }
+.signal-not-cited { margin-top:4px; }
+.signal-not-cited-title { display:inline-flex; flex-wrap:wrap; align-items:center; gap:4px; }
+.signal-not-cited-title .button { min-height:28px; padding:2px 8px; font-size:12px; }

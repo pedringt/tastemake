@@ -4,6 +4,7 @@
 
 import { isExperienced } from "../model/evidence.js";
 import { rejectsSomewhere } from "./corrections.js";
+import { withoutElements, withoutExcluded } from "../model/partly-elements.js";
 
 // #120 follow-up, QA sweep real bug: feedbackByRecommendation and customItems have the exact same
 // unbounded-growth shape that made recommendationSets 413 -- a full item object (about/artwork are
@@ -134,7 +135,8 @@ export function serializeAiState(state, { requiredRefs = null } = {}) {
     // Server-side hydration already defaults all three when absent, so simply not sending them is a
     // zero-behavior-change, zero-information-loss cut -- unlike feedbackByRecommendation/customItems,
     // there is no real data here the server needs at all.
-    patternStatements: state.patternStatements ?? [],
+    // #323 phase 2: without element-level answers (`elements`), which no endpoint reads yet.
+    patternStatements: (state.patternStatements ?? []).map(withoutElements),
     // #334: the shortlist reads a "Not me" pattern's areas and supports (src/ai/corrections.js), and a
     // confirmed one's, so it can tell which titles match it. Sent only while some pattern is "Not me" or a
     // Partly has unticked areas (Nov 15), so every other request is unchanged.
@@ -155,7 +157,7 @@ function correctionPatternsForWire(state) {
   const answered = new Set(statements.filter((s) => ["not-me", "accurate", "partial"].includes(s?.says)).map((s) => s.hypothesisId));
   const correctionPatterns = (state.modelHypotheses ?? [])
     .filter((h) => h?.id && answered.has(h.id))
-    .map((h) => ({ id: h.id, domains: h.domains ?? [], supports: (h.supports ?? []).slice(0, MAX_WIRE_PATTERN_SUPPORTS) }));
+    .map((h) => ({ id: h.id, domains: h.domains ?? [], supports: (withoutExcluded(h).supports ?? []).slice(0, MAX_WIRE_PATTERN_SUPPORTS) }));
   return { correctionPatterns };
 }
 
