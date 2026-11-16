@@ -14,12 +14,15 @@ import { levelChangeConsequence } from "../model/history.js";
 import { exampleLinkHtml, isViewingExample } from "../example-profile.js";
 import { featuredCorrection } from "../model/featured-correction.js";
 import { partlyAreasReachPicks } from "../ai/corrections.js";
+import { NOTE_MAX, PARTLY_DIFFERENT_SIDE, canMarkDoesntFit, excludedRefsOf } from "../model/partly-elements.js";
 
 // #358: progressive disclosure. An unanswered pattern shows its statement, one supporting example and the
 // question; follow-ups appear only after an answer, and an answered pattern collapses to a summary with
 // Change. This is screen state for this visit only (never saved), so a reload shows every answered pattern
 // as its summary. `changed` is the answer just given on a pattern: its consequence line shows only then.
-const disclosure = { open: new Set(), refine: new Set(), changed: new Map(), correctedShown: false };
+// #323 phase 2: `framing` is the answer to "Wrong for all of them, or just certain ones?" on a Partly pattern, for
+// this visit only (what it leads to is saved; the question itself isn't).
+const disclosure = { open: new Set(), refine: new Set(), changed: new Map(), framing: new Map(), correctedShown: false };
 
 export function openPattern(id, { refine = false } = {}) {
   disclosure.open.add(id);
@@ -29,6 +32,13 @@ export function closePattern(id) {
   disclosure.open.delete(id);
   disclosure.refine.delete(id);
   disclosure.changed.delete(id);
+  disclosure.framing.delete(id);
+}
+export function setPartlyFraming(id, value) {
+  if (!["all", "titles"].includes(value)) return false;
+  disclosure.framing.set(id, value);
+  disclosure.open.add(id);
+  return true;
 }
 export function toggleRefine(id) {
   if (disclosure.refine.has(id)) disclosure.refine.delete(id);
@@ -42,6 +52,7 @@ export function resetDisclosure() {
   disclosure.open.clear();
   disclosure.refine.clear();
   disclosure.changed.clear();
+  disclosure.framing.clear();
   disclosure.correctedShown = false;
 }
 const isOpen = (item, said) => !said?.says || disclosure.open.has(item.id);
@@ -102,7 +113,7 @@ function alsoAppliesControls(item, said) {
 
 // #358: after Yes, refining is optional and closed until asked for; Partly offers only the context and area
 // options that exist today (which part fits waits for #323); No and Not sure ask nothing more.
-function sayControls(item, said, record) {
+function sayControls(item, said, record, records = new Map()) {
   const fit = said?.says ?? null;
   const primary = `
     <div class="signal-say-primary" role="group" aria-label="Does “${esc(item.title)}” sound right?">
@@ -149,11 +160,82 @@ function sayControls(item, said, record) {
             ${sayButton(item, "context", "unsure", "Not sure yet", said)}
           </div>
           ${domainScopeControls(item, record)}
+          ${partlyFraming(item, said, records)}
         </div>
       </div>`;
   }
 
   return `<div class="signal-say">${primary}</div>`;
+}
+
+// #323 phase 2 (docs/proposals/323-partly-plan.md, section 3): after Partly, whether the whole pattern is off or
+// only certain titles. "Just certain ones" lists the titles the pattern cites. "Doesn't fit this description" is
+// live and needs no AI (src/model/partly-elements.js); "Fits a different side of my taste" is only offered while
+// PARTLY_DIFFERENT_SIDE is on, and is saved without changing anything yet. "Wrong for all of them" has nothing
+// new to save until the suggestion step (phase 4), so it says what the Partly answer already does.
+const partlyButton = (item, action, label, { ref = "", value = "", pressed = null, extra = "" } = {}) =>
+  `<button type="button" class="button button-secondary signal-say-button" data-partly-pattern="${esc(item.id)}" data-partly-action="${action}"${ref ? ` data-partly-ref="${esc(ref)}"` : ""}${value ? ` data-partly-value="${value}"` : ""}${pressed === null ? "" : ` aria-pressed="${pressed}"`}${extra}>${label}</button>`;
+
+export const NOT_CITED_TEXT = "No longer cited by this pattern, because you said it doesn’t fit this description. Your rating of it still counts everywhere else, and the pattern’s wording stays the same.";
+export const WRONG_FOR_ALL_TEXT = "Your Partly answer covers that for now: the pattern is kept, and the AI is told to use it cautiously and not broaden it. Its wording stays as it is.";
+export const DIFFERENT_SIDE_TEXT = "Saved with your answer. Tastemake doesn’t use it yet: this pattern still cites the title, and your picks and Taste Profile don’t change.";
+export const LAST_TITLE_TEXT = "This is the only title left behind this pattern. If the pattern doesn’t describe you, answer No instead.";
+
+function excludedTitleRow(item, ref, records) {
+  const title = records.get(ref)?.title ?? "A title you rated";
+  return `
+    <li class="signal-partly-title is-not-cited">
+      <span class="signal-partly-title-name">${esc(title)}</span>
+      <span class="signal-partly-title-note">${esc(NOT_CITED_TEXT)}</span>
+      ${partlyButton(item, "undo", "Undo", { ref, extra: ` aria-label="Undo: cite “${esc(title)}” in this pattern again"` })}
+    </li>`;
+}
+
+function citedTitleRow(item, ref, said, records) {
+  const title = records.get(ref)?.title;
+  if (!title) return "";
+  const answer = said?.elements?.titles?.[ref] ?? null;
+  const different = PARTLY_DIFFERENT_SIDE && answer?.verdict === "different";
+  const canExclude = canMarkDoesntFit(state, item.id, ref);
+  return `
+    <li class="signal-partly-title">
+      <span class="signal-partly-title-name">${esc(title)}</span>
+      <div class="signal-partly-options" role="group" aria-label="Does “${esc(title)}” fit “${esc(item.title)}”?">
+        ${partlyButton(item, "belongs", "Belongs", { ref, pressed: !different })}
+        ${canExclude ? partlyButton(item, "doesnt-fit", "Doesn’t fit this description", { ref, pressed: false }) : ""}
+        ${PARTLY_DIFFERENT_SIDE ? partlyButton(item, "different", "Fits a different side of my taste", { ref, pressed: different }) : ""}
+      </div>
+      ${canExclude ? "" : `<span class="signal-partly-title-note">${esc(LAST_TITLE_TEXT)}</span>`}
+      ${different ? `
+      <span class="signal-partly-title-note">${esc(DIFFERENT_SIDE_TEXT)}</span>
+      <form class="signal-partly-note" data-partly-note-form="${esc(item.id)}" data-partly-ref="${esc(ref)}" novalidate>
+        <label for="partly-note-${esc(item.id)}-${esc(ref)}">What’s different about it? <span class="signal-optional">(optional)</span></label>
+        <textarea id="partly-note-${esc(item.id)}-${esc(ref)}" rows="2" maxlength="${NOTE_MAX}">${esc(answer.note ?? "")}</textarea>
+        <button class="button button-secondary" type="submit">Save note</button>
+      </form>` : ""}
+    </li>`;
+}
+
+function partlyFraming(item, said, records) {
+  const excluded = excludedRefsOf(item);
+  const answered = Object.keys(said?.elements?.titles ?? {}).length > 0 || excluded.length > 0;
+  const framing = disclosure.framing.get(item.id) ?? (answered ? "titles" : null);
+  const cited = (item.supports ?? []).filter((ref) => records.get(ref)?.title);
+  return `
+          <div class="signal-say-group signal-partly-framing" role="group" aria-label="Is “${esc(item.title)}” wrong for all of its titles, or just certain ones?">
+            <span class="signal-say-label">Wrong for all of them, or just certain ones?</span>
+            ${partlyButton(item, "framing", "Wrong for all of them", { value: "all", pressed: framing === "all" })}
+            ${partlyButton(item, "framing", "Just certain ones", { value: "titles", pressed: framing === "titles" })}
+          </div>
+          ${framing === "all" ? `<p class="signal-partly-explainer">${esc(WRONG_FOR_ALL_TEXT)}</p>` : ""}
+          ${framing === "titles" ? `
+          <div class="signal-partly-titles">
+            <span class="signal-say-label">Which titles are off? Each one belongs unless you say otherwise.</span>
+            <ul>
+              ${cited.map((ref) => citedTitleRow(item, ref, said, records)).join("")}
+              ${excluded.map((ref) => excludedTitleRow(item, ref, records)).join("")}
+            </ul>
+          </div>` : ""}`;
 }
 
 export function partitionProfilePatterns(patterns = [], statements = [], keep = new Set()) {
@@ -236,6 +318,17 @@ function saidReasonsLine(item, records) {
   return `<div class="signal-evidence signal-said-reasons"><span>Your reasons for these titles</span> ${rows.join(" · ")}</div>`;
 }
 
+// #323 phase 2: titles taken off this pattern ("Doesn't fit this description"), each with Undo, whatever the
+// current answer is, so an exclusion can always be undone from the pattern.
+function notCitedLine(item, records) {
+  const refs = excludedRefsOf(item);
+  if (!refs.length) return "";
+  return `<div class="signal-evidence signal-not-cited"><span>No longer cited here, because you said ${refs.length === 1 ? "it doesn’t" : "they don’t"} fit this description</span> ${refs.map((ref) => {
+    const title = records.get(ref)?.title ?? "A title you rated";
+    return `<span class="signal-not-cited-title"><em>${esc(title)}</em> ${partlyButton(item, "undo", "Undo", { ref, extra: ` aria-label="Undo: cite “${esc(title)}” in this pattern again"` }).replace("button-secondary", "button-quiet")}</span>`;
+  }).join(" · ")}</div>`;
+}
+
 // #358: one short supporting example up front; the full evidence, the reasons and the blind spots expand.
 function evidenceBlock(item, records, blindLine) {
   const example = (item.supports ?? []).map((ref) => records.get(ref)?.title).find(Boolean);
@@ -245,6 +338,7 @@ function evidenceBlock(item, records, blindLine) {
       <summary>What this comes from</summary>
       <div class="signal-evidence">${esc(item.evidence)}</div>
       ${saidReasonsLine(item, records)}
+      ${notCitedLine(item, records)}
       <div class="signal-provenance">${esc(item.provenance ?? "Live AI interpretation.")}</div>
       ${blindLine}
     </details>`;
@@ -282,7 +376,7 @@ function hypothesisCard(item, index, records = new Map()) {
           <div class="signal-said">Your Taste Profile won’t apply it to ${esc(excluded.join(", "))}.${partlyAreasReachPicks(state, item.id) ? esc(picksLine(excluded)) : ""} Change it to include an area again.</div>
         </details>` : ""}
         ${open ? `
-          ${sayControls(item, said, record)}
+          ${sayControls(item, said, record, records)}
           ${statementConsequence(said, disclosure.changed.get(item.id), partlyAreasReachPicks(state, item.id))}
           ${said?.says ? `<div class="signal-done-row">${disclosureButton(item, "done", "Done")}</div>` : ""}` : summaryLine(item, said)}
       </div>
@@ -290,7 +384,7 @@ function hypothesisCard(item, index, records = new Map()) {
 }
 
 // #358: a corrected pattern carries the same summary ("Not me · Change"), so it can be undone from here.
-function correctedPatternsSection(items) {
+function correctedPatternsSection(items, records = new Map()) {
   if (!items.length) return "";
   // Once a corrected pattern is reopened here, the section stays open, so Done keeps focus in view.
   if (items.some((item) => disclosure.open.has(item.id))) disclosure.correctedShown = true;
@@ -304,7 +398,7 @@ function correctedPatternsSection(items) {
           return disclosure.open.has(item.id) ? `
           <div class="corrected-pattern-row is-open" data-profile-pattern="${item.id}">
             <strong>${esc(item.title)}</strong>
-            ${sayControls(item, said, { scope: { supported: item.domains ?? [], excluded: [] } })}
+            ${sayControls(item, said, { scope: { supported: item.domains ?? [], excluded: [] } }, records)}
             <div class="signal-done-row">${disclosureButton(item, "done", "Done")}</div>
           </div>` : `
           <div class="corrected-pattern-row" data-profile-pattern="${item.id}">
@@ -603,7 +697,7 @@ export function renderProfile() {
         </div>` : ""}
       </details>` : ""}
 
-      ${liveProfile && profileView !== "map" ? correctedPatternsSection(correctedHypotheses) : ""}
+      ${liveProfile && profileView !== "map" ? correctedPatternsSection(correctedHypotheses, evidenceByRef) : ""}
       ${profileView !== "map" ? blindSpotSection() : ""}
 
       <div class="profile-footer page-actions">

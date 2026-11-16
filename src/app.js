@@ -18,7 +18,8 @@ import { libraryItemById, migrateStarterFavorites } from "./model/library.js";
 import { renderFavorites } from "./screens/favorites.js";
 import { favoritesDestination } from "./model/library.js";
 import { renderBrowse } from "./screens/browse.js";
-import { closePattern, noteAnswer, openPattern, renderProfile, resetDisclosure, toggleRefine } from "./screens/profile.js";
+import { closePattern, noteAnswer, openPattern, renderProfile, resetDisclosure, setPartlyFraming, toggleRefine } from "./screens/profile.js";
+import { markBelongs, markDifferentSide, markDoesntFit, setDifferentSideNote, undoDoesntFit } from "./model/partly-elements.js";
 import { renderNewThisWeek, renderRecommendations } from "./screens/recommendations.js";
 import { actOnNewRelease, maybeLoadNewReleases } from "./ai/new-releases.js";
 import { detailDescription, renderDetailMeta, renderLibrary } from "./screens/library.js";
@@ -231,6 +232,17 @@ app.addEventListener("click", (event) => {
 });
 
 app.addEventListener("submit", (event) => {
+  const partlyNote = event.target.closest("[data-partly-note-form]");
+  if (partlyNote) {
+    event.preventDefault();
+    const { partlyNoteForm: id, partlyRef: ref } = partlyNote.dataset;
+    const message = setDifferentSideNote(state, id, ref, partlyNote.querySelector("textarea")?.value ?? "");
+    if (!message) return;
+    render();
+    restoreFocus(`[data-partly-note-form="${id}"][data-partly-ref="${ref}"] textarea`);
+    announce(message);
+    return;
+  }
   const noteForm = event.target.closest("[data-dismiss-note-form]");
   if (noteForm) {
     event.preventDefault();
@@ -719,6 +731,31 @@ app.addEventListener("click", async (event) => {
     if (!message) return;
     noteAnswer(statementPattern, statementField);
     renderPreservingPatternPosition(statementPattern, focusSelector);
+    announce(message);
+    return;
+  }
+
+  // #323 phase 2: the Partly follow-ups for "Wrong for all of them, or just certain ones?" and each cited title.
+  // Local only, no model call (src/model/partly-elements.js).
+  const partlyButton = event.target.closest("[data-partly-pattern]");
+  if (partlyButton) {
+    const { partlyPattern: id, partlyAction: action, partlyRef: ref, partlyValue: value } = partlyButton.dataset;
+    if (action === "framing") {
+      if (!setPartlyFraming(id, value)) return;
+      renderPreservingPatternPosition(id, focusSelector);
+      return;
+    }
+    const run = { "doesnt-fit": markDoesntFit, undo: undoDoesntFit, different: markDifferentSide, belongs: markBelongs }[action];
+    const message = run ? run(state, id, ref) : null;
+    if (!message) return;
+    noteAnswer(id, "titles");
+    if (action === "doesnt-fit") setPartlyFraming(id, "titles");
+    // The button pressed goes away on Doesn't fit and Undo, so focus moves to the control that reverses it.
+    // Inside the title rows: the same Undo also sits in the pattern's closed "What this comes from".
+    const rows = `[data-profile-pattern="${id}"] .signal-partly-titles`;
+    const target = action === "doesnt-fit" ? `${rows} [data-partly-action="undo"][data-partly-ref="${ref}"]`
+      : action === "undo" ? (document.querySelector(`${rows}`) ? `${rows} [data-partly-ref="${ref}"]` : null) : focusSelector;
+    renderPreservingPatternPosition(id, target);
     announce(message);
     return;
   }
