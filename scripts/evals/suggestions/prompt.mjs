@@ -71,6 +71,9 @@ export function checkSuggestion(answer, kase, context) {
   for (const p of patterns) for (const t of p?.titles ?? []) bump(String(t));
   for (const t of setAside) bump(t);
   for (const t of counts.keys()) if (!original.has(t)) problems.push(`names a title that isn't in the pattern: ${t}`);
+  // Nov 16 run: the model set aside an unflagged title (The Lord of the Rings, in all three epic-word-some
+  // answers). Only titles the person marked "different side" may be set aside.
+  for (const t of setAside) if (original.has(t) && verdict(t) !== "different") problems.push(`sets aside "${t}", which the person didn't flag`);
   for (const t of original) {
     const n = counts.get(t) ?? 0;
     if (verdict(t) === "doesnt-fit") { if (n) problems.push(`keeps "${t}", which the person said doesn't fit`); continue; }
