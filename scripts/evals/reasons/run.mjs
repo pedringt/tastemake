@@ -5,7 +5,7 @@
 //
 //   node scripts/evals/reasons/run.mjs --dry-run                          # free: the plan, prompts and worst case
 //   node scripts/evals/reasons/run.mjs --yes --max-usd 0.05 [--auth ant]  # PAID: 10 cases x 3 reps = 30 calls
-//   add --prompt v2 for the v2 prompt (prompt.mjs; default v1)
+//   add --prompt v2 or v3 (prompt.mjs; default v1). v3 approved by Paige Nov 16: 30 calls, cap $0.01.
 //
 // Caps, enforced here before every call: at most APPROVED_CALLS calls, and the run stops before a call whose worst
 // case could cross --max-usd. --auth ant (Paige's own login) is for her machine only and refused in CI.
