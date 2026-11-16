@@ -212,7 +212,7 @@ const myth = (s) => s.modelHypotheses.find((p) => p.id === P_MYTH.id);
   const result = applyPlacementResult(s, queue, { placements: [{ ref: ref(RE7), place: "supports", patternId: P_MYTH.id }], invalid: [], newPatterns: [], notSent: [] });
   check("a placement as its support is refused", !myth(s).supports.includes(ref(RE7)) && myth(s).excludedRefs.includes(ref(RE7)));
   eq("…the message says it isn't part of a pattern", result.message, "1 new rating: 1 isn’t part of a pattern yet.");
-  check("…it doesn't join the pool (phase 2 changes no pool)", !readLedger(s.profileLedger).pool.includes(ref(RE7)));
+  check("…a liked title joins the pool, so it can start a new pattern (Paige, Nov 16)", readLedger(s.profileLedger).pool.includes(ref(RE7)));
   check("…and the pattern isn't touched", !result.changed.includes(P_MYTH.id));
   const t = profile();
   markDoesntFit(t, P_MYTH.id, ref(RE7));

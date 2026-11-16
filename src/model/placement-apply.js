@@ -25,8 +25,8 @@ import { excludedRefsOf, withoutExcluded } from "./partly-elements.js";
 //   - one history entry per changed pattern; the ledger and pool are updated (src/model/refresh-ledger.js);
 //   - #323 phase 2 (Decision 4): a title in a pattern's excludedRefs (the person said it doesn't fit its
 //     description) is never placed as that pattern's support or counter. Such a placement is reported as not
-//     part of a pattern yet, and the item is settled in the ledger without joining the pool (pooling the
-//     person's set-aside titles is phase 3-4 work).
+//     part of a pattern yet, and a liked title joins the "not yet explained" pool like any unexplained one, so
+//     it can help start a new pattern (Paige, Nov 16).
 
 export const COUNTERS_TO_LOWER = 2;
 export const CONFIRMED_COUNTERS_TO_FLAG = 2;
@@ -174,7 +174,7 @@ export function applyPlacementResult(state, queue, placement) {
 
   // Ledger: placed items are settled; liked unexplained ones go to the pool; invalid ones stay new. Advanced before
   // the patterns are replaced, so a first run records what the stored patterns cited as seen.
-  const toPool = (x) => x.place === "unexplained" && rows.get(x.ref)?.polarity > 0 && outcome.get(x.ref)?.place === "unexplained";
+  const toPool = (x) => outcome.get(x.ref)?.place === "unexplained" && rows.get(x.ref)?.polarity > 0;
   state.profileLedger = advanceLedger(state, { placed: placements.filter((x) => !toPool(x)).map((x) => x.ref), pooled: placements.filter(toPool).map((x) => x.ref), failed: placement?.invalid ?? [], unpooled });
   state.modelHypotheses = patterns;
 
