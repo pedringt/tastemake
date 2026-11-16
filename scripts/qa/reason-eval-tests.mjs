@@ -32,6 +32,10 @@ const { check, eq, finish } = createSuite("reason-eval");
   check("never shows the gold answer", !CASES.filter((c) => c.gold).some((c) => c.gold.some((g) => buildReasonsPrompt(caseContext(c)).includes(g))));
   check("v2 never shows the gold answer either, even in its examples", !CASES.filter((c) => c.gold).some((c) => c.gold.some((g) => buildReasonsPrompt(caseContext(c), "v2").toLowerCase().includes(g.toLowerCase().split(",")[0]))));
   check("v2 asks for a contrast with the pattern, no plot, up to 8 words", /not <what the pattern says>/.test(buildReasonsPrompt(context, "v2")) && /no plot points/.test(buildReasonsPrompt(context, "v2")) && /At most 8 words/.test(buildReasonsPrompt(context, "v2")));
+  const v3 = buildReasonsPrompt(context, "v3");
+  check("v3: the not-part comes from the pattern, never another title; specific; different aspects", /must come from the pattern's own name or claim/.test(v3) && /Never contrast with what another title is about/.test(v3) && /different aspect/.test(v3));
+  check("v3 never shows a gold answer, even in its examples", !CASES.filter((c) => c.gold).some((c) => c.gold.some((g) => buildReasonsPrompt(caseContext(c), "v3").split("CONTEXT")[0].toLowerCase().includes(g.toLowerCase().split(",")[0]))));
+  check("v3's examples are about none of the case titles", !/grief|mystery to solve|sitcom|history|grounded/i.test(v3.split("CONTEXT")[0]));
   check("v2's examples are about none of the case titles", !/grief|mystery to solve|sitcom|history/i.test(buildReasonsPrompt(context, "v2").split("CONTEXT")[0]));
 }
 
@@ -42,6 +46,9 @@ const { check, eq, finish } = createSuite("reason-eval");
   eq("a good answer passes", checkReasons(good, context).ok, true);
   const eight = { reasons: [{ label: "A mystery to deduce, not a world", basis: "a" }, { label: "Two", basis: "b" }, { label: "Three", basis: "c" }] };
   check("v1 caps reasons at 6 words, v2 at 8", !checkReasons(eight, context).ok && checkReasons(eight, context, "v2").ok);
+  const dupes = { reasons: [{ label: "Grounded historical mystery, not myth", basis: "a" }, { label: "Historical mystery to deduce, not fantasy", basis: "b" }, { label: "Puzzle game, not a story", basis: "c" }] };
+  check("v3 flags near-duplicate reasons (Paige: repetitive)", checkReasons(dupes, context, "v3").problems.some((p) => /nearly the same/.test(p)) && checkReasons(dupes, context, "v2").ok);
+  check("v3 lets distinct reasons through", checkReasons({ reasons: [{ label: "Warm workplace sitcom, not cringe comedy", basis: "a" }, { label: "Traditional format, not docu-style", basis: "b" }, { label: "Ensemble cast, not one awkward lead", basis: "c" }] }, context, "v3").ok);
   const bad = { reasons: [{ label: "A much warmer and kinder style of comedy overall", basis: "x" }, { label: "Unlike Nathan for You", basis: "x" }, { label: "unlike nathan for you", basis: "" }, { label: "you like it", basis: "x" }] };
   const problems = checkReasons(bad, context).problems.join(" / ");
   check("catches the wrong count", problems.includes("expected 3"));
