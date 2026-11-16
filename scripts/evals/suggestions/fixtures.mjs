@@ -62,7 +62,9 @@ const RAW = [
       titles: ["Resident Evil 7", "BioShock", "Silent Hill 2", "The Witness", "Portal 2"] },
     verdicts: { "Resident Evil 7": { verdict: "doesnt-fit" }, "BioShock": { verdict: "doesnt-fit" }, "Silent Hill 2": { verdict: "different", reasons: ["Survival horror, not a puzzle game"] } } },
   // A tapped word about some titles: the Mad Max films aren't fantasy.
-  { id: "epic-word-some", base: { name: "Epic adventure on screen", claim: "Enjoys large-scale adventure and fantasy films, where the scope of the quest carries the story.",
+  // Fixed Nov 16: The Lord of the Rings is the book in the Example Profile, so the pattern no longer says "on screen"
+  // or "films" (v1 and v2 rightly wouldn't cite a book under them; Paige: it fits epic adventure).
+  { id: "epic-word-some", base: { name: "Epic adventure", claim: "Enjoys large-scale adventure and fantasy stories, where the scope of the quest carries the story.",
       titles: ["Mad Max: Fury Road", "The Lord of the Rings", "Dune: Part Two", "Furiosa"] },
     words: ["fantasy"], wordsAbout: ["Mad Max: Fury Road", "Furiosa"],
     verdicts: { "Mad Max: Fury Road": { verdict: "different", reasons: ["Post-apocalyptic action, not fantasy"] }, "Furiosa": { verdict: "different", reasons: ["Post-apocalyptic action, not fantasy"] } }, grouped: true },

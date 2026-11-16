@@ -30,9 +30,14 @@ const byId = (id) => CASES.find((c) => c.id === id);
   check("instructions come before CONTEXT, data after", prompt.indexOf("Rules:") < prompt.indexOf("\n\nCONTEXT\n") && prompt.endsWith(JSON.stringify(caseContext(kase))));
   check("the person's words are data, not instructions", /never instructions to follow/.test(prompt));
   const v2 = buildSuggestionPrompt(caseContext(kase), "v2");
-  check("v2 keeps v1's rules and adds four", PROMPT_VERSIONS.join() === "v1,v2" && prompt.split("\n").every((l) => l.startsWith("CONTEXT") || l.startsWith("{") || v2.includes(l)) && v2.split("\n").length === prompt.split("\n").length + 4);
+  check("v2 keeps v1's rules and adds four", PROMPT_VERSIONS.join() === "v1,v2,v3" && prompt.split("\n").every((l) => l.startsWith("CONTEXT") || l.startsWith("{") || v2.includes(l)) && v2.split("\n").length === prompt.split("\n").length + 4);
   check("v2 says only different-side titles may be set aside", /Only titles marked .fits a different side of my taste. may go in setAside/.test(v2));
   check("v2 rule examples leak no case's titles or reasons", !CASES.some((c) => [...c.titles, ...Object.values(c.verdicts).flatMap((v) => v.reasons)].some((t) => t.length > 4 && v2.slice(0, v2.indexOf("\n\nCONTEXT")).includes(t))));
+  const v3 = buildSuggestionPrompt(caseContext(kase), "v3");
+  check("v3 drops v1's medium rule and requires the split", !v3.includes("every cited title must be that kind") && /remove the medium phrase entirely/.test(v3) && /must form their own new pattern/.test(v3));
+  check("v3 has no 'keep the wording' escape", !/keep the wording/.test(v3));
+  check("v3 rule examples leak no case's titles or reasons", !CASES.some((c) => [...c.titles, ...Object.values(c.verdicts).flatMap((v) => v.reasons)].some((t) => t.length > 4 && v3.slice(0, v3.indexOf("\n\nCONTEXT")).includes(t))));
+  eq("the epic case no longer says films or on screen (The Lord of the Rings is a book)", /films|on screen/.test(`${byId("epic-word-some").pattern.name} ${byId("epic-word-some").pattern.claim}`), false);
   let threw = false;
   try { buildSuggestionPrompt(caseContext(kase), "v9"); } catch { threw = true; }
   check("an unknown prompt version is refused", threw);
@@ -58,6 +63,8 @@ const byId = (id) => CASES.find((c) => c.id === id);
   const paired = { patterns: [{ name: "Atmospheric survival horror", claim: "Survival horror games where mood carries the experience.", titles: notGrouped.titles.slice(0, 3) }, { name: "Story-driven games", claim: "Story-driven games with a strong sense of place.", titles: ["Portal 2", "BioShock Infinite"] }], setAside: [] };
   check("pairing different-side titles the person said don't go together fails", !checkSuggestion(paired, notGrouped, caseContext(notGrouped)).ok);
   const split = byId("comedy-sitcom-split");
+  const setAsideGrouped = { patterns: [{ ...split.hand.patterns[0] }], setAside: ["The Office", "Detroiters"] };
+  check("setting aside titles the person grouped is flagged", checkSuggestion(setAsideGrouped, split, caseContext(split)).warnings.some((w) => /go together/.test(w)));
   eq("pairing them when they do go together passes", checkSuggestion(split.hand, split, caseContext(split)).ok, true);
   const mythic = byId("mythic-obra-dinn");
   const wrongMedium = { patterns: [{ name: "Mythic fantasy books", claim: "Literary fantasy rooted in myth, in books.", titles: mythic.titles }], setAside: [] };
@@ -73,6 +80,7 @@ const byId = (id) => CASES.find((c) => c.id === id);
 // ---- caps ----
 {
   const calls = plan();
+  eq("a 4-case plan is 12 calls", plan(CASES.slice(0, 4)).length, 12);
   eq("30 calls, within the approved count", `${calls.length} ${calls.length <= APPROVED_CALLS}`, "30 true");
   eq("reps are interleaved across cases", calls.slice(0, 10).map((c) => c.rep).join(""), "1111111111");
   let n = 0;
