@@ -70,10 +70,11 @@ const RAW = [
   { id: "mystery-tv-lost", base: { name: "Uncanny mystery on television", claim: "Responds to TV with mysterious, supernatural hooks and ensemble casts.",
       titles: ["Lost", "Widow's Bay", "Twin Peaks"] },
     verdicts: { "Lost": { verdict: "different", reasons: ["Survival adventure, not uncanny"], note: "I liked the castaway part more than the mystery" } } },
-  // Two titles on different sides that don't go together: both set aside, not paired.
+  // Two titles on different sides that don't go together: both set aside, not paired. Rewritten Nov 16: the first
+  // version flagged Control and Alan Wake II, which Paige says still fit; these two are clearly not horror.
   { id: "horror-games-not-grouped", base: { name: "Atmosphere-driven horror in games", claim: "Responds strongly to games where mood and setting carry the experience, including survival horror and psychological horror.",
-      titles: ["Resident Evil 7", "Silent Hill 2", "Alan Wake II", "Control"] },
-    verdicts: { "Control": { verdict: "different", reasons: ["Weird action game, not horror"] }, "Alan Wake II": { verdict: "different", reasons: ["Story-driven thriller, not survival horror"] } }, grouped: false }
+      titles: ["Resident Evil 7", "Silent Hill 2", "Dead Space", "Portal 2", "BioShock Infinite"] },
+    verdicts: { "Portal 2": { verdict: "different", reasons: ["Comedic puzzle game, not horror"] }, "BioShock Infinite": { verdict: "different", reasons: ["Story-driven shooter, not horror"] } }, grouped: false }
 ];
 
 function normalize(raw) {

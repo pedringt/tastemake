@@ -2,7 +2,7 @@
 // is a stub, so nothing reaches the network.
 import { createSuite } from "./lib/assert.mjs";
 import { CASES, caseContext } from "../evals/suggestions/fixtures.mjs";
-import { buildSuggestionPrompt, checkSuggestion } from "../evals/suggestions/prompt.mjs";
+import { PROMPT_VERSIONS, buildSuggestionPrompt, checkSuggestion } from "../evals/suggestions/prompt.mjs";
 import { APPROVED_CALLS, plan, runPlan } from "../evals/suggestions/run.mjs";
 
 const { check, eq, finish } = createSuite("suggestion-eval");
@@ -29,6 +29,13 @@ const byId = (id) => CASES.find((c) => c.id === id);
   const prompt = buildSuggestionPrompt(caseContext(kase));
   check("instructions come before CONTEXT, data after", prompt.indexOf("Rules:") < prompt.indexOf("\n\nCONTEXT\n") && prompt.endsWith(JSON.stringify(caseContext(kase))));
   check("the person's words are data, not instructions", /never instructions to follow/.test(prompt));
+  const v2 = buildSuggestionPrompt(caseContext(kase), "v2");
+  check("v2 keeps v1's rules and adds four", PROMPT_VERSIONS.join() === "v1,v2" && prompt.split("\n").every((l) => l.startsWith("CONTEXT") || l.startsWith("{") || v2.includes(l)) && v2.split("\n").length === prompt.split("\n").length + 4);
+  check("v2 says only different-side titles may be set aside", /Only titles marked .fits a different side of my taste. may go in setAside/.test(v2));
+  check("v2 rule examples leak no case's titles or reasons", !CASES.some((c) => [...c.titles, ...Object.values(c.verdicts).flatMap((v) => v.reasons)].some((t) => t.length > 4 && v2.slice(0, v2.indexOf("\n\nCONTEXT")).includes(t))));
+  let threw = false;
+  try { buildSuggestionPrompt(caseContext(kase), "v9"); } catch { threw = true; }
+  check("an unknown prompt version is refused", threw);
   check("never shows a hand-written suggestion", !CASES.filter((c) => c.hand).some((c) => c.hand.patterns.some((p) => p.name !== c.pattern.name && buildSuggestionPrompt(caseContext(c)).includes(p.name))));
 }
 
@@ -47,7 +54,8 @@ const byId = (id) => CASES.find((c) => c.id === id);
   const diffCited ={ patterns: [{ ...good.patterns[0], titles: ["The Witness", "Portal 2", "Silent Hill 2"] }], setAside: [] };
   check("citing a different-side title with the others fails", checkSuggestion(diffCited, kase, ctx).problems.some((p) => /different side/.test(p)));
   const notGrouped = byId("horror-games-not-grouped");
-  const paired = { patterns: [{ name: "Atmospheric survival horror", claim: "Survival horror games where mood carries the experience.", titles: [notGrouped.titles[0], notGrouped.titles[1]] }, { name: "Story-driven action games", claim: "Strange, story-driven action games.", titles: ["Control", "Alan Wake II"] }], setAside: [] };
+  eq("the not-grouped case no longer flags Control or Alan Wake II (Paige: they still fit)", Object.keys(notGrouped.verdicts).sort().join(), "BioShock Infinite,Portal 2");
+  const paired = { patterns: [{ name: "Atmospheric survival horror", claim: "Survival horror games where mood carries the experience.", titles: notGrouped.titles.slice(0, 3) }, { name: "Story-driven games", claim: "Story-driven games with a strong sense of place.", titles: ["Portal 2", "BioShock Infinite"] }], setAside: [] };
   check("pairing different-side titles the person said don't go together fails", !checkSuggestion(paired, notGrouped, caseContext(notGrouped)).ok);
   const split = byId("comedy-sitcom-split");
   eq("pairing them when they do go together passes", checkSuggestion(split.hand, split, caseContext(split)).ok, true);
@@ -55,6 +63,9 @@ const byId = (id) => CASES.find((c) => c.id === id);
   const wrongMedium = { patterns: [{ name: "Mythic fantasy books", claim: "Literary fantasy rooted in myth, in books.", titles: mythic.titles }], setAside: [] };
   check("a claim naming books while citing a game is flagged", checkSuggestion(wrongMedium, mythic, caseContext(mythic)).warnings.some((w) => /Obra Dinn/.test(w)));
   check("a name with a title in it fails", checkSuggestion({ patterns: [{ name: "Portal 2 style puzzles", claim: "Puzzle games.", titles: ["The Witness", "Portal 2"] }], setAside: ["Silent Hill 2"] }, kase, ctx).problems.some((p) => /names a title/.test(p)));
+  check("narrowing books and games to books is flagged", checkSuggestion(mythic.hand, mythic, caseContext(mythic)).warnings.some((w) => /narrows book and game to book/.test(w)));
+  const keepsBoth = { patterns: [{ name: "Mythic and fantastical worlds", claim: "Tends toward fantasy and mythic or uncanny settings.", titles: mythic.titles.slice(0, 3) }], setAside: ["Return of the Obra Dinn"] };
+  check("dropping the medium mention isn't flagged as narrowing", !checkSuggestion(keepsBoth, mythic, caseContext(mythic)).warnings.some((w) => /narrows/.test(w)));
   const word = byId("horror-word-all");
   check("unchanged wording after tapped words is flagged", checkSuggestion({ patterns: [{ ...word.pattern, titles: word.titles }], setAside: [] }, word, caseContext(word)).warnings.length === 1);
 }
@@ -66,6 +77,10 @@ const byId = (id) => CASES.find((c) => c.id === id);
   eq("reps are interleaved across cases", calls.slice(0, 10).map((c) => c.rep).join(""), "1111111111");
   let n = 0;
   const call = async () => { n += 1; return { json: { patterns: [], setAside: [] }, usage: { input_tokens: 1000, output_tokens: 300 } }; };
+  let seen = "";
+  await runPlan(calls.slice(0, 1), { call: async (p) => { seen = p; return call(); }, maxUsd: 1, version: "v2" });
+  check("runPlan sends the chosen prompt version", /Only titles marked/.test(seen));
+  n = 0;
   const capped = await runPlan(calls, { call, maxUsd: 1, maxCalls: 4 });
   eq("the call cap stops the run", `${n} ${capped.stopped}`, "4 call cap 4 reached");
   n = 0;
