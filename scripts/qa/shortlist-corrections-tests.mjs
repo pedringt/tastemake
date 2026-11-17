@@ -6,6 +6,7 @@
 import { createSuite } from "./lib/assert.mjs";
 import { buildPickPrompt, normalizeModelPicks, offeredCandidates, produceRecommendations } from "../../api/recommendations.mjs";
 import { validatePicks } from "../../src/ai/validate.js";
+import { cleanAnchorsFirst, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { buildContext } from "../../src/ai/context.js";
 import { correctionKinds, notMeConflict, partlyAreasReachPicks, rejectsSomewhere } from "../../src/ai/corrections.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
@@ -44,7 +45,7 @@ const patterns = [
 ];
 const say = (id, fields) => ({ hypothesisId: id, label: id, says: null, weight: null, context: null, authority: "user-confirmed", ...fields });
 
-function browserState({ statements = [], curveball = false, hypotheses = patterns } = {}) {
+function browserState({ statements = [], curveball = false, hypotheses = patterns, filter = "all" } = {}) {
   const feedbackByRecommendation = {};
   for (const [key, item] of Object.entries(rated)) {
     feedbackByRecommendation[item.id] = { item, rating: "more", detail: loved.includes(key) ? "loved-before" : "liked-before" };
@@ -52,7 +53,7 @@ function browserState({ statements = [], curveball = false, hypotheses = pattern
   return {
     selectedFavorites: new Set(), libraryFavorites: new Set(), customItems: {}, feedbackByRecommendation,
     recommendationSets: [], seenItemIds: [], blindSpots: {}, blindSpotDrafts: {}, blindSpotDismissed: new Set(),
-    areas: { movies: true, tv: true, read: true, play: true }, curveball, recommendationFilter: "all",
+    areas: { movies: true, tv: true, read: true, play: true }, curveball, recommendationFilter: filter,
     modelHypotheses: hypotheses, patternStatements: statements
   };
 }
@@ -261,6 +262,37 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   check("backstop: the 'Not me' title is rejected, with the reason", result.rejected.some((r) => r.proposal?.itemId === horrorPool[0].id && r.reasons.includes("matches a pattern the user said is not them")), JSON.stringify(result.rejected.map((r) => r.reasons)));
   const plain = validatePicks(normalizeModelPicks({ picks: [{ itemId: horrorPool[0].id, anchor: "setting", why, cites: [`ev:${rated.s1.id}`] }], curveballItemId: null }), { ...contextFor({}, pool), candidates: [horrorPool[0]] });
   eq("backstop: without a 'Not me', the same horror pick is accepted", plain.accepted.length, 1);
+}
+
+// ---- #380 follow-up: retrieval prefers anchors that don't match a "Not me" pattern ----------------------------
+{
+  const items = [rated.h1, rated.s1, rated.h2, rated.s2];
+  const conflicts = notMeConflict(hydrateState(wire({ statements: notMeHorror })));
+  eq("anchor order: matching ratings move behind the others, keeping their order", cleanAnchorsFirst(items, conflicts).map((i) => i.id).join(","), [rated.s1, rated.s2, rated.h1, rated.h2].map((i) => i.id).join(","));
+  check("anchor order: no 'Not me' leaves the order untouched", cleanAnchorsFirst(items, null) === items);
+
+  // The real retrieval, offline: no provider key and a fetch that throws, so every lookup returns nothing,
+  // but the trace still lists the anchors queried, in order. Anchor choice is random, so run it several times.
+  const anchorsQueried = async (opts) => {
+    const trace = {};
+    await quietly(() => retrieveCatalogCandidates(hydrateState(wire(opts)), { env: {}, fetchImpl: async () => { throw new Error("no network"); }, trace }));
+    return trace.retrieval?.anchors ?? [];
+  };
+  const horrorIds = new Set([rated.h1, rated.h2, rated.h3, rated.likedHorror].map((i) => i.id));
+  let horrorAnchoredPlain = 0, horrorAnchoredCorrected = 0, firstWaveHorrorMovies = 0, runs = 0;
+  for (let i = 0; i < 40; i += 1) {
+    const plain = await anchorsQueried({});
+    const corrected = await anchorsQueried({ statements: notMeHorror });
+    const moviesOnly = await anchorsQueried({ statements: notMeHorror, filter: "movies" });
+    runs += corrected.length ? 1 : 0;
+    if (plain.some((a) => horrorIds.has(a.itemId))) horrorAnchoredPlain += 1;
+    if (corrected.some((a) => horrorIds.has(a.itemId))) horrorAnchoredCorrected += 1;
+    if (moviesOnly.slice(0, 4).some((a) => horrorIds.has(a.itemId))) firstWaveHorrorMovies += 1;
+  }
+  check("retrieval: anchors were traced", runs === 40, String(runs));
+  check("retrieval: without a correction, horror ratings do become anchors (so the next check can fail)", horrorAnchoredPlain > 0, String(horrorAnchoredPlain));
+  eq("retrieval: with 'Not me: Horror films', no horror rating is an anchor while science fiction ones are left", horrorAnchoredCorrected, 0);
+  eq("retrieval, Movies filter: the first wave of four uses only science fiction ratings", firstWaveHorrorMovies, 0);
 }
 
 // ---- wire payload ----------------------------------------------------------------------------------------
