@@ -2,7 +2,7 @@
  "product": "Tastemake",
  "format": "tastemake-backup",
  "version": 1,
- "generatedAt": "2026-10-21T19:55:59.749Z",
+ "generatedAt": "2026-11-17T00:43:24.228Z",
  "state": {
   "selectedFavorites": [],
   "feedbackByRecommendation": {
@@ -4720,10 +4720,28 @@
    {
     "hypothesisId": "ai-puzzle-exploration-games",
     "label": "Exploration-heavy games with puzzles",
-    "says": "accurate",
-    "weight": "lot",
+    "says": "partial",
+    "weight": null,
     "context": null,
-    "authority": "user-confirmed"
+    "authority": "user-confirmed",
+    "alsoAppliesTo": [],
+    "elements": {
+     "words": [],
+     "wordsAbout": null,
+     "titles": {
+      "ev:igdb-game-19562": {
+       "verdict": "doesnt-fit",
+       "reasons": [],
+       "note": null
+      },
+      "ev:igdb-game-132181": {
+       "verdict": "doesnt-fit",
+       "reasons": [],
+       "note": null
+      }
+     },
+     "grouped": null
+    }
    },
    {
     "hypothesisId": "ai-quirky-character-comedy",
@@ -4734,8 +4752,10 @@
     "authority": "user-confirmed"
    }
   ],
+  "exclusions": [],
   "blindSpotDismissed": [],
   "tastebreaks": {},
+  "dismissalNotes": {},
   "hypothesisHistory": [
    {
     "id": "rev-mvic6blb-1",
@@ -5067,6 +5087,216 @@
     "reason": "Quirky character-driven comedy: You said this is partly accurate.",
     "createdAt": "2026-10-21T19:55:59.748Z",
     "supersedes": "rev-mvij4c6a-7"
+   },
+   {
+    "id": "rev-mwjyy6rm-1",
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action, with recent Silent Hill entries and The Witness reinforcing the pattern.",
+    "supports": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-20",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342",
+     "ev:igdb-game-5601",
+     "ev:igdb-game-72",
+     "ev:igdb-game-132181",
+     "ev:igdb-game-7342"
+    ],
+    "counters": [],
+    "domains": [
+     "play"
+    ],
+    "level": "strong",
+    "origin": "model",
+    "reason": "Refresh placed new ratings",
+    "createdAt": "2026-11-17T00:43:24.226Z",
+    "supersedes": "rev-mvij4c67-1"
+   },
+   {
+    "id": "rev-mwjyy6rm-2",
+    "hypothesisId": "ai-atmospheric-horror-games",
+    "claim": "Responds strongly to games where mood and setting carry the experience, including survival horror and psychological horror.",
+    "supports": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342",
+     "ev:igdb-game-185246",
+     "ev:igdb-game-103329",
+     "ev:igdb-game-19686",
+     "ev:igdb-game-159119"
+    ],
+    "counters": [
+     "ev:igdb-game-11737"
+    ],
+    "domains": [
+     "play"
+    ],
+    "level": "strong",
+    "origin": "model",
+    "reason": "Refresh placed new ratings",
+    "createdAt": "2026-11-17T00:43:24.226Z",
+    "supersedes": "rev-mvij4c6a-2"
+   },
+   {
+    "id": "rev-mwjyy6rm-3",
+    "hypothesisId": "ai-genre-fantasy-mythic-worlds",
+    "claim": "Tends toward fantasy and mythic or uncanny settings, showing up in both books and games.",
+    "supports": [
+     "ev:openlibrary-book-OL18012166W",
+     "ev:openlibrary-book-OL20893680W",
+     "ev:openlibrary-book-OL16509148W",
+     "ev:igdb-game-9643",
+     "ev:openlibrary-book-OL16086747W",
+     "ev:openlibrary-book-OL27448W",
+     "ev:openlibrary-book-OL17268007W",
+     "ev:openlibrary-book-OL20759125W"
+    ],
+    "counters": [
+     "ev:openlibrary-book-OL18020194W"
+    ],
+    "domains": [
+     "read",
+     "play"
+    ],
+    "level": "strong",
+    "origin": "model",
+    "reason": "Refresh placed new ratings",
+    "createdAt": "2026-11-17T00:43:24.226Z",
+    "supersedes": "rev-mvij4c6a-3"
+   },
+   {
+    "id": "rev-mwjyy6rm-4",
+    "hypothesisId": "ai-uncanny-slow-burn-horror-screen",
+    "claim": "Responds to films and TV that build dread through atmosphere and ambiguity rather than jump scares, such as Hereditary, Get Out, Midnight Mass and Haunting of Hill House.",
+    "supports": [
+     "ev:tmdb-movie-493922",
+     "ev:tmdb-movie-419430",
+     "ev:tmdb-tv-97400",
+     "ev:tmdb-tv-72844",
+     "ev:tmdb-tv-1920",
+     "ev:tmdb-movie-1423191",
+     "ev:tmdb-movie-1091"
+    ],
+    "counters": [
+     "ev:tmdb-movie-310131",
+     "ev:tmdb-movie-300668"
+    ],
+    "domains": [
+     "movies",
+     "tv"
+    ],
+    "level": "supported",
+    "origin": "model",
+    "reason": "Refresh placed new ratings",
+    "createdAt": "2026-11-17T00:43:24.226Z",
+    "supersedes": "rev-mvij4c6a-4"
+   },
+   {
+    "id": "rev-mwjyy6rm-5",
+    "hypothesisId": "ai-uncanny-mystery-tv",
+    "claim": "Responds to TV with mysterious, supernatural hooks and ensemble casts, as with Lost, Twin Peaks and Widow's Bay.",
+    "supports": [
+     "ev:tmdb-tv-4607",
+     "ev:tmdb-tv-270476",
+     "ev:tmdb-tv-1920",
+     "ev:tmdb-tv-54344",
+     "ev:tmdb-tv-117488",
+     "ev:tmdb-tv-70523"
+    ],
+    "counters": [
+     "ev:tmdb-tv-111803",
+     "ev:tmdb-tv-95396"
+    ],
+    "domains": [
+     "tv"
+    ],
+    "level": "supported",
+    "origin": "model",
+    "reason": "Refresh placed new ratings",
+    "createdAt": "2026-11-17T00:43:24.226Z",
+    "supersedes": "rev-mvij4c6a-6"
+   },
+   {
+    "id": "rev-mwjyy6rm-6",
+    "hypothesisId": "ai-quirky-character-comedy",
+    "claim": "Gravitates toward deadpan, character-led comedy in TV, with Nathan for You and I Think You Should Leave both landing well.",
+    "supports": [
+     "ev:tmdb-tv-58957",
+     "ev:tmdb-tv-88728",
+     "ev:tmdb-tv-204284",
+     "ev:tmdb-tv-110971",
+     "ev:tmdb-tv-62611",
+     "ev:tmdb-tv-69866",
+     "ev:tmdb-tv-4546",
+     "ev:tmdb-tv-1229"
+    ],
+    "counters": [],
+    "domains": [
+     "tv"
+    ],
+    "level": "strong",
+    "origin": "model",
+    "reason": "Refresh placed new ratings",
+    "createdAt": "2026-11-17T00:43:24.226Z",
+    "supersedes": "rev-mvij8fic-1"
+   },
+   {
+    "id": "rev-mwk32uh2-1",
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action, with recent Silent Hill entries and The Witness reinforcing the pattern.",
+    "supports": [],
+    "counters": [],
+    "domains": [],
+    "level": null,
+    "origin": "user-confirmed",
+    "reason": "Exploration-heavy games with puzzles: You said this is partly accurate.",
+    "createdAt": "2026-11-17T02:39:00.038Z",
+    "supersedes": "rev-mwjyy6rm-1"
+   },
+   {
+    "id": "rev-mwk32uh8-2",
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action, with recent Silent Hill entries and The Witness reinforcing the pattern.",
+    "supports": [
+     "ev:igdb-game-20",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342",
+     "ev:igdb-game-5601",
+     "ev:igdb-game-72",
+     "ev:igdb-game-132181",
+     "ev:igdb-game-7342"
+    ],
+    "counters": [],
+    "domains": [
+     "play"
+    ],
+    "level": "strong",
+    "origin": "user-confirmed",
+    "reason": "Exploration-heavy games with puzzles: “Resident Evil 7: Biohazard” is no longer cited by this pattern, because you said it doesn’t fit this description.",
+    "createdAt": "2026-11-17T02:39:00.044Z",
+    "supersedes": "rev-mwk32uh2-1"
+   },
+   {
+    "id": "rev-mwk32uh9-3",
+    "hypothesisId": "ai-puzzle-exploration-games",
+    "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action, with recent Silent Hill entries and The Witness reinforcing the pattern.",
+    "supports": [
+     "ev:igdb-game-20",
+     "ev:igdb-game-222341",
+     "ev:igdb-game-222342",
+     "ev:igdb-game-5601",
+     "ev:igdb-game-72",
+     "ev:igdb-game-7342"
+    ],
+    "counters": [],
+    "domains": [
+     "play"
+    ],
+    "level": "strong",
+    "origin": "user-confirmed",
+    "reason": "Exploration-heavy games with puzzles: “Resident Evil 4” is no longer cited by this pattern, because you said it doesn’t fit this description.",
+    "createdAt": "2026-11-17T02:39:00.045Z",
+    "supersedes": "rev-mwk32uh8-2"
    }
   ],
   "modelHypotheses": [
@@ -5074,14 +5304,14 @@
     "id": "ai-puzzle-exploration-games",
     "title": "Exploration-heavy games with puzzles",
     "claim": "Favors games that combine atmospheric exploration with puzzle-solving over pure action, with recent Silent Hill entries and The Witness reinforcing the pattern.",
-    "evidence": "Resident Evil 7: Biohazard, BioShock, Silent Hill 2, Silent Hill: Townfall, The Witness, Portal 2",
+    "evidence": "BioShock, Silent Hill 2, Silent Hill: Townfall, The Witness, Portal 2, Inside",
     "supports": [
-     "ev:igdb-game-19562",
      "ev:igdb-game-20",
      "ev:igdb-game-222341",
      "ev:igdb-game-222342",
      "ev:igdb-game-5601",
-     "ev:igdb-game-72"
+     "ev:igdb-game-72",
+     "ev:igdb-game-7342"
     ],
     "counters": [],
     "domains": [
@@ -5092,19 +5322,25 @@
     "crossDomain": "untested",
     "context": null,
     "aiGenerated": true,
-    "provenance": "Based on your reactions so far."
+    "provenance": "Based on your reactions so far.",
+    "excludedRefs": [
+     "ev:igdb-game-19562",
+     "ev:igdb-game-132181"
+    ]
    },
    {
     "id": "ai-atmospheric-horror-games",
     "title": "Atmosphere-driven horror in games",
     "claim": "Responds strongly to games where mood and setting carry the experience, including survival horror and psychological horror.",
-    "evidence": "Resident Evil 7: Biohazard, Silent Hill 2, Silent Hill: Townfall, Alan Wake II, Control",
+    "evidence": "Resident Evil 7: Biohazard, Silent Hill 2, Silent Hill: Townfall, Alan Wake II, Control, Resident Evil 2, Dead Space",
     "supports": [
      "ev:igdb-game-19562",
      "ev:igdb-game-222341",
      "ev:igdb-game-222342",
      "ev:igdb-game-185246",
-     "ev:igdb-game-103329"
+     "ev:igdb-game-103329",
+     "ev:igdb-game-19686",
+     "ev:igdb-game-159119"
     ],
     "counters": [
      "ev:igdb-game-11737"
@@ -5123,12 +5359,16 @@
     "id": "ai-genre-fantasy-mythic-worlds",
     "title": "Mythic and fantastical worlds",
     "claim": "Tends toward fantasy and mythic or uncanny settings, showing up in both books and games.",
-    "evidence": "Circe, Piranesi, The Song of Achilles, Return of the Obra Dinn",
+    "evidence": "Circe, Piranesi, The Song of Achilles, Return of the Obra Dinn, The Night Circus, The Lord of the Rings, Annihilation, Mexican Gothic",
     "supports": [
      "ev:openlibrary-book-OL18012166W",
      "ev:openlibrary-book-OL20893680W",
      "ev:openlibrary-book-OL16509148W",
-     "ev:igdb-game-9643"
+     "ev:igdb-game-9643",
+     "ev:openlibrary-book-OL16086747W",
+     "ev:openlibrary-book-OL27448W",
+     "ev:openlibrary-book-OL17268007W",
+     "ev:openlibrary-book-OL20759125W"
     ],
     "counters": [
      "ev:openlibrary-book-OL18020194W"
@@ -5137,8 +5377,8 @@
      "read",
      "play"
     ],
-    "strength": "supported",
-    "status": "supported",
+    "strength": "strong",
+    "status": "strong",
     "crossDomain": "tentative",
     "context": null,
     "aiGenerated": true,
@@ -5148,16 +5388,19 @@
     "id": "ai-uncanny-slow-burn-horror-screen",
     "title": "Uncanny slow-burn horror on screen",
     "claim": "Responds to films and TV that build dread through atmosphere and ambiguity rather than jump scares, such as Hereditary, Get Out, Midnight Mass and Haunting of Hill House.",
-    "evidence": "Hereditary, Get Out, Midnight Mass, The Haunting of Hill House, Twin Peaks",
+    "evidence": "Hereditary, Get Out, Midnight Mass, The Haunting of Hill House, Twin Peaks, Resident Evil, The Thing",
     "supports": [
      "ev:tmdb-movie-493922",
      "ev:tmdb-movie-419430",
      "ev:tmdb-tv-97400",
      "ev:tmdb-tv-72844",
-     "ev:tmdb-tv-1920"
+     "ev:tmdb-tv-1920",
+     "ev:tmdb-movie-1423191",
+     "ev:tmdb-movie-1091"
     ],
     "counters": [
-     "ev:tmdb-movie-310131"
+     "ev:tmdb-movie-310131",
+     "ev:tmdb-movie-300668"
     ],
     "domains": [
      "movies",
@@ -5196,11 +5439,14 @@
     "id": "ai-uncanny-mystery-tv",
     "title": "Uncanny mystery on television",
     "claim": "Responds to TV with mysterious, supernatural hooks and ensemble casts, as with Lost, Twin Peaks and Widow's Bay.",
-    "evidence": "Lost, Widow's Bay, Twin Peaks",
+    "evidence": "Lost, Widow's Bay, Twin Peaks, The Leftovers, Yellowjackets, Dark",
     "supports": [
      "ev:tmdb-tv-4607",
      "ev:tmdb-tv-270476",
-     "ev:tmdb-tv-1920"
+     "ev:tmdb-tv-1920",
+     "ev:tmdb-tv-54344",
+     "ev:tmdb-tv-117488",
+     "ev:tmdb-tv-70523"
     ],
     "counters": [
      "ev:tmdb-tv-111803",
@@ -5209,8 +5455,8 @@
     "domains": [
      "tv"
     ],
-    "strength": "emerging",
-    "status": "emerging",
+    "strength": "supported",
+    "status": "supported",
     "crossDomain": "untested",
     "context": null,
     "aiGenerated": true,
@@ -5220,19 +5466,23 @@
     "id": "ai-quirky-character-comedy",
     "title": "Quirky character-driven comedy",
     "claim": "Gravitates toward deadpan, character-led comedy in TV, with Nathan for You and I Think You Should Leave both landing well.",
-    "evidence": "Nathan for You, I Think You Should Leave with Tim Robinson, The Rehearsal, How To with John Wilson",
+    "evidence": "Nathan for You, I Think You Should Leave with Tim Robinson, The Rehearsal, How To with John Wilson, Review, Detroiters, Curb Your Enthusiasm, Tim and Eric Awesome Show, Great Job!",
     "supports": [
      "ev:tmdb-tv-58957",
      "ev:tmdb-tv-88728",
      "ev:tmdb-tv-204284",
-     "ev:tmdb-tv-110971"
+     "ev:tmdb-tv-110971",
+     "ev:tmdb-tv-62611",
+     "ev:tmdb-tv-69866",
+     "ev:tmdb-tv-4546",
+     "ev:tmdb-tv-1229"
     ],
     "counters": [],
     "domains": [
      "tv"
     ],
-    "strength": "emerging",
-    "status": "emerging",
+    "strength": "strong",
+    "status": "strong",
     "crossDomain": "untested",
     "context": null,
     "aiGenerated": true,
