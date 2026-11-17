@@ -72,7 +72,6 @@ const bad = {
   "missing notFor": { ...good, notFor: undefined },
   "tone not a list": { ...good, tone: "playful" },
   "empty list": { ...good, setting: [] },
-  "six in a list": { ...good, pleasures: ["a", "b", "c", "d", "e", "f"] },
   "list entry not a string": { ...good, format: [3] },
   "blank list entry": { ...good, tone: ["  "] },
   "list entry over 80 characters": { ...good, tone: ["x".repeat(81)] },
@@ -88,6 +87,7 @@ const bad = {
   "missing confidence": { ...good, confidence: undefined }
 };
 for (const [name, value] of Object.entries(bad)) eq(`rejected: ${name}`, validateAppealProfile(value), null);
+eq("six in a list: the first five are kept", validateAppealProfile({ ...good, pleasures: ["a", "b", "c", "d", "e", "f"] })?.pleasures.join(","), "a,b,c,d,e");
 
 // ---- fakes --------------------------------------------------------------------------------------------------
 const AI_ENV = { TASTEMAKE_AI_ENABLED: "1", ANTHROPIC_API_KEY: "fake-key", TASTEMAKE_AI_MODEL: "claude-test", TASTEMAKE_AI_RATE_LIMIT_CONFIRMED: "1", TASTEMAKE_AI_SPEND_CAP_CONFIRMED: "1", VERCEL_ENV: "preview" };

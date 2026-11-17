@@ -106,8 +106,10 @@ export function validateAppealProfile(json) {
   }
   for (const field of LIST_FIELDS) {
     const list = json[field];
-    if (!Array.isArray(list) || list.length < 1 || list.length > 5) return null;
-    const cleaned = list.map((entry) => cleanText(entry, ITEM_MAX));
+    // The prompt asks for at most 5. About 3.5% of research-era profiles gave 6 "pleasures"; the first five are
+    // kept rather than discarding (and paying again for) an otherwise good profile.
+    if (!Array.isArray(list) || list.length < 1) return null;
+    const cleaned = list.slice(0, 5).map((entry) => cleanText(entry, ITEM_MAX));
     if (cleaned.some((entry) => entry == null)) return null;
     profile[field] = cleaned;
   }
