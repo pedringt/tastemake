@@ -38,6 +38,16 @@
 //   bridge        { anchor, domain, shelf }: one cross-medium row found from a Liked rating (production's #252
 //                 bridge), in the first wave. Its titles are marked surpriseOnly: they can fill only the
 //                 Surprise slot (chooseWith), so Surprise has a novelty source the rejection doesn't touch.
+// Round 5 options (#380 follow-up, run5.mjs; off by default, and with both null the code path is exactly the one
+// above). The caller passes production's own matcher, notMeConflict(state) from src/ai/corrections.js, which since
+// #381 makes the shortlist leave out every title it flags:
+//   conflictFilter(item)  titles it flags are dropped from `eligible` every time eligible is built, before the
+//                         pool-health checks (pool under 12, a medium of the anchors missing), so the second wave
+//                         and the missing-medium fallback react to the pool the shortlist will actually use;
+//   anchorReorder(item)   rated anchors it flags (the rated item itself is treated as a candidate) move behind the
+//                         unflagged ones in the anchor order, stably, before anchor selection; so they are used only
+//                         where a medium has too few unflagged ratings (selectAllAnchors still takes up to two per
+//                         medium). Ratings are untouched: they remain evidence for scoring.
 
 import { weightedOrder, withEdgeAnchor } from "../../../src/catalog/related.mjs";
 import { featureSimilarity, tasteFeatures } from "../../../src/ai/taste-score.js";
@@ -145,12 +155,14 @@ export const standInRelated = (anchor, index, n = RELATED_PER_ANCHOR) => related
 // The pool for one request. `rejected(item)` is true for an evidence item whose rating supports only
 // rejected patterns (computed by the caller from the scenario's statements); it is never called when
 // no rejection applies, so every option is then exactly the current retrieval.
-export function retrieve(state, index, { seed, mode = "current", surpriseAnchor = false, rejected = null, avoid = null, reorder = null, discovery = null, bridge = null } = {}) {
+export function retrieve(state, index, { seed, mode = "current", surpriseAnchor = false, rejected = null, avoid = null, reorder = null, discovery = null, bridge = null, conflictFilter = null, anchorReorder = null } = {}) {
   const blockedIds = new Set([
     ...Object.keys(state.feedbackByRecommendation ?? {}), ...(state.selectedFavorites ?? []), ...(state.libraryFavorites ?? []),
     ...Object.keys(state.customItems ?? {}), ...(state.recommendationSets ?? []).flat().map((e) => (typeof e === "string" ? e : e?.id))
   ]);
-  const all = weightedOrder(evidenceItems(state), (item) => (item.anchorStrength ?? 0) + (item.hasReasons ? 1 : 0), mulberry32(seed));
+  let all = weightedOrder(evidenceItems(state), (item) => (item.anchorStrength ?? 0) + (item.hasReasons ? 1 : 0), mulberry32(seed));
+  // Round 5: flagged ratings go last as anchors (same random draw; only their priority changes).
+  if (anchorReorder) all = [...all.filter((item) => !anchorReorder(item)), ...all.filter((item) => anchorReorder(item))];
   const blockedTitles = new Set(all.map((i) => String(i.title).toLowerCase()));
   const acting = Boolean(rejected) && (mode !== "current" || surpriseAnchor);
   const isRejected = (item) => Boolean(rejected) && rejected(item);
@@ -205,7 +217,8 @@ export function retrieve(state, index, { seed, mode = "current", surpriseAnchor 
   let shelfCalls = bridgeRow ? 1 : 0;
   const eligibleOf = (rows) => {
     const seen = new Set();
-    return interleave(rows).filter((item) => !seen.has(item.id) && seen.add(item.id));
+    // Round 5: with conflictFilter, titles the shortlist would leave out never count toward the pool's health.
+    return interleave(rows).filter((item) => !seen.has(item.id) && seen.add(item.id) && !(conflictFilter && conflictFilter(item)));
   };
   const domainsOf = (items) => new Set(items.map(primaryDomain));
 
