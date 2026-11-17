@@ -299,8 +299,9 @@ const CONSEQUENCE = {
 
 // Nov 15: a Partly's unticked areas also reach the shortlist (src/ai/corrections.js), but only when the
 // pattern's kind can be read from its titles' labels; otherwise nothing is promised. #380 (Nov 17): matching
-// titles there are left out, no longer only moved lower.
-const picksLine = (areas) => ` In ${areas.join(", ")}, titles like this are also left out of your picks.`;
+// titles there are left out, no longer only moved lower. Matching is by catalog labels, so the line promises only
+// the matches Tastemake can recognize: a title with no labels, or only broad ones, is never caught.
+const picksLine = (areas) => ` In ${areas.join(", ")}, titles Tastemake can recognize as matching are also left out of your picks.`;
 
 function statementConsequence(said, field, reachesPicks = false) {
   if (!said?.says || !field) return "";
@@ -532,7 +533,7 @@ const SAID = { partial: "partly accurate", "not-me": "not her", unsure: "not sur
 // cautiously" wording.
 const USE = {
   partial: "Tastemake builds its shortlist without using her answer. When AI chooses and explains picks, it's told to treat this pattern more cautiously.",
-  "not-me": "Titles that clearly match this pattern are left out of her picks. Live AI is told not to use the pattern, and Tastemake keeps it out of her Taste Profile when the profile is refreshed.",
+  "not-me": "Titles Tastemake can recognize as matching this pattern are left out of her picks. Live AI is told not to use the pattern, and Tastemake keeps it out of her Taste Profile when the profile is refreshed.",
   unsure: "Her answer doesn't change Tastemake's shortlist. Live AI is told it isn't a confirmed preference."
 };
 const shortDate = (iso) => {

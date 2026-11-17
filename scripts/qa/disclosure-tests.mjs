@@ -171,10 +171,10 @@ const CONSEQUENCE = "What this changes";
   toggleDomainExclusion(state, pattern.id, "movies");
   noteAnswer(pattern.id, "scope");
   let html = row(renderProfile());
-  check("a readable pattern, films unticked: the consequence says picks change there", /In [^<]*, titles like this are also left out of your picks\./.test(html), html.match(/What this changes[\s\S]{0,240}/)?.[0]);
+  check("a readable pattern, films unticked: the consequence says picks change there", /In [^<]*, titles Tastemake can recognize as matching are also left out of your picks\./.test(html), html.match(/What this changes[\s\S]{0,240}/)?.[0]);
   closePattern(pattern.id);
   html = row(renderProfile());
-  check("…and so does the summary's 'Where it doesn’t apply'", html.includes("titles like this are also left out of your picks."));
+  check("…and so does the summary's 'Where it doesn’t apply'", html.includes("titles Tastemake can recognize as matching are also left out of your picks."));
 }
 
 // ---- Not sure: nothing more is asked ----
