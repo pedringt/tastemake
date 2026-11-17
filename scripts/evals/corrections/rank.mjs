@@ -3,7 +3,9 @@
 // Baseline = production's own chooseCandidates (src/ai/taste-score.js). The prototype is a copy of its
 // selection step that takes a score function, so only the score changes. scripts/qa/correction-eval-tests.mjs
 // checks that the copy, given production's score, returns exactly what production returns on every case
-// and round, so the two cannot silently drift.
+// and round, so the two cannot silently drift. Since #381 production never offers a title the person's
+// "Not me" answers flag (notMeConflict); the copy takes the same `conflicts` rule, and the parity test runs it
+// on every scenario with the scenario's real matcher. An arm labelled "production" applies it (armSelection).
 //
 // How a correction changes a score (prototype only):
 //   A candidate's score is the sum of contributions from the rated items most like it (top 5 positives,
@@ -26,7 +28,7 @@
 //                          times higher. "second": only a medium that already has a title in the six yields
 //                          (every medium stays). "one-medium": a first turn may yield too, once per set.
 
-import { closestRatings, featureRarity, featureSimilarity, isEdgeCandidate, tasteFeatures } from "../../../src/ai/taste-score.js";
+import { chooseCandidates, closestRatings, featureRarity, featureSimilarity, isEdgeCandidate, tasteFeatures } from "../../../src/ai/taste-score.js";
 import { isFranchiseContinuation } from "../../../src/catalog/novelty.mjs";
 
 // Mirrors of taste-score.js constants (the parity test fails if they drift).
@@ -160,21 +162,26 @@ export function productionScorer(records) {
 
 // ---- Selection: a copy of chooseCandidates with the score injected ------------------------------------------
 // Returns the chosen items (production's shape) and the full fused order (for rank-movement metrics).
-export function chooseWith(candidates, records, score, { count = 6, mode = "all", curveball = false, retrievalWeight = null, yieldTurn = null, edgePick = null } = {}) {
-  const scored = candidates.map((item, index) => ({ item, index, score: score(item) }));
+// `conflicts(item)`: production's "Not me" rule since #381 (notMeConflict, src/ai/corrections.js): a title it
+// flags is ordered last among its sign, never offered, and never takes the Surprise slot. Only the
+// "production" selection passes it (armSelection); research arms leave it null, as they were designed.
+// scripts/qa/correction-eval-tests.mjs checks this copy against chooseCandidates with and without it.
+export function chooseWith(candidates, records, score, { count = 6, mode = "all", curveball = false, conflicts = null, retrievalWeight = null, yieldTurn = null, edgePick = null } = {}) {
+  const scored = candidates.map((item, index) => ({ item, index, conflict: Boolean(conflicts?.(item)), score: score(item) }));
   const byTaste = [...scored].sort((a, b) => b.score - a.score || a.index - b.index);
   byTaste.forEach((entry, rank) => { entry.fused = 1 / (FUSION_K + rank) + (retrievalWeight ? retrievalWeight(entry.item) : 1) / (FUSION_K + entry.index); });
-  const ordered = [...scored].sort((a, b) => (b.score >= 0) - (a.score >= 0) || b.fused - a.fused || a.index - b.index);
+  const ordered = [...scored].sort((a, b) => (b.score >= 0) - (a.score >= 0) || a.conflict - b.conflict || b.fused - a.fused || a.index - b.index);
+  const offerable = ordered.filter((entry) => !entry.conflict);
 
   const chosen = [];
   const sameFranchise = (entry) => chosen.some((other) => isFranchiseContinuation(entry.item, other.item) || isFranchiseContinuation(other.item, entry.item));
   const take = (entry) => { if (entry && !chosen.includes(entry) && !sameFranchise(entry)) chosen.push(entry); };
 
   // Round 3 only: `edgePick(ordered)` may choose the Surprise slot instead (see surpriseAlternatives below).
-  const edge = curveball ? (edgePick ? edgePick(ordered) : ordered.find(({ item, score: s }) => s >= 0 && isEdgeCandidate(item, records))) : null;
+  const edge = curveball ? (edgePick ? edgePick(offerable) : offerable.find(({ item, score: s }) => s >= 0 && isEdgeCandidate(item, records))) ?? null : null;
   const mainCount = edge ? count - 1 : count;
   // Round 4: titles marked surpriseOnly (the Surprise bridge row) can fill only the Surprise slot.
-  const pool = ordered.filter((entry) => entry !== edge && !entry.item.surpriseOnly);
+  const pool = offerable.filter((entry) => entry !== edge && !entry.item.surpriseOnly);
   let yields = 0, firstYields = 0;
 
   if (mode === "all") {
@@ -238,7 +245,11 @@ export const LOWERED_HIT = 0.9;
 // The arm's score, its six, and `lowered` (structural options above). Round-1 arms have no structural
 // options and get exactly round 1's selection.
 // `extraCut(item)` (round 4): titles the Surprise slot also skips, e.g. the rejected kind by catalog labels.
-export function armSelection(records, candidates, patterns, statements, arm, { mode = "all", curveball = false, extraCut = null } = {}) {
+// `conflicts` (rounds 3-4): the scenario's real "Not me" matcher (fixtures.mjs conflictMatcher: notMeConflict
+// on the request state with the answers given). Read only by the "production" selection, which is then
+// production post-#381: production's own chooseCandidates when the Surprise slot is unchanged, otherwise this
+// file's copy with the same rule. Research arms ignore it.
+export function armSelection(records, candidates, patterns, statements, arm, { mode = "all", curveball = false, extraCut = null, conflicts = null } = {}) {
   if (arm.select === "production") {
     const scorer = memo(productionScorer(records));
     let edgePick = null;
@@ -250,7 +261,13 @@ export function armSelection(records, candidates, patterns, statements, arm, { m
       const lowered = memo((item) => { const b = base(item); return b > 0 ? Math.min(1, rejectOnly(item) / b) : 1; });
       edgePick = surpriseAlternatives(records, (item) => lowered(item) <= LOWERED_HIT || Boolean(extraCut?.(item)), { hadEdge: arm.hadEdge });
     }
-    return { scorer, proto: chooseWith(candidates, records, scorer, { count: 6, mode, curveball, edgePick }), lowered: () => 1 };
+    if (!edgePick && !candidates.some((item) => item.surpriseOnly)) {
+      const trace = {};
+      const chosen = chooseCandidates(candidates, records, { count: 6, mode, curveball, conflicts, trace });
+      const order = [...trace.candidates].sort((a, b) => a.order - b.order).map((c) => c.itemId);
+      return { scorer, proto: { yields: 0, firstYields: 0, chosen, order }, lowered: () => 1 };
+    }
+    return { scorer, proto: chooseWith(candidates, records, scorer, { count: 6, mode, curveball, conflicts, edgePick }), lowered: () => 1 };
   }
   const scorer = memo(correctedScorer(records, patterns, statements, arm));
   let retrievalWeight = null, yieldTurn = null, lowered = () => 1;

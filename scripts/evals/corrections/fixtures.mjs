@@ -19,6 +19,7 @@ import { CANDIDATE_POOL, OFFERED_PER_ROUND, loadProfileSpecs, loadSnapshot, mulb
 import { visibleDomains } from "../../../src/data/domains.js";
 import { serializeAiState } from "../../../src/ai/live-client.js";
 import { evidenceRecords } from "../../../src/model/evidence.js";
+import { notMeConflict, rejectsSomewhere } from "../../../src/ai/corrections.js";
 import { hydrateState } from "../../../src/server/request-state.mjs";
 import { anchorSet } from "./rank.mjs";
 
@@ -173,6 +174,15 @@ function exampleCase(snapshot, byId) {
 // hydrated the way api/recommendations.mjs does.
 export function wireRecords(state) {
   return evidenceRecords(hydrateState(JSON.parse(JSON.stringify(serializeAiState(state)))));
+}
+
+// The "Not me" matcher production builds for this request (post-#381, ctx.correctionConflict): the case's
+// patterns stored, these answers given, through the wire and hydrateState, as run5.mjs does. Null when no
+// answer rejects anything. `supportsKey: "trueSupports"` is for oracle arms (the matcher #318 fixed would build).
+export function conflictMatcher(kase, state, statements, supportsKey = "supports") {
+  if (!(statements ?? []).some(rejectsSomewhere)) return null;
+  const s = { ...state, modelHypotheses: kase.patterns.map((p) => ({ id: p.id, title: p.label, domains: p.domains, supports: p[supportsKey] })), patternStatements: statements };
+  return notMeConflict(hydrateState(JSON.parse(JSON.stringify(serializeAiState(s)))));
 }
 
 // The rated items the stand-in retrieval uses as Surprise anchors (Liked, not Loved): what a correction
