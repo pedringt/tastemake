@@ -15,6 +15,7 @@ import { exampleLinkHtml, isViewingExample } from "../example-profile.js";
 import { featuredCorrection } from "../model/featured-correction.js";
 import { partlyAreasReachPicks } from "../ai/corrections.js";
 import { NOTE_MAX, PARTLY_DIFFERENT_SIDE, canMarkDoesntFit, excludedRefsOf } from "../model/partly-elements.js";
+import { reasonOptions, reasonsEntry } from "../ai/partly-reasons-request.js";
 
 // #358: progressive disclosure. An unanswered pattern shows its statement, one supporting example and the
 // question; follow-ups appear only after an answer, and an answered pattern collapses to a summary with
@@ -171,7 +172,8 @@ function sayControls(item, said, record, records = new Map()) {
 // #323 phase 2 (docs/proposals/323-partly-plan.md, section 3): after Partly, whether the whole pattern is off or
 // only certain titles. "Just certain ones" lists the titles the pattern cites. "Doesn't fit this description" is
 // live and needs no AI (src/model/partly-elements.js); "Fits a different side of my taste" is only offered while
-// PARTLY_DIFFERENT_SIDE is on, and is saved without changing anything yet. "Wrong for all of them" has nothing
+// PARTLY_DIFFERENT_SIDE is on, and is saved without changing anything yet. Phase 3: it then offers up to three
+// suggested reasons to tap (src/ai/partly-reasons-request.js) above "Something else". "Wrong for all of them" has nothing
 // new to save until the suggestion step (phase 4), so it says what the Partly answer already does.
 const partlyButton = (item, action, label, { ref = "", value = "", pressed = null, extra = "" } = {}) =>
   `<button type="button" class="button button-secondary signal-say-button" data-partly-pattern="${esc(item.id)}" data-partly-action="${action}"${ref ? ` data-partly-ref="${esc(ref)}"` : ""}${value ? ` data-partly-value="${value}"` : ""}${pressed === null ? "" : ` aria-pressed="${pressed}"`}${extra}>${label}</button>`;
@@ -179,6 +181,9 @@ const partlyButton = (item, action, label, { ref = "", value = "", pressed = nul
 export const NOT_CITED_TEXT = "No longer cited by this pattern, because you said it doesn’t fit this description. Your rating of it still counts everywhere else, and the pattern’s wording stays the same.";
 export const WRONG_FOR_ALL_TEXT = "Your Partly answer covers that for now: the pattern is kept, and the AI is told to use it cautiously and not broaden it. Its wording stays as it is.";
 export const DIFFERENT_SIDE_TEXT = "Saved with your answer. Tastemake doesn’t use it yet: this pattern still cites the title, and your picks and Taste Profile don’t change.";
+export const REASONS_LOADING_TEXT = "Suggesting reasons…";
+export const REASONS_INTRO_TEXT = "Pick the one that fits best, or say it in your own words. Your reason is saved for a later step and changes nothing yet: not your picks, and not this pattern.";
+export const REASONS_FAILED_TEXT = "Tastemake couldn’t suggest reasons this time. You can still say it in your own words.";
 export const LAST_TITLE_TEXT = "This is the only title left behind this pattern. If the pattern doesn’t describe you, answer No instead.";
 
 function excludedTitleRow(item, ref, records) {
@@ -208,12 +213,34 @@ function citedTitleRow(item, ref, said, records) {
       ${canExclude ? "" : `<span class="signal-partly-title-note">${esc(LAST_TITLE_TEXT)}</span>`}
       ${different ? `
       <span class="signal-partly-title-note">${esc(DIFFERENT_SIDE_TEXT)}</span>
+      ${reasonsBlock(item, ref, title, answer)}
       <form class="signal-partly-note" data-partly-note-form="${esc(item.id)}" data-partly-ref="${esc(ref)}" novalidate>
-        <label for="partly-note-${esc(item.id)}-${esc(ref)}">What’s different about it? <span class="signal-optional">(optional)</span></label>
+        <label for="partly-note-${esc(item.id)}-${esc(ref)}">Something else? Say it in your own words <span class="signal-optional">(optional)</span></label>
         <textarea id="partly-note-${esc(item.id)}-${esc(ref)}" rows="2" maxlength="${NOTE_MAX}">${esc(answer.note ?? "")}</textarea>
         <button class="button button-secondary" type="submit">Save note</button>
       </form>` : ""}
     </li>`;
+}
+
+// #323 phase 3: "What's different about it?" Suggested reasons load after the title is marked; while they load, or
+// if they couldn't be suggested, a short line says so. In the Example Profile, or with the server's switch off,
+// nothing shows here and only "Something else" is offered. One reason can be chosen (aria-pressed); tapping it
+// again clears it.
+function reasonsBlock(item, ref, title, answer) {
+  const entry = reasonsEntry(state, item.id, ref);
+  const options = reasonOptions(answer, entry);
+  const chosen = answer?.reasons?.[0] ?? null;
+  const status = entry?.status === "loading"
+    ? `<p class="signal-partly-reasons-status">${esc(REASONS_LOADING_TEXT)}</p>`
+    : entry?.status === "failed" && !options.length ? `<p class="signal-partly-reasons-status">${esc(REASONS_FAILED_TEXT)}</p>` : "";
+  if (!options.length) return status;
+  return `
+      ${status}
+      <div class="signal-say-group signal-partly-reasons" role="group" aria-label="What’s different about “${esc(title)}”?">
+        <span class="signal-say-label">What’s different about it?</span>
+        ${options.map((label, index) => partlyButton(item, "reason", esc(label), { ref, value: String(index), pressed: label === chosen })).join("")}
+      </div>
+      <span class="signal-partly-title-note">${esc(REASONS_INTRO_TEXT)}</span>`;
 }
 
 function partlyFraming(item, said, records) {

@@ -19,7 +19,8 @@ import { renderFavorites } from "./screens/favorites.js";
 import { favoritesDestination } from "./model/library.js";
 import { renderBrowse } from "./screens/browse.js";
 import { closePattern, noteAnswer, openPattern, renderProfile, resetDisclosure, setPartlyFraming, toggleRefine } from "./screens/profile.js";
-import { markBelongs, markDifferentSide, markDoesntFit, setDifferentSideNote, undoDoesntFit } from "./model/partly-elements.js";
+import { chooseReason, markBelongs, markDifferentSide, markDoesntFit, setDifferentSideNote, titleAnswer, undoDoesntFit } from "./model/partly-elements.js";
+import { loadReasons, reasonOptions, reasonsEntry } from "./ai/partly-reasons-request.js";
 import { renderNewThisWeek, renderRecommendations } from "./screens/recommendations.js";
 import { actOnNewRelease, maybeLoadNewReleases } from "./ai/new-releases.js";
 import { detailDescription, renderDetailMeta, renderLibrary } from "./screens/library.js";
@@ -36,7 +37,7 @@ import { fetchSimilar } from "./catalog/similar-client.js";
 import { bridgeTargetNoun } from "./catalog/bridges.mjs";
 import { mergeUniqueBrowseItems } from "./model/browse.js";
 import { applyResolvedCatalogItem, applySearchAction, markCustomResolution } from "./model/search.js";
-import { isExperienced, isStrongPositive } from "./model/evidence.js";
+import { evidenceRecords, isExperienced, isStrongPositive } from "./model/evidence.js";
 import { initSearch } from "./components/search.js";
 import { AI_LOADING, cancelRequest } from "./ai/requests.js";
 import { createCandidatePrefetcher } from "./ai/prefetch.js";
@@ -555,6 +556,43 @@ const noteEffects = {
 };
 const submitDismissalNote = (itemId) => submitNote(itemId, noteEffects);
 
+// #323 phase 3: suggested reasons for a title just marked "Fits a different side of my taste". The answer can arrive
+// while the person is elsewhere on the page: re-render only on the Taste Profile, keep focus where it is, and keep
+// any words already typed into that title's "Something else" box.
+function activeFocusSelector() {
+  const active = document.activeElement;
+  if (!active || active === document.body || !app.contains(active)) return null;
+  const form = active.closest?.("[data-partly-note-form]");
+  if (form && active.tagName === "TEXTAREA") return `[data-partly-note-form="${form.dataset.partlyNoteForm}"][data-partly-ref="${form.dataset.partlyRef}"] textarea`;
+  return focusSelectorFor(active.closest?.("button"));
+}
+
+function requestPartlyReasons(id, ref, message) {
+  const title = evidenceRecords(state).find((row) => row.ref === ref)?.title ?? "this title";
+  let first = true;
+  void loadReasons(state, id, ref, {
+    title,
+    onUpdate() {
+      if (first) { first = false; if (!state.viewingExample) announce(`${message} Suggesting reasons…`); }
+      if (state.screen !== "model") return;
+      const focus = activeFocusSelector();
+      const drafts = [...app.querySelectorAll("[data-partly-note-form] textarea")].map((el) => [el.id, el.value, el === document.activeElement ? [el.selectionStart, el.selectionEnd] : null]);
+      if (focus) renderPreservingPatternPosition(id, focus);
+      else { render(); updateStepper(); }
+      for (const [elId, value, selection] of drafts) {
+        const el = elId ? document.getElementById(elId) : null;
+        if (!el || el.value === value) continue;
+        el.value = value;
+        if (selection) el.setSelectionRange(selection[0], selection[1]);
+      }
+    },
+    announce
+  }).then(() => {
+    // No request was made (the Example Profile, or reasons already loaded): just say what was saved.
+    if (first) announce(message);
+  });
+}
+
 function renderPreservingPatternPosition(patternId, focusSelector = null) {
   const selector = `[data-profile-pattern="${patternId}"]`;
   const before = document.querySelector(selector);
@@ -745,9 +783,25 @@ app.addEventListener("click", async (event) => {
       renderPreservingPatternPosition(id, focusSelector);
       return;
     }
+    if (action === "reason") {
+      // #323 phase 3: one suggested reason is the answer's reason; tapping it again clears it.
+      const label = reasonOptions(titleAnswer(state, id, ref), reasonsEntry(state, id, ref))[Number(value)];
+      const message = label ? chooseReason(state, id, ref, label) : null;
+      if (!message) return;
+      noteAnswer(id, "titles");
+      renderPreservingPatternPosition(id, focusSelector);
+      announce(message);
+      return;
+    }
     const run = { "doesnt-fit": markDoesntFit, undo: undoDoesntFit, different: markDifferentSide, belongs: markBelongs }[action];
     const message = run ? run(state, id, ref) : null;
     if (!message) return;
+    if (action === "different" && titleAnswer(state, id, ref)?.verdict === "different") {
+      noteAnswer(id, "titles");
+      renderPreservingPatternPosition(id, focusSelector);
+      requestPartlyReasons(id, ref, message);
+      return;
+    }
     noteAnswer(id, "titles");
     if (action === "doesnt-fit") setPartlyFraming(id, "titles");
     // The button pressed goes away on Doesn't fit and Undo, so focus moves to the control that reverses it.

@@ -3,7 +3,7 @@
 // "Doesn't fit this description" takes a title off a pattern for good (excludedRefs), with history and Undo; the
 // refresh validator, the browser's full refresh, Design A placement, corrections.js and the Taste Profile all honor
 // it; `elements` and `excludedRefs` survive reload, backup and export, and old saves load unchanged; "Fits a
-// different side" is stored only, behind its flag; nothing new reaches the picks prompt.
+// different side" is stored only, behind its flag (on since phase 3); nothing new reaches the picks prompt.
 // Free: no network, no browser, no model call (every model answer is canned).
 //
 //   node scripts/qa/partly-elements-tests.mjs
@@ -102,18 +102,18 @@ const myth = (s) => s.modelHypotheses.find((p) => p.id === P_MYTH.id);
   check("…and Undo still works", Boolean(undoDoesntFit(v, P_MYTH.id, ref(RE7))) && myth(v).supports.includes(ref(RE7)));
 }
 
-// ---- 2. "Fits a different side of my taste": behind its flag, stored only --------------------------------------
+// ---- 2. "Fits a different side of my taste": behind its flag (on since phase 3), stored only ---------------------
 {
-  eq("the flag is off", PARTLY_DIFFERENT_SIDE, false);
+  eq("the flag is on (#323 phase 3, Paige Nov 16)", PARTLY_DIFFERENT_SIDE, true);
   const s = profile();
-  eq("with the flag off nothing is stored", markDifferentSide(s, P_MYTH.id, ref(RE7)), null);
+  eq("with the flag off nothing is stored", markDifferentSide(s, P_MYTH.id, ref(RE7), { enabled: false }), null);
   check("…and the statement has no elements", !("elements" in s.patternStatements[0]));
   const before = JSON.stringify(s.modelHypotheses);
-  check("with it on, the verdict is stored", Boolean(markDifferentSide(s, P_MYTH.id, ref(RE7), { enabled: true })) && s.patternStatements[0].elements.titles[ref(RE7)].verdict === "different");
+  check("with it on, the verdict is stored", Boolean(markDifferentSide(s, P_MYTH.id, ref(RE7))) && s.patternStatements[0].elements.titles[ref(RE7)].verdict === "different");
   eq("…and the pattern is untouched (no effect yet)", JSON.stringify(s.modelHypotheses), before);
   check("own words are saved as a note", Boolean(setDifferentSideNote(s, P_MYTH.id, ref(RE7), "  survival horror, not myth ")) && s.patternStatements[0].elements.titles[ref(RE7)].note === "survival horror, not myth");
   check("Belongs clears it", Boolean(markBelongs(s, P_MYTH.id, ref(RE7))) && !(ref(RE7) in s.patternStatements[0].elements.titles));
-  markDifferentSide(s, P_MYTH.id, ref(RE7), { enabled: true });
+  markDifferentSide(s, P_MYTH.id, ref(RE7));
   setStatement(s, P_MYTH.id, "says", "unsure");
   check("leaving Partly drops a different-side answer", !s.patternStatements[0].elements);
 }
@@ -280,7 +280,7 @@ const myth = (s) => s.modelHypotheses.find((p) => p.id === P_MYTH.id);
   html = renderProfile();
   check("“Just certain ones” lists each cited title", [...MYTH, RE7].every((it) => html.includes(`data-partly-ref="${ref(it)}"`)));
   check("…with Belongs (the default) and Doesn’t fit", html.includes(">Belongs</button>") && html.includes("Doesn’t fit this description"));
-  check("…and no different-side choice while its flag is off", !html.includes("Fits a different side of my taste"));
+  check("…and the different-side choice, now that its flag is on", html.includes("Fits a different side of my taste"));
 
   markDoesntFit(state, P_MYTH.id, ref(RE7));
   html = renderProfile();

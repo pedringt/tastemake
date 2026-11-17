@@ -637,6 +637,10 @@
 .signal-partly-title.is-not-cited { border-style:dashed; }
 .signal-partly-title.is-not-cited .signal-say-button { justify-self:start; }
 .signal-partly-options { display:flex; flex-wrap:wrap; gap:6px; }
+.signal-partly-reasons { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.signal-partly-reasons .signal-say-label { flex-basis:100%; }
+.signal-partly-reasons .signal-say-button { max-width:100%; white-space:normal; text-align:left; overflow-wrap:anywhere; }
+.signal-partly-reasons-status { margin:0; color:var(--text2,#3f4774); font-size:12px; line-height:1.4; font-style:italic; }
 .signal-partly-note { display:grid; gap:5px; }
 .signal-partly-note label { color:var(--navy); font-size:12px; font-weight:700; }
 .signal-partly-note textarea { width:100%; min-width:0; font:inherit; font-size:13px; }
