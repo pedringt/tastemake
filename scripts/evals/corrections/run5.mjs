@@ -63,8 +63,9 @@ function select(ctx) {
   const outcome = {};
   const six = offeredCandidates(ctx, 6, trace, outcome);
   const order = [...trace.candidates].sort((a, b) => a.order - b.order).map((c) => c.itemId);
-  // A set one short with no Surprise while a Surprise was picked: chooseCandidates' existing rule (a Surprise
-  // of the same franchise as a pick is dropped without a replacement), not a lack of offerable titles.
+  // A set one short with no Surprise while a Surprise was picked: chooseCandidates' rule before the Nov 17
+  // refill (a Surprise of the same franchise as a pick was dropped without a replacement), not a lack of
+  // offerable titles. Since the refill this should count 0.
   const offerable = trace.candidates.filter((c) => c.outcome !== "not-me").length;
   const slotFranchise = six.length === 5 && Boolean(ctx.curveball) && !six.some((c) => c.edge) && !outcome.surpriseDropped
     && offerable > 6 && trace.candidates.some((c) => c.outcome === "same-franchise");
