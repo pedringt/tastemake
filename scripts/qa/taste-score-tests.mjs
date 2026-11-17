@@ -158,15 +158,14 @@ const game = (title, genres, extra = {}) => ({ id: `igdb-game-${++n}`, provider:
   eq("(a) trace: its replacement is the edge", a.outcome["Quiet Comet"], "edge");
   eq("(a) the trace doesn't change the set", JSON.stringify(a.again), JSON.stringify(a.set));
 
-  // (b) no other Surprise candidate: the next regular title fills the place, not marked.
+  // (b) no other Surprise candidate: the place stays empty. A regular title is never added just to fill it.
   const b = run([...regulars, clash]);
   const bTitles = b.set.map((i) => i.title);
-  eq("(b) the set is full", b.set.length, 6);
+  eq("(b) the set has five: nothing fills the Surprise place", b.set.length, 5);
   check("(b) nothing is marked a Surprise", b.set.every((i) => !i.edge), JSON.stringify(b.set.map((i) => [i.title, i.edge])));
   check("(b) the clashing Surprise is not offered", !bTitles.includes("Space Saga Origins"), bTitles.join(" | "));
-  eq("(b) the next regular title fills the last place", b.set.at(-1).title, "Last Light");
+  check("(b) no extra regular title is added", !bTitles.includes("Last Light"), bTitles.join(" | "));
   eq("(b) trace: the dropped Surprise is same-franchise", b.outcome["Space Saga Origins"], "same-franchise");
-  eq("(b) trace: the filler is chosen", b.outcome["Last Light"], "chosen");
   eq("(b) the trace doesn't change the set", JSON.stringify(b.again), JSON.stringify(b.set));
 
   // (c) no franchise clash: exactly the set chosen before the refill (pinned from the Nov 17 code on main).
