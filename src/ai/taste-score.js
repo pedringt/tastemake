@@ -196,11 +196,11 @@ export function isEdgeCandidate(candidate, records) {
 //   src/catalog/related.mjs) takes that last place instead, and no other bridge candidate is offered. Without
 //   one, nothing changes.
 // - #334 (Nov 14): `conflicts(item)` is true for a title that matches a pattern the person said is not
-//   them (src/ai/corrections.js). Such a title goes behind every title that doesn't conflict (among those
-//   not scored below zero): a strong down-rank, not an exclusion, so it is still offered when nothing else
-//   is left, and media still take turns. It can't take the surprise slot; if every surprise candidate
-//   conflicts, the set has no surprise and `outcome.surpriseDropped` is set. Without conflicts, nothing
-//   changes.
+//   them (src/ai/corrections.js). #380 (Nov 17, Paige's call): such a title is never offered, not even to
+//   fill the set, so a set can have fewer titles than `count`, or none. (It used to be ordered behind the
+//   rest, which let it in ahead of titles scored below zero, and media turns still gave it a slot.) If every
+//   surprise candidate conflicts, the set has no surprise and `outcome.surpriseDropped` is set. Without
+//   conflicts, nothing changes.
 // - With `trace` (an object, eval/dev only), trace.candidates gets one entry per candidate: its score
 //   parts, ranks and outcome (chosen, edge, same-franchise, count-reached, scored-below-zero, not-me). The
 //   return value is the same either way.
@@ -234,7 +234,7 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
   const surpriseDropped = Boolean(curveball && !slot && ordered.some((entry) => bridgeFor(entry) || edgeFor(entry)));
   if (outcome) outcome.surpriseDropped = surpriseDropped;
   const mainCount = slot ? count - 1 : count;
-  const pool = ordered.filter((entry) => entry !== slot && !entry.item?.bridge);
+  const pool = ordered.filter((entry) => entry !== slot && !entry.item?.bridge && !entry.conflict);
 
   if (mode === "all") {
     const buckets = new Map();
@@ -273,8 +273,7 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
 //   chosen / edge         offered (edge = the surprise slot)
 //   same-franchise        reached, but another title from its franchise was already offered
 //   scored-below-zero     not reached; mostly resembles dislikes, so it was ordered last
-//   not-me                not reached; matches a pattern the person said is not them, so it was ordered
-//                         behind the rest (#334)
+//   not-me                matches a pattern the person said is not them, so it is never offered (#334, #380)
 //   count-reached         not reached before the set was full
 function traceCandidates({ scored, ordered, chosen, blocked, edge }) {
   const chosenIndex = new Set(chosen.filter((entry) => !entry.isEdge).map((entry) => entry.index));
@@ -283,7 +282,7 @@ function traceCandidates({ scored, ordered, chosen, blocked, edge }) {
   const outcome = (entry) => (edge && entry.index === edge.index ? "edge"
     : chosenIndex.has(entry.index) ? "chosen"
       : blocked.has(entry) ? "same-franchise"
-        : entry.score < 0 ? "scored-below-zero" : entry.conflict ? "not-me" : "count-reached");
+        : entry.conflict ? "not-me" : entry.score < 0 ? "scored-below-zero" : "count-reached");
   return scored.map((entry) => ({
     itemId: entry.item.id,
     title: entry.item.title ?? null,

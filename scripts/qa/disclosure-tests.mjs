@@ -156,7 +156,7 @@ const CONSEQUENCE = "What this changes";
   html = row(renderProfile());
   eq("Partly summary names the excluded area", summaryOf(html), "Partly · Not for Books");
   check("the excluded area stays expandable in the summary", /<details class="signal-carried"><summary>Where it doesn’t apply<\/summary>/.test(html));
-  check("titles with no catalog labels: nothing is promised about picks", !html.includes("move lower in your picks"));
+  check("titles with no catalog labels: nothing is promised about picks", !html.includes("left out of your picks"));
 }
 
 // ---- Partly's unticked area reaches picks only when the pattern's kind can be read (Nov 15) ----
@@ -171,10 +171,10 @@ const CONSEQUENCE = "What this changes";
   toggleDomainExclusion(state, pattern.id, "movies");
   noteAnswer(pattern.id, "scope");
   let html = row(renderProfile());
-  check("a readable pattern, films unticked: the consequence says picks change there", /In [^<]*, titles like this also move lower in your picks\./.test(html), html.match(/What this changes[\s\S]{0,240}/)?.[0]);
+  check("a readable pattern, films unticked: the consequence says picks change there", /In [^<]*, titles Tastemake can recognize as matching are also left out of your picks\./.test(html), html.match(/What this changes[\s\S]{0,240}/)?.[0]);
   closePattern(pattern.id);
   html = row(renderProfile());
-  check("…and so does the summary's 'Where it doesn’t apply'", html.includes("titles like this also move lower in your picks."));
+  check("…and so does the summary's 'Where it doesn’t apply'", html.includes("titles Tastemake can recognize as matching are also left out of your picks."));
 }
 
 // ---- Not sure: nothing more is asked ----

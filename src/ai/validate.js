@@ -490,6 +490,10 @@ export function validatePicks(response, ctx) {
       if (candidate && p.tests && !(candidate.hypotheses ?? []).some((id) => sameHypothesis(id, p.tests))) reasons.push("tests a pattern that is not attached to this candidate");
       const rejectedStatement = p.tests && (ctx.statements ?? []).find((x) => x.says === "not-me" && sameHypothesis(x.hypothesisId, p.tests));
       if (rejectedStatement) reasons.push("tests a pattern the user said is not them (user-confirmed outranks inference)");
+      // #380: the check above never fires in production (the model's answer has no `tests` field). This one
+      // checks the pick itself, by the same catalog labels the shortlist uses (src/ai/corrections.js). The
+      // shortlist already leaves such titles out, so this is a backstop for any other path to a pick.
+      if (candidate && ctx.correctionConflict?.(candidate)) reasons.push("matches a pattern the user said is not them");
       const cited = p.cites.map((ref) => evidence.get(ref));
       if (!cited.length) reasons.push("no evidence cited");
       else if (cited.some((r) => !r)) reasons.push("cites evidence that does not exist");
