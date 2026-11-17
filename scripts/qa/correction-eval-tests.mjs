@@ -7,7 +7,7 @@ import { buildContext } from "../../src/ai/context.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
 import { chooseCandidates, tasteScore, featureRarity } from "../../src/ai/taste-score.js";
 import { hydrateState } from "../../src/server/request-state.mjs";
-import { ROUNDS, loadCases, wireRecords } from "../evals/corrections/fixtures.mjs";
+import { ROUNDS, conflictMatcher, loadCases, wireRecords } from "../evals/corrections/fixtures.mjs";
 import { armSelection, chooseWith, correctedScorer, patternFactor, productionScorer, withAnchors } from "../evals/corrections/rank.mjs";
 import { ROUND2_ARMS, scenariosFor } from "../evals/corrections/run.mjs";
 import { catalogIndex, evidenceItems, retrieve, seedFor } from "../evals/corrections/retrieval.mjs";
@@ -46,6 +46,33 @@ const key = (list) => list.map((c) => `${c.id}:${c.tasteScore}:${c.edge ? 1 : 0}
   eq("its copy of the selection step returns exactly chooseCandidates' six, order and Surprise slot", selectionDiffs, 0);
   eq("...which is what production offers (offeredCandidates)", offeredDiffs, 0);
   eq("every case and round is covered", contexts.length, cases.length * ROUNDS);
+}
+
+// ---- parity with production under "Not me" (post-#381) -------------------------------------------------------
+// The scenario's real matcher (notMeConflict on the request state with the answers given): the copy must still
+// equal chooseCandidates, and the "production" selection must equal what production's request path offers.
+{
+  let checked = 0, flagged = 0, copyDiffs = 0, armDiffs = 0, offeredChecked = 0, offeredDiffs = 0;
+  for (const { kase, round, ctx } of contexts) for (const scenario of scenariosFor(kase)) {
+    const conflicts = conflictMatcher(kase, kase.state(round), scenario.statements);
+    if (!conflicts) continue;
+    checked += 1;
+    if (ctx.candidates.some(conflicts)) flagged += 1;
+    const real = chooseCandidates(ctx.candidates, ctx.evidence, { ...opts(ctx), conflicts });
+    if (key(chooseWith(ctx.candidates, ctx.evidence, productionScorer(ctx.evidence), { ...opts(ctx), conflicts }).chosen) !== key(real)) copyDiffs += 1;
+    if (key(armSelection(ctx.evidence, ctx.candidates, kase.patterns, scenario.statements, { select: "production" }, { mode: ctx.recommendationFilter, curveball: ctx.curveball, conflicts }).proto.chosen) !== key(real)) armDiffs += 1;
+    if (round === 0) {
+      const state = { ...kase.state(0), modelHypotheses: kase.patterns.map((p) => ({ id: p.id, title: p.label, domains: p.domains, supports: p.supports })), patternStatements: scenario.statements };
+      const reqCtx = buildContext(hydrateState(JSON.parse(JSON.stringify(serializeAiState(state)))), ctx.candidates);
+      offeredChecked += 1;
+      if (key(offeredCandidates(reqCtx)) !== key(real)) offeredDiffs += 1;
+    }
+  }
+  check("rejection scenarios with a matcher exist, and in some the matcher flags pool titles", checked > 0 && flagged > 0, `${flagged} of ${checked}`);
+  eq("with the scenario's matcher, the copy returns exactly chooseCandidates' six (every case, round and rejection scenario)", copyDiffs, 0);
+  eq("...and the \"production\" selection (armSelection) is exactly that", armDiffs, 0);
+  eq("...which is what production's request path offers with the answers given (offeredCandidates, round 0)", offeredDiffs, 0);
+  check("...checked on every case", offeredChecked > 0, String(offeredChecked));
 }
 
 // ---- fixtures --------------------------------------------------------------------------------------------

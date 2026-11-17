@@ -19,11 +19,12 @@ import { offeredCandidates, produceRecommendations } from "../../../api/recommen
 import { buildContext } from "../../../src/ai/context.js";
 import { serializeAiState } from "../../../src/ai/live-client.js";
 import { featureRarity } from "../../../src/ai/taste-score.js";
+import { rejectsSomewhere } from "../../../src/ai/corrections.js";
 import { setStatement } from "../../../src/model/statements.js";
 import { hydrateState } from "../../../src/server/request-state.mjs";
 import { evidenceRecords } from "../../../src/model/evidence.js";
 import { loadSnapshot } from "../stress/profiles.mjs";
-import { loadCases } from "./fixtures.mjs";
+import { conflictMatcher, loadCases } from "./fixtures.mjs";
 import { armSelection, attribution, correctedScorer, primaryDomain, productionScorer, scoreParts } from "./rank.mjs";
 import { catalogIndex, evidenceItems, retrieve, seedFor } from "./retrieval.mjs";
 import { JUDGE, STRENGTHS, scenariosFor, targetsOf } from "./run.mjs";
@@ -121,6 +122,17 @@ async function prepareCase(kase, index) {
   return preps;
 }
 
+// An arm labelled "production selection" is production as it is now (post-#381): titles the scenario's
+// "Not me" matcher flags are never offered. Before Nov 17 these arms used rank.mjs's copy of chooseCandidates
+// without that rule, so they showed production as it was before #381. Research arms (A) don't read it.
+function conflictsFor(prep, statements, scenarioKey, a) {
+  if (a.select !== "production") return null;
+  const key = `${a.supportsKey ?? "supports"}|${scenarioKey}`;
+  prep.conflictCache ??= new Map();
+  if (!prep.conflictCache.has(key)) prep.conflictCache.set(key, conflictMatcher(prep.kase, prep.state, statements, a.supportsKey ?? "supports"));
+  return prep.conflictCache.get(key);
+}
+
 function armRun(prep, statements, scenarioKey, a, index) {
   if (a.r4) return armRun4(prep, statements, scenarioKey, a, index);
   const rejected = rejectedFn(prep.kase, statements, a.supportsKey ?? "supports");
@@ -133,7 +145,7 @@ function armRun(prep, statements, scenarioKey, a, index) {
     }
     ({ ret, ctx } = prep.retCache.get(key));
   }
-  const { scorer, proto } = armSelection(ctx.evidence, ctx.candidates, prep.kase.patterns, statements, { ...a, hadEdge: prep.baseOffered.some((c) => c.edge) }, opts(ctx));
+  const { scorer, proto } = armSelection(ctx.evidence, ctx.candidates, prep.kase.patterns, statements, { ...a, hadEdge: prep.baseOffered.some((c) => c.edge) }, { ...opts(ctx), conflicts: conflictsFor(prep, statements, scenarioKey, a) });
   return { ret, ctx, scorer, six: proto.chosen, order: proto.order };
 }
 
@@ -160,7 +172,7 @@ function armRun4(prep, statements, scenarioKey, a, index) {
     }
     ({ ret, ctx } = prep.retCache.get(key));
   }
-  const { scorer, proto } = armSelection(ctx.evidence, ctx.candidates, prep.kase.patterns, statements, { ...a, hadEdge: prep.baseOffered.some((c) => c.edge) }, { ...opts(ctx), extraCut: a.labelCut && profile ? profile.kind : null });
+  const { scorer, proto } = armSelection(ctx.evidence, ctx.candidates, prep.kase.patterns, statements, { ...a, hadEdge: prep.baseOffered.some((c) => c.edge) }, { ...opts(ctx), extraCut: a.labelCut && profile ? profile.kind : null, conflicts: conflictsFor(prep, statements, scenarioKey, a) });
   return { ret, ctx, scorer, six: proto.chosen, order: proto.order };
 }
 
@@ -423,6 +435,18 @@ export async function runEval3({ cases = loadCases(), arms = ROUND3_ARMS, exampl
   for (const prep of preps) prep.baseOrder = armRun(prep, [], "none", arms[0], index).order;
   const fallbackMismatches = preps.filter((p) => p.fallbackIds.join("|") !== p.baseOffered.map((c) => c.id).join("|")).length;
   const parity = preps.every((p) => sameSet(armRun(p, [], "none", arms[0], index).six, p.baseOffered));
+  // With the answers given: "current retrieval / production selection" must be what production's own request
+  // path (offeredCandidates on the request state with the patterns and answers) offers, every scenario.
+  let conflictParityChecked = 0, conflictParityDiffs = 0;
+  const current = arms.find((a) => a.select === "production" && a.fetch === "current" && !a.surprise);
+  if (current) for (const prep of preps) for (const scenario of scenariosFor(prep.kase)) {
+    if (!scenario.statements.some(rejectsSomewhere)) continue;
+    const state = { ...prep.state, modelHypotheses: prep.kase.patterns.map((x) => ({ id: x.id, title: x.label, domains: x.domains, supports: x.supports })), patternStatements: scenario.statements };
+    const real = offeredCandidates(ctxFor(JSON.parse(JSON.stringify(serializeAiState(state))), prep.baseRet.pool));
+    conflictParityChecked += 1;
+    if (!sameSet(armRun(prep, scenario.statements, scenario.id, current, index).six, real)) conflictParityDiffs += 1;
+  }
+  const parityConflicts = { checked: conflictParityChecked, diffs: conflictParityDiffs };
   const results = [];
   const hoCache = new Map();
   for (const a of arms) {
@@ -445,7 +469,7 @@ export async function runEval3({ cases = loadCases(), arms = ROUND3_ARMS, exampl
     const p = preps.find((x) => x.kase === kase && x.round === 0);
     return { id: kase.id, pool: p.baseRet.pool.length, calls: p.baseRet.calls, waves: p.baseRet.waves, media: [...new Set(p.baseRet.pool.map(primaryDomain))].join("/") };
   });
-  return { parity, fallbackMismatches, pools, results, examples };
+  return { parity, parityConflicts, fallbackMismatches, pools, results, examples };
 }
 
 const EXAMPLE_ARMS = ["current retrieval / production selection", "current retrieval / A", "swap / A", "add / A", "add / A / Surprise alternatives"];
@@ -480,6 +504,7 @@ export function reportMarkdown3(run) {
   L.push("# Correction eval, round 3: replacement retrieval", "");
   L.push("Generated by `node scripts/evals/corrections/run3.mjs`. No network, no model calls, no production change. Deterministic. Pools come from the retrieval stand-in (retrieval.mjs) over the 1,134-title catalog snapshot, so these numbers compare arms with current retrieval on the same stand-in, not with rounds 1-2's fixed pools.", "");
   L.push(`- Stand-in selection matches production's on every case and round (no statements): **${run.parity ? "yes" : "NO"}**`);
+  L.push(`- With the answers given, \"production selection\" is production post-#381 (titles notMeConflict flags are never offered): matches offeredCandidates on the request state in **${run.parityConflicts.checked - run.parityConflicts.diffs} of ${run.parityConflicts.checked}** rejection scenarios. (Before Nov 17 these arms used a copy of chooseCandidates without that rule.)`);
   L.push(`- Production fallback shows the stand-in pool's shortlist: **${run.fallbackMismatches ? `NO (${run.fallbackMismatches})` : "yes"}**`, "");
   L.push("## Stand-in pools (round 1 of each case)", "", "| Case | Pool | Provider calls | Waves | Media |", "|---|---|---|---|---|");
   for (const p of run.pools) L.push(`| ${p.id} | ${p.pool} | ${p.calls} | ${p.waves} | ${p.media} |`);
@@ -542,6 +567,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   writeFileSync(join(dir, "round3.json"), JSON.stringify(run, null, 1) + "\n");
   writeFileSync(join(dir, "round3.md"), reportMarkdown3(run));
   console.log(`wrote ${join(dir, "round3.md")}`);
-  console.log(`parity: ${run.parity ? "yes" : "NO"}; fallback mismatches: ${run.fallbackMismatches}`);
+  console.log(`parity: ${run.parity ? "yes" : "NO"}; with conflicts: ${run.parityConflicts.checked - run.parityConflicts.diffs}/${run.parityConflicts.checked}; fallback mismatches: ${run.fallbackMismatches}`);
   for (const r of run.results) console.log(`${r.arm}: failed ${Object.entries(r.gates).filter(([, g]) => g === false).map(([k]) => k).join(", ") || "none"}`);
 }
