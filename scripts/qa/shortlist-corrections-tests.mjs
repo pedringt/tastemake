@@ -4,7 +4,8 @@
 // Partly's unticked areas are a "Not me" in those areas only, and its kept areas guard like a Yes.
 // Free: no network, no model (the live path runs against a stubbed Anthropic response).
 import { createSuite } from "./lib/assert.mjs";
-import { buildPickPrompt, offeredCandidates, produceRecommendations } from "../../api/recommendations.mjs";
+import { buildPickPrompt, normalizeModelPicks, offeredCandidates, produceRecommendations } from "../../api/recommendations.mjs";
+import { validatePicks } from "../../src/ai/validate.js";
 import { buildContext } from "../../src/ai/context.js";
 import { correctionKinds, notMeConflict, partlyAreasReachPicks, rejectsSomewhere } from "../../src/ai/corrections.js";
 import { serializeAiState } from "../../src/ai/live-client.js";
@@ -82,7 +83,7 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   check("a horror sci-fi film also matching a confirmed pattern does not conflict", !guarded({ ...horrorPool[0], genres: [HORROR, SCIFI] }));
 }
 
-// ---- rule 1: "Not me" strongly down-ranks, but never excludes ------------------------------------------
+// ---- rule 1: "Not me" titles are never offered (#380; before that, #334 only down-ranked them) ------------
 {
   const before = offeredCandidates(contextFor({}, pool), 6);
   const after = offeredCandidates(contextFor({ statements: notMeHorror }, pool), 6);
@@ -91,9 +92,10 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   check("without a correction, horror leads the set", isHorror(before[0]), before.map((c) => c.title).join(", "));
   check("'Not me' offers fewer horror titles", horrorAfter < horrorBefore, `${horrorBefore} -> ${horrorAfter}`);
   eq("every title that doesn't conflict is offered first", after.slice(0, 4).every((c) => !isHorror(c)), true);
-  eq("a down-rank, not an exclusion: horror still fills the set when nothing else is left", horrorAfter, 2);
+  eq("#380: no horror title is offered, even with room left in the set", horrorAfter, 0);
+  eq("…so the set is smaller than six", after.length, pool.filter((c) => !isHorror(c)).length);
   const onlyHorror = offeredCandidates(contextFor({ statements: notMeHorror }, horrorPool), 6);
-  eq("a pool of only conflicting titles is still offered in full", onlyHorror.length, horrorPool.length);
+  eq("a pool of only conflicting titles offers nothing", onlyHorror.length, 0);
 }
 
 // ---- rule 2: "matters a little", Partly without unticked areas (and the other answers) change nothing -----
@@ -175,7 +177,7 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   const after = offeredCandidates(contextFor({ curveball: true, statements: notMeHorror }, allConflict), 6, null, outcome);
   eq("every Surprise candidate conflicts: the Surprise is dropped", outcome.surpriseDropped, true);
   check("…and no title is marked as the Surprise", !after.some((c) => c.edge));
-  eq("…and the set is still full", after.length, 6);
+  eq("…and the set holds only the titles that don't conflict", after.length, sciFiPool.length);
 
   const mixed = {};
   const withOther = offeredCandidates(contextFor({ curveball: true, statements: notMeHorror }, pool), 6, null, mixed);
@@ -195,7 +197,7 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   eq("fallback: source is the catalog", corrected.source, "catalog");
   eq("fallback: the same six the shortlist offers", corrected.picks.map((p) => p.id).join(","), offeredCandidates(contextFor({ curveball: true, statements: notMeHorror }, pool), 6).map((c) => c.id).join(","));
   check("fallback: fewer horror titles than without the correction", corrected.picks.filter(isHorror).length < plain.picks.filter(isHorror).length);
-  eq("fallback: its Surprise is the one that doesn't conflict", corrected.picks.find((p) => p.surprise)?.id, edgeSciFi.id);
+  eq("fallback: no pick is a 'Not me' title", corrected.picks.filter(isHorror).length, 0);
 
   const dropped = await fallback({ curveball: true, statements: notMeHorror }, [...horrorPool, ...sciFiPool, edgeHorror]);
   check("fallback: every Surprise candidate conflicts, so no pick is a Surprise", !dropped.picks.some((p) => p.surprise));
@@ -205,7 +207,7 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   const plainLast = await fallback({ curveball: true }, noEdges);
   check("fallback without a correction: the last pick is the Surprise (unchanged)", plainLast.picks.at(-1)?.surprise === true);
   const conflictLast = await fallback({ curveball: true, statements: notMeHorror }, noEdges);
-  check("fallback: a conflicting last pick is offered but not as the Surprise", isHorror(conflictLast.picks.at(-1)) && !conflictLast.picks.some((p) => p.surprise));
+  check("fallback: conflicting titles are left out rather than filling the set", conflictLast.picks.length === 2 && !conflictLast.picks.some(isHorror));
 }
 
 // ---- live AI: same shortlist, no prompt change -----------------------------------------------------------
@@ -231,8 +233,10 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   const { result, sent } = await live({ curveball: true, statements: notMeHorror }, pool, pickAll(() => horrorPool[0].id));
   eq("live: the model's picks are accepted", result.source, "model");
   eq("live: the model is offered the corrected shortlist", result.picks.map((p) => p.id).sort().join(","), offeredCandidates(contextFor({ curveball: true, statements: notMeHorror }, pool), 6).map((c) => c.id).sort().join(","));
-  const conflictPick = result.picks.find((p) => p.id === horrorPool[0].id);
-  check("live: a model Surprise on a conflicting title is kept as a regular pick", conflictPick && !conflictPick.surprise && conflictPick.rank != null && conflictPick.ai?.kind === "pick");
+  const sentText = JSON.stringify(sent);
+  check("live: the prompt does carry the offered titles (so the next check means something)", sciFiPool.every((c) => sentText.includes(c.id)));
+  check("live: no 'Not me' title is sent to the model", !horrorPool.some((c) => sentText.includes(c.id)));
+  check("live: no pick is a 'Not me' title", !result.picks.some(isHorror));
   const kept = await live({ curveball: true, statements: notMeHorror }, pool, pickAll(() => edgeSciFi.id));
   check("live: a model Surprise that doesn't conflict stays the Surprise", kept.result.picks.find((p) => p.id === edgeSciFi.id)?.surprise === true);
   check("live: the prompt never mentions the correction matcher", !JSON.stringify(sent).includes("correctionConflict"));
@@ -245,6 +249,18 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   const ctx = contextFor({ curveball: true, statements: notMeHorror }, pool);
   const offered = { ...ctx, candidates: offeredCandidates(ctx, 6) };
   eq("the pick prompt is the same text with or without the correction matcher", buildPickPrompt(offered, 6), buildPickPrompt({ ...offered, correctionConflict: null }, 6));
+}
+
+// ---- #380 backstop: a pick that matches a "Not me" pattern fails validation, however it got there ------------
+{
+  const ctx = contextFor({ statements: notMeHorror }, pool);
+  const offered = { ...ctx, candidates: [horrorPool[0], sciFiPool[0]] };
+  const why = `Shares the tense mood of ${rated.s1.title}.`;
+  const result = validatePicks(normalizeModelPicks({ picks: [horrorPool[0], sciFiPool[0]].map((c, i) => ({ itemId: c.id, anchor: ["setting", "tone"][i], why, cites: [`ev:${rated.s1.id}`] })), curveballItemId: null }), offered);
+  eq("backstop: the title that doesn't conflict is accepted", result.accepted.map((p) => p.itemId).join(","), sciFiPool[0].id);
+  check("backstop: the 'Not me' title is rejected, with the reason", result.rejected.some((r) => r.proposal?.itemId === horrorPool[0].id && r.reasons.includes("matches a pattern the user said is not them")), JSON.stringify(result.rejected.map((r) => r.reasons)));
+  const plain = validatePicks(normalizeModelPicks({ picks: [{ itemId: horrorPool[0].id, anchor: "setting", why, cites: [`ev:${rated.s1.id}`] }], curveballItemId: null }), { ...contextFor({}, pool), candidates: [horrorPool[0]] });
+  eq("backstop: without a 'Not me', the same horror pick is accepted", plain.accepted.length, 1);
 }
 
 // ---- wire payload ----------------------------------------------------------------------------------------
@@ -295,13 +311,12 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   check("fixtures: there are answers with no 'Not me' or unticked area to compare", noopSets > 100, String(noopSets));
   eq("fixtures: with no 'Not me' or unticked area, every shortlist is identical to before (no-op gate)", noopDiffs, 0);
   check("fixtures: a 'Not me' reaches some sets", active > 100, String(active));
-  check("fixtures: 'Not me' titles offered fall by at least a third", after <= before * 2 / 3, `${before} -> ${after}`);
-  eq("fixtures: no set loses a medium", mediaLost, 0);
+  console.info(`fixtures, 'Not me': ${active} sets changed; titles there ${before} -> ${after}; media lost ${mediaLost}`);
+  eq("#380 fixtures: no 'Not me' title is offered", after, 0);
   eq("fixtures: no Surprise is a 'Not me' title", conflictingSurprise, 0);
   console.info(`fixtures, Partly with an unticked area: ${partly.active} sets changed; titles there ${partly.before} -> ${partly.after}; media lost ${partly.mediaLost}`);
   check("fixtures: a Partly's unticked area reaches some sets", partly.active > 0, String(partly.active));
-  check("fixtures: titles in an unticked area fall by at least a third", partly.after <= partly.before * 2 / 3, `${partly.before} -> ${partly.after}`);
-  eq("fixtures: an unticked area never costs a set a medium", partly.mediaLost, 0);
+  eq("#380 fixtures: no title from an unticked area is offered", partly.after, 0);
   eq("fixtures: no Surprise is a title from an unticked area", partly.conflictingSurprise, 0);
 }
 

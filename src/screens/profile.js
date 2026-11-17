@@ -297,9 +297,10 @@ const CONSEQUENCE = {
   context: { some: "Marked as depending on context. From the next refresh, its level can’t go above Supported." }
 };
 
-// Nov 15: a Partly's unticked areas also move matching titles down the shortlist (src/ai/corrections.js),
-// but only when the pattern's kind can be read from its titles' labels; otherwise nothing is promised.
-const picksLine = (areas) => ` In ${areas.join(", ")}, titles like this also move lower in your picks.`;
+// Nov 15: a Partly's unticked areas also reach the shortlist (src/ai/corrections.js), but only when the
+// pattern's kind can be read from its titles' labels; otherwise nothing is promised. #380 (Nov 17): matching
+// titles there are left out, no longer only moved lower.
+const picksLine = (areas) => ` In ${areas.join(", ")}, titles like this are also left out of your picks.`;
 
 function statementConsequence(said, field, reachesPicks = false) {
   if (!said?.says || !field) return "";
@@ -525,12 +526,13 @@ function learningPanel(patterns = []) {
 // the example makes no AI calls and no effect on recommendations has been measured. Example-only, so
 // nobody else's profile is ever shown a sample.
 const SAID = { partial: "partly accurate", "not-me": "not her", unsure: "not sure yet" };
-// Nov 7: separate the shortlist (built in software) from what live AI is told. Nov 14 (#334): "Not me" now
-// down-ranks clearly matching titles in the shortlist; Partly and Not sure still don't touch it. Partly matches the shipped "more cautiously" wording. A pick's validator check for "not me" isn't
-// claimed: live picks arrive without a tested pattern, so it doesn't run on them.
+// Nov 7: separate the shortlist (built in software) from what live AI is told. Nov 14 (#334): "Not me"
+// down-ranked clearly matching titles; since #380 (Nov 17) they're left out of the shortlist, and a pick that
+// still matches fails validation. Partly and Not sure still don't touch it. Partly matches the shipped "more
+// cautiously" wording.
 const USE = {
   partial: "Tastemake builds its shortlist without using her answer. When AI chooses and explains picks, it's told to treat this pattern more cautiously.",
-  "not-me": "Titles that clearly match this pattern move to the back of her shortlist, but aren't removed. Live AI is told not to use the pattern, and Tastemake keeps it out of her Taste Profile when the profile is refreshed.",
+  "not-me": "Titles that clearly match this pattern are left out of her picks. Live AI is told not to use the pattern, and Tastemake keeps it out of her Taste Profile when the profile is refreshed.",
   unsure: "Her answer doesn't change Tastemake's shortlist. Live AI is told it isn't a confirmed preference."
 };
 const shortDate = (iso) => {
