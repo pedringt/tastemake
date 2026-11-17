@@ -8,9 +8,10 @@ import { statementFor } from "./statements.js";
 //                                          it again (Decision 4): its ref goes in the pattern's `excludedRefs`, which
 //                                          the refresh validator, Design A placement, corrections.js and the Taste
 //                                          Profile all honor. The rating still counts everywhere else. Undo puts it back.
-//   "Fits a different side of my taste"   stored only (verdict "different", optional own words). Nothing reads it
-//                                          yet: the reasons and suggestion calls are phases 3 and 4. Hidden behind
-//                                          PARTLY_DIFFERENT_SIDE until then.
+//   "Fits a different side of my taste"   stored only (verdict "different", one tapped reason, optional own words).
+//                                          Phase 3 (live): marking it asks for up to three reasons to tap
+//                                          (src/ai/partly-reasons-request.js). Nothing reads the answer yet: the
+//                                          suggestion call is phase 4. Picks and patterns don't change.
 //
 // Stored:
 //   pattern (state.modelHypotheses[i]).excludedRefs   [ref]   titles this pattern must never cite again
@@ -18,9 +19,10 @@ import { statementFor } from "./statements.js";
 // `excludedRefs` lives on the pattern, so it outlasts a changed or cleared answer, and a refresh carries it to the
 // pattern with the same id (or name) (Decision 7). `elements` is the person's answer, kept with their statement.
 
-// Client flag for the "different side" choice, like PLACEMENT_REFRESH (src/ai/hypothesis-profile.js). Off until
-// phase 3 gives the choice something to do; with it off the choice isn't offered and nothing new is stored.
-export const PARTLY_DIFFERENT_SIDE = false;
+// Client flag for the "different side" choice, like PLACEMENT_REFRESH (src/ai/hypothesis-profile.js). ON since
+// phase 3 (Paige, Nov 16). The reasons call also needs the server's TASTEMAKE_PARTLY_REASONS=1; without it only
+// "Something else" is offered. With this flag off the choice isn't offered and nothing new is stored.
+export const PARTLY_DIFFERENT_SIDE = true;
 
 export const VERDICTS = ["doesnt-fit", "different"];
 export const NOTE_MAX = 280;
@@ -146,6 +148,21 @@ export function setDifferentSideNote(state, hypothesisId, ref, note) {
   setTitleAnswer(entry, ref, { ...answer, note: clean || null });
   const pattern = patternById(state, hypothesisId);
   return clean ? `${pattern?.title ?? entry.label}: your note about ${quoted(titleOf(state, ref))} was saved.` : `${pattern?.title ?? entry.label}: your note about ${quoted(titleOf(state, ref))} was cleared.`;
+}
+
+// #323 phase 3: tapping one of the suggested reasons saves it as the answer's one reason; tapping the same one
+// again clears it. The own-words note is kept either way. Saved for a later step; nothing reads it yet.
+export function chooseReason(state, hypothesisId, ref, label) {
+  const entry = statementFor(state, hypothesisId);
+  const answer = entry?.elements?.titles?.[ref];
+  const reason = String(label ?? "").trim().replace(/\s+/g, " ").slice(0, NOTE_MAX);
+  if (answer?.verdict !== "different" || !reason) return null;
+  const clearing = (answer.reasons ?? [])[0] === reason;
+  setTitleAnswer(entry, ref, { ...answer, reasons: clearing ? [] : [reason] });
+  const name = patternById(state, hypothesisId)?.title ?? entry.label;
+  return clearing
+    ? `${name}: cleared your reason for ${quoted(titleOf(state, ref))}.`
+    : `${name}: saved “${reason}” as what’s different about ${quoted(titleOf(state, ref))}. It’s kept for a later step and changes nothing yet.`;
 }
 
 // "Belongs" (the default): clears a "different side" answer. A "doesn't fit" is undone with Undo, which says so.

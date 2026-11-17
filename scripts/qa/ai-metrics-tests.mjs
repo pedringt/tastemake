@@ -256,4 +256,15 @@ assert.equal(aiOutcomeForError(new Error("socket")),"transport_error");
   assert.equal(flakyInserts,1,"the next write retries the setup and inserts");
 }
 
+// #323 phase 3: "What's different about it?" calls are recorded as their own operation; anything unknown still
+// falls back to recommendations, as before.
+{
+  const rows=[];
+  const query=async(text,params=[])=>{ if (/insert into ai_call_metrics/i.test(text)) rows.push(params); return []; };
+  assert.equal(await recordAiCall({operation:"partly_reasons",outcome:"success",model:"claude-haiku-5-5",durationMs:300,inputTokens:900,outputTokens:60},{query}),true);
+  await recordAiCall({operation:"something_new",outcome:"success",model:"claude-haiku-5-5",durationMs:300,inputTokens:1,outputTokens:1},{query});
+  assert.equal(rows[0][0],"partly_reasons","partly_reasons is a known operation");
+  assert.equal(rows[1][0],"recommendations","an unknown operation is still stored as recommendations");
+}
+
 console.log("AI metrics tests passed");

@@ -9,6 +9,7 @@ import { hydrateState as hydrateBaseState } from "../src/server/request-state.mj
 import { clientIp, underBestEffortRateLimit } from "../src/server/rate-limit.mjs";
 import { visibleDomains } from "../src/data/domains.js";
 import { compactProfileContext, expandProfileRefs } from "../src/ai/profile-context.js";
+import { REASONS_MAX_OUTPUT_TOKENS, REASONS_OUTPUT_SCHEMA, buildReasonsPromptV3, checkReasons, reasonsContextFromState } from "../src/ai/partly-reasons.js";
 
 const MAX_BODY_BYTES = 160_000;
 export const PROFILE_MAX_OUTPUT_TOKENS = 3200;
@@ -241,6 +242,67 @@ export async function producePlacement({ rawState, placement, env = process.env,
   }
 }
 
+// #323 phase 3: "What's different about it?" options for a title the person marked "Fits a different side of my
+// taste" (one call per flagged title, the v3 prompt in src/ai/partly-reasons.js). Behind its own switch,
+// TASTEMAKE_PARTLY_REASONS=1, on top of everything the Taste Profile call already needs. When it's off the answer
+// comes back without a call (reasonsOff) and the browser offers only "Something else". The reasons are saved with
+// the person's answer and nothing reads them yet.
+export function partlyReasonsConfig(env = process.env) {
+  const base = hypothesisConfig(env);
+  const reasons = [...base.reasons];
+  if (env.TASTEMAKE_PARTLY_REASONS !== "1") reasons.push("partly-reasons-off-switch");
+  return { enabled: reasons.length === 0, reasons, model: base.model };
+}
+
+const usageFields = (usage) => ({
+  inputTokens: usage?.input_tokens ?? null,
+  outputTokens: usage?.output_tokens ?? null,
+  cacheReadTokens: usage?.cache_read_input_tokens ?? null,
+  cacheWriteTokens: usage?.cache_creation_input_tokens ?? null
+});
+
+// Returns { source: "model", reasons: [label, label, label] }; or, with reasons: [], "fallback" (the answer
+// failed a check), "unavailable" (the switch is off, or the call failed) or "refused" (the request doesn't match
+// the posted state: the handler answers 400). Never throws for a failed call: it's recorded and answered.
+export async function produceReasons({ rawState, reasons: request, env = process.env, fetchImpl = fetch } = {}) {
+  const state = hydrateState(rawState);
+  const about = typeof request?.about === "string" ? request.about : null;
+  const built = reasonsContextFromState(state, { hypothesisId: request?.hypothesisId, ref: request?.ref, about });
+  if (built.error) return { source: "refused", reason: built.error, reasons: [], meta: { paidCallMade: false, refused: true } };
+  const config = partlyReasonsConfig(env);
+  if (!config.enabled) return { source: "unavailable", reason: "partly reasons are off", reasons: [], meta: { paidCallMade: false, reasonsOff: true } };
+  const started = Date.now();
+  try {
+    const model = await callAnthropic({ prompt: buildReasonsPromptV3(built.context), env, fetchImpl, maxTokens: REASONS_MAX_OUTPUT_TOKENS, outputSchema: REASONS_OUTPUT_SCHEMA });
+    const check = checkReasons(model.json, built.context);
+    const metric = { operation: "partly_reasons", model: model.model, durationMs: Math.max(1, Date.now() - started), ...usageFields(model.usage) };
+    if (!check.ok) {
+      console.info("[tastemake-partly-reasons]", JSON.stringify({ fallback: true, problems: check.problems.length }));
+      recordAiCallInBackground({ ...metric, outcome: "validation_fallback" }, { env });
+      return { source: "fallback", reason: "the suggested reasons didn't pass the checks", reasons: [], meta: { paidCallMade: true, model: model.model, usage: model.usage, problems: check.problems } };
+    }
+    recordAiCallInBackground({ ...metric, outcome: "success" }, { env });
+    return { source: "model", reason: null, reasons: check.labels, meta: { paidCallMade: true, model: model.model, usage: model.usage } };
+  } catch (error) {
+    recordAiCallInBackground({
+      operation: "partly_reasons",
+      outcome: aiOutcomeForError(error),
+      model: error?.model ?? config.model,
+      durationMs: Math.max(1, Date.now() - started),
+      ...usageFields(error?.usage),
+      ...aiErrorFields(error)
+    }, { env });
+    const budgetPaused = isAiBudgetExhausted(error);
+    console.error("[tastemake-partly-reasons]", budgetPaused ? "budget paused" : "unavailable", error?.status ?? "", error?.anthropicType ?? "");
+    return {
+      source: "unavailable",
+      reason: budgetPaused ? AI_BUDGET_MESSAGE : "partly reasons unavailable",
+      reasons: [],
+      meta: { ...(budgetPaused ? { budgetPaused: true } : {}), paidCallMade: Boolean(error?.paidCallMade), model: error?.model ?? null, usage: error?.usage ?? null }
+    };
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("allow", "POST");
@@ -264,6 +326,16 @@ export default async function handler(req, res) {
   try {
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "request too large" });
     if (!body.state || typeof body.state !== "object") return res.status(400).json({ error: "state is required" });
+    // #323 phase 3: reasons for one flagged title, in their own rate-limit bucket so flagging titles never uses up
+    // the Taste Profile's allowance.
+    if (body.reasons && typeof body.reasons === "object") {
+      if (!underBestEffortRateLimit(`partly-reasons:${clientIp(req)}`)) return res.status(429).json({ error: "too many requests" });
+      const payload = await produceReasons({ rawState: body.state, reasons: body.reasons });
+      if (payload.source === "refused") return res.status(400).json({ error: payload.reason });
+      console.info("[tastemake-partly-reasons]", JSON.stringify({ source: payload.source, paidCallMade: Boolean(payload.meta?.paidCallMade) }));
+      res.setHeader("cache-control", "no-store");
+      return res.status(200).json(payload);
+    }
     // #349: the same best-effort per-visitor limit as /api/recommendations, in its own bucket. Checked after
     // the request is known to be valid, so a malformed request doesn't use up the allowance.
     if (!underBestEffortRateLimit(`profile:${clientIp(req)}`)) return res.status(429).json({ error: "too many requests" });

@@ -9,25 +9,16 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { TMDB_GENRES } from "../../../src/catalog/synopsis.mjs";
+import { readableGenres, titleFacts } from "../../../src/ai/partly-reasons.js";
+
+export { readableGenres };
 
 const here = dirname(fileURLToPath(import.meta.url));
 const example = JSON.parse(readFileSync(join(here, "../fixtures/example-profile-2026-10-21.json"), "utf8"));
 const exampleState = example.state ?? example;
 const items = Object.values(exampleState.feedbackByRecommendation ?? {}).map((entry) => entry.item).filter(Boolean);
 
-const MEDIUM = { movie: "film", tv: "TV series", book: "book", game: "game" };
-
-// Readable genres: TMDb ids become names; book subjects keep only plain words (no "nyt:…" or "form:…" tags).
-export function readableGenres(item) {
-  const out = [];
-  for (const raw of item?.genres ?? []) {
-    const value = /^\d+$/.test(String(raw)) ? TMDB_GENRES[Number(raw)] : String(raw);
-    if (!value || /[:=()]/.test(value) || value.length > 30) continue;
-    if (!out.some((g) => g.toLowerCase() === value.toLowerCase())) out.push(value);
-  }
-  return out.slice(0, 6);
-}
+// Readable genres and title facts are shared with the app (src/ai/partly-reasons.js).
 
 export function findItem(title) {
   const item = items.find((entry) => entry.title === title) ?? items.find((entry) => entry.title?.startsWith(title));
@@ -50,13 +41,7 @@ export function factsOf(title, { about = true } = {}) {
     return { ...rest, ...(about ? { about: text } : {}) };
   }
   const item = findItem(title);
-  return {
-    title: item.title,
-    medium: MEDIUM[item.type] ?? item.type ?? "title",
-    year: item.year ?? null,
-    genres: readableGenres(item),
-    ...(about ? { about: String(item.about ?? "").slice(0, 280) || null } : {})
-  };
+  return titleFacts(item, about ? { about: item.about } : {});
 }
 
 // The prototype's three cases, with Paige's round-3 picks as gold (labels as the prototype showed them).
