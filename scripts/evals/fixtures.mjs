@@ -285,7 +285,9 @@ export const REASON_FIXTURES = SCENARIOS.flatMap((scenario) => [
 // Labels: `fits: false` only where Paige reported it (#318); the positives are the item's own metadata and
 // reasons. Pairs nobody has judged (BioShock or Return of the Obra Dinn under the same pattern) are not
 // labelled.
-const exampleBackup = JSON.parse(readFileSync(new URL("../../data/example-profile.json", import.meta.url), "utf8")).state;
+// Nov 16: frozen copy of the Example Profile as it was on Oct 21, before its #326 regeneration, so these fixtures
+// (and the paid results already recorded against them) stay reproducible.
+const exampleBackup = JSON.parse(readFileSync(new URL("./fixtures/example-profile-2026-10-21.json", import.meta.url), "utf8")).state;
 const RE7 = "ev:igdb-game-19562";
 const BIOSHOCK = "ev:igdb-game-20";
 // Nov 6: the Example Profile itself no longer cites RE7 or BioShock under "Mythic and fantastical worlds"

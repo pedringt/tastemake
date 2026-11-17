@@ -89,7 +89,7 @@ export const EXAMPLE_WRONG_SUPPORTS = { "ai-genre-fantasy-mythic-worlds": ["ev:i
 export const EXAMPLE_POOL_SHELVES = ["play:puzzle", "play:horror", "read:fantasy", "tv:comedy", "tv:horror", "movies:fantasy"];
 export const EXAMPLE_POOL_SEED = 505;
 
-const EXAMPLE_PATH = new URL("../../../data/example-profile.json", import.meta.url);
+const EXAMPLE_PATH = new URL("../fixtures/example-profile-2026-10-21.json", import.meta.url);
 const POSITIVE = new Set(["loved", "liked"]);
 
 const strip = ({ _bucket, ...item }) => item;

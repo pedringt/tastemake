@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { TMDB_GENRES } from "../../../src/catalog/synopsis.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const example = JSON.parse(readFileSync(join(here, "../../../data/example-profile.json"), "utf8"));
+const example = JSON.parse(readFileSync(join(here, "../fixtures/example-profile-2026-10-21.json"), "utf8"));
 const exampleState = example.state ?? example;
 const items = Object.values(exampleState.feedbackByRecommendation ?? {}).map((entry) => entry.item).filter(Boolean);
 
