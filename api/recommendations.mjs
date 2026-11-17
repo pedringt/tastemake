@@ -18,6 +18,7 @@ import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
 import { contentThemesFor } from "../src/model/refinements.js";
 import { excludedBy } from "../src/model/exclusions.js";
 import { chooseCandidates, closestRatings, featureRarity, selectionBasis } from "../src/ai/taste-score.js";
+import { queueAppealProfiles } from "../src/server/appeal-store.mjs";
 
 const MAX_BODY_BYTES = 160_000;
 const MAX_PROMPT_EVIDENCE = 18;
@@ -348,14 +349,35 @@ export async function warmRecommendationCandidates({ rawState, env = process.env
 // every candidate's path through retrieval, the shortlist, the model and validation, and for each
 // final pick the ratings that selected it and whether its reason's citations overlap them. The payload is
 // otherwise identical.
-export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates, trace = false } = {}) {
-  if (!trace) return recommend({ rawState, env, fetchImpl, retrieve, trace: null });
-  const steps = {};
-  const result = await recommend({ rawState, env, fetchImpl, retrieve, trace: steps });
+// #382: once the payload is final, the offered titles and the rated ones behind them are queued for
+// background appeal profiles (src/server/appeal-store.mjs). Off unless TASTEMAKE_APPEAL_PROFILES=1, never
+// awaited, and nothing reads the profiles yet, so the payload is the same either way. `appeal` is a test
+// seam: { query } replaces the database, { onTask } receives the background task.
+export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates, trace = false, appeal = {} } = {}) {
+  const queued = {};
+  const steps = trace ? {} : null;
+  const result = await recommend({ rawState, env, fetchImpl, retrieve, trace: steps, queued });
+  if (queued.items) {
+    const task = queueAppealProfiles(queued.items, { env, fetchImpl, ...(appeal.query ? { query: appeal.query } : {}) });
+    appeal.onTask?.(task);
+  }
+  if (!trace) return result;
   return { ...result, trace: requestTrace(steps, result) };
 }
 
-async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
+// Offered candidates first, then the catalog titles behind the person's ratings, liked before disliked.
+// Only the items themselves go on; queueAppealProfiles keeps catalog titles it can describe.
+function appealProfileItems(candidates, ctx, state) {
+  const rated = (ctx.evidence ?? [])
+    .filter((record) => record?.class === "experienced" && record.itemId)
+    .sort((a, b) => (b.polarity > 0) - (a.polarity > 0))
+    .map((record) => state.feedbackByRecommendation?.[record.itemId]?.item ?? state.customItems?.[record.itemId] ?? null)
+    .filter(Boolean);
+  return [...candidates, ...rated];
+}
+
+// `queued.items` is set once there is a set to offer (not when the pool is exhausted).
+async function recommend({ rawState, env, fetchImpl, retrieve, trace, queued }) {
   const state = hydrateState(rawState);
 
   let started = Date.now();
@@ -403,6 +425,7 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
   const promptCtx = { ...ctx, candidates, ...(shortlist.surpriseDropped ? { curveball: false } : {}) };
   const setState = shortlist.surpriseDropped ? { ...state, curveball: false } : state;
   const fallback = (reason, meta) => fallbackPayload(candidates, setState, reason, meta, ctx.candidates, ctx.correctionConflict);
+  queued.items = appealProfileItems(candidates, ctx, state);
   if (trace) trace.promptEvidence = selectPromptEvidence(promptCtx).map((record) => record.ref);
   const offeredDomains = {};
   for (const candidate of candidates) {
