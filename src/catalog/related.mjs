@@ -13,6 +13,7 @@ import { cachedValue } from "../server/cache.mjs";
 import { canonicalizeWriteBehind, lookupCanonicalAnchorMetadata, relatedCanonicalItems } from "./canonical-store.mjs";
 import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { bookGenreFamilies } from "./book-genres.mjs";
+import { notMeConflict } from "../ai/corrections.js";
 
 // Oct 27: bookGenreFamilies moved to book-genres.mjs so the browser can use it (bridges.mjs); re-exported here.
 export { bookGenreFamilies };
@@ -578,6 +579,18 @@ const YEAR_WAIT_MS = 400;
 
 // With `trace` (an object, eval/dev only), trace.retrieval records the anchors queried, how many
 // candidates each returned, and the pool sizes after each step. Candidates are the same either way.
+// #380 (Nov 17): since #381 the shortlist leaves out every title that recognizably matches a pattern the person
+// said is not them (or a Partly answer's unticked area). A rated title that itself matches such a pattern makes a
+// poor retrieval anchor: most of what it brings back is then thrown away, and the pool looks healthy here, so no
+// top-up fires and a medium can vanish from the set. Such ratings move behind the others in the anchor order
+// (stably: the same random draw, only their priority changes), so they're used only where a medium has too few
+// other ratings. They stay evidence for scoring everywhere else. With no "Not me" or unticked area, `conflicts`
+// is null and the order is untouched. Offline comparison: scripts/evals/corrections/run5.mjs (R-reorder).
+export function cleanAnchorsFirst(items, conflicts) {
+  if (!conflicts) return items;
+  return [...items.filter((item) => !conflicts(item)), ...items.filter((item) => conflicts(item))];
+}
+
 export async function retrieveCatalogCandidates(state, { env = process.env, fetchImpl = fetch, limit = 30, query: queryImpl, trace = null } = {}) {
   const mode = state.recommendationFilter ?? "all";
   const anchorTrace = [];
@@ -586,7 +599,7 @@ export async function retrieveCatalogCandidates(state, { env = process.env, fetc
     return result;
   };
   let eligible = null;
-  const allEvidence = preferRicherAnchors(externalEvidenceItems(state));
+  const allEvidence = cleanAnchorsFirst(preferRicherAnchors(externalEvidenceItems(state)), notMeConflict(state));
   let evidenceItems = mode === "all"
     ? selectAllAnchors(allEvidence)
     : allEvidence.filter((item) => item.domains?.includes(mode)).slice(0, 6);
