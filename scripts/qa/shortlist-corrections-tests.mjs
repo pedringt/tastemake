@@ -206,7 +206,7 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
 
   const noEdges = [...sciFiPool.slice(0, 2), ...horrorPool];
   const plainLast = await fallback({ curveball: true }, noEdges);
-  check("fallback without a correction: the last pick is the Surprise (unchanged)", plainLast.picks.at(-1)?.surprise === true);
+  check("fallback without a correction, no Surprise candidate in the pool: no pick is labelled a Surprise (Nov 17)", !plainLast.picks.some((p) => p.surprise));
   const conflictLast = await fallback({ curveball: true, statements: notMeHorror }, noEdges);
   check("fallback: conflicting titles are left out rather than filling the set", conflictLast.picks.length === 2 && !conflictLast.picks.some(isHorror));
 }

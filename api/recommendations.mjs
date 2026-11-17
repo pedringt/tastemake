@@ -271,7 +271,9 @@ function catalogPicks(candidates, state, evidence = [], pool = candidates, confl
   }
   if (curveballAllowed && conflicts?.(chosen[5])) curveballAllowed = false;
   return chosen.map((item, index) => {
-    const curveball = curveballAllowed && index === chosen.length - 1;
+    // Nov 17 (Paige): a missing Surprise beats a mislabeled one. The last title is shown as the Surprise only
+    // when the shortlist chose it as one (an edge or bridge candidate), never just because it came sixth.
+    const curveball = curveballAllowed && index === chosen.length - 1 && Boolean(item.edge || item.bridge);
     const basis = item.bridge ? bridgeFallbackReason(item) : fallbackReason(item, anchorFor(item, state), { index, curveball });
     return {
       ...item,
