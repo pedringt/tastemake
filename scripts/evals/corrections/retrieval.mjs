@@ -48,6 +48,11 @@
 //                         unflagged ones in the anchor order, stably, before anchor selection; so they are used only
 //                         where a medium has too few unflagged ratings (selectAllAnchors still takes up to two per
 //                         medium). Ratings are untouched: they remain evidence for scoring.
+// Round 5b option (off by default; "interleave" is the code path above):
+//   waveOrder             "first-then-later": eligible is interleave(first-wave rows), then interleave(second-wave
+//                         rows), then interleave(fallback rows), instead of one interleave over every row, so titles
+//                         from a later wave never land ahead of the first wave's (balanceDomains keeps that order
+//                         within each medium).
 
 import { weightedOrder, withEdgeAnchor } from "../../../src/catalog/related.mjs";
 import { featureSimilarity, tasteFeatures } from "../../../src/ai/taste-score.js";
@@ -155,7 +160,7 @@ export const standInRelated = (anchor, index, n = RELATED_PER_ANCHOR) => related
 // The pool for one request. `rejected(item)` is true for an evidence item whose rating supports only
 // rejected patterns (computed by the caller from the scenario's statements); it is never called when
 // no rejection applies, so every option is then exactly the current retrieval.
-export function retrieve(state, index, { seed, mode = "current", surpriseAnchor = false, rejected = null, avoid = null, reorder = null, discovery = null, bridge = null, conflictFilter = null, anchorReorder = null } = {}) {
+export function retrieve(state, index, { seed, mode = "current", surpriseAnchor = false, rejected = null, avoid = null, reorder = null, discovery = null, bridge = null, conflictFilter = null, anchorReorder = null, waveOrder = "interleave" } = {}) {
   const blockedIds = new Set([
     ...Object.keys(state.feedbackByRecommendation ?? {}), ...(state.selectedFavorites ?? []), ...(state.libraryFavorites ?? []),
     ...Object.keys(state.customItems ?? {}), ...(state.recommendationSets ?? []).flat().map((e) => (typeof e === "string" ? e : e?.id))
@@ -215,8 +220,13 @@ export function retrieve(state, index, { seed, mode = "current", surpriseAnchor 
   const bridgeRow = bridge ? shelf(bridge.domain, bridge.shelf).map((item) => ({ ...item, relatedTo: bridge.anchor.title, relatedToId: bridge.anchor.id, surpriseOnly: true })) : null;
   let supplementary = [];
   let shelfCalls = bridgeRow ? 1 : 0;
+  const waveEnds = [];   // Round 5b: where each wave's rows end in `rows`
   const eligibleOf = (rows) => {
     const seen = new Set();
+    if (waveOrder === "first-then-later") {
+      const groups = waveEnds.map((end, i) => rows.slice(i ? waveEnds[i - 1] : 0, end));
+      return groups.flatMap((g) => interleave(g)).filter((item) => !seen.has(item.id) && seen.add(item.id) && !(conflictFilter && conflictFilter(item)));
+    }
     // Round 5: with conflictFilter, titles the shortlist would leave out never count toward the pool's health.
     return interleave(rows).filter((item) => !seen.has(item.id) && seen.add(item.id) && !(conflictFilter && conflictFilter(item)));
   };
@@ -226,6 +236,7 @@ export function retrieve(state, index, { seed, mode = "current", surpriseAnchor 
   const laterWave = anchors.slice(FIRST_WAVE);
   let queried = [...firstWave];
   const rows = query(firstWave);
+  waveEnds.push(rows.length);
   let waves = 1;
   let eligible = eligibleOf(rows);
   const needDiscovery = () => (discovery ? [...discovery].filter(([d]) => eligible.filter((i) => primaryDomain(i) === d && !reorder?.(i)).length < 3) : []);
@@ -235,6 +246,7 @@ export function retrieve(state, index, { seed, mode = "current", surpriseAnchor 
   const secondWave = (eligible.length < Math.min(12, POOL_LIMIT) || missing().length) && laterWave.length;
   if (secondWave) {
     rows.push(...query(laterWave));
+    waveEnds.push(rows.length);
     queried = [...queried, ...laterWave];
     waves += 1;
     eligible = eligibleOf(rows);
@@ -249,6 +261,7 @@ export function retrieve(state, index, { seed, mode = "current", surpriseAnchor 
     const fallback = stillMissing.map((d) => usable.find((i) => !used.has(i.id) && primaryDomain(i) === d)).filter(Boolean);
     if (fallback.length) {
       rows.push(...query(fallback));
+      waveEnds.push(rows.length);
       queried = [...queried, ...fallback];
       waves += 1;
       eligible = eligibleOf(rows);

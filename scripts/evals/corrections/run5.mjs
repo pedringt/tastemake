@@ -46,6 +46,8 @@ export const ROUND5_ARMS = [
   { id: "R-filter", opts: (m) => (m ? { conflictFilter: m } : null) },
   { id: "R-reorder", opts: (m) => (m ? { anchorReorder: m } : null) },
   { id: "R-filter+reorder", opts: (m) => (m ? { conflictFilter: m, anchorReorder: m } : null) },
+  { id: "R-filter+waveOrder", opts: (m) => (m ? { conflictFilter: m, waveOrder: "first-then-later" } : null) },
+  { id: "R-filter+reorder+waveOrder", opts: (m) => (m ? { conflictFilter: m, anchorReorder: m, waveOrder: "first-then-later" } : null) },
   { id: "swap (round 3)", opts: (m, rej) => (rej ? { mode: "swap", rejected: rej } : null) },
   { id: "add (round 3)", opts: (m, rej) => (rej ? { mode: "add", rejected: rej } : null) }
 ];
@@ -286,12 +288,32 @@ export function reportMarkdown5(run) {
   table(L, run.results, "notMe");
   L.push("", "## Partly with an unticked area", "");
   table(L, run.results, "partly");
+  L.push("", "## Round 5b: pre-registered bar (qualifies over R-reorder)", "");
+  L.push(`| Arm | ${BAR5B.map(([l]) => l).join(" | ")} | Qualifies |`, `|---|${BAR5B.map(() => "---").join("|")}|---|`);
+  for (const r of run.results) {
+    const checks = qualifies5b(r);
+    L.push(`| ${r.arm} | ${checks.map(([, ok]) => (ok ? "yes" : "**no**")).join(" | ")} | ${checks.every(([, ok]) => ok) ? "**yes**" : "no"} |`);
+  }
   L.push("", "## Verdict", "");
   for (const v of VERDICT) L.push(`- ${v}`);
   L.push("", "## Limitations", "");
   for (const l of LIMITATIONS5) L.push(`- ${l}`);
   return L.join("\n") + "\n";
 }
+
+// Round 5b bar, pre-registered by the coordinator (Nov 17) before the waveOrder arms were run: an arm qualifies
+// over R-reorder only if every check holds (Not me sets unless noted).
+export const BAR5B = [
+  ["wrong-support kept >= 24/26", (r) => r.notMe.wrongKept >= 24],
+  ["endorsed kept >= 274/282", (r) => r.notMe.endorsedKept >= 274],
+  ["lost a medium < 52", (r) => r.notMe.lostMedium < 52],
+  ["Partly lost a medium <= 6", (r) => r.partly.lostMedium <= 6],
+  ["conflicts offered 0", (r) => r.notMe.conflictsOffered === 0 && r.partly.conflictsOffered === 0],
+  ["empty sets 0", (r) => r.notMe.empty === 0 && r.partly.empty === 0],
+  ["neutrality 0 mismatches", (r) => r.neutrality.mismatches === 0],
+  ["calls per set <= 5.5", (r) => r.notMe.callsArm <= 5.5]
+];
+export const qualifies5b = (r) => BAR5B.map(([label, ok]) => [label, ok(r)]);
 
 // Written after reading the numbers (Nov 17); re-check if the numbers change.
 export const VERDICT = [
@@ -301,6 +323,7 @@ export const VERDICT = [
   "**R-reorder**: a smaller cut (75 → 52 Not me, 12 → 6 Partly) at almost no cost: 1-2% of sets gain one call, endorsed/wrong-support/other/unrelated kept stay within 0-1 titles of R-current (26/26 wrong-support kept), 99.6% of unrelated pairs keep their order. Five more sets are short than R-current (38, the same as the no-correction set), all from the Surprise-franchise rule: with clean anchors first, a Surprise is found more often (no set loses it to conflicts) and is sometimes then dropped as the same franchise as a pick.",
   "**R-filter+reorder**: the same lost-media cut as R-filter (28 / 4) with fewer extra waves (17.5% Not me, 8.9% Partly; 5.74 calls) because clean anchors come first; the same displacement of kept titles as R-filter (wrong-support 20/26, endorsed 257/282). If the full cut is wanted, it dominates R-filter.",
   "**swap (round 3)**: barely helps post-#381 (75 → 72) and is the worst for wrong-support titles (10/26 kept); it also changes 74 of 171 sets where the label matcher sees no rejection (support-based, so not neutral to production's rule) and loses a medium R-current offered in 8 sets. **add (round 3)**: 75 → 59 at +44% calls in the first wave, with wrong-support kept 18/26. Neither beats R-reorder.",
+  "**Round 5b, R-filter+waveOrder / R-filter+reorder+waveOrder** (later-wave titles kept behind the first wave's): the hypothesis holds for wrong-support titles (20 → 26 of 26 in both) and most of the displacement goes (endorsed 261 → 270 and 257 → 266; other-pattern 779 → 830 and 776 → 826; unrelated 866 → 913 and 866 → 910), with the same lost-media cut (28 Not me, 4 Partly) and short sets unchanged. Neither qualifies over R-reorder on the pre-registered bar: endorsed kept stays under 274 (270, 266), and calls per set are unchanged by wave order (5.99, 5.74 > 5.5; 23% / 17.5% of Not me sets take a sequential extra wave).",
   "**Best trade-off: R-reorder** (about a third fewer lost-media sets, half for Partly, with no measurable harm or cost). **R-filter+reorder** is the arm that removes most lost media, but only if a ~17% second-wave rate and the displacement of non-rejected titles are acceptable; placing second-wave rows after the first wave's (untested here) may remove that displacement."
 ];
 
