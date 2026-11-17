@@ -94,6 +94,22 @@ Recommendation: start with option 3 (a larger curated pool the model ranks and e
 - Failure path: on timeout or error, fall back to the deterministic picks and say so plainly.
 - Every paid call is counted and its cost estimated; dry-run first.
 
+**Appeal profiles (#382, Nov 17; built, switched off).** A background cache of short "what it's like and why people enjoy it" profiles for catalog titles, so a later, separately approved change can score the shortlist with them (the research reason: on Paige's held-out ratings, profile similarity ordered want-vs-no at 0.84 against genre's 0.42). **Nothing reads the profiles yet**: recommendations, prompts, picks and every response are unchanged, switch on or off.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `TASTEMAKE_APPEAL_PROFILES` | off | `1` turns the background job on. Anything else, or unset: nothing happens at all (no query, no call). |
+| `TASTEMAKE_APPEAL_MODEL` | `claude-haiku-5-5` | Model for profiles. |
+| `TASTEMAKE_APPEAL_DAILY_CAP` | `150` | Profile calls allowed in any 24 hours, counted from `ai_call_metrics`. |
+| `TASTEMAKE_APPEAL_MAX_PER_REQUEST` | `4` | New profiles made after one recommendations request. |
+
+- **Also needs** live AI on (the same `liveConfig` gate as recommendations, production approval included) and the database (`TASTEMAKE_DATABASE_URL`).
+- **When:** after a recommendations response is final (model or catalog fallback, not an exhausted set), inside `waitUntil`, never awaited. The offered titles go first, then the catalog titles behind the person's ratings, liked before disliked. Titles already cached are skipped. Calls run one at a time, each with a 15s limit, and stop at the spend limit.
+- **What is sent:** catalog facts only, the same input the research used: title, medium, year, creator, genres, and the synopsis (books: subjects). Never a rating, a note, or anything else about the person. Films, TV and games without a synopsis are skipped (rated titles arrive without one), so in practice rated films get a profile when they are offered.
+- **Stored:** table `appeal_profiles` (`item_id`, `profile` jsonb, `prompt_version`, `model`, `created_at`), created on first use. The prompt is the research prompt word for word, version `ap-v1-2026-11-04`. A profile that fails the check in code (all fields, 1–5 short phrases per list, length limits, no links, markup or braces) is never stored.
+- **Cost:** about $0.0003 per profile on Haiku 5.5, once per title. The 150/day cap is about $0.05 a day at worst.
+- **Metrics:** each call is recorded as operation `appeal_profile` (success, validation_fallback, budget_paused or an error outcome). `/api/ai-metrics` keeps every field; `appeal_profile` is a new key under `operations`, and the top-level totals now include these calls. Logs (`[tastemake-appeal]`) carry counts only.
+
 ## 8. Loading and failure states
 
 Nothing is asynchronous today. Needed: a clear "thinking" state that doesn't move the layout, keyboard focus and screen-reader announcements for arrival, a slow-response state, and a visible message when it fell back to deterministic picks.
