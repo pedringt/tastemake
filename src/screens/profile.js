@@ -524,9 +524,12 @@ function featuredCorrectionPanel(activeHypotheses) {
     : position < 6
       ? "It is also one of the patterns below."
       : `It is pattern ${position + 1} of ${activeHypotheses.length} in her full profile, so it isn't one of the strongest six below.`;
+  // #323: titles she said don't fit this description are part of her answer, so they're named here.
+  const doesntFit = Object.entries(said.elements?.titles ?? {}).filter(([, answer]) => answer?.verdict === "doesnt-fit").map(([ref]) => titles.get(ref)).filter(Boolean);
   const details = [
     said.context ? `${CONTEXT[said.context] ?? "She refined when it applies"}.` : "",
-    said.excludedDomains?.length ? `Not for ${said.excludedDomains.map((id) => domainById(id)?.label ?? id).join(", ")}.` : ""
+    said.excludedDomains?.length ? `Not for ${said.excludedDomains.map((id) => domainById(id)?.label ?? id).join(", ")}.` : "",
+    doesntFit.length ? `She said ${doesntFit.length === 1 ? "this title doesn’t" : "these titles don’t"} fit the description: ${doesntFit.join(", ")}.` : ""
   ].filter(Boolean).join(" ") || "No further detail was recorded with it.";
   const since = later.length
     ? `Tastemake has revised the pattern ${later.length === 1 ? "once" : `${later.length} times`} since; the Full profile shows the current version.`
