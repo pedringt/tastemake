@@ -251,8 +251,10 @@ function proposal(refs) {
   // one weaker match behind) and the titles are distinct (one per franchise).
   const pool = ["Stone Blind", "Elektra", "A Thousand Ships", "Pandora's Jar", "Lore Olympus"].map((title, n) => book(`ol-c${n + 1}`, title, ["Mythology", "Retellings"]));
   const out = await produceRecommendations({ rawState: { selectedFavorites: [], feedbackByRecommendation: { [loved.id]: s.feedbackByRecommendation[loved.id] }, curveball: true }, env: {}, retrieve: async () => [...pool, adult, plainPick] });
-  const curveballPick = out.picks.find((p) => p.surprise);
-  check("the fallback skips an adult-tagged curveball for the next eligible candidate", curveballPick?.id === plainPick.id && !out.picks.some((p) => p.id === adult.id), out.picks.map((p) => `${p.id}${p.surprise ? "*" : ""}`).join());
+  // Nov 17 (Paige): a missing Surprise beats a mislabeled one. None of these is a Surprise candidate (no Liked
+  // item to find an edge from), so the next eligible title takes the adult book's place as a regular pick.
+  check("the fallback skips the adult-tagged book for the next eligible candidate", out.picks.some((p) => p.id === plainPick.id) && !out.picks.some((p) => p.id === adult.id), out.picks.map((p) => `${p.id}${p.surprise ? "*" : ""}`).join());
+  check("…and labels no title a Surprise, since none was chosen as one", !out.picks.some((p) => p.surprise), out.picks.map((p) => `${p.id}${p.surprise ? "*" : ""}`).join());
 }
 
 
