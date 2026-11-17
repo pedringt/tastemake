@@ -201,6 +201,14 @@ export function isEdgeCandidate(candidate, records) {
 //   rest, which let it in ahead of titles scored below zero, and media turns still gave it a slot.) If every
 //   surprise candidate conflicts, the set has no surprise and `outcome.surpriseDropped` is set. Without
 //   conflicts, nothing changes.
+// - Surprise refill (Nov 17, Paige's call): if the surprise candidate is the same franchise as a pick,
+//   the next surprise candidate found the same way (bridge first, then Liked-item edges; scored zero or
+//   above, not a "Not me", not already chosen, not the same franchise as a pick) takes the place instead.
+//   If there is none, the next regular candidate fills it (not marked edge), so the set is full whenever
+//   an offerable title is left. (It used to be dropped with no replacement, leaving five.) Without a
+//   franchise clash, nothing changes; `outcome.surpriseDropped` is still only about conflicts. Note the
+//   fallback (catalogPicks, api/recommendations.mjs) shows the last of six as the Surprise whether or not
+//   it is marked edge, so there a regular filler is shown as the Surprise.
 // - With `trace` (an object, eval/dev only), trace.candidates gets one entry per candidate: its score
 //   parts, ranks and outcome (chosen, edge, same-franchise, count-reached, scored-below-zero, not-me). The
 //   return value is the same either way.
@@ -259,11 +267,29 @@ export function chooseCandidates(candidates, records, { count = 6, mode = "all",
   } else {
     for (const entry of pool) { if (chosen.length >= mainCount) break; take(entry); }
   }
-  const slotTaken = Boolean(slot && !sameFranchise(slot));
-  if (slot && !slotTaken) blocked.add(slot);
-  if (slotTaken) chosen.push({ ...slot, isEdge: slot === edge });
+  // The surprise place: the slot, or (if it is the same franchise as a pick) the next surprise candidate
+  // chosen the same way, else the next regular candidate, not marked edge.
+  let surprise = null;
+  if (slot) {
+    const offerable = (entry) => !entry.conflict && !chosen.includes(entry) && !blocked.has(entry);
+    const surprises = [
+      ...(bridge ? ordered.filter((entry) => bridgeFor(entry) && entry !== slot) : []),
+      ...ordered.filter((entry) => edgeFor(entry) && entry !== slot)
+    ];
+    for (const entry of [slot, ...surprises]) {
+      if (!offerable(entry)) continue;
+      if (sameFranchise(entry)) { blocked.add(entry); continue; }
+      surprise = entry;
+      break;
+    }
+    if (surprise) chosen.push({ ...surprise, isEdge: !surprise.item?.bridge });
+    else for (const entry of pool) {
+      if (chosen.length >= count) break;
+      if (offerable(entry)) take(entry);
+    }
+  }
   if (trace) {
-    trace.candidates = traceCandidates({ scored, ordered, chosen, blocked, edge: slotTaken && slot === edge ? edge : null });
+    trace.candidates = traceCandidates({ scored, ordered, chosen, blocked, edge: chosen.find((entry) => entry.isEdge) ?? null });
     if (surpriseDropped) trace.surpriseDropped = true;
   }
   return chosen.map(({ item, score, isEdge }) => ({ ...item, tasteScore: round(score), ...(isEdge ? { edge: true } : {}) }));
