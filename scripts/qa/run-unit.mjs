@@ -85,7 +85,8 @@ const SUITES = [
   "shortlist-corrections-tests.mjs",
   "counter-grader-tests.mjs",
   "placement-refresh-tests.mjs",
-  "partly-elements-tests.mjs"
+  "partly-elements-tests.mjs",
+  "partly-reasons-server-tests.mjs"
 ];
 
 // A new *-tests.mjs file that is not listed above would otherwise never run.

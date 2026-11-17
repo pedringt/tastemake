@@ -17,7 +17,9 @@ const SONNET_55 = { input: 2, output: 10, cacheWrite: 2.50, cacheRead: 0.10 };
 const OPUS_55 = { input: 4, output: 20, cacheWrite: 5, cacheRead: 0.20 };
 const HAIKU_55_LONG_PROMPT_TOKENS = 100_000;
 
-const KNOWN_OPERATIONS = new Set(["recommendations", "taste_profile"]);
+// partly_reasons (#323 phase 3): "What's different about it?" options. Adds a key under `operations` once such
+// calls exist; every existing /api/ai-metrics field keeps its name and meaning (Project Health reads them).
+export const KNOWN_OPERATIONS = new Set(["recommendations", "taste_profile", "partly_reasons"]);
 // budget_paused (Nov 12): the account's spend limit turned the call away. That's the designed pause, not a
 // failure, so it counts as an attempt but not in failures or the success and fallback rates.
 const KNOWN_OUTCOMES = new Set([
