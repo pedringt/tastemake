@@ -21,6 +21,9 @@ import { chooseCandidates, closestRatings, featureRarity, selectionBasis } from 
 import { queueAppealProfiles } from "../src/server/appeal-store.mjs";
 
 const MAX_BODY_BYTES = 160_000;
+// #380: shown only when corrections are why nothing is left (wording: Paige, Nov 17). It doesn't claim
+// Tastemake understood each conflict: matching is by catalog labels.
+export const CORRECTIONS_EMPTIED_MESSAGE = "Tastemake couldn't find any matches that fit your corrections this time. Try again for different recommendations, or revisit your answers in your Taste Profile.";
 const MAX_PROMPT_EVIDENCE = 18;
 
 function parseBody(body) {
@@ -408,10 +411,17 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace, queued }) 
     const filter = state.recommendationFilter ?? "all";
     const hasDomainEvidence = filter === "all" || (ctx.evidence ?? []).some((record) => record.countsAsTaste && (record.domains ?? []).includes(filter));
     const filterLabel = domainById(filter)?.label ?? filter;
-    const reason = hasDomainEvidence
-      ? "Tastemake could not find another eligible catalog match from your current evidence."
-      : `You haven't rated any ${filterLabel} yet, so Tastemake has nothing to base ${filterLabel} picks on. Try Browse or Search to react to a few first.`;
-    return { source: "catalog", reason, picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length } };
+    // #380 (Nov 17): since #381, titles that recognizably match a pattern the person said is not them (or a
+    // Partly answer's unticked area) are never offered. Say so only when that is the cause: the same pool,
+    // chosen again without the corrections, would have offered something. Any other cause keeps the generic
+    // message.
+    const emptiedByCorrections = Boolean(ctx.correctionConflict) && offeredCandidates({ ...ctx, correctionConflict: null }, 6).length > 0;
+    const reason = !hasDomainEvidence
+      ? `You haven't rated any ${filterLabel} yet, so Tastemake has nothing to base ${filterLabel} picks on. Try Browse or Search to react to a few first.`
+      : emptiedByCorrections
+        ? CORRECTIONS_EMPTIED_MESSAGE
+        : "Tastemake could not find another eligible catalog match from your current evidence.";
+    return { source: "catalog", reason, picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length, ...(emptiedByCorrections ? { emptiedByCorrections: true } : {}) } };
   }
   // QA sweep real bug: every downstream use of ctx (the prompt payload, the prompt-size log, and
   // validatePicks' "itemId must come from candidates" check) read ctx.candidates directly -- the full,

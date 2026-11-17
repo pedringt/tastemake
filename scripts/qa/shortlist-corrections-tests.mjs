@@ -4,7 +4,7 @@
 // Partly's unticked areas are a "Not me" in those areas only, and its kept areas guard like a Yes.
 // Free: no network, no model (the live path runs against a stubbed Anthropic response).
 import { createSuite } from "./lib/assert.mjs";
-import { buildPickPrompt, normalizeModelPicks, offeredCandidates, produceRecommendations } from "../../api/recommendations.mjs";
+import { CORRECTIONS_EMPTIED_MESSAGE, buildPickPrompt, normalizeModelPicks, offeredCandidates, produceRecommendations } from "../../api/recommendations.mjs";
 import { validatePicks } from "../../src/ai/validate.js";
 import { cleanAnchorsFirst, retrieveCatalogCandidates } from "../../src/catalog/related.mjs";
 import { buildContext } from "../../src/ai/context.js";
@@ -293,6 +293,26 @@ const notMeHorror = [say("ai-horror-films", { says: "not-me" })];
   check("retrieval: without a correction, horror ratings do become anchors (so the next check can fail)", horrorAnchoredPlain > 0, String(horrorAnchoredPlain));
   eq("retrieval: with 'Not me: Horror films', no horror rating is an anchor while science fiction ones are left", horrorAnchoredCorrected, 0);
   eq("retrieval, Movies filter: the first wave of four uses only science fiction ratings", firstWaveHorrorMovies, 0);
+}
+
+// ---- #380: when corrections leave nothing, the message says so ------------------------------------------------
+{
+  const run = (opts, items) => quietly(() => produceRecommendations({ rawState: wire(opts), env: {}, fetchImpl: async () => { throw new Error("no network"); }, retrieve: async () => items }));
+  const emptied = await run({ statements: notMeHorror }, horrorPool);
+  eq("only 'Not me' titles found: no picks", emptied.picks.length, 0);
+  eq("…and the reason names the correction", emptied.reason, CORRECTIONS_EMPTIED_MESSAGE);
+  eq("…flagged in meta", emptied.meta?.emptiedByCorrections, true);
+  const plain = await run({}, []);
+  check("nothing found and no correction: the generic message, no flag", plain.reason !== CORRECTIONS_EMPTIED_MESSAGE && !plain.meta?.emptiedByCorrections, plain.reason);
+  const noneMatched = await run({ statements: notMeHorror }, []);
+  check("a correction but nothing found at all: still the generic message", noneMatched.reason !== CORRECTIONS_EMPTIED_MESSAGE, noneMatched.reason);
+  // Another cause with a correction present: the only titles found are cross-medium bridge tests, which are
+  // offered only in the Surprise place (off here), so nothing is offered for a reason unrelated to "Not me".
+  const bridgesOnly = sciFiPool.map((item) => ({ ...item, bridge: { sharedGenres: ["science fiction"] } }));
+  const otherCause = await run({ statements: notMeHorror }, bridgesOnly);
+  eq("another cause, correction present: no picks", otherCause.picks.length, 0);
+  check("…and the generic message, not the corrections one", otherCause.reason !== CORRECTIONS_EMPTIED_MESSAGE && !otherCause.meta?.emptiedByCorrections, otherCause.reason);
+  eq("the corrections message is the approved wording", CORRECTIONS_EMPTIED_MESSAGE, "Tastemake couldn't find any matches that fit your corrections this time. Try again for different recommendations, or revisit your answers in your Taste Profile.");
 }
 
 // ---- wire payload ----------------------------------------------------------------------------------------
