@@ -95,6 +95,8 @@ export async function loadReasons(state, hypothesisId, ref, { title = "this titl
     // The server's switch is off: "Something else" only, with nothing to apologize for.
     loaded.set(key, { status: "off", reasons: [], request });
     onUpdate();
+    // The live region already said "Suggesting reasons…", so close it rather than leave it hanging.
+    announce(`You can say what’s different about “${title}” in your own words.`);
     return "off";
   }
   loaded.set(key, { status: "failed", reasons: [], request });

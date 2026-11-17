@@ -168,7 +168,7 @@ function fakeEndpoint(payload = { source: "model", reasons: LABELS, meta: {} }, 
   markDifferentSide(w, P_MYTH.id, ref(RE7));
   const saidW = [];
   eq("server switch off: \"off\", nothing to apologize for", await loadReasons(w, P_MYTH.id, ref(RE7), { fetchImpl: fakeEndpoint({ source: "unavailable", reasons: [], meta: { reasonsOff: true, paidCallMade: false } }).fetchImpl, announce: (m) => saidW.push(m) }), "off");
-  check("…no failure message", saidW.length === 0);
+  check("…no failure message, only a closing line for the live region", saidW.length === 1 && !/couldn/.test(saidW[0]) && saidW[0].includes("in your own words"));
   check("…and not asked again this visit", (await loadReasons(w, P_MYTH.id, ref(RE7), { fetchImpl: fakeEndpoint().fetchImpl })) === "cached");
   forgetAllReasons();
   const saidF = [];
