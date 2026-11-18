@@ -130,6 +130,51 @@ const game = (title, genres, extra = {}) => ({ id: `igdb-game-${++n}`, provider:
   check("the first-found result still makes the top two", fused.some((i) => i.title === "First Found"), fused.map((i) => i.title).join(" | "));
 }
 
+// ---- Surprise refill (Nov 17): a Surprise of the same franchise as a pick is replaced, not dropped -----
+{
+  const lovedSciFi = movie("Loved Sci-Fi", ["878", "53"]);
+  const likedSciFi = movie("Liked Sci-Fi", ["878", "53"]);
+  const records = [rec("experienced-strong-positive", lovedSciFi), rec("experienced-positive", likedSciFi)];
+  const fromLoved = (title) => movie(title, ["878", "53"], { relatedToId: lovedSciFi.id });
+  const fromLiked = (title) => movie(title, ["878", "53"], { relatedToId: likedSciFi.id });
+  const regulars = ["Space Saga", "Orbit", "Red Planet", "Deep Signal", "Cold Moon", "Last Light", "Far Shore"].map(fromLoved);
+  const clash = fromLiked("Space Saga Origins");      // the first Surprise candidate, same franchise as a pick
+  const nextEdge = fromLiked("Quiet Comet");
+  const run = (pool) => {
+    const trace = {};
+    const set = chooseCandidates(pool, records, { count: 6, mode: "all", curveball: true, trace });
+    const outcome = Object.fromEntries(trace.candidates.map((c) => [c.title, c.outcome]));
+    return { set, outcome, again: chooseCandidates(pool, records, { count: 6, mode: "all", curveball: true }) };
+  };
+
+  // (a) the next Surprise candidate takes the place.
+  const a = run([...regulars.slice(0, 5), clash, nextEdge]);
+  const aTitles = a.set.map((i) => i.title);
+  check("(a) the Surprise is never the same franchise as a pick", !(aTitles.includes("Space Saga") && aTitles.includes("Space Saga Origins")), aTitles.join(" | "));
+  eq("(a) the set is full", a.set.length, 6);
+  check("(a) the next Surprise candidate takes the last place, marked", a.set.at(-1).title === "Quiet Comet" && a.set.at(-1).edge === true, JSON.stringify(a.set.map((i) => [i.title, i.edge])));
+  check("(a) only one is marked", a.set.filter((i) => i.edge).length === 1);
+  eq("(a) trace: the dropped Surprise is same-franchise", a.outcome["Space Saga Origins"], "same-franchise");
+  eq("(a) trace: its replacement is the edge", a.outcome["Quiet Comet"], "edge");
+  eq("(a) the trace doesn't change the set", JSON.stringify(a.again), JSON.stringify(a.set));
+
+  // (b) no other Surprise candidate: the place stays empty. A regular title is never added just to fill it.
+  const b = run([...regulars, clash]);
+  const bTitles = b.set.map((i) => i.title);
+  eq("(b) the set has five: nothing fills the Surprise place", b.set.length, 5);
+  check("(b) nothing is marked a Surprise", b.set.every((i) => !i.edge), JSON.stringify(b.set.map((i) => [i.title, i.edge])));
+  check("(b) the clashing Surprise is not offered", !bTitles.includes("Space Saga Origins"), bTitles.join(" | "));
+  check("(b) no extra regular title is added", !bTitles.includes("Last Light"), bTitles.join(" | "));
+  eq("(b) trace: the dropped Surprise is same-franchise", b.outcome["Space Saga Origins"], "same-franchise");
+  eq("(b) the trace doesn't change the set", JSON.stringify(b.again), JSON.stringify(b.set));
+
+  // (c) no franchise clash: exactly the set chosen before the refill (pinned from the Nov 17 code on main).
+  const PINNED_C = JSON.stringify([["Space Saga", 3.55, false], ["Orbit", 3.55, false], ["Red Planet", 3.55, false], ["Deep Signal", 3.55, false], ["Cold Moon", 3.55, false], ["Quiet Comet", 3.438, true]]);
+  const c = run([...regulars, fromLiked("Quiet Comet"), fromLiked("Pale Nebula")]);
+  eq("(c) without a clash, the set is unchanged", JSON.stringify(c.set.map((i) => [i.title, i.tasteScore, Boolean(i.edge)])), PINNED_C);
+  eq("(c) trace: the Surprise is the edge", c.outcome["Quiet Comet"], "edge");
+}
+
 // ---- prompt evidence, per candidate -------------------------------------------------------------------
 {
   const loved = Array.from({ length: 20 }, (_, i) => movie(`Loved Generic ${i}`, ["28"]));

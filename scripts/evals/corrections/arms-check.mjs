@@ -8,7 +8,8 @@ import { buildContext } from "../../../src/ai/context.js";
 import { serializeAiState } from "../../../src/ai/live-client.js";
 import { chooseCandidates } from "../../../src/ai/taste-score.js";
 import { hydrateState } from "../../../src/server/request-state.mjs";
-import { ROUNDS, loadCases, wireRecords } from "./fixtures.mjs";
+import { offeredCandidates } from "../../../api/recommendations.mjs";
+import { ROUNDS, conflictMatcher, loadCases, wireRecords } from "./fixtures.mjs";
 import { armSelection, withAnchors } from "./rank.mjs";
 import { ROUND2_ARMS, scenariosFor } from "./run.mjs";
 
@@ -41,8 +42,24 @@ const key = (list) => list.map((c) => `${c.id}:${c.tasteScore}:${c.edge ? 1 : 0}
     }
   }
   eq("every structural arm offers production's exact six when no correction or only an ambiguous one applies", Object.values(neutralDiffs).reduce((a, b) => a + b, 0), 0);
-  eq("every structural arm offers as many titles as production, every case, round and scenario (incl. the last round's six-title pool)", Object.values(sizeDiffs).reduce((a, b) => a + b, 0), 0);
+  // Research arms don't apply production's post-#381 "Not me" rule, so this compares with production before
+  // the answer (no statements); production after a "Not me" can offer fewer (round 5 measures that).
+  eq("every structural arm offers as many titles as production before the answer, every case, round and scenario (incl. the last round's six-title pool)", Object.values(sizeDiffs).reduce((a, b) => a + b, 0), 0);
+}
 
+{
+  // The "production" selection with the answers given is production post-#381: what offeredCandidates offers on
+  // the request state with the case's patterns and the scenario's answers, every case, round and scenario.
+  let checked = 0, diffs = 0;
+  for (const { kase, round, ctx } of contexts) for (const scenario of scenariosFor(kase)) {
+    const state = { ...kase.state(round), modelHypotheses: kase.patterns.map((p) => ({ id: p.id, title: p.label, domains: p.domains, supports: p.supports })), patternStatements: scenario.statements };
+    const real = offeredCandidates(buildContext(hydrateState(JSON.parse(JSON.stringify(serializeAiState(state)))), ctx.candidates));
+    const conflicts = conflictMatcher(kase, kase.state(round), scenario.statements);
+    const six = armSelection(ctx.evidence, ctx.candidates, kase.patterns, scenario.statements, { select: "production" }, { mode: ctx.recommendationFilter, curveball: ctx.curveball, conflicts }).proto.chosen;
+    checked += 1;
+    if (key(six) !== key(real)) diffs += 1;
+  }
+  eq(`the "production" selection equals offeredCandidates with the answers given (${checked} case/round/scenario checks)`, diffs, 0);
 }
 
 finish();

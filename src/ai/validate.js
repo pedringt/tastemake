@@ -39,8 +39,6 @@ function checkShape(obj, fields) {
 // reconfirmation applies exactly the same ones; re-exported here so existing imports keep working.
 export { allowedCrossDomain, allowedLevel, triedRecords };
 const asRows = evidenceRows;
-const hypothesisAliases = (id) => id === "H01/H07" ? ["H01", "H07", "H01/H07"] : [id];
-const sameHypothesis = (a, b) => hypothesisAliases(a).some((id) => hypothesisAliases(b).includes(id));
 
 export function normalizeHypothesisResponse(response, ctx) {
   if (!response || !Array.isArray(response.hypotheses)) return response;
@@ -487,12 +485,10 @@ export function validatePicks(response, ctx) {
       if (p.anchor != null && !ANCHORS.includes(p.anchor)) reasons.push(`anchor "${p.anchor}" not one of ${ANCHORS.join("/")}`);
       else if (p.anchor != null && (anchorUse.get(p.anchor) ?? 0) >= MAX_PICKS_PER_ANCHOR) reasons.push(`anchor "${p.anchor}" already used by ${MAX_PICKS_PER_ANCHOR} picks in this set`);
       const candidate = candidates.get(p.itemId);
-      if (candidate && p.tests && !(candidate.hypotheses ?? []).some((id) => sameHypothesis(id, p.tests))) reasons.push("tests a pattern that is not attached to this candidate");
-      const rejectedStatement = p.tests && (ctx.statements ?? []).find((x) => x.says === "not-me" && sameHypothesis(x.hypothesisId, p.tests));
-      if (rejectedStatement) reasons.push("tests a pattern the user said is not them (user-confirmed outranks inference)");
-      // #380: the check above never fires in production (the model's answer has no `tests` field). This one
-      // checks the pick itself, by the same catalog labels the shortlist uses (src/ai/corrections.js). The
-      // shortlist already leaves such titles out, so this is a backstop for any other path to a pick.
+      // #380: a "Not me" pattern is checked on the pick itself, by the same catalog labels the shortlist uses
+      // (src/ai/corrections.js). The shortlist already leaves such titles out, so this is a backstop for any
+      // other path to a pick. (Two older checks on `p.tests` were removed on Nov 17: the picks output schema
+      // has no `tests` field and normalizeModelPicks sets it to null, so they could never fire.)
       if (candidate && ctx.correctionConflict?.(candidate)) reasons.push("matches a pattern the user said is not them");
       const cited = p.cites.map((ref) => evidence.get(ref));
       if (!cited.length) reasons.push("no evidence cited");

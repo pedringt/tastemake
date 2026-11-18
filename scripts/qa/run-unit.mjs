@@ -19,6 +19,7 @@ const HERE = fileURLToPath(new URL(".", import.meta.url));
 
 const SUITES = [
   "api-tests.mjs",
+  "appeal-profile-tests.mjs",
   "ai-metrics-tests.mjs",
   "catalog-ai-tests.mjs",
   "escaping-tests.mjs",

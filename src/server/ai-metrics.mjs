@@ -19,7 +19,10 @@ const HAIKU_55_LONG_PROMPT_TOKENS = 100_000;
 
 // partly_reasons (#323 phase 3): "What's different about it?" options. Adds a key under `operations` once such
 // calls exist; every existing /api/ai-metrics field keeps its name and meaning (Project Health reads them).
-export const KNOWN_OPERATIONS = new Set(["recommendations", "taste_profile", "partly_reasons"]);
+// appeal_profile (#382): background appeal profiles for catalog titles (src/server/appeal-store.mjs), off unless
+// TASTEMAKE_APPEAL_PROFILES=1. Same rule: a new key under `operations`, and the top-level totals (attempts,
+// tokens, estimated_cost_usd and the rest) now include these calls too.
+export const KNOWN_OPERATIONS = new Set(["recommendations", "taste_profile", "partly_reasons", "appeal_profile"]);
 // budget_paused (Nov 12): the account's spend limit turned the call away. That's the designed pause, not a
 // failure, so it counts as an attempt but not in failures or the success and fallback rates.
 const KNOWN_OUTCOMES = new Set([

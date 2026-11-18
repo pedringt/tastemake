@@ -18,8 +18,12 @@ import { fallbackReason } from "../src/catalog/fallback-reasons.mjs";
 import { contentThemesFor } from "../src/model/refinements.js";
 import { excludedBy } from "../src/model/exclusions.js";
 import { chooseCandidates, closestRatings, featureRarity, selectionBasis } from "../src/ai/taste-score.js";
+import { queueAppealProfiles } from "../src/server/appeal-store.mjs";
 
 const MAX_BODY_BYTES = 160_000;
+// #380: shown only when corrections are why nothing is left (wording: Paige, Nov 17). It doesn't claim
+// Tastemake understood each conflict: matching is by catalog labels.
+export const CORRECTIONS_EMPTIED_MESSAGE = "Tastemake couldn't find any matches that fit your corrections this time. Try again for different recommendations, or revisit your answers in your Taste Profile.";
 const MAX_PROMPT_EVIDENCE = 18;
 
 function parseBody(body) {
@@ -270,7 +274,9 @@ function catalogPicks(candidates, state, evidence = [], pool = candidates, confl
   }
   if (curveballAllowed && conflicts?.(chosen[5])) curveballAllowed = false;
   return chosen.map((item, index) => {
-    const curveball = curveballAllowed && index === chosen.length - 1;
+    // Nov 17 (Paige): a missing Surprise beats a mislabeled one. The last title is shown as the Surprise only
+    // when the shortlist chose it as one (an edge or bridge candidate), never just because it came sixth.
+    const curveball = curveballAllowed && index === chosen.length - 1 && Boolean(item.edge || item.bridge);
     const basis = item.bridge ? bridgeFallbackReason(item) : fallbackReason(item, anchorFor(item, state), { index, curveball });
     return {
       ...item,
@@ -348,14 +354,35 @@ export async function warmRecommendationCandidates({ rawState, env = process.env
 // every candidate's path through retrieval, the shortlist, the model and validation, and for each
 // final pick the ratings that selected it and whether its reason's citations overlap them. The payload is
 // otherwise identical.
-export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates, trace = false } = {}) {
-  if (!trace) return recommend({ rawState, env, fetchImpl, retrieve, trace: null });
-  const steps = {};
-  const result = await recommend({ rawState, env, fetchImpl, retrieve, trace: steps });
+// #382: once the payload is final, the offered titles and the rated ones behind them are queued for
+// background appeal profiles (src/server/appeal-store.mjs). Off unless TASTEMAKE_APPEAL_PROFILES=1, never
+// awaited, and nothing reads the profiles yet, so the payload is the same either way. `appeal` is a test
+// seam: { query } replaces the database, { onTask } receives the background task.
+export async function produceRecommendations({ rawState, env = process.env, fetchImpl = fetch, retrieve = retrieveCatalogCandidates, trace = false, appeal = {} } = {}) {
+  const queued = {};
+  const steps = trace ? {} : null;
+  const result = await recommend({ rawState, env, fetchImpl, retrieve, trace: steps, queued });
+  if (queued.items) {
+    const task = queueAppealProfiles(queued.items, { env, fetchImpl, ...(appeal.query ? { query: appeal.query } : {}) });
+    appeal.onTask?.(task);
+  }
+  if (!trace) return result;
   return { ...result, trace: requestTrace(steps, result) };
 }
 
-async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
+// Offered candidates first, then the catalog titles behind the person's ratings, liked before disliked.
+// Only the items themselves go on; queueAppealProfiles keeps catalog titles it can describe.
+function appealProfileItems(candidates, ctx, state) {
+  const rated = (ctx.evidence ?? [])
+    .filter((record) => record?.class === "experienced" && record.itemId)
+    .sort((a, b) => (b.polarity > 0) - (a.polarity > 0))
+    .map((record) => state.feedbackByRecommendation?.[record.itemId]?.item ?? state.customItems?.[record.itemId] ?? null)
+    .filter(Boolean);
+  return [...candidates, ...rated];
+}
+
+// `queued.items` is set once there is a set to offer (not when the pool is exhausted).
+async function recommend({ rawState, env, fetchImpl, retrieve, trace, queued }) {
   const state = hydrateState(rawState);
 
   let started = Date.now();
@@ -384,10 +411,17 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
     const filter = state.recommendationFilter ?? "all";
     const hasDomainEvidence = filter === "all" || (ctx.evidence ?? []).some((record) => record.countsAsTaste && (record.domains ?? []).includes(filter));
     const filterLabel = domainById(filter)?.label ?? filter;
-    const reason = hasDomainEvidence
-      ? "Tastemake could not find another eligible catalog match from your current evidence."
-      : `You haven't rated any ${filterLabel} yet, so Tastemake has nothing to base ${filterLabel} picks on. Try Browse or Search to react to a few first.`;
-    return { source: "catalog", reason, picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length } };
+    // #380 (Nov 17): since #381, titles that recognizably match a pattern the person said is not them (or a
+    // Partly answer's unticked area) are never offered. Say so only when that is the cause: the same pool,
+    // chosen again without the corrections, would have offered something. Any other cause keeps the generic
+    // message.
+    const emptiedByCorrections = Boolean(ctx.correctionConflict) && offeredCandidates({ ...ctx, correctionConflict: null }, 6).length > 0;
+    const reason = !hasDomainEvidence
+      ? `You haven't rated any ${filterLabel} yet, so Tastemake has nothing to base ${filterLabel} picks on. Try Browse or Search to react to a few first.`
+      : emptiedByCorrections
+        ? CORRECTIONS_EMPTIED_MESSAGE
+        : "Tastemake could not find another eligible catalog match from your current evidence.";
+    return { source: "catalog", reason, picks: [], meta: { paidCallMade: false, exhausted: true, catalogCandidates: retrieved.length, ...(emptiedByCorrections ? { emptiedByCorrections: true } : {}) } };
   }
   // QA sweep real bug: every downstream use of ctx (the prompt payload, the prompt-size log, and
   // validatePicks' "itemId must come from candidates" check) read ctx.candidates directly -- the full,
@@ -403,6 +437,7 @@ async function recommend({ rawState, env, fetchImpl, retrieve, trace }) {
   const promptCtx = { ...ctx, candidates, ...(shortlist.surpriseDropped ? { curveball: false } : {}) };
   const setState = shortlist.surpriseDropped ? { ...state, curveball: false } : state;
   const fallback = (reason, meta) => fallbackPayload(candidates, setState, reason, meta, ctx.candidates, ctx.correctionConflict);
+  queued.items = appealProfileItems(candidates, ctx, state);
   if (trace) trace.promptEvidence = selectPromptEvidence(promptCtx).map((record) => record.ref);
   const offeredDomains = {};
   for (const candidate of candidates) {
