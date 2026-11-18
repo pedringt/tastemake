@@ -315,6 +315,23 @@ export async function run() {
     document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
     await until(()=>wrap.classList.contains("is-dismissed"));
     check("Escape hides a focused preview and keeps focus on the link",wrap.classList.contains("is-dismissed")&&!wrap.matches(".editorial-why:not(.is-dismissed):focus-within")&&document.activeElement===trigger,wrap.className);
+    // Nov 18 QA: pinned, then Tab to "Tried it": the popover sat over the focused button, and Escape reopened it as a preview.
+    await act('.editorial-rec .why-trigger',120);
+    const tried=whyCard.querySelector(".reaction-rail button, [data-experience-path] button, .reaction-rail [data-feedback-item]");
+    if(tried){
+      tried.focus(); tried.dispatchEvent(new FocusEvent("focusin",{bubbles:true,relatedTarget:whyCard.querySelector(".why-trigger")}));
+      await sleep(30);
+      check("a pinned popover closes when focus moves to the reaction buttons",!wrap.classList.contains("is-pinned"),wrap.className);
+      document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+      await sleep(30);
+      check("Escape after that leaves no preview showing",!wrap.matches(".editorial-why:not(.is-dismissed):focus-within"),wrap.className);
+    } else check("the pick has a reaction button to focus",false);
+    // Pinned, then Escape with focus still on the link: it closes and stays closed (focus moves before the dismissal).
+    const trig=whyCard.querySelector(".why-trigger"); trig.focus();
+    await act('.editorial-rec .why-trigger',120);
+    document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+    await sleep(30);
+    check("Escape on a pinned popover hides it and keeps focus on the link",!wrap.classList.contains("is-pinned")&&wrap.classList.contains("is-dismissed")&&document.activeElement===trig,wrap.className);
     whyCard.querySelector(".why-trigger").blur();
   } else check("a recommendation card exists for the why popover check",false);
 
