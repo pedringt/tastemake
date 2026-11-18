@@ -11,7 +11,24 @@ Written Nov 17, 2026 for Paige. **A proposal, not an approved plan.** The status
   - The appeal-profile store, **off** (U14's store only; no scoring).
   - The eval cleanup.
   - This document.
+- **Merged since:** **#385** (`58869c4`), with the Surprise fixes, the corrections empty-set message, the appeal-profile store (**off**), the eval cleanup and this document.
 - **Not built:** the appeal-profile scorer, the discovery rule (U15), #383, D-1/D-2 work, and the fresh-ratings validation.
+
+**Planning update, Nov 17 (late): development evidence only, not validation**
+- **Dislike check (D-check)** on Paige's 60 Nov 4 ratings (`~/tastemake-research-local/dcheck-2026-11-17/`).
+  - Description scoring doesn't raise dislike risk compared with genre. Her "no" titles in the per-medium top 3s: genre 9 of 23 (inflated by ties), description scoring 1 of 12. Top-3 titles nearer a dislike than any like: 1 against 0.
+  - **The dislike penalty isn't earning its place:**
+    - without it, within-medium ordering is 0.64; with it, 0.62;
+    - it moves about as many wants down as up;
+    - it pushed Squid Game (want) from 6th to 11th via Severance;
+    - a 0.5× cap changed nothing.
+  - None of the 7 dislikes has a reason, so reason overreach (C2's failure) is untested.
+- **Working hypothesis (Paige):** description scoring **without** the dislike penalty. It's to be tested on fresh ratings, not shipped.
+- **Next:** the fresh-ratings protocol in `docs/proposals/fresh-ratings-eval-protocol.md`.
+  - Arms: genre, D0 (no penalty), D1 (penalty).
+  - Gates fixed in advance, with separate fit and dislike-avoidance measures.
+  - Dislikes with reasons included, among them overlap cases.
+  - "Never recommend" exclusions kept separate from "no" ratings.
 
 **Sources:**
 - #380, PR #381, #382, #383
