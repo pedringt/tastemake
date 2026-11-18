@@ -194,7 +194,9 @@ eq("broad-only genres are not a match on their own", bestAnchor(movie(1, "X", [3
   eq("sci-fi action movie", newReleaseReason(movie(1, "Boom", [28, 878]), movie(2, "Everything Everywhere All at Once", [28, 878, 35])), "A new film with sci-fi and action, like Everything Everywhere All at Once.");
   // Nov 6: "sharing both with" is gone for every medium and either rotation index.
   check("no reason says \"sharing both\"", [0, 1].every((index) => [newReleaseReason(movie(1, "Boom", [28, 878]), movie(2, "Arrival", [28, 878]), { index }), newReleaseReason(tv("Mystery Office", [9648, 18]), tv("Severance", [9648, 18]), { index }), newReleaseReason(game(1, "Tiny", ["Puzzle", "Adventure"]), game(2, "Outer Wilds", ["Puzzle", "Adventure"]), { index })].every((r) => !/sharing both/.test(r) && /^A new .+, like .+\.$/.test(r))));
-  eq("sci-fi only", newReleaseReason(movie(1, "Vega", [878]), movie(2, "Arrival", [878, 18])), "New sci-fi this week, in the same genre as Arrival.");
+  eq("sci-fi only", newReleaseReason(movie(1, "Vega", [878]), movie(2, "Arrival", [878, 18])), "New sci-fi this week; it shares only that genre with Arrival.");
+  // Nov 18 QA: no New-this-week reason claims "the same genre" from one shared tag.
+  for (let i = 0; i < 4; i += 1) eq(`no "same genre" claim (${i})`, /same genre as/.test(newReleaseReason(movie(1, "Vega", [878]), movie(2, "Arrival", [878, 18]), i)), false);
   eq("an IGDB genre reads as a kind of game", newReleaseReason(game(1, "Rogue", ["Role-playing (RPG)"]), game(2, "Hades", ["Role-playing (RPG)", "Hack and slash/Beat 'em up"]), { index: 1 }), "A new role-playing game, like Hades.");
   eq("an IGDB theme can be named too", newReleaseReason({ ...game(1, "Dread", ["Adventure"]), providerMeta: { themes: ["Horror"] } }, { ...game(2, "Alan Wake", ["Shooter"]), providerMeta: { themes: ["Horror"] } }, { index: 1 }), "A new horror game, like Alan Wake.");
   const pairs = [
@@ -217,7 +219,7 @@ eq("bad date, no label", releaseLabel("soon", now), "");
 {
   const s = emptyState([]);
   s.recommendationSets = [];
-  const release = { ...movie(901, "Signal From Vega", [878]), releaseDate: "2026-10-24", reason: "New sci-fi this week, in the same genre as Arrival." };
+  const release = { ...movie(901, "Signal From Vega", [878]), releaseDate: "2026-10-24", reason: "New sci-fi this week; it shares only that genre with Arrival." };
   s.newReleases = { status: "ready", items: [release, { ...movie(904, "Quiet Orbit", [878]), releaseDate: "2026-10-19" }] };
   const tasteBefore = evidenceRecords(s).filter((r) => r.countsAsTaste).length;
   const said = actOnNewRelease(s, release.id, "bookmark");
@@ -306,7 +308,7 @@ eq("bad date, no label", releaseLabel("soon", now), "");
   eq("still loading: hidden", renderWith({ status: "loading", items: [] }), "");
   eq("while the set is loading: hidden", renderWith({ status: "ready", items: [], outcome: "no-strong-matches" }, "loading"), "");
   eq("emptied by Save or Not interested: hidden (those were matches)", renderWith({ status: "ready", items: [], outcome: "matched" }), "");
-  const full = renderWith({ status: "ready", items: [{ ...movie(901, "Signal From Vega", [878]), releaseDate: "2026-10-24", reason: "New sci-fi this week, in the same genre as Arrival." }], outcome: "matched" });
+  const full = renderWith({ status: "ready", items: [{ ...movie(901, "Signal From Vega", [878]), releaseDate: "2026-10-24", reason: "New sci-fi this week; it shares only that genre with Arrival." }], outcome: "matched" });
   check("with picks, the list shows and the empty message doesn't", full.includes('data-new-release="tmdb-movie-901"') && !full.includes(message));
   appState.newReleases = undefined;
 }

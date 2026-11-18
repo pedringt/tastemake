@@ -102,7 +102,9 @@ export function newReleaseReason(item, anchor, { index = 0 } = {}) {
   // Northman" left the noun out and "both" without a referent.
   const reasons = b
     ? [() => (item.type === "game" ? `A new ${a} and ${b} game, like ${from}.` : `A new ${kind} with ${a} and ${b}, like ${from}.`)]
-    : [() => `New ${name(a)} this week, in the same genre as ${from}.`, () => `A new ${a} ${kind}, like ${from}.`];
+    // Nov 18 QA: one shared tag isn't "the same genre" ("New sci-fi this week, in the same genre as Arrival" for an action
+    // film tagged sci-fi). Say what was matched, as the one-genre line above does.
+    : [() => `New ${name(a)} this week; it shares only that genre with ${from}.`, () => `A new ${a} ${kind}, like ${from}.`];
   return reasons[index % reasons.length]();
 }
 
