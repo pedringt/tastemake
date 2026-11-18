@@ -1,6 +1,8 @@
 # Fresh-ratings evaluation: description scoring (protocol, for review)
 
-Written Nov 17, 2026 for Paige. **A protocol, not results.** Nothing has been run. Once Paige approves this text, it's fingerprinted before any fresh rating, title list or description exists, and isn't changed afterwards.
+Written Nov 17, 2026 for Paige. **A protocol, not results.** Nothing has been run.
+
+**Status: approved and locked by Paige, Nov 17, 2026,** including the challenge-set rule in the penalty decision. The fingerprint is in `fresh-ratings-eval-protocol.sha256`, recorded before any fresh rating, title list or description exists. The text isn't changed from here on; any change needs a new, separately approved version. **This approves the design only.** It doesn't authorize collecting ratings, generating descriptions, paid calls, activating the description store, or changing production scoring. Each of those needs its own approval.
 
 **Question:** on titles nobody has used before, does scoring by AI appeal descriptions rank what Paige wants above what she doesn't, without frustrating matches to what she dislikes?
 
@@ -90,6 +92,8 @@ The capped-penalty variant is dropped: it changed nothing on development data. N
 - **A pass is evidence for D0 as a scoring signal on one person's held-out titles,** owner-tested only. It isn't evidence of external user satisfaction, and it doesn't test the chooser, discovery or live AI picks.
 - **A fail or incomplete result is reported as such.** No re-run on the same pool.
 - **Production stays unchanged either way.** Switching scoring would be its own proposal and PR, with Paige's approval, after the discovery-rule test (U15) and the description store's activation checks.
+- **A pass justifies further validation, not shipping.** Before the description score could replace production scoring, an end-to-end check of actual recommendation selections is still needed: retrieval, the chooser and discovery rule, the Surprise rules and the live AI picks.
+- **Noted limit (Paige):** the 3-place threshold in the challenge-set rule is somewhat arbitrary for larger pools. It's kept as a conservative guardrail for this first test, and would be revisited only in a new protocol.
 
 ## 6. Development evidence this protocol builds on (not validation)
 
