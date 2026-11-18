@@ -1,6 +1,17 @@
 # Recommendation improvement plan (proposal, for review)
 
-Written Nov 17, 2026 for Paige. **Planning only.** Nothing here is built or approved. This file is not committed. PR #381 is open and unmerged; main is at `aab1f56`.
+Written Nov 17, 2026 for Paige. **A proposal, not an approved plan.** The status notes below ("unmerged", "main is at …") are a snapshot from when each section was written. Current state, end of Nov 17:
+
+- **Merged and live:**
+  - **#381:** recognized "Not me" and unticked-area conflicts are left out of picks, at `1847728`.
+  - **#384:** retrieval prefers clean anchors, at `1ae454f`.
+- **In release PR #385 (not merged):**
+  - Surprise refill and honest Surprise label.
+  - The corrections empty-set message.
+  - The appeal-profile store, **off** (U14's store only; no scoring).
+  - The eval cleanup.
+  - This document.
+- **Not built:** the appeal-profile scorer, the discovery rule (U15), #383, D-1/D-2 work, and the fresh-ratings validation.
 
 **Sources:**
 - #380, PR #381, #382, #383
@@ -17,7 +28,7 @@ Written Nov 17, 2026 for Paige. **Planning only.** Nothing here is built or appr
 
 **Status key:**
 - **Fixed:** on main.
-- **PR:** in unmerged PR #381.
+- **PR:** in PR #381 (unmerged when written; merged Nov 17 as `1847728`).
 - **Exp:** a planned experiment.
 - **Decide:** an unresolved design choice for Paige.
 - **Deferred:** not planned now.
@@ -114,7 +125,7 @@ Each unit is one PR or one report. Each is measured against the U1 baseline and 
 
 ## 3. Immediate offline evaluation plan (no paid calls)
 
-**Baseline:** main at `aab1f56`. PR #381 is measured as its own arm, because it's unmerged and must not be treated as production.
+**Baseline:** main at `aab1f56` when written. PR #381 was measured as its own arm because it was unmerged then; it has since merged (`1847728`), so today's baseline is main with #381 and #384.
 
 | Layer | Measure | Data | Existing script |
 |---|---|---|---|
