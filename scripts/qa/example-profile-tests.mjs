@@ -55,6 +55,12 @@ eq("it is fetched from the static data file", requested[0], EXAMPLE_URL);
 check("the state is flagged as the example", isViewingExample());
 eq("it opens on the Taste Profile", state.screen, "model");
 check("the banner shows while viewing", exampleBannerHtml().includes("Paige's Example Profile") && exampleBannerHtml().includes('data-action="exit-example"'));
+// Nov 18 QA: the banner said "two she corrected" while the page shows one; it now says where each is, and the number
+// stays in step with the data (two non-Yes pattern answers).
+{
+  const corrections = (parsed.patternStatements ?? []).filter((x) => x.says && x.says !== "yes").length;
+  check("the banner's correction count matches the data", corrections === 2 && /two she corrected: one shown below, the other in the Full profile/.test(exampleBannerHtml()), `${corrections}`);
+}
 check("someone with a profile is offered Back to my profile", exampleBannerHtml().includes("Back to my profile") && !exampleBannerHtml().includes("Start my own"));
 await loadExampleProfile({ fetchImpl });
 check("...still, after opening the example again from inside it", exampleBannerHtml().includes("Back to my profile"));

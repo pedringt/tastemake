@@ -76,5 +76,5 @@ export async function loadExampleProfile({ fetchImpl = fetch, screen = "model" }
 
 export function exampleBannerHtml() {
   if (!isViewingExample()) return "";
-  return `<div class="example-banner" role="note"><p><strong>You're viewing ${EXAMPLE_NAME}.</strong> These are real reactions Paige gave, and the patterns Tastemake inferred from them, including two she corrected. Nothing you change here is saved.</p><button class="button button-primary" type="button" data-action="exit-example">${state.exampleReturnsToOwn ? "Back to my profile" : "Start my own"}</button></div>`;
+  return `<div class="example-banner" role="note"><p><strong>You're viewing ${EXAMPLE_NAME}.</strong> These are real reactions Paige gave, and the patterns Tastemake inferred from them, including two she corrected: one shown below, the other in the Full profile. Nothing you change here is saved.</p><button class="button button-primary" type="button" data-action="exit-example">${state.exampleReturnsToOwn ? "Back to my profile" : "Start my own"}</button></div>`;
 }
