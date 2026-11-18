@@ -20,19 +20,25 @@ The capped-penalty variant is dropped: it changed nothing on development data. N
 
 ## 2. Data
 
-**Fresh pool**
+**Primary set (the main evaluation): 48 taste-independent titles**
 - **Size and spread:** 48 titles, 12 per medium (film, TV, books, games). Never rated, judged, described or used in any earlier experiment, and not in the Example Profile.
 - **Source:** drawn from the offline catalog snapshot plus official provider lookups, by a fixed seed. Provider order and taste don't influence the draw. This mirrors C2's B2.
 - **TV and comedy** get guaranteed coverage. At least 6 TV and 4 film titles are comedies, chosen by C2's humour-family rule: at most one per family, using provider keywords and type only. This fixes C2's and K1's "0 TV pairs".
-- **Overlap titles:** for each dislike with a reason (below), the pool includes 1–2 titles that share the disliked characteristic, chosen by provider keywords only. This tests whether a dislike wrongly penalizes titles Paige might still like.
+- **Only the primary set** is used for the fit, top-recommendation and general dislike measures (P1, T1, A1, A2, O1) and the D0-vs-G gates.
+
+**Challenge set (separate, never pooled with the primary set)**
+- **What:** for each dislike Paige gives a reason (below), 1–2 titles that share the disliked characteristic, chosen by provider keywords only, plus a fixed seed among matches. They're selected *because of* her dislikes, so they're not taste-independent.
+- **Question it answers:** does a scorer overreact to a specific dislike, by pushing down titles that share the disliked trait but that she might still like?
+- **How it's used:** for measures C1 and C2 below only. It never enters P1, T1, A1, A2, O1, the minimum-pairs rule or the D0-vs-G gates.
+- **Rated the same way, on the same page:** challenge titles are mixed in with the primary titles, unlabelled, so she can't tell which set a title is in.
 
 **Paige's ratings** (about 30 minutes, on a neutral page showing no scores, sources or arm labels)
 - **For each pool title:** **want / fair / no**, and familiarity: **seen-read-played / heard of / new to me**.
 - **Before rating the pool,** she adds reasons to about 4–6 titles she has already rated *disliked*, using the app's own chips. At least 2 should be cases where the disliked aspect appears in titles she likes, such as "characters didn't work" on a sitcom when she loves ensemble comedies.
 - **Kept separate:** any "never recommend" exclusion (#48). Those are hard filters in production already, so excluded titles are removed before scoring and never count as a "no".
 
-**Descriptions (paid, needs separate approval)**
-- **What:** descriptions for the 48 pool titles, the newly reasoned dislikes and any rated titles that don't have one. Made with the production prompt `ap-v1-2026-11-04`, in a script, not via the production store.
+**Descriptions (paid, needs its own approval after this protocol is approved)**
+- **What:** descriptions for the 48 primary titles, the challenge titles, the newly reasoned dislikes and any rated titles that don't have one. Made with the production prompt `ap-v1-2026-11-04`, in a script, not via the production store.
 - **Cost:** at most 70 Haiku calls, hard cap **$0.10** in code. Worst case about $0.03.
 - **Check:** before any scoring, Paige spot-checks 8 descriptions of titles she knows for accuracy.
 
@@ -51,11 +57,20 @@ The capped-penalty variant is dropped: it changed nothing on development data. N
 
 **Over-penalty (D1 vs D0)**
 - **O1:** wants pushed out of a medium's top 3 by the dislike term, and the largest want drop in places.
-- **O2:** of the overlap titles she rated **want**, how many D1 ranks lower than D0.
+**Challenge set (reported separately)**
+- **C1:** for each challenge title she rated **want** or **fair**, its rank under G, D0 and D1, where it's ranked among the primary titles of its medium plus itself. Report how many D1 ranks lower than D0, and by how much.
+- **C2:** for each challenge title she rated **no**, the same comparison. That's the case where the penalty would be right to push it down.
+- **Penalty rule:** C1 and C2 inform the penalty decision as a guardrail (section 4). They never decide D0 vs G.
 
 ## 4. Gates (fixed)
 
-**Minimum pairs:** at least 8 P1 pairs in at least 3 media, **TV included**. If that isn't met, the result is reported as **incomplete** and nothing passes.
+**Minimum pairs:** at least 8 P1 pairs in at least 3 media, **TV included**, from the primary set.
+
+**If that minimum isn't met, the result is inconclusive.** Fixed now, and binding:
+- It's reported as **inconclusive**, and no arm passes or fails.
+- No threshold is lowered, no pair minimum relaxed, and nothing in the pool, sampling rule or measures changes after any rating exists.
+- No titles are added to the pool, and familiar titles aren't counted toward P1, to reach the minimum.
+- If more evidence is wanted, a **second, independently drawn** test is designed and fixed in advance before its ratings, without reusing this pool.
 
 **D0 is supported over G** only if all of these hold:
 1. P1(D0) − P1(G) ≥ **+0.15**, with ≥ **90%** of bootstrap draws (2,000; titles resampled within medium; seed fixed) above 0. Same bar as C2.
@@ -64,7 +79,7 @@ The capped-penalty variant is dropped: it changed nothing on development data. N
 4. No medium where D0's P1 is below G's by more than 0.15 with ≥ 8 pairs.
 
 **D1 vs D0 (penalty decision, secondary)**
-- **Keep the penalty** only if D1 cuts A1+A2 "no" counts by ≥ 1 **and** costs ≤ 0.03 P1 **and** O1 = 0.
+- **Keep the penalty** only if D1 cuts A1+A2 "no" counts by ≥ 1 **and** costs ≤ 0.03 P1 **and** O1 = 0 **and**, on the challenge set, D1 ranks no want or fair challenge title lower than D0 does by more than 3 places (C1).
 - **Otherwise drop it:** the simpler D0 stands.
 - This decides the penalty only. It doesn't re-pick between G and D0.
 
@@ -92,4 +107,4 @@ All from Paige's 60 Nov 4 ratings or synthetic profiles, used to design this tes
 
 1. This protocol text, after which it's fingerprinted.
 2. Paige's time: the dislike reasons and about 30 minutes of pool ratings.
-3. The paid description step: ≤ 70 calls, $0.10 cap.
+3. **Separately, later:** the paid description step, at most 70 calls with a $0.10 cap. Approving this protocol doesn't approve any paid call.

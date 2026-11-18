@@ -27,7 +27,8 @@ Written Nov 17, 2026 for Paige. **A proposal, not an approved plan.** The status
 - **Next:** the fresh-ratings protocol in `docs/proposals/fresh-ratings-eval-protocol.md`.
   - Arms: genre, D0 (no penalty), D1 (penalty).
   - Gates fixed in advance, with separate fit and dislike-avoidance measures.
-  - Dislikes with reasons included, among them overlap cases.
+  - Dislikes with reasons included, with dislike-overlap titles in a separate challenge set, never pooled with the 48 taste-independent primary titles.
+  - Too few comparisons means inconclusive, with no thresholds changed afterwards.
   - "Never recommend" exclusions kept separate from "no" ratings.
 
 **Sources:**
