@@ -656,6 +656,8 @@ app.addEventListener("mouseleave", (event) => {
 }, true);
 app.addEventListener("focusin", (event) => {
   const wrapper = event.target.closest?.(".editorial-why");
+  // Nov 18 QA: a pinned popover closes once focus moves outside it, so it never sits over the focused "Tried it".
+  closeWhyPopovers(wrapper);
   if (wrapper && !wrapper.contains(event.relatedTarget)) wrapper.classList.remove("is-dismissed");
 });
 
@@ -1419,12 +1421,16 @@ document.addEventListener("keydown", (event) => {
       : `[data-feedback-item="${itemId}"][data-experience-path]`);
     return;
   }
-  const open = document.querySelector(".editorial-why.is-pinned") ?? document.activeElement?.closest?.(".editorial-why");
+  // Nov 18 QA: Escape also closes a hover preview, and focus moves before the popover is dismissed. The focusin
+  // handler above un-dismisses a popover when focus arrives from outside, so the old order reopened it as a preview.
+  const pinned = document.querySelector(".editorial-why.is-pinned");
+  const focused = document.activeElement?.closest?.(".editorial-why");
+  const open = pinned ?? focused ?? document.querySelector(".editorial-why:hover");
   const trigger = open?.querySelector(".why-trigger");
   if (!trigger) return;
   closeWhyPopovers();
+  if (open === pinned || open === focused) trigger.focus({ preventScroll: true });
   open.classList.add("is-dismissed");
-  trigger.focus({ preventScroll: true });
 });
 
 // #103 (Paige, Oct 12): a returning user who opens /favorites directly lands on their Favorites

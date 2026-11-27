@@ -194,4 +194,17 @@ for (const [name, edit] of [
   resetState();
 }
 
+// Nov 18 QA: New this week is matched to a profile, so "Start over" and restoring a backup clear it (it was kept until a
+// reload, showing the old profile's matches, and fresh() has no newReleases to reset it).
+{
+  appState.viewingExample = false;
+  appState.newReleases = { status: "ready", items: [{ id: "movie:1", title: "Old match" }], outcome: "matched" };
+  resetState();
+  eq("Start over clears New this week", appState.newReleases ?? null, null);
+  appState.newReleases = { status: "ready", items: [{ id: "movie:1", title: "Old match" }], outcome: "matched" };
+  restoreStateFromBackupText(JSON.stringify(buildBackup(appState)));
+  eq("restoring a backup clears New this week", appState.newReleases ?? null, null);
+  resetState();
+}
+
 finish();

@@ -5,6 +5,7 @@
 // session flag and reloads the page, which brings back whatever the visitor had saved before.
 import { restoreStateFromBackupText, state } from "./state.js";
 import { screenFromPath } from "./router.js";
+import { featuredCorrection } from "./model/featured-correction.js";
 
 export const EXAMPLE_NAME = "Paige's Example Profile";
 export const EXAMPLE_LOCKED_MESSAGE = `${EXAMPLE_NAME} is read-only for new AI picks. Start your own to get recommendations.`;
@@ -76,5 +77,9 @@ export async function loadExampleProfile({ fetchImpl = fetch, screen = "model" }
 
 export function exampleBannerHtml() {
   if (!isViewingExample()) return "";
-  return `<div class="example-banner" role="note"><p><strong>You're viewing ${EXAMPLE_NAME}.</strong> These are real reactions Paige gave, and the patterns Tastemake inferred from them, including two she corrected. Nothing you change here is saved.</p><button class="button button-primary" type="button" data-action="exit-example">${state.exampleReturnsToOwn ? "Back to my profile" : "Start my own"}</button></div>`;
+  // Nov 18 QA: the banner shows on every screen, but only the Taste Profile Overview shows a correction below it, so only
+  // there does it say where the two are.
+  const profileView = ["list", "full", "map"].includes(state.profileView) ? state.profileView : "list";
+  const where = state.screen === "model" && profileView === "list" && featuredCorrection(state) ? ": one shown below, the other in the Full profile" : "";
+  return `<div class="example-banner" role="note"><p><strong>You're viewing ${EXAMPLE_NAME}.</strong> These are real reactions Paige gave, and the patterns Tastemake inferred from them, including two she corrected${where}. Nothing you change here is saved.</p><button class="button button-primary" type="button" data-action="exit-example">${state.exampleReturnsToOwn ? "Back to my profile" : "Start my own"}</button></div>`;
 }

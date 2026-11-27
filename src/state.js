@@ -189,7 +189,8 @@ export function resetState() {
   const profileGeneration = startNewProfileGeneration();
   // Oct 27: "Start over" inside Paige's Example Profile clears the example in memory, never the visitor's saved profile.
   if (!state.viewingExample) clearPersistedState();
-  Object.assign(state, fresh(), { look, profileGeneration, hypothesisRequest: null });
+  // Nov 18 QA: fresh() has no newReleases, so the old profile's New-this-week matches survived "Start over" until a reload.
+  Object.assign(state, fresh(), { look, profileGeneration, hypothesisRequest: null, newReleases: null });
 }
 
 
@@ -200,6 +201,7 @@ export function restoreStateFromBackupText(text) {
   Object.assign(state, fresh(), restored, {
     profileGeneration,
     hypothesisRequest: null,
+    newReleases: null,   // Nov 18 QA: matched to the profile being replaced
     look,
     patternStatements: normalizePersistedPatternStatements(restored.patternStatements ?? []),
     exclusions: Array.isArray(restored.exclusions) ? restored.exclusions : [],
