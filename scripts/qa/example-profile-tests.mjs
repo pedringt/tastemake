@@ -60,6 +60,13 @@ check("the banner shows while viewing", exampleBannerHtml().includes("Paige's Ex
 {
   const corrections = (parsed.patternStatements ?? []).filter((x) => x.says && x.says !== "yes").length;
   check("the banner's correction count matches the data", corrections === 2 && /two she corrected: one shown below, the other in the Full profile/.test(exampleBannerHtml()), `${corrections}`);
+  // Only the Overview shows a correction below the banner; every other screen and view keeps the plain wording.
+  const screenBefore = state.screen, viewBefore = state.profileView;
+  for (const [screen, view] of [["recommendations", "list"], ["library", "list"], ["model", "full"], ["model", "map"]]) {
+    state.screen = screen; state.profileView = view;
+    check(`the banner doesn't point below on ${screen}/${view}`, !/shown below/.test(exampleBannerHtml()) && /including two she corrected\. Nothing/.test(exampleBannerHtml()));
+  }
+  state.screen = screenBefore; state.profileView = viewBefore;
 }
 check("someone with a profile is offered Back to my profile", exampleBannerHtml().includes("Back to my profile") && !exampleBannerHtml().includes("Start my own"));
 await loadExampleProfile({ fetchImpl });
