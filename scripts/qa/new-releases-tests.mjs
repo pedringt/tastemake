@@ -196,7 +196,7 @@ eq("broad-only genres are not a match on their own", bestAnchor(movie(1, "X", [3
   check("no reason says \"sharing both\"", [0, 1].every((index) => [newReleaseReason(movie(1, "Boom", [28, 878]), movie(2, "Arrival", [28, 878]), { index }), newReleaseReason(tv("Mystery Office", [9648, 18]), tv("Severance", [9648, 18]), { index }), newReleaseReason(game(1, "Tiny", ["Puzzle", "Adventure"]), game(2, "Outer Wilds", ["Puzzle", "Adventure"]), { index })].every((r) => !/sharing both/.test(r) && /^A new .+, like .+\.$/.test(r))));
   eq("sci-fi only", newReleaseReason(movie(1, "Vega", [878]), movie(2, "Arrival", [878, 18])), "New sci-fi this week; it shares only that genre with Arrival.");
   // Nov 18 QA: no New-this-week reason claims "the same genre" from one shared tag.
-  for (let i = 0; i < 4; i += 1) eq(`no "same genre" claim (${i})`, /same genre as/.test(newReleaseReason(movie(1, "Vega", [878]), movie(2, "Arrival", [878, 18]), i)), false);
+  for (let i = 0; i < 4; i += 1) eq(`no "same genre" claim (${i})`, /same genre as/.test(newReleaseReason(movie(1, "Vega", [878]), movie(2, "Arrival", [878, 18]), { index: i })), false);
   eq("an IGDB genre reads as a kind of game", newReleaseReason(game(1, "Rogue", ["Role-playing (RPG)"]), game(2, "Hades", ["Role-playing (RPG)", "Hack and slash/Beat 'em up"]), { index: 1 }), "A new role-playing game, like Hades.");
   eq("an IGDB theme can be named too", newReleaseReason({ ...game(1, "Dread", ["Adventure"]), providerMeta: { themes: ["Horror"] } }, { ...game(2, "Alan Wake", ["Shooter"]), providerMeta: { themes: ["Horror"] } }, { index: 1 }), "A new horror game, like Alan Wake.");
   const pairs = [
